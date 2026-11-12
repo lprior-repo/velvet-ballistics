@@ -1,0 +1,220 @@
++        self.journal.append_policy_decision_strict(decision, seq)?;
++
++        // Publish next sequence only after successful append.
++        let _previous = self.journal_sequences.insert(run, next);
++
++        Ok(())
++    }
++
++    /// Compute the checked next sequence number for a run.
++    ///
++    /// Returns an error on u64 overflow. Must be called before any
++    /// irreversible state mutation.
++    fn checked_next_seq(seq: vb_storage::EventSeq) -> crate::RuntimeResult<vb_storage::EventSeq> {
++        seq.get()
++            .checked_add(1)
++            .map(vb_storage::EventSeq::new)
++            .ok_or_else(|| crate::RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
++    }
++}
+FILE crates/vb_runtime/src/shard/lifecycle.rs SHA256 99398079741b116d558380dd848f98a8a2488a511a2b611ab66e00bb64d2465d
+diff --git a/crates/vb_runtime/src/shard/lifecycle.rs b/crates/vb_runtime/src/shard/lifecycle.rs
+index 0ac1e931a..3ce296238 100644
+--- a/crates/vb_runtime/src/shard/lifecycle.rs
++++ b/crates/vb_runtime/src/shard/lifecycle.rs
+@@ -1,33 +1,43 @@
+ #![forbid(unsafe_code)]
+ //! Run lifecycle management: submit, resume, cancel, action completion, timers.
+ 
+ #[path = "lifecycle/execution_binding.rs"]
+ mod execution_binding;
++#[path = "lifecycle/recovered_admission.rs"]
++mod recovered_admission;
+ #[path = "lifecycle/registered_completion.rs"]
+ mod registered_completion;
++#[path = "lifecycle/registered_completion_context.rs"]
++mod registered_completion_context;
++#[path = "lifecycle/registered_context_helpers.rs"]
++mod registered_context_helpers;
+ pub(crate) use registered_completion::RegisteredActionContext;
+ 
+ include!("lifecycle/chunk_003.rs");
+ include!("lifecycle/chunk_001.rs");
+ include!("lifecycle/chunk_002.rs");
+ include!("lifecycle/chunk_005_prepare.rs");
+ include!("lifecycle/chunk_005_drive_apply.rs");
+ include!("lifecycle/chunk_005.rs");
+ include!("lifecycle/chunk_004.rs");
+ 
+ #[cfg(test)]
+ mod tests {
+     include!("lifecycle_tests/chunk_001.rs");
+     include!("lifecycle_tests/chunk_002.rs");
+     include!("lifecycle_tests/chunk_003.rs");
+     include!("lifecycle_tests/chunk_004.rs");
+     include!("lifecycle_tests/chunk_005.rs");
+     include!("lifecycle_tests/chunk_006.rs");
+     include!("lifecycle_tests/chunk_007.rs");
+     include!("lifecycle_tests/chunk_008.rs");
+     include!("lifecycle_tests/chunk_009.rs");
+     include!("lifecycle_tests/chunk_010.rs");
+     include!("lifecycle_tests/recovery_context_tests.rs");
+     include!("lifecycle_tests/contract_validation_tests.rs");
+     include!("lifecycle_tests/action_recovery_tests.rs");
++
++    mod strict_policy_sequence {
++        include!("lifecycle_tests/strict_policy_sequence.rs");
++    }
+ }
+FILE crates/vb_runtime/src/shard/lifecycle/chunk_001.rs SHA256 a05960a3724965480504a73d94364245306e4d1919769afc4ddf6d7ae9dcb87d
+diff --git a/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs b/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+index 55f293905..88f4d725a 100644
+--- a/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
++++ b/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+@@ -83,142 +83,145 @@ impl Shard {
+             run,
+             &workflow,
+             caps.clone(),
+             action_contracts,
+         )?;
+         self.handle_submit_with_inputs_contracts_and_header_mode(
+             run,
+             workflow,
+             inputs,
+             caps,
+             action_contracts,
+             true,
+         )
+     }
+ 
+     fn handle_submit_with_inputs_contracts_and_header_mode(
+         &mut self,
+         run: RunId,
+         workflow: CompiledWorkflow,
+         inputs: &[(SlotIdx, SlotValue)],
+         caps: CapabilitySet,
+         action_contracts: &[vb_core::action::ActionContract],
+         persist_header: bool,
+     ) -> RuntimeResult<()> {
+         if self.run_state_contains(run) {
+             return Err(RuntimeError::RunAlreadyExists);
+         }
+         if self.active_run_count() >= self.max_active_runs {
+             return Err(RuntimeError::ActiveRunCapacityExceeded {
+                 capacity: self.max_active_runs,
+             });
+         }
+         let digest = workflow.digest();
+         let admission = self.build_admission(run, digest, caps)?;
+         execution_binding::validate(
+-            self.artifact_store.as_ref(), self.policy, &workflow, action_contracts,
++            self.artifact_store.as_ref(),
++            self.policy,
++            &workflow,
++            action_contracts,
+         )?;
+         self.prepare_run_slots(run)?;
+         let mut frame = self.take_frame_for(run, &workflow)?;
+         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
+         self.trace_ring.push(TraceEvent::RunSubmitted { run });
+         if persist_header {
+             self.append_admission_header_journal_event(
+                 run,
+                 RuntimeJournalEvent::RunSubmitted {
+                     run,
+                     workflow: digest,
+                 },
+             )?;
+         }
+         if let Some(admission) = admission.as_ref() {
+             self.append_admission_header_journal_event(
+                 run,
+                 RuntimeJournalEvent::RunAdmission {
+                     admission: admission.clone(),
+                 },
+             )?;
+         }
+         self.counters.inc_submitted();
+         let frame_step_count = frame.step_count();
+         let max_slots = workflow.resource_contract().max_slots;
+         let state = RunState {
+             registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
+             frame,
+             run_attempt: core::num::NonZeroU16::MIN,
+             workflow,
+             store: ValueStore::with_max_slots(max_slots),
+             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+             admission,
+             collect_states: CollectStates::new(),
+             action_contracts: action_contracts.to_vec().into_boxed_slice(),
+         };
+         self.terminal_runs_remove(run);
+         if let Err(error) = self.admit_run_state(run, state, RuntimeState::Initial) {
+             let removed = self.run_state_remove(run);
+             if let Some(state) = removed {
+                 self.release_frame(state.frame);
+             }
+             self.discard_journal_sequence(run);
+             return Err(error);
+         }
+         match self.drive_run(run) {
+             Ok(()) => Ok(()),
+             Err(error) => {
+                 if !self.run_state_contains(run) {
+                     self.discard_journal_sequence(run);
+                 }
+                 Err(error)
+             }
+         }
+     }
+ 
+     fn append_admission_header_journal_event(
+         &mut self,
+         run: RunId,
+         event: RuntimeJournalEvent,
+     ) -> RuntimeResult<()> {
+         match self.append_journal_event(event) {
+             Ok(()) => Ok(()),
+             Err(error) => {
+                 self.discard_journal_sequence(run);
+                 Err(RuntimeError::admission_header_persistence_failed(error))
+             }
+         }
+     }
+ 
+-    fn build_admission(
++    pub(crate) fn build_admission(
+         &self,
+         run: RunId,
+         digest: vb_core::ids::WorkflowDigest,
+         caps: CapabilitySet,
+     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
+         use crate::admission::{AdmissionError, admit_artifact_run};
+ 
+         match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
+             Ok(admission) => Ok(Some(admission)),
+             Err(AdmissionError::ArtifactNotFound { digest }) => {
+                 Err(RuntimeError::AdmissionArtifactNotFound { digest })
+             }
+             Err(AdmissionError::CapabilityDenied {
+                 action,
+                 required,
+                 granted,
+             }) => Err(RuntimeError::AdmissionCapabilityDenied {
+                 action,
+                 required,
+                 granted,
+             }),
+             Err(AdmissionError::ResourceCapacityExceeded { available, .. }) => {
+                 Err(RuntimeError::ActiveRunCapacityExceeded {
+                     capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
+                 })
+             }
+             Err(AdmissionError::BudgetPolicyExceeded { .. }) => {
+                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+             }
+             Err(AdmissionError::ResourceBudgetOverflow { .. }) => {
+                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+             }
+             Err(AdmissionError::ResourceBudgetUnderflow { .. }) => {
+                 Err(RuntimeError::AdmissionArtifactInvalid { digest })

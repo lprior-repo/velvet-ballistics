@@ -64,7 +64,9 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
         name: Box::<str>::from("fuzz_expr_bytecode"),
         digest: vb_core::WorkflowDigest::from_bytes([0xA0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![vb_core::CompiledNode {
+            retry: None,
             id: vb_core::StepIdx::new(0),
             output: vb_core::workflow::NodeOutput::Discard,
             routing: vb_core::workflow::NodeRouting {
@@ -148,7 +150,9 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
         name: Box::<str>::from("fuzz_taint"),
         digest: vb_core::WorkflowDigest::from_bytes([0xB0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![vb_core::CompiledNode {
+            retry: None,
             id: vb_core::StepIdx::new(0),
             output: vb_core::workflow::NodeOutput::Discard,
             routing: vb_core::workflow::NodeRouting {

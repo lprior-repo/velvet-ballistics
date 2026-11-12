@@ -1,0 +1,180 @@
+1: #![forbid(unsafe_code)]
+2: //! IPC frame types.
+3: 
+4: use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+5: use bytes::Bytes;
+6: use std::io::Cursor;
+7: 
+8: use crate::bounded::{BoundedPayload, MaxPayloadBytes};
+9: use crate::commands::IpcCommand;
+10: use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
+11: use crate::error::IpcError;
+12: 
+13: /// Fixed binary IPC frame header.
+14: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+15: pub struct IpcFrameHeader {
+16:     /// IPC command kind.
+17:     pub command: IpcCommand,
+18:     /// Command-specific flags.
+19:     pub flags: u16,
+20:     /// Correlates requests and replies.
+21:     pub correlation: u64,
+22:     /// Postcard payload byte length.
+23:     pub payload_len: u32,
+24: }
+25: 
+26: impl IpcFrameHeader {
+27:     /// Creates an IPC frame header.
+28:     #[must_use]
+29:     pub const fn new(command: IpcCommand, flags: u16, correlation: u64, payload_len: u32) -> Self {
+30:         Self {
+31:             command,
+32:             flags,
+33:             correlation,
+34:             payload_len,
+35:         }
+36:     }
+37: 
+38:     /// Encodes the header using the §21 little-endian wire layout.
+39:     pub fn encode(self) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
+40:         let mut bytes = [0u8; IPC_HEADER_LEN];
+41:         let mut cursor = std::io::Cursor::new(bytes.as_mut_slice());
+42:         cursor
+43:             .write_u32::<LittleEndian>(IPC_MAGIC)
+44:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+45:         cursor
+46:             .write_u16::<LittleEndian>(IPC_VERSION)
+47:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+48:         cursor
+49:             .write_u16::<LittleEndian>(self.command.as_u16())
+50:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+51:         cursor
+52:             .write_u16::<LittleEndian>(self.flags)
+53:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+54:         cursor
+55:             .write_u16::<LittleEndian>(0_u16)
+56:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+57:         cursor
+58:             .write_u64::<LittleEndian>(self.correlation)
+59:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+60:         cursor
+61:             .write_u32::<LittleEndian>(self.payload_len)
+62:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+63:         Ok(bytes)
+64:     }
+65: 
+66:     /// Decodes and validates a fixed IPC header before payload allocation.
+67:     pub fn decode(
+68:         bytes: &[u8; IPC_HEADER_LEN],
+69:         max_payload: MaxPayloadBytes,
+70:     ) -> Result<Self, IpcError> {
+71:         let mut cursor = Cursor::new(bytes.as_slice());
+72:         let magic = cursor
+73:             .read_u32::<LittleEndian>()
+74:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+75:         if magic != IPC_MAGIC {
+76:             return Err(IpcError::InvalidMagic { actual: magic });
+77:         }
+78: 
+79:         let version = cursor
+80:             .read_u16::<LittleEndian>()
+81:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+82:         if version != IPC_VERSION {
+83:             return Err(IpcError::UnsupportedVersion { actual: version });
+84:         }
+85: 
+86:         let command = IpcCommand::from_u16(
+87:             cursor
+88:                 .read_u16::<LittleEndian>()
+89:                 .map_err(|_| IpcError::HeaderDecodeFailed)?,
+90:         )?;
+91:         let flags = cursor
+92:             .read_u16::<LittleEndian>()
+93:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+94:         let reserved = cursor
+95:             .read_u16::<LittleEndian>()
+96:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+97:         if reserved != 0 {
+98:             return Err(IpcError::ReservedNonZero { actual: reserved });
+99:         }
+100:         let correlation = cursor
+101:             .read_u64::<LittleEndian>()
+102:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+103:         let payload_len = cursor
+104:             .read_u32::<LittleEndian>()
+105:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+106:         let payload_len_usize = crate::error::u32_to_usize(payload_len)?;
+107:         if payload_len_usize > max_payload.get() {
+108:             return Err(IpcError::PayloadTooLarge {
+109:                 actual: payload_len_usize,
+110:                 limit: max_payload.get(),
+111:             });
+112:         }
+113: 
+114:         Ok(Self {
+115:             command,
+116:             flags,
+117:             correlation,
+118:             payload_len,
+119:         })
+120:     }
+121: }
+122: 
+123: /// Decoded IPC frame with bounded postcard payload bytes.
+124: #[derive(Debug, Clone, PartialEq, Eq)]
+125: pub struct IpcFrame {
+126:     header: IpcFrameHeader,
+127:     payload: BoundedPayload,
+128: }
+129: 
+130: impl IpcFrame {
+131:     /// Builds a frame after enforcing header/payload length agreement.
+132:     pub fn new(
+133:         header: IpcFrameHeader,
+134:         payload: Bytes,
+135:         max_payload: MaxPayloadBytes,
+136:     ) -> Result<Self, IpcError> {
+137:         let actual_len = payload.len();
+138:         let expected_len = crate::error::u32_to_usize(header.payload_len)?;
+139:         if actual_len != expected_len {
+140:             return Err(IpcError::PayloadLengthMismatch {
+141:                 header: expected_len,
+142:                 actual: actual_len,
+143:             });
+144:         }
+145: 
+146:         Ok(Self {
+147:             header,
+148:             payload: BoundedPayload::new(payload, max_payload)?,
+149:         })
+150:     }
+151: 
+152:     /// Returns the decoded frame header.
+153:     #[must_use]
+154:     pub const fn header(&self) -> IpcFrameHeader {
+155:         self.header
+156:     }
+157: 
+158:     /// Returns bounded postcard payload bytes.
+159:     #[must_use]
+160:     pub const fn payload(&self) -> &BoundedPayload {
+161:         &self.payload
+162:     }
+163: }
+164: 
+165: /// Decodes a fixed header and already-read payload bytes into a bounded frame.
+166: pub fn decode_frame(
+167:     header: &[u8; IPC_HEADER_LEN],
+168:     payload: Bytes,
+169:     max_payload: MaxPayloadBytes,
+170: ) -> Result<IpcFrame, IpcError> {
+171:     IpcFrame::new(
+172:         IpcFrameHeader::decode(header, max_payload)?,
+173:         payload,
+174:         max_payload,
+175:     )
+176: }
+177: 
+178: #[cfg(test)]
+179: #[path = "frame_types/tests.rs"]
+180: mod tests;

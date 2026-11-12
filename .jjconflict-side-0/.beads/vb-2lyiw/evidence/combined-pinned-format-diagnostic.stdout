@@ -1,0 +1,510 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_storage/tests/accepted_artifact_red_phase.rs:99:
+ }
+ 
+ #[test]
+-fn accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled()
+--> Result<(), String> {
++fn accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled() -> Result<(), String> {
+     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+     assert_eq!(artifact.verification.gate_count, 0);
+     Ok(())
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_storage/tests/accepted_artifact_red_phase.rs:107:
+ }
+ 
+ #[test]
+-fn accepted_artifact_encoder_records_gate_proof_when_policy_is_strict() -> Result<(), String>
+-{
++fn accepted_artifact_encoder_records_gate_proof_when_policy_is_strict() -> Result<(), String> {
+     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+     assert_eq!(artifact.verification.gate_count, 0);
+     Ok(())
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_storage/tests/accepted_artifact_red_phase.rs:151:
+ }
+ 
+ #[test]
+-fn accepted_artifact_validator_produces_typed_ledger_with_expected_flags()
+--> Result<(), String> {
++fn accepted_artifact_validator_produces_typed_ledger_with_expected_flags() -> Result<(), String> {
+     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+     let proof = &artifact.verification;
+     // Display-only flags: gate_count is 0, durable is always false.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_storage/tests/accepted_artifact_red_phase.rs:406:
+ }
+ 
+ #[test]
+-fn accepted_artifact_validator_has_expected_flags_under_journaled() -> Result<(), String>
+-{
++fn accepted_artifact_validator_has_expected_flags_under_journaled() -> Result<(), String> {
+     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+     let p = &artifact.verification;
+     assert!(p.bounded_claimed);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:297:
+                     "stale completion (run_attempt=1 vs current=3) must be rejected".to_string(),
+                 );
+             }
+-            Err(e) => {
+-                match e {
+-                    vb_runtime::RuntimeError::StaleAttempt { incoming, current }
+-                        if *incoming == 1 && *current == 3 => {}
+-                    _ => return Err(format!("expected StaleAttempt{{incoming:1,current:3}}, got: {e:?}")),
++            Err(e) => match e {
++                vb_runtime::RuntimeError::StaleAttempt { incoming, current }
++                    if *incoming == 1 && *current == 3 => {}
++                _ => {
++                    return Err(format!(
++                        "expected StaleAttempt{{incoming:1,current:3}}, got: {e:?}"
++                    ));
+                 }
+-            }
++            },
+         }
+ 
+         // Immediately after stale completion rejection: journal must be unchanged.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:371:
+             .snapshot_run(run, correlation)
+             .map_err(|e| format!("snapshot after stale tick failed: {e:?}"))?;
+         assert_eq!(
+-            snapshot_before,
+-            snapshot_after_stale_tick,
++            snapshot_before, snapshot_after_stale_tick,
+             "public inspect snapshot must be identical after stale rejection and stale tick"
+         );
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:409:
+ 
+         // Verify the actual completion output: ticket=current_ticket, output=slot 1, value=I64(42).
+         let has_correct_completes_envelope = events_after_completion.iter().any(|e| {
+-            if let JournalEvent::ActionCompletedEnvelope { ticket, output, value, .. } = e {
++            if let JournalEvent::ActionCompletedEnvelope {
++                ticket,
++                output,
++                value,
++                ..
++            } = e
++            {
+                 if *ticket == current_ticket && *output == SlotIdx::new(1) {
+                     if let Ok(slot_value) = postcard::from_bytes::<SlotValue>(value) {
+                         return matches!(slot_value, SlotValue::I64(42));
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:11:
+     CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
+ };
+ use vb_runtime::admission::{
+-    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
+-    StorageArtifactStore,
++    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, StorageArtifactStore,
++    admit_artifact_run,
+ };
+ use vb_storage::admission::{
+-    accepted_artifact_digest, prepare_compiled_artifact, submit_artifact, AcceptedArtifact,
+-    VerificationProof,
++    AcceptedArtifact, VerificationProof, accepted_artifact_digest, prepare_compiled_artifact,
++    submit_artifact,
+ };
+ use vb_storage::recovery::{
+-    recover_runtime_frame_seed_from_events, summarize_recovery_events, RecoveryError,
++    RecoveryError, recover_runtime_frame_seed_from_events, summarize_recovery_events,
+ };
+ use vb_storage::{
+-    put_compiled_ir, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
+-    WorkflowSourceRecord,
++    CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent, WorkflowSourceRecord,
++    put_compiled_ir,
+ };
+ 
+ struct MissingAcceptedArtifactStore;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:190:
+ }
+ 
+ #[test]
+-fn storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_run_is_submitted(
+-) -> Result<(), String> {
++fn storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_run_is_submitted()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let workflow = compile_valid_yaml()?;
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:241:
+ }
+ 
+ #[test]
+-fn persist_source_and_artifact_persists_source_artifact_and_ref_when_digests_match(
+-) -> Result<(), String> {
++fn persist_source_and_artifact_persists_source_artifact_and_ref_when_digests_match()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let source = valid_yaml_source().to_vec();
+     let source_digest = digest_for(&source);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:272:
+ }
+ 
+ #[test]
+-fn persist_source_and_artifact_returns_workflow_source_digest_mismatch_when_source_digest_differs(
+-) -> Result<(), String> {
++fn persist_source_and_artifact_returns_workflow_source_digest_mismatch_when_source_digest_differs()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let source = valid_yaml_source().to_vec();
+     let claimed = wrong_digest_for(&source);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:293:
+ }
+ 
+ #[test]
+-fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact_digest_differs(
+-) -> Result<(), String> {
++fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact_digest_differs()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let workflow = compile_valid_yaml()?;
+     let wrong_digest = WorkflowDigest::from_bytes([0xCC; 32]);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:316:
+ }
+ 
+ #[test]
+-fn persist_source_and_artifact_rejects_source_digest_used_as_artifact_digest_when_roles_differ(
+-) -> Result<(), String> {
++fn persist_source_and_artifact_rejects_source_digest_used_as_artifact_digest_when_roles_differ()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let source_digest = digest_for(valid_yaml_source());
+     let store = StorageArtifactStore::new(Arc::new(journal));
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:334:
+ }
+ 
+ #[test]
+-fn persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_fails(
+-) -> Result<(), String> {
++fn persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_fails()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let source = valid_yaml_source().to_vec();
+     let claimed = wrong_digest_for(&source);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:358:
+ }
+ 
+ #[test]
+-fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_ledger_valid(
+-) -> Result<(), String> {
++fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_ledger_valid()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let workflow = compile_valid_yaml()?;
+     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:385:
+ }
+ 
+ #[test]
+-fn admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_absent(
+-) -> Result<(), String> {
++fn admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_absent()
++-> Result<(), String> {
+     let digest = WorkflowDigest::from_bytes([0x32; 32]);
+     let result = admit_artifact_run(
+         &MissingAcceptedArtifactStore,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:401:
+ }
+ 
+ #[test]
+-fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unverified(
+-) -> Result<(), String> {
++fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unverified()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0x33; 32]), 14);
+     let digest = artifact.digest;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:425:
+ }
+ 
+ #[test]
+-fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted(
+-) -> Result<(), String> {
++fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted()
++-> Result<(), String> {
+     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
+     let required = Capability::new("net.fetch".into(), ActionId::new(0));
+     let contract = ActionContract {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:514:
+ }
+ 
+ #[test]
+-fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_accepted_artifact_invalid(
+-) -> Result<(), String> {
++fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_accepted_artifact_invalid()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let workflow = compile_valid_yaml()?;
+     let raw_ir = postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:543:
+ }
+ 
+ #[test]
+-fn runtime_storage_artifact_store_rejects_unverified_ledger_via_storage_verification(
+-) -> Result<(), String> {
++fn runtime_storage_artifact_store_rejects_unverified_ledger_via_storage_verification()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0xA5; 32]), 2);
+     let digest = artifact.digest;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:561:
+ }
+ 
+ #[test]
+-fn strict_runtime_admission_rejects_unverified_ledger_via_storage_verification(
+-) -> Result<(), String> {
++fn strict_runtime_admission_rejects_unverified_ledger_via_storage_verification()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0x5A; 32]), 2);
+     let digest = artifact.digest;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:585:
+ }
+ 
+ #[test]
+-fn runtime_recovery_paths_have_no_yaml_json_http_parser_dependency_when_static_boundary_scan_runs(
+-) -> Result<(), String> {
++fn runtime_recovery_paths_have_no_yaml_json_http_parser_dependency_when_static_boundary_scan_runs()
++-> Result<(), String> {
+     let runtime_manifest = std::fs::read_to_string(workspace_path("crates/vb_runtime/Cargo.toml"))
+         .map_err(|error| error.to_string())?;
+     let forbidden = [
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:610:
+ }
+ 
+ #[test]
+-fn append_strict_runtime_event_appends_run_accepted_before_admission_when_ack_succeeds(
+-) -> Result<(), String> {
++fn append_strict_runtime_event_appends_run_accepted_before_admission_when_ack_succeeds()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let run = RunId::new(8101);
+     let digest = WorkflowDigest::from_bytes([0x41; 32]);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:633:
+ }
+ 
+ #[test]
+-fn append_strict_runtime_event_appends_terminal_or_suspended_event_after_admission(
+-) -> Result<(), String> {
++fn append_strict_runtime_event_appends_terminal_or_suspended_event_after_admission()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let run = RunId::new(8102);
+     let digest = WorkflowDigest::from_bytes([0x42; 32]);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:651:
+ }
+ 
+ #[test]
+-fn append_strict_runtime_event_returns_durability_failure_when_event_flush_fails_before_ack(
+-) -> Result<(), String> {
++fn append_strict_runtime_event_returns_durability_failure_when_event_flush_fails_before_ack()
++-> Result<(), String> {
+     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+     let run = RunId::new(8103);
+     let digest = WorkflowDigest::from_bytes([0x43; 32]);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:678:
+ }
+ 
+ #[test]
+-fn append_strict_runtime_event_rejects_event_for_unadmitted_run_without_success_ack(
+-) -> Result<(), String> {
++fn append_strict_runtime_event_rejects_event_for_unadmitted_run_without_success_ack()
++-> Result<(), String> {
+     let events = vec![run_finished_event(RunId::new(8104), 1)];
+ 
+     let result = summarize_recovery_events(&events);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:695:
+ }
+ 
+ #[test]
+-fn append_strict_runtime_event_preserves_monotonic_event_sequence_for_same_run(
+-) -> Result<(), String> {
++fn append_strict_runtime_event_preserves_monotonic_event_sequence_for_same_run()
++-> Result<(), String> {
+     let run = RunId::new(8105);
+     let digest = WorkflowDigest::from_bytes([0x45; 32]);
+     let events = vec![
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:712:
+ }
+ 
+ #[test]
+-fn inspect_run_returns_digest_bound_status_when_required_journal_prefix_exists(
+-) -> Result<(), String> {
++fn inspect_run_returns_digest_bound_status_when_required_journal_prefix_exists()
++-> Result<(), String> {
+     let run = RunId::new(8201);
+     let digest = WorkflowDigest::from_bytes([0x51; 32]);
+     let hydration = summarize_recovery_events(&[
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:730:
+ }
+ 
+ #[test]
+-fn inspect_run_returns_no_recovery_data_or_absent_status_when_run_has_no_evidence(
+-) -> Result<(), String> {
++fn inspect_run_returns_no_recovery_data_or_absent_status_when_run_has_no_evidence()
++-> Result<(), String> {
+     assert_no_recovery_data(summarize_recovery_events(&[]), RunId::new(0))
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:837:
+ }
+ 
+ #[test]
+-fn events_for_run_returns_corrupt_recovery_data_when_event_record_is_malformed(
+-) -> Result<(), String> {
++fn events_for_run_returns_corrupt_recovery_data_when_event_record_is_malformed()
++-> Result<(), String> {
+     let run_a = RunId::new(8305);
+     let run_b = RunId::new(8306);
+     let digest = WorkflowDigest::from_bytes([0x65; 32]);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:859:
+ }
+ 
+ #[test]
+-fn recover_yaml_origin_run_recovers_state_from_persisted_artifact_journal_and_snapshot_without_yaml(
+-) -> Result<(), String> {
++fn recover_yaml_origin_run_recovers_state_from_persisted_artifact_journal_and_snapshot_without_yaml()
++-> Result<(), String> {
+     let run = RunId::new(8401);
+     let digest = WorkflowDigest::from_bytes([0x71; 32]);
+     let seed = recover_runtime_frame_seed_from_events(&[
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:876:
+ }
+ 
+ #[test]
+-fn recover_yaml_origin_run_returns_replay_divergence_when_snapshot_diverges_from_model(
+-) -> Result<(), String> {
++fn recover_yaml_origin_run_returns_replay_divergence_when_snapshot_diverges_from_model()
++-> Result<(), String> {
+     let run_a = RunId::new(8402);
+     let run_b = RunId::new(8403);
+     let digest = WorkflowDigest::from_bytes([0x72; 32]);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:898:
+ }
+ 
+ #[test]
+-fn recover_yaml_origin_run_returns_corrupt_recovery_data_when_snapshot_or_frame_decode_fails(
+-) -> Result<(), String> {
++fn recover_yaml_origin_run_returns_corrupt_recovery_data_when_snapshot_or_frame_decode_fails()
++-> Result<(), String> {
+     let result = recover_runtime_frame_seed_from_events(&[]);
+ 
+     assert_no_recovery_data(result, RunId::new(0))
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:906:
+ }
+ 
+ #[test]
+-fn recover_yaml_origin_run_returns_no_recovery_data_when_no_durable_evidence_exists(
+-) -> Result<(), String> {
++fn recover_yaml_origin_run_returns_no_recovery_data_when_no_durable_evidence_exists()
++-> Result<(), String> {
+     let result = summarize_recovery_events(&[]);
+ 
+     assert_no_recovery_data(result, RunId::new(0))
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:6:
+ 
+ use vb_core::{ActionId, RunId, SeqNo, StepIdx, WorkflowId};
+ use vb_storage::{
++    JournalError, RecordKind,
+     codec::{decode_record_header, encode_record},
+     keys,
+     types::EventSeq,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:12:
+-    JournalError, RecordKind,
+ };
+ // =============================================================================
+ // Helper Functions
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_kkvb_xtask_command_shell_coverage.rs:44:
+ 
+ #[test]
+ #[ignore] // UI commands moved to velvet-optional repo
+-fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen(
+-) -> Result<(), Box<dyn Error>> {
++fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
++-> Result<(), Box<dyn Error>> {
+     // Given
+     let workspace = TempDir::new()?;
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_lp2v_admission_integration.rs:14:
+     ActionId, AggregateResourceBudget, AggregateResourceCapacity, Capability, CapabilitySet, RunId,
+     RuntimePolicy, WorkflowDigest,
+ };
+-use vb_runtime::admission::{AdmissionError, ArtifactStore, admit_artifact_run, admit_run, admit_run_with_budget};
++use vb_runtime::admission::{
++    AdmissionError, ArtifactStore, admit_artifact_run, admit_run, admit_run_with_budget,
++};
+ use vb_storage::EventSeq;
+ use vb_storage::admission::{AcceptedArtifact, VerificationProof};
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_lp2v_admission_integration.rs:510:
+     // Unverified ledger is rejected by storage verification, not runtime gate count check.
+     assert_eq!(
+         result,
+-        Err(AdmissionError::ArtifactInvalidProofFlag {
+-            flag: "evidence"
+-        })
++        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
+     );
+     Ok(())
+ }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1:
+ use std::sync::Arc;
+ 
+ use proptest::prelude::*;
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+ use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity};
+ use vb_core::capability::{Capability, CapabilitySet};
+ use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:7:
+ use vb_core::policy::RuntimePolicy;
+-use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+ use vb_core::value::ConstValue;
+ use vb_core::workflow::{
+     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:12:
+ };
+-use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+ use vb_runtime::RuntimeError;
+ use vb_runtime::admission::{
+     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, ArtifactStore,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:18:
+ };
+ use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
+ use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
++use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+ 
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ enum ObservedAdmissionDiagnostic {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:506:
+             next: None,
+             on_error: None,
+             error_slot: None,
+-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
++            kind: CompiledNodeKind::Finish {
++                result: SlotIdx::new(0),
++            },
+         },
+     ]);
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:546:
+         }]
+     };
+ 
+-    Ok(prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &contracts)?)
++    Ok(prepare_compiled_artifact(
++        &workflow,
++        RuntimePolicy::Strict,
++        &contracts,
++    )?)
+ }
+ 
+ #[test]
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_ssei_verification_admission_acceptance.rs:6:
+ use vb_core::policy::RuntimePolicy;
+ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+ use vb_runtime::admission::{
+-    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
++    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
+ };
+-use vb_storage::admission::{prepare_compiled_artifact, AcceptedArtifact};
++use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+ 
+ type TestResult = Result<(), Box<dyn std::error::Error>>;
+ 

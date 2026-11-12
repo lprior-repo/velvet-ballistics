@@ -1,0 +1,129 @@
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:7:
+ 
+ use vb_core::{RunId, WorkflowDigest};
+ use vb_storage::{
+-    codec::{encode_record, decode_journal_event},
++    JournalError, RecordKind, RunPolicyPin,
++    codec::{decode_journal_event, encode_record},
+     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
+     events::JournalEvent,
+     inputs::RunInputBinding,
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:14:
+-    JournalError, RecordKind, RunPolicyPin,
+ };
+ 
+ /// Distinct run identity for wire contract tests.
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:88:
+ 
+ /// Encode a JournalEvent and decode it back, asserting FULL-Eq roundtrip.
+ fn roundtrip_event(event: &JournalEvent) -> Result<JournalEvent, String> {
+-    let payload = postcard::to_allocvec(event)
+-        .map_err(|e| format!("encode failed: {e}"))?;
+-    let expected_tag: u8 = u8::try_from(event.record_kind().id())
+-        .map_err(|_| "record kind id out of u8 range")?;
++    let payload = postcard::to_allocvec(event).map_err(|e| format!("encode failed: {e}"))?;
++    let expected_tag: u8 =
++        u8::try_from(event.record_kind().id()).map_err(|_| "record kind id out of u8 range")?;
+     assert_eq!(payload.first(), Some(&expected_tag));
+     let bytes = encode_record(
+         MAGIC_JOURNAL_EVENT,
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:101:
+         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+     )
+     .map_err(|e| format!("record encode failed: {e}"))?;
+-    let (_, decoded) = decode_journal_event(
+-        &bytes,
+-        MAGIC_JOURNAL_EVENT,
+-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+-    )
+-    .map_err(|e| format!("decode failed: {e}"))?;
++    let (_, decoded) =
++        decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)
++            .map_err(|e| format!("decode failed: {e}"))?;
+     if decoded != *event {
+         return Err(format!(
+             "roundtrip FULL-Eq failed: original={:?}, decoded={:?}",
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:150:
+             ..
+         } if *pin == test_policy_digest() => {}
+         other => {
+-            return Err(format!(
+-                "decoded event lost pinned policy: {:?}",
+-                other
+-            ));
++            return Err(format!("decoded event lost pinned policy: {:?}", other));
+         }
+     }
+     Ok(())
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:194:
+ #[test]
+ fn wire_envelope_kind_matches_event_record_kind() -> Result<(), String> {
+     let event = admission_event_bound_pinned();
+-    let payload = postcard::to_allocvec(&event)
+-        .map_err(|e| format!("encode failed: {e}"))?;
+-    let expected_tag: u8 = u8::try_from(event.record_kind().id())
+-        .map_err(|_| "record kind id out of u8 range")?;
++    let payload = postcard::to_allocvec(&event).map_err(|e| format!("encode failed: {e}"))?;
++    let expected_tag: u8 =
++        u8::try_from(event.record_kind().id()).map_err(|_| "record kind id out of u8 range")?;
+     assert_eq!(payload.first(), Some(&expected_tag));
+     Ok(())
+ }
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:207:
+     // An unknown tag in the payload causes a PostcardDecodeFailed error
+     // (not UnknownRecordKind, which is checked at the envelope header level).
+     let event = admission_event_bound_pinned();
+-    let payload = postcard::to_allocvec(&event)
+-        .map_err(|e| format!("encode failed: {e}"))?;
++    let payload = postcard::to_allocvec(&event).map_err(|e| format!("encode failed: {e}"))?;
+     let mut bad_payload = payload;
+     bad_payload[0] = 200;
+     let bytes = encode_record(
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:219:
+         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+     )
+     .map_err(|e| format!("record encode failed: {e}"))?;
+-    let result = decode_journal_event(
+-        &bytes,
+-        MAGIC_JOURNAL_EVENT,
+-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+-    );
++    let result = decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+     match result {
+         Err(JournalError::PostcardDecodeFailed(_)) => {}
+         other => {
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:239:
+ #[test]
+ fn truncated_payload_rejected() -> Result<(), String> {
+     let event = admission_event_bound_pinned();
+-    let payload = postcard::to_allocvec(&event)
+-        .map_err(|e| format!("encode failed: {e}"))?;
++    let payload = postcard::to_allocvec(&event).map_err(|e| format!("encode failed: {e}"))?;
+     let mut truncated = payload;
+     truncated.truncate(10);
+     let bytes = encode_record(
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:251:
+         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+     )
+     .map_err(|e| format!("record encode failed: {e}"))?;
+-    let result = decode_journal_event(
+-        &bytes,
+-        MAGIC_JOURNAL_EVENT,
+-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+-    );
++    let result = decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+     match result {
+         Err(JournalError::PostcardDecodeFailed(_)) => {}
+         other => {
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:262:
+-            return Err(format!(
+-                "expected PostcardDecodeFailed, got: {:?}",
+-                other
+-            ));
++            return Err(format!("expected PostcardDecodeFailed, got: {:?}", other));
+         }
+     }
+     Ok(())
+Diff in /home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_storage/tests/policy_pin_wire_contract.rs:269:
+ }
++

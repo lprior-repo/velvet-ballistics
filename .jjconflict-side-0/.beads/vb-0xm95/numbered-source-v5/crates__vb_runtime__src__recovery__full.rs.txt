@@ -1,0 +1,285 @@
+1: #![forbid(unsafe_code)]
+2: 
+3: mod admission;
+4: mod full_ask_schedule;
+5: mod pending;
+6: mod product;
+7: 
+8: use full_ask_schedule::pending_ask_schedule_for_step;
+9: 
+10: use vb_core::action::ActionTicket;
+11: use vb_core::frame::RunFrame;
+12: use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
+13: use vb_core::value::SlotValue;
+14: use vb_core::{CompiledNodeKind, CompiledWorkflow};
+15: use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
+16: 
+17: pub(crate) use admission::{
+18:     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
+19:     action_contract_abi_digest, validate_recovered_admission_evidence,
+20: };
+21: pub(crate) use pending::pending_action_ticket_from_events;
+22: pub(crate) use product::ResumableRecoveryParts;
+23: pub use product::{
+24:     NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
+25:     ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+26: };
+27: 
+28: use crate::{RuntimeError, RuntimeResult};
+29: 
+30: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+31: pub(crate) struct RecoveredPendingActionTicket {
+32:     event_seq: vb_storage::EventSeq,
+33:     ticket: ActionTicket,
+34:     input: SlotIdx,
+35:     output: SlotIdx,
+36:     action_abi_digest: WorkflowDigest,
+37: }
+38: 
+39: impl RecoveredPendingActionTicket {
+40:     #[must_use]
+41:     pub(crate) const fn new(
+42:         event_seq: vb_storage::EventSeq,
+43:         ticket: ActionTicket,
+44:         input: SlotIdx,
+45:         output: SlotIdx,
+46:         action_abi_digest: WorkflowDigest,
+47:     ) -> Self {
+48:         Self {
+49:             event_seq,
+50:             ticket,
+51:             input,
+52:             output,
+53:             action_abi_digest,
+54:         }
+55:     }
+56: 
+57:     #[must_use]
+58:     pub(crate) const fn ticket(self) -> ActionTicket {
+59:         self.ticket
+60:     }
+61: 
+62:     #[must_use]
+63:     pub(crate) const fn event_seq(self) -> vb_storage::EventSeq {
+64:         self.event_seq
+65:     }
+66: }
+67: 
+68: /// Hydrates a frame for the full runtime recovery path.
+69: ///
+70: /// Unlike `RuntimeRecoveryBoundary::hydrate_run_frame`, this path is allowed
+71: /// to proceed when a pending action has durable ticket authority and the
+72: /// caller will hydrate the surrounding `RunState` components from artifacts.
+73: /// Hydrates a frame for the full runtime recovery path with initial input seeds.
+74: ///
+75: /// Retained inputs are seeded into the frame BEFORE applying journal slot writes
+76: /// from the seed. Slots written by journal events after the initial seeding
+77: /// retain their values (later writes win). This ensures journal replay
+78: /// determinism while accepting retained typed inputs at cold startup.
+79: pub(crate) fn hydrate_frame_for_full_recovery_with_inputs(
+80:     seed: &RecoveryFrameSeed,
+81:     boundary: RecoveredRunBoundary,
+82:     initial_inputs: Option<Vec<(vb_core::SlotIdx, vb_core::SlotValue)>>,
+83: ) -> RuntimeResult<RunFrame> {
+84:     super::frame::validate_recovery_seed_shape(seed)?;
+85:     reject_unrecoverable_full_recovery_state(seed, boundary)?;
+86:     if let Some(inputs) = initial_inputs {
+87:         super::frame::hydrate_shape_checked_run_frame_with_inputs(seed, inputs)
+88:     } else {
+89:         super::frame::hydrate_shape_checked_run_frame(seed)
+90:     }
+91: }
+92: 
+93: pub(crate) fn recovered_run_boundary_from_seed(
+94:     seed: &RecoveryFrameSeed,
+95:     pending_action: Option<RecoveredPendingActionTicket>,
+96:     workflow: &CompiledWorkflow,
+97:     events: &[vb_storage::JournalEvent],
+98: ) -> RecoveredRunBoundary {
+99:     if let Some(ticket) = pending_action {
+100:         return RecoveredRunBoundary::from_pending_action(ticket);
+101:     }
+102:     match recoverable_open_ask_boundary(seed, workflow, events) {
+103:         Some(ask) => RecoveredRunBoundary::from_open_ask(ask),
+104:         None => RecoveredRunBoundary::none(),
+105:     }
+106: }
+107: 
+108: pub(crate) fn classify_full_recovery_resume(
+109:     seed: &RecoveryFrameSeed,
+110:     boundary: RecoveredRunBoundary,
+111: ) -> vb_storage::recovery::RecoveryCannotResumeState {
+112:     let mut state = initial_full_recovery_resume_state(seed, boundary);
+113:     mark_pending_action_range(seed, boundary, &mut state);
+114:     mark_step_recovery_boundaries(seed, boundary, &mut state);
+115:     state
+116: }
+117: 
+118: /// Determines whether the run's latest terminal evidence belongs to its current attempt.
+119: ///
+120: /// The `RetryCheckpoint` event's `attempt` field names the *authorized next* attempt (not a
+121: /// started attempt; see `transitions.rs::capture_retry_checkpoint`), so it is excluded when
+122: /// computing the current attempt. This prevents a failed run (`RunFailedEvent { attempt: N }`
+123: /// followed by `RetryCheckpoint { attempt: N + 1 }`, with nothing further) from being misread
+124: /// as "active" by the checkpoint's future attempt number: the failed run must remain terminal
+125: /// until an explicit `retry`, while a run that was explicitly retried and is now genuinely
+126: /// active (e.g. `StepStarted { attempt: N + 1 }`) is correctly treated as resumable.
+127: #[must_use]
+128: pub(crate) fn run_is_currently_terminal(events: &[vb_storage::JournalEvent]) -> bool {
+129:     let mut current_attempt = 1u16;
+130:     for event in events {
+131:         if matches!(event, vb_storage::JournalEvent::RetryCheckpoint { .. }) {
+132:             continue;
+133:         }
+134:         if let Some(attempt) = event.attempt()
+135:             && attempt > current_attempt
+136:         {
+137:             current_attempt = attempt;
+138:         }
+139:     }
+140:     events.iter().rev().any(|event| {
+141:         vb_storage::recovery::is_terminal_event(event)
+142:             && event.attempt().unwrap_or(1) == current_attempt
+143:     })
+144: }
+145: 
+146: fn initial_full_recovery_resume_state(
+147:     seed: &RecoveryFrameSeed,
+148:     boundary: RecoveredRunBoundary,
+149: ) -> vb_storage::recovery::RecoveryCannotResumeState {
+150:     let mut state = vb_storage::recovery::RecoveryCannotResumeState {
+151:         slot_values: seed.unsupported.slot_values,
+152:         slot_taint: seed.unsupported.slot_taint,
+153:         action_payloads: seed.unsupported.action_payloads,
+154:         pending_actions: !seed.pending_actions.is_empty()
+155:             && boundary.kind() != RecoveredRunBoundaryKind::PendingAction,
+156:         ..vb_storage::recovery::RecoveryCannotResumeState::RESUMABLE
+157:     };
+158:     state.store_missing = state.store_missing || recovered_slots_require_value_store(seed);
+159:     state
+160: }
+161: 
+162: fn mark_pending_action_range(
+163:     seed: &RecoveryFrameSeed,
+164:     boundary: RecoveredRunBoundary,
+165:     state: &mut vb_storage::recovery::RecoveryCannotResumeState,
+166: ) {
+167:     if let Some(evidence) = boundary.pending_action_ticket()
+168:         && (evidence.event_seq() < seed.summary.first_seq
+169:             || evidence.event_seq() > seed.summary.last_seq)
+170:     {
+171:         state.pending_actions = true;
+172:     }
+173: }
+174: 
+175: fn mark_step_recovery_boundaries(
+176:     seed: &RecoveryFrameSeed,
+177:     boundary: RecoveredRunBoundary,
+178:     state: &mut vb_storage::recovery::RecoveryCannotResumeState,
+179: ) {
+180:     for entry in &seed.steps {
+181:         mark_step_recovery_boundary(entry.state, entry.step, boundary, state);
+182:     }
+183: }
+184: 
+185: fn mark_step_recovery_boundary(
+186:     recovered: RecoveredStepState,
+187:     step: StepIdx,
+188:     boundary: RecoveredRunBoundary,
+189:     state: &mut vb_storage::recovery::RecoveryCannotResumeState,
+190: ) {
+191:     match recovered {
+192:         RecoveredStepState::Waiting => {
+193:             state.pending_timers = true;
+194:         }
+195:         RecoveredStepState::Asking if !boundary.is_open_ask_step(step) => {
+196:             state.pending_asks = true;
+197:         }
+198:         RecoveredStepState::Asking
+199:         | RecoveredStepState::Running
+200:         | RecoveredStepState::Succeeded
+201:         | RecoveredStepState::Failed => {}
+202:         _ => {
+203:             state.pending_asks = true;
+204:         }
+205:     }
+206: }
+207: 
+208: fn recovered_slots_require_value_store(seed: &RecoveryFrameSeed) -> bool {
+209:     seed.slots
+210:         .iter()
+211:         .any(|entry| slot_value_requires_value_store(entry.value))
+212: }
+213: 
+214: const fn slot_value_requires_value_store(value: SlotValue) -> bool {
+215:     matches!(
+216:         value,
+217:         SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_)
+218:     )
+219: }
+220: 
+221: fn reject_unrecoverable_full_recovery_state(
+222:     seed: &RecoveryFrameSeed,
+223:     boundary: RecoveredRunBoundary,
+224: ) -> RuntimeResult<()> {
+225:     let state = classify_full_recovery_resume(seed, boundary);
+226:     if state.is_resumable() {
+227:         Ok(())
+228:     } else {
+229:         Err(cannot_resume_error(state.unsupported_reason()))
+230:     }
+231: }
+232: 
+233: fn recoverable_open_ask_boundary(
+234:     seed: &RecoveryFrameSeed,
+235:     workflow: &CompiledWorkflow,
+236:     events: &[vb_storage::JournalEvent],
+237: ) -> Option<RecoveredOpenAsk> {
+238:     let mut current = None;
+239:     for entry in seed
+240:         .steps
+241:         .iter()
+242:         .filter(|entry| entry.state == RecoveredStepState::Asking)
+243:     {
+244:         let ask = recoverable_open_ask(seed, workflow, entry.step, events)?;
+245:         if let Some(existing) = current
+246:             && existing != ask
+247:         {
+248:             return None;
+249:         }
+250:         current = Some(ask);
+251:     }
+252:     current
+253: }
+254: 
+255: fn recoverable_open_ask(
+256:     seed: &RecoveryFrameSeed,
+257:     workflow: &CompiledWorkflow,
+258:     step: StepIdx,
+259:     events: &[vb_storage::JournalEvent],
+260: ) -> Option<RecoveredOpenAsk> {
+261:     if seed.pc != step {
+262:         return None;
+263:     }
+264:     let node = workflow.node(step)?;
+265:     let CompiledNodeKind::Ask {
+266:         timeout_slot: None, ..
+267:     } = node.kind
+268:     else {
+269:         return None;
+270:     };
+271:     let resume_step = node.next?;
+272:     match workflow.node(resume_step).map(|resume| &resume.kind) {
+273:         Some(CompiledNodeKind::AskResume { .. }) => {
+274:             let (boundary_seq, _) = pending_ask_schedule_for_step(events, step)?;
+275:             Some(RecoveredOpenAsk::new(step, boundary_seq))
+276:         }
+277:         _ => None,
+278:     }
+279: }
+280: 
+281: fn cannot_resume_error(reason: &'static str) -> RuntimeError {
+282:     RuntimeError::RecoveryCannotResume {
+283:         reason: String::from(reason),
+284:     }
+285: }

@@ -48,6 +48,7 @@ fn contract(
 fn nop_parts(contract: ResourceContract) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("validation_test"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),

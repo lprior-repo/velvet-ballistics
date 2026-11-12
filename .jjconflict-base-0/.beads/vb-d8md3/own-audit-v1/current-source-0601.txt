@@ -1,0 +1,100 @@
+current-source:601:         for i in 0..7 {
+current-source:602:             queue.enqueue(make_ticket(i)).unwrap();
+current-source:603:         }
+current-source:604:         assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+current-source:605: 
+current-source:606:         // Enqueue 8th (80%) — warning fires
+current-source:607:         queue.enqueue(make_ticket(7)).unwrap();
+current-source:608:         assert_eq!(
+current-source:609:             rx.recv_timeout(std::time::Duration::from_millis(100)),
+current-source:610:             Ok(BackpressureWarning {
+current-source:611:                 depth: 8,
+current-source:612:                 capacity: 10
+current-source:613:             })
+current-source:614:         );
+current-source:615: 
+current-source:616:         // Enqueue 9th (90%) — another warning fires (depth=9 >= threshold=8)
+current-source:617:         queue.enqueue(make_ticket(8)).unwrap();
+current-source:618:         assert_eq!(
+current-source:619:             rx.recv_timeout(std::time::Duration::from_millis(100)),
+current-source:620:             Ok(BackpressureWarning {
+current-source:621:                 depth: 9,
+current-source:622:                 capacity: 10
+current-source:623:             })
+current-source:624:         );
+current-source:625: 
+current-source:626:         // Drain and verify no more warnings after drain
+current-source:627:         let _ = queue.dequeue();
+current-source:628:         let _ = queue.dequeue();
+current-source:629:         assert_eq!(queue.len(), 7);
+current-source:630: 
+current-source:631:         // Next enqueue to 8 (back at 80%) should also fire warning
+current-source:632:         queue.enqueue(make_ticket(100)).unwrap();
+current-source:633:         assert_eq!(
+current-source:634:             rx.recv_timeout(std::time::Duration::from_millis(100)),
+current-source:635:             Ok(BackpressureWarning {
+current-source:636:                 depth: 8,
+current-source:637:                 capacity: 10
+current-source:638:             })
+current-source:639:         );
+current-source:640:     }
+current-source:641: 
+current-source:642:     #[test]
+current-source:643:     fn action_queue_invariant_len_never_exceeds_capacity() {
+current-source:644:         // INV-005: Bounded queue capacity invariant
+current-source:645:         let capacities = [1, 2, 3, 5, 7, 10, 16, 100];
+current-source:646:         for cap in capacities {
+current-source:647:             let queue = BoundedActionCompletionQueue::new(cap).unwrap();
+current-source:648:             assert_eq!(
+current-source:649:                 queue.len() <= queue.capacity(),
+current-source:650:                 true,
+current-source:651:                 "len() <= capacity() must hold at all times for capacity={}",
+current-source:652:                 cap
+current-source:653:             );
+current-source:654:             assert_eq!(
+current-source:655:                 queue.len() + queue.remaining_capacity() == queue.capacity(),
+current-source:656:                 true,
+current-source:657:                 "len() + remaining_capacity() == capacity() must hold for capacity={}",
+current-source:658:                 cap
+current-source:659:             );
+current-source:660: 
+current-source:661:             // Exhaust the queue
+current-source:662:             for i in 0..cap {
+current-source:663:                 queue
+current-source:664:                     .enqueue(make_ticket(u32::try_from(i).expect("capacity fits in u32")))
+current-source:665:                     .unwrap();
+current-source:666:                 assert_eq!(
+current-source:667:                     queue.len() <= queue.capacity(),
+current-source:668:                     true,
+current-source:669:                     "len() must not exceed capacity after enqueue {} for capacity={}",
+current-source:670:                     i + 1,
+current-source:671:                     cap
+current-source:672:                 );
+current-source:673:             }
+current-source:674: 
+current-source:675:             // One more should fail
+current-source:676:             assert_eq!(
+current-source:677:                 queue.enqueue(make_ticket(255)),
+current-source:678:                 Err(ActionQueueError::QueueFull {
+current-source:679:                     capacity: ActionQueueCapacity(cap)
+current-source:680:                 }),
+current-source:681:                 "enqueue at capacity must return QueueFull for capacity={}",
+current-source:682:                 cap
+current-source:683:             );
+current-source:684:             assert_eq!(
+current-source:685:                 queue.len(),
+current-source:686:                 cap,
+current-source:687:                 "len must still equal capacity after rejected enqueue for capacity={}",
+current-source:688:                 cap
+current-source:689:             );
+current-source:690:         }
+current-source:691:     }
+current-source:692: 
+current-source:693:     #[test]
+current-source:694:     fn action_queue_dequeue_returns_fifo_order() {
+current-source:695:         // INV-004: FIFO ordering invariant
+current-source:696:         let queue = BoundedActionCompletionQueue::new(5).unwrap();
+current-source:697: 
+current-source:698:         // Enqueue with sequential seq numbers
+current-source:699:         for i in 0..5 {
+current-source:700:             queue.enqueue(make_ticket(i)).unwrap();

@@ -18,6 +18,8 @@ pub struct WorkflowParts {
     /// This is distinct from a digest of raw source bytes. `None` denotes a
     /// compiled-IR-only or explicitly legacy artifact.
     pub semantic_source_identity: Option<WorkflowDigest>,
+    /// Validated immutable source payloads in identifier order.
+    pub source_metadata: Option<Box<super::source_metadata::WorkflowSourceMetadata>>,
     /// Numeric nodes.
     pub nodes: Box<[CompiledNode]>,
     /// Expression bytecode table.

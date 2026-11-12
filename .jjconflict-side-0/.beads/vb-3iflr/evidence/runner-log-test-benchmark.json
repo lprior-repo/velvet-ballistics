@@ -1,0 +1,12 @@
+{
+  "command": "cargo test --manifest-path xtask/Cargo.toml benchmark",
+  "exit_code": 0,
+  "seconds": 0.673,
+  "log_prefix": "/tmp/vb-benchmark-test-vb3iflr",
+  "output_summary": "All benchmark test suites compiled and ran successfully.",
+  "detailed_policy_tests": "5 passed (all benchmark_policy::tests)",
+  "detailed_lib_tests": "67 passed",
+  "detailed_integration_tests": "10 passed",
+  "detailed_ui_tests": "2 passed, 4 failed (pre-existing workspace issues)",
+  "timestamp": "2026-10-22"
+}

@@ -1,0 +1,181 @@
+ACTUALCURRENT crates/workspace_tests/tests/journal_side_index_contracts.rs
+361:         let duplicate_result = batch.append_event(&event_b);
+362:         prop_assert!(
+363:             matches!(
+364:                 &duplicate_result,
+365:                 Err(JournalError::DuplicateStagedKey { .. })
+366:             ),
+367:             "same-batch duplicate event key must be rejected, got {:?}",
+368:             duplicate_result,
+369:         );
+370:         // Second put_action_index for same (action,run,step) — Fjall last-write-wins
+371:         prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index B must succeed");
+372: 
+373:         prop_assert!(batch.commit().is_ok(), "batch commit must succeed");
+374: 
+375:         // After commit: exactly 1 index_action entry for (action, run, step)
+376:         let index_key = vb_storage::keys::index_action_key(action, run, step)
+377:             .expect("index_action_key must succeed");
+378: 
+379:         // Count how many index entries exist for this key
+380:         // Fjall's semantics: last write wins, so there should be exactly 1 entry
+381:         let has_entry = journal.has_action_index_entry(index_key)
+382:             .expect("has_action_index_entry must succeed");
+383:         prop_assert!(has_entry, "exactly 1 index_action entry must survive (Fjall last-write-wins)");
+384: 
+385:         // Verify exactly one journal event (not two — duplicate event detection)
+386:         // Note: append_event checks for duplicate events in the staged keys and
+387:         // durable journal keyspace.
+388:         let events = journal.events_for_run(run).expect("events_for_run must succeed");
+389:         prop_assert_eq!(events.len(), 1, "exactly 1 event must be durable");
+390:         prop_assert_eq!(&events[0], &event_a, "durable event must be the first event");
+391:     }
+392: }
+393: 
+394: // ---------------------------------------------------------------------------
+395: // PO-012: len() is strictly monotonic; is_empty() == (len() == 0) (proptest)
+396: // ---------------------------------------------------------------------------
+397: 
+398: proptest::proptest! {
+399:     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+400: 
+401:     /// PO-012: After N successful staging operations, batch.len() ==
+402:     /// num_appends * 2 (each action-scheduled event auto-stages the
+403:     /// matching index_action mutation). `is_empty()` ==
+404:     /// `(len() == 0)` always holds.
+405:     ///
+406:     /// vb-3wn7x: as of this fix, each `append_event(ActionScheduled)`
+407:     /// appends the event AND its `index_action` mutation to the
+408:     /// OwnedWriteBatch, so each successful `append_event` increments
+409:     /// `batch.len()` by exactly 2 (event row + index marker). The
+410:     /// total `batch.len()` after `N` appends is therefore `N * 2`,
+411:     /// not `N`. The strict-monotonicity, `is_empty() == (len() == 0)`,
+412:     /// and never-shrinks invariants remain.
+413:     #[test]
+414:     fn test_batch_len_monotonic_and_is_empty_invariant(
+415:         num_ops in 0u8..=20u8,
+416:         action_val in 1u16..=100u16,
+417:         run_val in 1u64..=1000u64,
+418:     ) {
+419:         // vb-3wn7x: one for the event row + one for the auto-staged
+420:         // index_action mutation. Future action-lifecycle variants that
+421:         // stage additional index mutations would bump this constant.
+422:         const LEN_INCREMENT_PER_APPEND_EVENT: usize = 2;
+423: 
+424:         let action = ActionId::new(action_val);
+425:         let run = RunId::new(run_val);
+426:         let (_temp, journal) = temp_journal();
+427: 
+428:         let mut batch = JournalWriteBatch::new(&journal);
+429: 
+430:         // Initial state invariants
+431:         prop_assert_eq!(batch.len(), 0, "new batch len must be 0");
+432:         prop_assert!(batch.is_empty(), "new batch must be empty");
+433: 
+434:         let num_ops = num_ops as usize;
+435:         for i in 0..num_ops {
+436:             let step = StepIdx::new(i as u16);
+437:             let event = make_action_scheduled(run, i as u64, step, action);
+438: 
+439:             let before_len = batch.len();
+440:             let _before_empty = batch.is_empty();
+441: 
+442:             let result = batch.append_event(&event);
+443:             prop_assert!(result.is_ok(), "append_event must succeed for valid event");
+444: 
+445:             // After successful staging: len increases by the per-call
+446:             // increment (event + auto-staged index_action).
+447:             prop_assert_eq!(
+448:                 batch.len(),
+449:                 before_len + LEN_INCREMENT_PER_APPEND_EVENT,
+450:                 "len must increment by 2 after successful staging (event + auto-staged index_action)",
+451:             );
+452:             prop_assert!(
+453:                 batch.len() > before_len,
+454:                 "len must be strictly greater after successful staging",
+455:             );
+456:             prop_assert!(
+457:                 !batch.is_empty(),
+458:                 "batch must not be empty after successful staging",
+459:             );
+460: 
+461:             // is_empty == (len == 0) invariant must always hold
+462:             prop_assert_eq!(
+463:                 batch.is_empty(),
+464:                 batch.len() == 0,
+465:                 "is_empty() must equal (len() == 0) always",
+466:             );
+467:         }
+468: 
+469:         // After all staging: len == num_ops * 2 (each append_event
+470:         // contributes the event row plus the auto-staged index_action
+471:         // mutation).
+472:         prop_assert_eq!(
+473:             batch.len(),
+474:             num_ops * LEN_INCREMENT_PER_APPEND_EVENT,
+475:             "final len must equal num_ops * 2 (each append contributes event + index)",
+476:         );
+477:         prop_assert_eq!(
+478:             batch.is_empty(),
+479:             num_ops == 0,
+480:             "is_empty must be true iff num_ops == 0",
+481:         );
+482:     }
+483: }
+484: 
+485: // ---------------------------------------------------------------------------
+486: // PO-013: Once aborted==true, commit reports BatchAborted (proptest)
+487: // ---------------------------------------------------------------------------
+488: 
+489: proptest::proptest! {
+490:     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+491: 
+492:     /// PO-013: After first op triggers abort, subsequent ops may return Ok(()),
+493:     /// but commit() reports the abort and persists none of the aborted batch.
+494:     ///
+495:     /// The abort condition is triggered by a duplicate event (same run, same seq).
+496:     /// Once aborted, len()/is_empty() expose no committable staged state.
+497:     #[test]
+498:     fn test_aborted_gate_blocks_subsequent_staging(
+499:         action_val in 1u16..=100u16,
+500:         run_val in 1u64..=1000u64,
+501:         step_val in 0u16..=50u16,
+502:         // Number of subsequent ops attempted after abort
+503:         num_subsequent in 1u8..=5u8,
+504:     ) {
+505:         let action = ActionId::new(action_val);
+506:         let run = RunId::new(run_val);
+507:         let step = StepIdx::new(step_val);
+508:         let (_temp, journal) = temp_journal();
+509: 
+510:         // Pre-commit the first event so it exists in the journal
+511:         let event = make_action_scheduled(run, 0, step, action);
+512:         {
+513:             let mut setup_batch = JournalWriteBatch::new(&journal);
+514:             setup_batch.append_event(&event).expect("setup append must succeed");
+515:             setup_batch.commit().expect("setup commit must succeed");
+516:         }
+517: 
+518:         // Now create a new batch and trigger abort with duplicate event
+519:         let mut batch = JournalWriteBatch::new(&journal);
+520: 
+521:         // First staging op: duplicate event triggers abort
+522:         let dup_result = batch.append_event(&event);
+523:         // append_event returns Err(DuplicateEvent) and sets aborted=true
+524:         prop_assert!(
+525:             matches!(dup_result, Err(JournalError::DuplicateEvent { .. })),
+526:             "duplicate event must return DuplicateEvent error",
+527:         );
+528:         prop_assert!(batch.is_aborted(), "duplicate event must mark batch aborted");
+529: 
+530:         // After abort: len must be 0 and batch must be empty
+531:         prop_assert_eq!(batch.len(), 0, "len must be 0 after aborted duplicate event");
+532:         prop_assert!(batch.is_empty(), "batch must be empty after abort");
+533: 
+534:         // Attempt num_subsequent staging ops
+535:         let num_subsequent = num_subsequent as usize;
+536:         for i in 0..num_subsequent {
+537:             let seq = (i + 10) as u64;
+538:             let subsequent_event = make_action_scheduled(run, seq, step, action);
+539: 
+540:             let before_len = batch.len();

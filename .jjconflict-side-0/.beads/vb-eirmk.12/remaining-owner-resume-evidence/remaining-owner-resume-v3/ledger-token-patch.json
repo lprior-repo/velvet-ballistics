@@ -1,0 +1,16 @@
+{
+  "before_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+  "after_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+  "requirements": 190,
+  "patched_rows": 9,
+  "patched_checks": 13,
+  "changed_scalar_tokens": 53,
+  "actual_issue_ids": {
+    "proposal:current-qualification:function:24:1": "vb-eirmk.68",
+    "proposal:current-qualification:function:29:storage-keyspace-key-digest": "vb-eirmk.69",
+    "qualify-v1min-version-compatibility-algebra": "vb-eirmk.70",
+    "qualify-v1min-capability-grant-lifecycle": "vb-eirmk.71",
+    "reuse:vb-eirmk.24": "vb-eirmk.24",
+    "reuse:vb-eirmk.53": "vb-eirmk.53"
+  }
+}

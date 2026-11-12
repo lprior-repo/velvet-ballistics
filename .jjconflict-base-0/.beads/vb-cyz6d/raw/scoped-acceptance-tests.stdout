@@ -1,0 +1,204 @@
+
+running 17 tests
+test backpressure_no_duplicate_on_accumulation ... ok
+test backpressure_warning_at_eighty_percent ... ok
+test backpressure_warning_fields_are_correct ... ok
+test enqueue_after_full_drain_works ... ok
+test deterministic_drain_empties_queue ... ok
+test capacity_reported_for_edge_values ... ok
+test enqueue_works_after_dequeue_at_capacity ... ok
+test enqueue_at_capacity_returns_queue_full ... ok
+test dequeue_empty_returns_none ... ok
+test fifo_dequeue_preserves_enqueue_order ... ok
+test no_silent_drops_during_drain ... ok
+test concurrent_enqueue_dequeue_no_deadlock ... ok
+test fifo_single_element_round_trip ... ok
+test over_maximum_capacity_rejected ... ok
+test queue_without_backpressure_still_works ... ok
+test remaining_capacity_accurate_through_cycles ... ok
+test zero_capacity_constructor_rejected ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 19 tests
+test double_begin_shutdown_is_rejected ... ok
+test begin_shutdown_from_finalized_is_rejected ... ok
+test drain_all_returns_zero_when_empty ... ok
+test drain_one_rejected_in_running_state ... ok
+test drain_preserves_fifo_order ... ok
+test drain_no_silent_drops ... ok
+test finalize_before_drain_complete_is_rejected ... ok
+test drain_timeout_preserves_remaining_count ... ok
+test finalize_from_running_is_rejected ... ok
+test full_shutdown_lifecycle_completes ... ok
+test large_batch_no_overflow ... ok
+test no_resurrection_after_finalize ... ok
+test running_shard_not_flushed ... ok
+test shutdown_with_no_pending_work_succeeds ... ok
+test single_ticket_lifecycle ... ok
+test submit_rejected_after_finalized ... ok
+test submit_rejected_after_shutdown_begins ... ok
+test submit_rejected_during_draining ... ok
+test zero_pending_after_full_lifecycle ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 141 tests
+test collect_expired_keys_purity::fire_expired_at_exact_deadline_fires_entry ... ok
+test collect_expired_keys_purity::fire_expired_at_past_instant_fires_only_past_entries ... ok
+test collect_expired_keys_purity::fire_expired_at_far_future_returns_empty_and_preserves_entries ... ok
+test collect_expired_keys_purity::fire_expired_at_very_distant_future_returns_empty ... ok
+test collect_expired_keys_purity::fire_expired_drains_all_expired_from_both_indices ... ok
+test collect_expired_keys_purity::fire_expired_is_idempotent_on_empty_wheel ... ok
+test collect_expired_keys_purity::fire_expired_deadline_bucket_removed_when_empty ... ok
+test collect_expired_keys_purity::fire_expired_on_empty_wheel_returns_empty_vector ... ok
+test collect_expired_keys_purity::fire_expired_preserves_entry_kind_and_generation ... ok
+test collect_expired_keys_purity::fire_expired_preserves_future_entries_after_removing_expired ... ok
+test collect_expired_keys_purity::fire_expired_multiple_runs_at_same_deadline_all_fire ... ok
+test collect_expired_keys_purity::fire_expired_pure_collection_via_observable_len_after_single_fire ... ok
+test compute_delay_loop_bounds::compute_delay_across_all_strategies ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_attempt_1_returns_base ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_attempt_u16_max_is_bounded ... ok
+test collect_expired_keys_purity::fire_expired_staggered_deadlines_partial_fire ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_attempt_zero_returns_base ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_doubles_each_step ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_many_iterations_correct ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_multiplier_1_is_constant ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_saturates_at_second_multiplication ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_saturates_at_u32_max_on_overflow ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_with_multiplier_10 ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_with_multiplier_3 ... ok
+test compute_delay_loop_bounds::compute_delay_exponential_zero_base_stays_zero ... ok
+test compute_delay_loop_bounds::compute_delay_fixed_always_returns_base_delay ... ok
+test compute_delay_loop_bounds::compute_delay_fixed_with_max_base ... ok
+test compute_delay_loop_bounds::compute_delay_fixed_with_zero_base ... ok
+test compute_delay_loop_bounds::compute_delay_is_deterministic ... ok
+test compute_delay_loop_bounds::compute_delay_none_always_zero_for_all_attempts ... ok
+test evaluate_retry_invariants::evaluate_retry_decrements_remaining_and_increments_attempt ... ok
+test evaluate_retry_invariants::evaluate_retry_different_policies_produce_different_decisions ... ok
+test evaluate_retry_invariants::evaluate_retry_exhausted_when_remaining_zero_and_retryable ... ok
+test evaluate_retry_invariants::evaluate_retry_exponential_backoff_delays_increase ... ok
+test evaluate_retry_invariants::evaluate_retry_full_cycle_three_attempts_then_exhaustion ... ok
+test evaluate_retry_invariants::evaluate_retry_is_deterministic ... ok
+test evaluate_retry_invariants::evaluate_retry_no_retry_policy_exhausts_after_first_failure ... ok
+test evaluate_retry_invariants::evaluate_retry_not_retriable_when_non_retryable_failure ... ok
+test evaluate_retry_invariants::evaluate_retry_not_retriable_when_unsafe_safety ... ok
+test exhaustion_error_invariants::exhaustion_error_different_max_values_are_not_equal ... ok
+test exhaustion_error_invariants::exhaustion_error_produces_repeat_exhausted_with_correct_max ... ok
+test exhaustion_error_invariants::exhaustion_error_with_max_u16_produces_correct_value ... ok
+test exhaustion_error_invariants::exhaustion_error_with_one_produces_correct_value ... ok
+test fast_forward_cursor_bounds::fast_forward_attempt_never_exceeds_max_attempts ... ok
+test fast_forward_cursor_bounds::fast_forward_exact_count_exhausts_at_exactly_max_attempts ... ok
+test fast_forward_cursor_bounds::fast_forward_exhausted_cursor_remains_unchanged ... ok
+test fast_forward_cursor_bounds::fast_forward_matches_repeated_next_cursor ... ok
+test fast_forward_cursor_bounds::fast_forward_never_policy_exhausts_after_one_attempt ... ok
+test fast_forward_cursor_bounds::fast_forward_remaining_decreases_monotonically ... ok
+test fast_forward_cursor_bounds::fast_forward_stops_at_exhaustion ... ok
+test fast_forward_cursor_bounds::fast_forward_with_exponential_backoff_correct_delay_progression ... ok
+test fast_forward_cursor_bounds::fast_forward_zero_count_returns_identity ... ok
+test is_failure_retriable_purity::all_non_retryable_codes_are_not_retriable ... ok
+test is_failure_retriable_purity::all_retryable_codes_are_retriable_with_safe ... ok
+test is_failure_retriable_purity::is_failure_retriable_is_deterministic ... ok
+test is_failure_retriable_purity::key_required_non_retryable_is_not_retriable ... ok
+test is_failure_retriable_purity::key_required_retryable_is_retriable ... ok
+test is_failure_retriable_purity::safe_non_retryable_is_not_retriable ... ok
+test is_failure_retriable_purity::safe_retryable_is_retriable ... ok
+test is_failure_retriable_purity::unsafe_always_returns_false_regardless_of_flag ... ok
+test is_failure_retriable_purity::unsafe_non_retryable_also_returns_false ... ok
+test retry_policy_construction::retry_policy_default_is_three_attempts_100ms_fixed ... ok
+test retry_policy_construction::retry_policy_default_policy_matches_trait_default ... ok
+test retry_policy_construction::retry_policy_delay_strategy_variants_are_distinct ... ok
+test retry_policy_construction::retry_policy_new_rejects_zero_backoff_multiplier ... ok
+test retry_policy_construction::retry_policy_new_rejects_zero_max_attempts ... ok
+test retry_policy_construction::retry_policy_new_succeeds_with_valid_params ... ok
+test retry_policy_construction::retry_policy_no_retry_has_single_attempt_and_zero_delay ... ok
+test retry_policy_construction::retry_policy_supports_max_u16_attempts ... ok
+test retry_policy_construction::retry_policy_with_none_strategy_and_zero_delay ... ok
+test retry_policy_limits_validation::delay_for_attempt_rejects_attempt_exceeding_max ... ok
+test retry_policy_limits_validation::delay_for_attempt_clamps_to_max_interval ... ok
+test retry_policy_limits_validation::delay_for_attempt_rejects_zero_attempt ... ok
+test retry_policy_limits_validation::initial_cursor_never_policy_is_not_exhausted ... ok
+test retry_policy_limits_validation::delay_for_attempt_returns_base_for_non_exponential ... ok
+test retry_policy_limits_validation::initial_cursor_starts_at_attempt_1_with_full_remaining ... ok
+test retry_policy_limits_validation::next_cursor_validates_delay_against_max_interval ... ok
+test retry_policy_limits_validation::next_cursor_validates_remaining_and_attempt ... ok
+test retry_policy_limits_validation::retry_policy_math_error_variants_are_distinct ... ok
+test retry_policy_limits_validation::validate_against_accepts_valid_policy ... ok
+test retry_policy_limits_validation::validate_against_rejects_exceeded_attempts ... ok
+test retry_policy_limits_validation::validate_against_rejects_exceeded_base_delay ... ok
+test retry_policy_limits_validation::validate_against_rejects_zero_max_attempts ... ok
+test retry_state_invariants::decode_rejects_negative_packed_with_zero_attempt_nonzero_remaining ... ok
+test retry_state_invariants::decode_rejects_zero_attempt_with_nonzero_remaining ... ok
+test retry_state_invariants::encode_decode_roundtrip_after_evaluate_retry ... ok
+test retry_state_invariants::encode_decode_roundtrip_from_policy_state ... ok
+test retry_state_invariants::from_policy_initializes_with_current_attempt_1 ... ok
+test retry_state_invariants::encode_decode_roundtrip_zero_delay_state ... ok
+test retry_state_invariants::is_exhausted_false_when_remaining_is_positive ... ok
+test retry_state_invariants::is_exhausted_when_remaining_is_zero ... ok
+test retry_state_invariants::retry_state_can_have_max_u16_remaining ... ok
+test retry_state_invariants::retry_state_exhausted_state_is_detectable ... ok
+test retry_state_invariants::retry_state_from_policy_no_retry_has_one_attempt ... ok
+test retry_state_invariants::retry_state_invariant_holds_after_advancing ... ok
+test retry_state_invariants::retry_state_invariant_holds_current_attempt_plus_remaining_leq_max_plus_1 ... ok
+test timer_wheel_documented_invariants::bounded_operations_cancel_nonexistent_returns_false ... ok
+test timer_wheel_documented_invariants::bounded_operations_default_is_empty ... ok
+test timer_wheel_documented_invariants::bounded_operations_cancel_returns_true_when_entry_exists ... ok
+test timer_wheel_documented_invariants::bounded_operations_get_entry_returns_full_entry ... ok
+test timer_wheel_documented_invariants::bounded_operations_get_kind_returns_correct_kind ... ok
+test timer_wheel_documented_invariants::bounded_operations_get_kind_returns_none_for_missing_run ... ok
+test timer_wheel_documented_invariants::bounded_operations_is_empty_tracks_state ... ok
+test timer_wheel_documented_invariants::bounded_operations_len_after_each_operation ... ok
+test timer_wheel_documented_invariants::bounded_operations_new_is_empty ... ok
+test timer_wheel_documented_invariants::bounded_operations_len_invariant_matches_entry_count ... ok
+test timer_wheel_documented_invariants::consistency_after_mixed_operations ... ok
+test timer_wheel_documented_invariants::deadline_ordering_after_fire_expired_next_deadline_shifts ... ok
+test timer_wheel_documented_invariants::deadline_ordering_insert_out_of_order_preserves_chronology ... ok
+test timer_wheel_documented_invariants::deadline_ordering_next_deadline_none_when_empty ... ok
+test timer_wheel_documented_invariants::deadline_ordering_next_deadline_returns_earliest ... ok
+test timer_wheel_documented_invariants::generation_exhausted_error_is_publicly_accessible ... ok
+test timer_wheel_documented_invariants::generation_increases_on_replacement ... ok
+test fast_forward_cursor_bounds::fast_forward_with_max_u16_count_is_bounded ... ok
+test timer_wheel_documented_invariants::generation_monotonically_increases_over_many_replacements ... ok
+test timer_wheel_documented_invariants::generation_starts_at_one_for_new_run ... ok
+test timer_wheel_documented_invariants::generation_uniqueness_per_run_is_preserved_after_mixed_ops ... ok
+test timer_wheel_documented_invariants::index_consistency_after_cancel_removes_from_both_indices ... ok
+test timer_wheel_documented_invariants::index_consistency_after_fire_expired_clears_both_indices ... ok
+test timer_wheel_documented_invariants::index_consistency_after_insert_order ... ok
+test timer_wheel_documented_invariants::index_consistency_cross_check_len_equals_entry_count ... ok
+test timer_wheel_documented_invariants::run_uniqueness_after_replacement_old_entry_gone ... ok
+test timer_wheel_documented_invariants::run_uniqueness_distinct_runs_independent ... ok
+test timer_wheel_documented_invariants::run_uniqueness_single_entry_per_run_id ... ok
+test value_semantics::delay_strategy_exponential_equals_exponential ... ok
+test value_semantics::delay_strategy_fixed_equals_fixed ... ok
+test value_semantics::delay_strategy_none_equals_none ... ok
+test value_semantics::pending_timer_kind_ask_equals_ask ... ok
+test value_semantics::pending_timer_kind_wait_equals_wait ... ok
+test value_semantics::pending_timer_kind_wait_not_equal_ask ... ok
+test value_semantics::retry_decision_exhausted_equality ... ok
+test value_semantics::retry_decision_not_retriable_equality ... ok
+test value_semantics::retry_decision_retry_equality ... ok
+test value_semantics::retry_policy_error_invalid_retry_state_equals_itself ... ok
+test value_semantics::retry_policy_error_not_retriable_equals_itself ... ok
+test value_semantics::retry_policy_error_zero_backoff_equals_itself ... ok
+test value_semantics::retry_policy_error_zero_max_attempts_equals_itself ... ok
+test value_semantics::timer_entry_equality_same_fields ... ok
+test value_semantics::timer_entry_inequality_different_generation ... ok
+test value_semantics::timer_entry_inequality_different_kind ... ok
+test value_semantics::timer_wheel_error_generation_exhausted_equals_itself ... ok
+
+test result: ok. 141 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test ipc_returns_queue_full_when_backpressure_limit_is_hit ... ok
+test ipc_rejects_bad_magic_before_payload_allocation ... ok
+test ipc_submit_run_roundtrips_when_frame_is_valid ... ok
+test ipc_rejects_oversize_payload ... ok
+test ipc_health_and_shutdown_return_expected_responses ... ok
+test ipc_correlation_ids_preserved_across_roundtrip ... ok
+test ipc_all_11_commands_have_typed_responses ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

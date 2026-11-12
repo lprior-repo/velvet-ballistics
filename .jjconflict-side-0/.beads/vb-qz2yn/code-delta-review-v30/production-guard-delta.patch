@@ -1,0 +1,88 @@
+diff --git a/crates/vb_storage/src/journal/artifact_acceptance.rs b/crates/vb_storage/src/journal/artifact_acceptance.rs
+index 29fced123..595f1eea1 100644
+--- a/crates/vb_storage/src/journal/artifact_acceptance.rs
++++ b/crates/vb_storage/src/journal/artifact_acceptance.rs
+@@ -138,7 +138,7 @@ fn build_batch(
+         counter_value.as_ref(),
+     );
+     let artifact_key = compiled_ir_key(stamped.digest.as_bytes())?;
+-    batch.insert(&journal.compiled_ir, &artifact_key, encoded);
++    batch.insert(&journal.compiled_ir, artifact_key, encoded);
+     Ok(batch)
+ }
+ 
+@@ -173,7 +173,7 @@ fn issue_artifact(
+     artifact: AcceptedArtifact,
+     policy: RuntimePolicy,
+ ) -> Result<AcceptedArtifact, JournalError> {
+-    let write_guard = journal
++    let _write_guard = journal
+         .write_lock
+         .lock()
+         .map_err(|_| JournalError::WriteLockPoisoned)?;
+@@ -184,7 +184,6 @@ fn issue_artifact(
+     let batch = build_batch(journal, next, &stamped, &encoded)?;
+     commit_batch(journal, batch, policy)?;
+ 
+-    drop(write_guard);
+     Ok(stamped)
+ }
+ 
+diff --git a/crates/vb_storage/src/journal/core.rs b/crates/vb_storage/src/journal/core.rs
+index 4338533bc..98bebbbb0 100644
+--- a/crates/vb_storage/src/journal/core.rs
++++ b/crates/vb_storage/src/journal/core.rs
+@@ -3,12 +3,6 @@
+ //!
+ //! Provides the main storage interface for workflow artifacts,
+ //! run metadata, journal events, snapshots, and blobs.
+-
+-use std::path::Path;
+-use std::sync::Mutex;
+-#[cfg(test)]
+-use std::sync::atomic::{AtomicBool, Ordering};
+-
+ use crate::{
+     constants::{
+         KEYSPACE_ARTIFACT_ACCEPTANCE, KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_EMERGENCY_DENY,
+@@ -19,7 +13,10 @@ use crate::{
+     process_lock::ProcessLock,
+     types::{FjallConfig, KeyspaceProfile},
+ };
+-
++use std::path::Path;
++use std::sync::Mutex;
++#[cfg(test)]
++use std::sync::atomic::{AtomicBool, Ordering};
+ /// Bounded replay limit for journal event collection.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct EventReplayLimit {
+@@ -46,7 +43,6 @@ impl EventReplayLimit {
+         self.max_events
+     }
+ }
+-
+ /// Fjall-backed append journal.
+ pub struct FjallJournal {
+     pub(crate) database: fjall::Database,
+@@ -78,7 +74,6 @@ pub struct FjallJournal {
+     pub(crate) write_lock: Mutex<()>,
+     pub(crate) _process_lock: ProcessLock,
+ }
+-
+ impl FjallJournal {
+     /// Opens or creates the journal at `path`.
+     ///
+@@ -257,12 +252,10 @@ impl FjallJournal {
+     pub(crate) fn fail_next_persist_for_test(&self) {
+         self.fail_next_persist.store(true, Ordering::SeqCst);
+     }
+-
+     #[cfg(test)]
+     pub(crate) fn consume_persist_failure_for_test(&self) -> bool {
+         self.fail_next_persist.swap(false, Ordering::SeqCst)
+     }
+-
+     /// Test-only hook: forces the next `compiled_ir` readback to return
+     /// `Ok(None)`, simulating a silent persistence failure in which the
+     /// `put_compiled_ir` insert succeeded but the value vanished from the

@@ -1,0 +1,81 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_runtime)
+warning: unused import: `super::*`
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:282:9
+    |
+282 |     use super::*;
+    |         ^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:316:13
+    |
+316 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:355:13
+    |
+355 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: `vb_runtime` (lib test) generated 4 warnings (1 duplicate) (run `cargo fix --lib -p vb_runtime --tests` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.72s
+  Executable unittests src/lib.rs (target/debug/deps/vb_runtime-44a6b870dcba4c37)
+  Executable tests/atomic_fire_enqueue_test.rs (target/debug/deps/atomic_fire_enqueue_test-c80e4ef9afe64cb6)
+  Executable tests/authority_validation_test.rs (target/debug/deps/authority_validation_test-769e46955c2f7f53)
+  Executable tests/capacity_bounds_test.rs (target/debug/deps/capacity_bounds_test-0f9536e1f28b2828)
+  Executable tests/clock_advancement_test.rs (target/debug/deps/clock_advancement_test-74fe26d9503402f6)
+  Executable tests/duplicate_key_test.rs (target/debug/deps/duplicate_key_test-e962f444a910fa37)
+  Executable tests/durability_matrix_integration.rs (target/debug/deps/durability_matrix_integration-7053c170aca8e4df)
+  Executable tests/durable_resume_red_phase.rs (target/debug/deps/durable_resume_red_phase-c540fccc360fe6d0)
+  Executable tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-7e75e2a13304ade0)
+  Executable tests/generation_exhaustion_test.rs (target/debug/deps/generation_exhaustion_test-29ba0062453617dd)
+  Executable tests/numeric_timer_state_test.rs (target/debug/deps/numeric_timer_state_test-533c0b432377292b)
+  Executable tests/proptest_admission_error_paths.rs (target/debug/deps/proptest_admission_error_paths-dbf823a50873a950)
+  Executable tests/proptest_runtime_error_codes.rs (target/debug/deps/proptest_runtime_error_codes-9613906cb0883d65)
+  Executable tests/rb_r7o2a_phantom.rs (target/debug/deps/rb_r7o2a_phantom-a54be04fd30d8d34)
+  Executable tests/recovery_bdd_tests.rs (target/debug/deps/recovery_bdd_tests-34837ba592d5e81b)
+  Executable tests/recovery_hydration_tests.rs (target/debug/deps/recovery_hydration_tests-648c83a82e210716)
+  Executable tests/recovery_integration.rs (target/debug/deps/recovery_integration-bcb04003cb3174d0)
+  Executable tests/replay_resume.rs (target/debug/deps/replay_resume-d935f13baef96a0c)
+  Executable tests/rs_026_phantom.rs (target/debug/deps/rs_026_phantom-1b9e49276276d236)
+  Executable tests/slot_validation_test.rs (target/debug/deps/slot_validation_test-554093219d421bbe)
+  Executable tests/static_analysis_gates_test.rs (target/debug/deps/static_analysis_gates_test-77b6b538e2a6c75f)
+  Executable tests/timer_deadline_safety_test.rs (target/debug/deps/timer_deadline_safety_test-e0fae9e9645837a0)
+  Executable tests/timer_lifecycle_e2e_test.rs (target/debug/deps/timer_lifecycle_e2e_test-7ed0c598a6753d6f)
+  Executable tests/timer_wheel_behavior_tests.rs (target/debug/deps/timer_wheel_behavior_tests-74f07b8f3012ef10)
+  Executable tests/vb_5m8w_step_budget_suspension_runtime.rs (target/debug/deps/vb_5m8w_step_budget_suspension_runtime-630960e9c970ec8b)
+  Executable tests/vb_h6ix_integration.rs (target/debug/deps/vb_h6ix_integration-d20a19327317bdfa)
+  Executable tests/vb_jggy_journal_event_tests.rs (target/debug/deps/vb_jggy_journal_event_tests-0bbdb129895cfb5a)
+  Executable tests/vb_jggy_lifecycle_tests.rs (target/debug/deps/vb_jggy_lifecycle_tests-01f06dea8d9c1fee)
+  Executable tests/vb_jggy_property_tests.rs (target/debug/deps/vb_jggy_property_tests-cc222d6f4c506362)
+  Executable tests/vb_ko29_7_idempotency_miri.rs (target/debug/deps/vb_ko29_7_idempotency_miri-2815dff6991d8f00)
+  Executable tests/vb_l2d7_joined_taint_propagation_red.rs (target/debug/deps/vb_l2d7_joined_taint_propagation_red-d75a0e638656aacf)
+  Executable tests/vb_qi37_12_2_resume_error_propagation.rs (target/debug/deps/vb_qi37_12_2_resume_error_propagation-0754416dc26f57da)
+  Executable tests/vb_wave16_mqa.rs (target/debug/deps/vb_wave16_mqa-7d596a8f7205a41f)
+  Executable tests/zero_duration_test.rs (target/debug/deps/zero_duration_test-175a40f8a8454785)

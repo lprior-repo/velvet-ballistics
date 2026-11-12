@@ -23,6 +23,10 @@ use part_05_digest_sections::{
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use vb_core::WorkflowDigest;
 
+#[path = "digest_scalar.rs"]
+mod digest_scalar;
+use digest_scalar::digest_scalar_value;
+
 // Bead-linked justification for cold-path function length (master §125):
 // This module implements the canonical source digest at the compile boundary.
 // `canonical_digest` and `digest_step_primitive` are cold, compile-time-only
@@ -132,21 +136,26 @@ fn digest_optional_u32(
     Ok(())
 }
 
-pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'static str {
+pub(crate) fn canonical_primitive_name(
+    primitive: &crate::StepPrimitive,
+) -> Result<&'static str, CompileError> {
     match primitive {
-        crate::StepPrimitive::Set { .. } => "set",
-        crate::StepPrimitive::Save { .. } => "save",
-        crate::StepPrimitive::Do { .. } => "do",
-        crate::StepPrimitive::Choose { .. } => "choose",
-        crate::StepPrimitive::ForEach { .. } => "for_each",
-        crate::StepPrimitive::Together { .. } => "together",
-        crate::StepPrimitive::Collect { .. } => "collect",
-        crate::StepPrimitive::Aggregate { .. } => "reduce",
-        crate::StepPrimitive::Repeat { .. } => "repeat",
-        crate::StepPrimitive::Wait { .. } => "wait",
-        crate::StepPrimitive::Ask { .. } => "ask",
-        crate::StepPrimitive::Finish { .. } => "finish",
-        _ => "unknown",
+        crate::StepPrimitive::Set { .. } => Ok("set"),
+        crate::StepPrimitive::Save { .. } => Ok("save"),
+        crate::StepPrimitive::Do { .. } => Ok("do"),
+        crate::StepPrimitive::Choose { .. } => Ok("choose"),
+        crate::StepPrimitive::ForEach { .. } => Ok("for_each"),
+        crate::StepPrimitive::Together { .. } => Ok("together"),
+        crate::StepPrimitive::Collect { .. } => Ok("collect"),
+        crate::StepPrimitive::Aggregate { .. } => Ok("reduce"),
+        crate::StepPrimitive::Repeat { .. } => Ok("repeat"),
+        crate::StepPrimitive::Wait { .. } => Ok("wait"),
+        crate::StepPrimitive::Ask { .. } => Ok("ask"),
+        crate::StepPrimitive::Finish { .. } => Ok("finish"),
+        _ => Err(CompileError::CanonicalYaml {
+            category: "digest",
+            message: "unknown step primitive variant cannot be canonicalized".into(),
+        }),
     }
 }
 
@@ -186,38 +195,4 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
 /// `MAX_BODY_NESTING_DEPTH` budget. Top-level steps enter at depth 0.
 fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
     part_05_digest_step::digest_step_at(hasher, step, 0)
-}
-
-/// Hash a `ScalarValue`, failing closed on future unknown variants.
-fn digest_scalar_value(
-    hasher: &mut blake3::Hasher,
-    value: &crate::ScalarValue,
-) -> Result<(), CompileErrors> {
-    match value {
-        crate::ScalarValue::String(s) => {
-            hasher.update(&[0x01]);
-            digest_string(hasher, s)
-        }
-        crate::ScalarValue::Integer(n) => {
-            hasher.update(&[0x02]);
-            digest_i64(hasher, *n);
-            Ok(())
-        }
-        _ => Err(digest_error(
-            "unknown scalar value variant cannot be canonicalized",
-        )),
-    }
-}
-
-/// Hash the body steps of a container primitive.
-///
-/// Iterative heap-stack walk with `MAX_BODY_NESTING_DEPTH` budget; body steps
-/// enter at depth 0 when called standalone. Nested bodies driven from
-/// `run_digest_stack` carry the parent step depth plus one.
-#[allow(dead_code)]
-fn digest_body_steps(
-    hasher: &mut blake3::Hasher,
-    body: &[crate::StepAst],
-) -> Result<(), CompileErrors> {
-    part_05_digest_step::digest_body_at(hasher, body, 0)
 }

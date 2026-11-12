@@ -1,0 +1,26 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 5,
+  "sublane": "proof-writing-retry",
+  "delegate": "proof-writer",
+  "attempt": 2,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "reason": "attempt 1 timed out before required proof-writer-report.md and proof-evidence.md existed; continue/repair State 5 in the isolated worktree",
+  "input_artifacts": [
+    ".beads/vb-kyyf/STATE.md",
+    ".beads/vb-kyyf/baseline-report.md",
+    ".beads/vb-kyyf/codebase-map.md",
+    ".beads/vb-kyyf/delivery-scope.jsonl",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/verification-layers.md",
+    ".beads/vb-kyyf/proof-obligations.jsonl",
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/proof-writer-report.md",
+    ".beads/vb-kyyf/proof-evidence.md"
+  ],
+  "status": "QUEUED"
+}

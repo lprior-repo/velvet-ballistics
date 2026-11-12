@@ -1,0 +1,198 @@
+use super::{SOURCE, compile_workflow};
+
+#[test]
+fn unrelated_schema_is_not_a_foreach_restriction() -> Result<(), String> {
+    use vb_core::CompiledNodeKind;
+
+    let schemas = [
+        "{is: list, of: number}",
+        "{is: list, of: any}",
+        "{is: list, of: any, max: 4294967296}",
+    ];
+
+    for schema in schemas {
+        let source = SOURCE.replace("inputs:\n", &format!("inputs:\n  unrelated: {schema}\n"));
+        let workflow = compile_workflow(source.as_bytes()).map_err(|e| format!("{e:?}"))?;
+
+        let slots = workflow.input_slots();
+        if slots.len() != 2 {
+            return Err(format!("expected 2 input slots, got {}", slots.len()));
+        }
+
+        let items_slot = slots.get(1).ok_or("missing items slot")?.slot;
+
+        let found = workflow
+            .to_parts()
+            .nodes
+            .iter()
+            .find_map(|node| match &node.kind {
+                CompiledNodeKind::ForEachStart { input, limit, .. } => Some((*input, *limit)),
+                _ => None,
+            });
+
+        match found {
+            Some((input, limit)) => {
+                if input != items_slot {
+                    return Err(format!("input mismatch: {:?} vs {:?}", input, items_slot));
+                }
+                if limit.get() != 3 {
+                    return Err(format!("limit mismatch: {}", limit.get()));
+                }
+            }
+            None => return Err("ForEachStart not found".to_string()),
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn schema_bound_drives_ir_digest_and_budget() -> Result<(), String> {
+    use vb_core::CompiledNodeKind;
+    use vb_core::budget::WholeWorkflowBudget;
+
+    let source = r#"version: velvet-ballistics/v1
+name: foreach_negative
+when: {manual: {}}
+inputs:
+  items: {is: list, of: any, max: 3}
+steps:
+  - id: seed
+    set: {output: answer, value: "42"}
+  - id: bounded_loop
+    for_each:
+      variable: entry
+      input: "$input.items"
+      at_once: 1
+      steps:
+        - id: copy
+          set: {output: copied, value: "$entry"}
+  - id: done
+    finish: {result: answer}
+"#;
+
+    let max1_source = source.replace("max: 3", "max: 1");
+    let serial_source = source.replace("      at_once: 1\n", "");
+
+    let max3 = compile_workflow(source.as_bytes()).map_err(|e| format!("{e:?}"))?;
+    let max1 = compile_workflow(max1_source.as_bytes()).map_err(|e| format!("{e:?}"))?;
+    let serial = compile_workflow(serial_source.as_bytes()).map_err(|e| format!("{e:?}"))?;
+
+    let max3_parts = max3.to_parts();
+    let max1_parts = max1.to_parts();
+    let serial_parts = serial.to_parts();
+
+    let max3_budget = WholeWorkflowBudget::compute(
+        &max3_parts.nodes,
+        max3_parts.entry,
+        &max3_parts.resource_contract,
+    )
+    .map_err(|e| format!("{e:?}"))?;
+    let max1_budget = WholeWorkflowBudget::compute(
+        &max1_parts.nodes,
+        max1_parts.entry,
+        &max1_parts.resource_contract,
+    )
+    .map_err(|e| format!("{e:?}"))?;
+    let serial_budget = WholeWorkflowBudget::compute(
+        &serial_parts.nodes,
+        serial_parts.entry,
+        &serial_parts.resource_contract,
+    )
+    .map_err(|e| format!("{e:?}"))?;
+
+    let max3_limit = max3_parts.nodes.iter().find_map(|node| match &node.kind {
+        CompiledNodeKind::ForEachStart { limit, .. } => Some(*limit),
+        _ => None,
+    });
+    let max1_limit = max1_parts.nodes.iter().find_map(|node| match &node.kind {
+        CompiledNodeKind::ForEachStart { limit, .. } => Some(*limit),
+        _ => None,
+    });
+
+    if max3_limit.map(|limit| limit.get()) != Some(3) {
+        return Err(format!("expected max3 limit 3, got {:?}", max3_limit));
+    }
+    if max1_limit.map(|limit| limit.get()) != Some(1) {
+        return Err(format!("expected max1 limit 1, got {:?}", max1_limit));
+    }
+
+    if max1_parts.digest == max3_parts.digest {
+        return Err("expected different digests for max1 vs max3".to_string());
+    }
+
+    if max1_budget.max_for_each_iterations != 1 {
+        return Err(format!(
+            "expected max1 budget max_for_each_iterations 1, got {}",
+            max1_budget.max_for_each_iterations
+        ));
+    }
+    if max3_budget.max_for_each_iterations != 3 {
+        return Err(format!(
+            "expected max3 budget max_for_each_iterations 3, got {}",
+            max3_budget.max_for_each_iterations
+        ));
+    }
+
+    // Six fixed steps plus copy, append and next for each input item.
+    if max1_budget.max_total_steps != 9 {
+        return Err(format!(
+            "expected max1 budget max_total_steps 9, got {}",
+            max1_budget.max_total_steps
+        ));
+    }
+    if max3_budget.max_total_steps != 15 {
+        return Err(format!(
+            "expected max3 budget max_total_steps 15, got {}",
+            max3_budget.max_total_steps
+        ));
+    }
+
+    if serial_parts.nodes != max3_parts.nodes {
+        return Err("expected serial nodes == max3 nodes".to_string());
+    }
+
+    if serial_budget != max3_budget {
+        return Err("expected serial budget == max3 budget".to_string());
+    }
+
+    Ok(())
+}
+
+pub(super) fn assert_bound(
+    source: &str,
+    expected_limit: u32,
+    expected_schema: Option<i64>,
+) -> Result<(), String> {
+    let workflow = compile_workflow(source.as_bytes()).map_err(|error| error.to_string())?;
+    let input = workflow.input_slots().first().ok_or("list input")?;
+    assert_eq!(input.kind, vb_core::InputSlotKind::List);
+    assert_eq!(input.constraint.max, expected_schema);
+    let parts = workflow.to_parts();
+    let bounds = parts
+        .nodes
+        .iter()
+        .filter_map(|node| match node.kind {
+            vb_core::CompiledNodeKind::ForEachStart { input, limit, .. } => Some((input, limit)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(bounds, [(input.slot, expected_limit.into())]);
+    let budget = vb_core::budget::WholeWorkflowBudget::compute(
+        &parts.nodes,
+        parts.entry,
+        &parts.resource_contract,
+    )
+    .map_err(|error| error.to_string())?;
+    assert_eq!(budget.max_for_each_iterations, expected_limit);
+    super::execute_policy_bound(&workflow)?;
+    Ok(())
+}
+
+pub(super) fn assert_serial_cap(source: &str) -> Result<(), String> {
+    let plan = compile_workflow(source.as_bytes()).map_err(|error| error.to_string())?;
+    let serial = compile_workflow(SOURCE.as_bytes()).map_err(|error| error.to_string())?;
+    assert_eq!(plan.to_parts().nodes, serial.to_parts().nodes);
+    assert_eq!(plan.to_parts().expressions, serial.to_parts().expressions);
+    super::execute_typed_list(&source.replace("of: any", "of: number"))
+}

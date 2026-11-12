@@ -62,7 +62,7 @@ fn replay_finish_returns_finished_action() -> Result<(), CoreError> {
 
 #[test]
 fn replay_finish_uninitialized_result_returns_error() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_rejected_plan(
         vec![crate::workflow::node(
             StepIdx::new(0),
             CompiledNodeKind::Finish {
@@ -73,6 +73,7 @@ fn replay_finish_uninitialized_result_returns_error() -> Result<(), CoreError> {
         )],
         vec![],
         vec![],
+        crate::workflow::SlotFlowFailure::UninitializedRead,
     )?;
 
     let mut run = RunFrame::new(

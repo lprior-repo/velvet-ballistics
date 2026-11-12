@@ -78,19 +78,31 @@ impl RunFrame {
     /// staging an invalid PC that could lead to out-of-bounds state access
     /// on the next `step_once` call.
     pub fn set_pc(&mut self, pc: StepIdx) -> CoreResult<()> {
-        if pc.as_usize() >= usize::from(self.step_count) {
+        let Some(()) = self.set_pc_checked(pc) else {
             return Err(CoreError::InvalidProgramCounter { step: pc });
+        };
+        Ok(())
+    }
+
+    pub(crate) fn set_pc_checked(&mut self, pc: StepIdx) -> Option<()> {
+        if pc.as_usize() >= usize::from(self.step_count) {
+            return None;
         }
         self.pc = pc;
-        Ok(())
+        Some(())
     }
 
     /// Increments the executed transition counter.
     pub fn increment_executed(&mut self) -> CoreResult<()> {
-        self.executed = self
-            .executed
-            .checked_add(1)
-            .ok_or(CoreError::StepCounterOverflow)?;
+        let Some(()) = self.increment_executed_checked() else {
+            return Err(CoreError::StepCounterOverflow);
+        };
         Ok(())
+    }
+
+    pub(crate) fn increment_executed_checked(&mut self) -> Option<()> {
+        let executed = self.executed.checked_add(1)?;
+        self.executed = executed;
+        Some(())
     }
 }

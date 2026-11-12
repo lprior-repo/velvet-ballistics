@@ -1,0 +1,30 @@
+
+running 3 tests
+test runtime_cases::compiler_and_storage_reject_sparse_and_duplicate_dispatch_registries ... ok
+test runtime_cases::public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest ... FAILED
+test runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue ... FAILED
+
+failures:
+
+---- runtime_cases::public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest stdout ----
+
+thread 'runtime_cases::public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest' (2759377) panicked at crates/workspace_tests/tests/artifact_evidence_support/runtime_cases.rs:53:5:
+assertion `left == right` failed
+  left: Ok(())
+ right: Err(AdmissionArtifactInvalid { digest: WorkflowDigest([230, 236, 139, 254, 149, 202, 39, 186, 126, 224, 215, 18, 53, 114, 46, 255, 240, 65, 52, 161, 94, 250, 27, 164, 243, 99, 0, 47, 102, 155, 87, 165]) })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue stdout ----
+
+thread 'runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue' (2759378) panicked at crates/workspace_tests/tests/artifact_evidence_support/runtime_cases.rs:35:5:
+assertion `left == right` failed
+  left: Ok(())
+ right: Err(AdmissionArtifactInvalid { digest: WorkflowDigest([1, 48, 147, 16, 88, 241, 157, 62, 218, 76, 111, 103, 220, 183, 89, 70, 213, 19, 71, 205, 128, 85, 16, 159, 47, 25, 60, 47, 77, 163, 239, 132]) })
+
+
+failures:
+    runtime_cases::public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest
+    runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.01s
+

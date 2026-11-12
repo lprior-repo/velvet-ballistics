@@ -1,0 +1,76 @@
+
+running 35 tests
+test admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_absent ... ok
+test append_strict_runtime_event_preserves_monotonic_event_sequence_for_same_run ... ok
+test append_strict_runtime_event_rejects_event_for_unadmitted_run_without_success_ack ... ok
+test events_for_run_preserves_digest_fields_without_role_swap ... ok
+test inspect_run_does_not_synthesize_success_when_run_accepted_is_missing ... ok
+test events_for_run_returns_corrupt_recovery_data_when_event_record_is_malformed ... ok
+test inspect_run_reports_terminal_or_suspended_state_from_persisted_events_only ... ok
+test inspect_run_returns_digest_bound_status_when_required_journal_prefix_exists ... ok
+test inspect_run_reports_source_and_artifact_digest_roles_distinctly ... ok
+test inspect_run_returns_no_recovery_data_or_absent_status_when_run_has_no_evidence ... ok
+test recover_yaml_origin_run_is_deterministic_for_identical_persisted_inputs ... ok
+test recover_yaml_origin_run_returns_no_recovery_data_when_no_durable_evidence_exists ... ok
+test recover_yaml_origin_run_returns_corrupt_recovery_data_when_snapshot_or_frame_decode_fails ... ok
+test recover_yaml_origin_run_returns_replay_divergence_when_snapshot_diverges_from_model ... ok
+test recover_yaml_origin_run_recovers_state_from_persisted_artifact_journal_and_snapshot_without_yaml ... ok
+test runtime_recovery_paths_have_no_yaml_json_http_parser_dependency_when_static_boundary_scan_runs ... ok
+test admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unverified ... ok
+test persist_source_and_artifact_rejects_source_digest_used_as_artifact_digest_when_roles_differ ... ok
+test events_for_run_returns_run_accepted_admission_and_terminal_events_in_order ... ok
+test append_strict_runtime_event_appends_run_accepted_before_admission_when_ack_succeeds ... ok
+test persist_source_and_artifact_persists_source_artifact_and_ref_when_digests_match ... ok
+test persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_fails ... ok
+test persist_source_and_artifact_returns_workflow_source_digest_mismatch_when_source_digest_differs ... ok
+test append_strict_runtime_event_appends_terminal_or_suspended_event_after_admission ... ok
+test admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_accepted_artifact_invalid ... ok
+test append_strict_runtime_event_returns_durability_failure_when_event_flush_fails_before_ack ... ok
+test strict_runtime_admission_rejects_unverified_ledger_via_storage_verification ... ok
+test persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact_digest_differs ... ok
+test runtime_storage_artifact_store_rejects_unverified_ledger_via_storage_verification ... ok
+test events_for_run_does_not_include_success_when_admission_event_missing ... ok
+test admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted ... ok
+test events_for_run_returns_empty_or_exact_absent_error_when_no_journal_exists ... ok
+test storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_run_is_submitted ... ok
+test admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_ledger_valid ... ok
+test source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.54s
+
+
+running 9 tests
+test given_budget_within_capacity_and_artifact_missing_when_strict_then_artifact_not_found ... ok
+test given_excessive_budget_when_strict_admit_run_with_budget_then_capacity_exceeded ... ok
+test given_excessive_budget_when_relaxed_admit_run_with_budget_then_capacity_exceeded ... ok
+test given_never_present_store_when_relaxed_admission_runs_then_succeeds ... ok
+test given_postcard_failure_when_strict_admission_runs_then_decode_failed ... ok
+test given_missing_artifact_when_strict_admission_runs_then_artifact_not_found ... ok
+test given_missing_artifact_when_relaxed_admit_run_then_succeeds ... ok
+test given_missing_artifact_with_required_caps_when_relaxed_admission_runs_then_succeeds ... ok
+test given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test pi_01_gate_boundary_max_is_valid ... ok
+test pi_01_gate_boundary_min_is_valid ... ok
+test pi_01_gate_one_past_max_is_invalid ... ok
+test pi_01_gate_zero_is_invalid ... ok
+test pi_01_verification_warning_gate_range_exhaustive ... ok
+test pi_02_antiinvariant_tampered_digest_rejected ... ok
+test pi_02_digest_roundtrip_strict ... ok
+test pi_02_digest_roundtrip_journaled ... ok
+test pi_02_digest_roundtrip_relaxed ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.77s
+
+
+running 3 tests
+test given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch_denies ... ok
+test given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted ... ok
+test given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

@@ -4,7 +4,7 @@ fn single_shard_owner() -> Result<(), String> {
     let mut other = Shard::new(small_config());
     let run = RunId::new(9_030);
     let workflow = require_workflow("suspended", suspended_workflow())?;
-    submit_run(&mut owner, run, workflow);
+    submit_run(&mut owner, run, workflow, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let state = owner
         .run_state_get(run)
         .cloned()
@@ -50,7 +50,7 @@ fn single_shard_owner_checked_out_run_returns_only_to_owner() -> Result<(), Stri
     let mut other = Shard::new(small_config());
     let run = RunId::new(9_031);
     let workflow = require_workflow("suspended", suspended_workflow())?;
-    submit_run(&mut owner, run, workflow);
+    submit_run(&mut owner, run, workflow, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let state = owner
         .take_run_state(run)
         .map_err(|error| format!("take_run_state failed: {error:?}"))?;

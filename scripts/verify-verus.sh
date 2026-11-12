@@ -56,6 +56,9 @@ summary_file="$EVIDENCE_DIR/summary.txt"
   fi
 } >"$summary_file"
 
+source "$SCRIPT_DIR/verus-native-bindings.sh"
+native_ready=0
+
 for target in "${targets[@]}"; do
   if [ ! -s "$target" ]; then
     printf 'Required Verus target is missing or empty: %s\n' "$target" >&2
@@ -77,6 +80,15 @@ for target in "${targets[@]}"; do
   else
     verus_args=(--crate-type=lib)
   fi
+  case "$stem" in
+    try_from_parts|idempotency_replay_tracker)
+      if [ "$native_ready" -eq 0 ]; then
+        verus_native_build "$ROOT" "$EVIDENCE_DIR/native" >> "$summary_file"
+        native_ready=1
+      fi
+      verus_args+=("${VERUS_NATIVE_ARGS[@]}")
+      ;;
+  esac
   printf '[verus] verus %s %s\n' "${verus_args[*]}" "$target" | tee "$evidence_file"
   set +e
   verus "${verus_args[@]}" "$target" 2>&1 | tee -a "$evidence_file"

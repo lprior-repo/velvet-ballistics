@@ -1,0 +1,225 @@
+Independent Rust code review. Readactualdiffandcontract; no inventedtests/results. Scope schema semantic kind resolution and Any matching only. Follow Rustcontract->implementation->tests->codereview->testreview, no proofplanning. Findings first severityfileline. STATUS APPROVED only no unresolvedfinding, otherwise REJECTED exactfix. Separate digest numeric IR change is in-progress vb-86nyq; its widened compiler regression found preexisting constantreuse bug tracked vb-s105z and two authoringnameidentity expectations; those block86closurebutdonotclaimwholev1approved. Any matching tests all8known variants (handles represent kind only; owned inputbacking separatelyvb-ezymz). Direct AST topkindclassifier only, nested schema fields stillcoldYAMLvalidation. Check oldwire ordinals appendAny, no runtimeYAML,newpanic,casts,lintallow. Evidence9compiler+2runtime pass;17CLIinput testspassbeforeexpandedAnyarray, rerunpending.
+CONTRACT:
+# Input Schema Kind Resolution Contract
+
+## Bug
+Compiler called `kind_from_author_value` on schema declarations. Shorthand strings became `Symbol`; longform mappings became `Object`.
+
+## Fix
+Parse declared schema meaning, not author value shape.
+
+## Schema Forms
+- **Shorthand:** `text`, `number`, `boolean`, `object`, `any`, `list<any>`, `list<text>`, `list<number>`, `list<boolean>`
+- **Longform:** `{is: text|number|boolean|object|list|any, of: ..., fields: ..., default: ...}`
+
+## Kind Mappings
+| Schema | InputSlotKind |
+|--------|---------------|
+| text | Symbol |
+| number | I64 |
+| boolean | Bool |
+| object | Object |
+| list | List |
+| any | Any (new) |
+
+## Any Variant
+- Appended after `Blob` in enum; existing postcard discriminants unchanged
+- Accepts every recognized `SlotValue` shape in CLI mapping and runtime seeding
+- Typed exact kinds still reject mismatched values
+- Unknown future values fail closed
+- Schema wildcard only; not a stored `SlotValue` type
+
+## Error Handling
+- `kind_from_input_schema` returns `Result`
+- No unchecked indexing, casts, `unwrap`, `unsafe`, or `panic`
+- Unknown/malformed schema in `compile_source` returns `CompileError::InvalidInputSchema`
+- No `Null` fallback
+
+## Invariants
+- Numeric source order preserved
+- Slots and digest include input schemas
+- Actual types: `AuthorValue::Text(String)`, `Mapping(Vec<AuthorEntry<AuthorValue>>)`
+
+## Runtime & CLI
+- Runtime and helper kind matching updated for `Any`
+- CLI mapper handles `Any` for all primitives
+- Kind mismatch errors preserved for typed slots
+- IPC receives runtime validation; no new HTTP types
+
+## Behavioral Tests
+- Public compiler: shorthand/longform kind resolution, digest binding, source order
+- Invalid direct schema returns `CompileError::InvalidInputSchema`
+- Runtime: exact kind acceptance vs `Any` wildcard
+- CLI: `Any` maps all primitives; kind mismatch preserved for typed slots
+
+## Scope
+No full owned handle persistence. No v1 complete claim.
+DIFF:
+diff --git a/crates/vb_compile/src/mod_compile_lowering/input_schema.rs b/crates/vb_compile/src/mod_compile_lowering/input_schema.rs
+new file mode 100644
+index 000000000..bc24ff172
+--- /dev/null
++++ b/crates/vb_compile/src/mod_compile_lowering/input_schema.rs
+@@ -0,0 +1,57 @@
++#![forbid(unsafe_code)]
++use crate::{AuthorValue, CompileError};
++use vb_core::InputSlotKind;
++
++/// Derive a runtime `InputSlotKind` from a declared input schema.
++///
++/// Parses the declared schema meaning (shorthand string or longform mapping)
++/// rather than inferring from the author value shape.
++pub(super) fn kind_from_input_schema(value: &AuthorValue) -> Result<InputSlotKind, CompileError> {
++    match value {
++        AuthorValue::Text(s) => match s.as_str() {
++            "text" => Ok(InputSlotKind::Symbol),
++            "number" => Ok(InputSlotKind::I64),
++            "boolean" => Ok(InputSlotKind::Bool),
++            "object" => Ok(InputSlotKind::Object),
++            "any" => Ok(InputSlotKind::Any),
++            "list<any>" | "list<text>" | "list<number>" | "list<boolean>" => {
++                Ok(InputSlotKind::List)
++            }
++            _ => Err(CompileError::InvalidInputSchema {
++                field: "inputs",
++                expected: "an allowed input schema",
++            }),
++        },
++        AuthorValue::Mapping(entries) => {
++            let is_entry = entries.iter().find(|e| e.key == "is");
++            match is_entry {
++                Some(entry) => match &entry.value {
++                    AuthorValue::Text(s) => match s.as_str() {
++                        "text" => Ok(InputSlotKind::Symbol),
++                        "number" => Ok(InputSlotKind::I64),
++                        "boolean" => Ok(InputSlotKind::Bool),
++                        "object" => Ok(InputSlotKind::Object),
++                        "list" => Ok(InputSlotKind::List),
++                        "any" => Ok(InputSlotKind::Any),
++                        _ => Err(CompileError::InvalidInputSchema {
++                            field: "inputs",
++                            expected: "an allowed input schema",
++                        }),
++                    },
++                    _ => Err(CompileError::InvalidInputSchema {
++                        field: "inputs",
++                        expected: "an allowed input schema",
++                    }),
++                },
++                None => Err(CompileError::InvalidInputSchema {
++                    field: "inputs",
++                    expected: "an allowed input schema",
++                }),
++            }
++        }
++        _ => Err(CompileError::InvalidInputSchema {
++            field: "inputs",
++            expected: "an allowed input schema",
++        }),
++    }
++}
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_01.rs b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+index b2934adae..4e92f06cb 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_01.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+@@ -42,9 +42,9 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
+         )?;
+     }
+     allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+-    let parts = WorkflowParts {
++    let mut parts = WorkflowParts {
+         name: Box::from(source.name()),
+-        digest: canonical_digest(source)?,
++        digest: WorkflowDigest::from_bytes([0u8; 32]),
+         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
+         symbols_count: 0,
+         nodes: builder.nodes.into_boxed_slice(),
+@@ -56,6 +56,9 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
+         step_names: step_names.into_boxed_slice(),
+         input_slots: builder.input_slots.into_boxed_slice(),
+     };
++    let encoded_parts = postcard::to_allocvec(&parts)
++        .map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;
++    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
+     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+ }
+@@ -84,24 +87,15 @@ pub(super) fn allocate_input_slots(
+                 .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
+         );
+         builder.record_slot(slot);
+-        let kind = kind_from_author_value(&input.value);
++        let kind = kind_from_input_schema(&input.value)?;
+         builder.record_input_slot(slot, kind);
+     }
+     Ok(())
+ }
+ 
+-/// Derive a runtime `InputSlotKind` from a compiled `AuthorValue`.
+-pub(super) fn kind_from_author_value(value: &AuthorValue) -> InputSlotKind {
+-    match value {
+-        AuthorValue::Null => InputSlotKind::Null,
+-        AuthorValue::Bool(_) => InputSlotKind::Bool,
+-        AuthorValue::I64(_) => InputSlotKind::I64,
+-        AuthorValue::Text(_) => InputSlotKind::Symbol,
+-        AuthorValue::Sequence(_) => InputSlotKind::List,
+-        AuthorValue::Mapping(_) => InputSlotKind::Object,
+-        _ => InputSlotKind::Null,
+-    }
+-}
++#[path = "input_schema.rs"]
++mod input_schema;
++use input_schema::kind_from_input_schema;
+ 
+ #[derive(Clone, Copy)]
+ pub(super) struct CanonicalStepLayout {
+diff --git a/crates/vb_core/src/workflow/mod.rs b/crates/vb_core/src/workflow/mod.rs
+index 81aaaecb0..0ee5872b4 100644
+--- a/crates/vb_core/src/workflow/mod.rs
++++ b/crates/vb_core/src/workflow/mod.rs
+@@ -301,6 +301,8 @@ pub enum InputSlotKind {
+     Object,
+     /// Slot holds a blob handle.
+     Blob,
++    /// Slot accepts any recognized value shape (schema wildcard).
++    Any,
+ }
+ 
+ /// A compiled input slot: numeric index plus production classification.
+diff --git a/crates/vb_runtime/src/shard/helpers.rs b/crates/vb_runtime/src/shard/helpers.rs
+index 8e062513d..a500627bb 100644
+--- a/crates/vb_runtime/src/shard/helpers.rs
++++ b/crates/vb_runtime/src/shard/helpers.rs
+@@ -44,6 +44,19 @@ pub fn seed_input_slots(
+ }
+ 
+ fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> bool {
++    if kind == vb_core::InputSlotKind::Any {
++        return matches!(
++            value,
++            SlotValue::Null
++                | SlotValue::Bool(_)
++                | SlotValue::I64(_)
++                | SlotValue::F64(_)
++                | SlotValue::Symbol(_)
++                | SlotValue::List(_)
++                | SlotValue::Object(_)
++                | SlotValue::Blob(_)
++        );
++    }
+     matches!(
+         (value, kind),
+         (SlotValue::Null, vb_core::InputSlotKind::Null)
+diff --git a/crates/velvet_ballistics/src/run_compiled.rs b/crates/velvet_ballistics/src/run_compiled.rs
+index 237a1412e..da615ba00 100644
+--- a/crates/velvet_ballistics/src/run_compiled.rs
++++ b/crates/velvet_ballistics/src/run_compiled.rs
+@@ -134,7 +134,7 @@ pub(crate) fn map_runtime_inputs(
+                 vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+                 _ => return Err(InputMappingError::DecodeFailed),
+             };
+-            if value_kind != slot.kind {
++            if slot.kind != vb_core::InputSlotKind::Any && value_kind != slot.kind {
+                 return Err(InputMappingError::KindMismatch {
+                     slot: slot.slot,
+                     expected_kind: slot.kind,

@@ -1,0 +1,71 @@
+# State 1 Transcript: vb-vzcuf
+
+timestamp: 2026-05-29T19:19:41Z
+source_checkout: /home/lewis/src/velvet-ballistics
+isolated_workdir: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-vzcuf
+branch: fresh/vb-vzcuf
+main_base_commit: 46cf61591
+
+## bd show vb-vzcuf --json
+```json
+[
+  {
+    "id": "vb-vzcuf",
+    "title": "Fresh replacement: journal batch byte accounting proof seam",
+    "description": "Fresh replacement bead for capped vb-8mdp.4. Preserve evidence from /home/lewis/isolated/velvet-ballistics-main-review/vb-8mdp.4. Goal: implement or expose accumulated journal batch-byte accounting and typed accumulated-budget error/proof seams, then rerun proof lifecycle from clean main without reusing capped State 5/6 ledgers.",
+    "acceptance_criteria": "Clean main-based worktree; proof obligations are backed by production-bound Verus/Kani/Flux/proptest evidence or precise reviewed bridge blockers; no reuse of capped ledger rows; target validator gates pass.",
+    "status": "in_progress",
+    "priority": 0,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-29T19:16:29Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-29T19:17:18Z",
+    "labels": [
+      "go-skill",
+      "proof-blocker",
+      "replacement",
+      "storage"
+    ],
+    "dependencies": [
+      {
+        "id": "vb-8mdp.4",
+        "title": "Add bounded journal batch accounting tests",
+        "description": "# Black Hat Repaired Bead Spec\n\nSource docs:\n- to-fix/09-restate-architecture-steal-plan.md\n- to-fix/10-restate-exhaustive-sweep.md\n\nNo-copy fence:\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\n- velvet-ballistics-MASTER.md controls. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of runtime YAML/JSON/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\n\nScope:\nMaster-filtered journal writer accounting tests inspired by Restate failure modes only. Prove VB journal batches enforce byte and count limits before durable append, preserve group-commit ordering, and return exact typed QueueFull/BudgetExceeded errors without partial mutation.\n",
+        "acceptance_criteria": "Tests cover can-fit-by-bytes, can-fit-by-count, accumulated bytes, boundary equality, over-limit rejection, and group-commit evidence or explicit failure mode.",
+        "spec_id": "to-fix/09-restate-architecture-steal-plan.md",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-25T04:12:57Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-25T12:00:06Z",
+        "labels": [
+          "architecture",
+          "batching",
+          "journal",
+          "master-contract",
+          "restate",
+          "storage",
+          "tests"
+        ],
+        "dependency_type": "discovered-from"
+      }
+    ]
+  }
+]
+```
+
+## git branch --show-current
+```text
+fresh/vb-vzcuf
+```
+
+## git status --short --branch
+```text
+## fresh/vb-vzcuf
+```
+

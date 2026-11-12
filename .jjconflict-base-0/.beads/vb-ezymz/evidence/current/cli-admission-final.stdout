@@ -1,0 +1,18 @@
+
+running 6 tests
+test malformed_decode_fails_all_durabilities ... ok
+test encoded_empty_plus_garbage_fails_all_durabilities ... ok
+test bool_kind_mismatch_fails_all_durabilities ... ok
+test excess_slots_fails_all_durabilities ... ok
+test validation_precedes_journal_open ... ok
+test test_submit_controls ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+
+running 2 tests
+test dangling_arena_input_is_rejected_before_creating_database ... ok
+test submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+

@@ -1,9 +1,8 @@
 #![forbid(unsafe_code)]
-//! Bounded cold-path symbol interning, not yet connected to source lowering.
+//! Bounded cold-path symbol interning for immutable compiled source payloads.
 //!
-//! IDs follow first definition, never hash iteration order. The consuming array
-//! is the exact symbol input for the approved `WorkflowSourceMetadata::try_new`
-//! API. Runtime prefix seeding and artifact wiring remain separate prerequisites.
+//! IDs follow first definition, never hash iteration order. The resulting array
+//! supplies `WorkflowSourceMetadata::try_new` and seeds the runtime symbol prefix.
 
 use std::collections::HashMap;
 use vb_core::SymbolId;
@@ -64,7 +63,6 @@ impl SourceSymbolTable {
         self.entries.is_empty()
     }
 
-    #[cfg(test)]
     pub(crate) fn symbol_bytes(&self) -> u64 {
         self.symbol_bytes
     }

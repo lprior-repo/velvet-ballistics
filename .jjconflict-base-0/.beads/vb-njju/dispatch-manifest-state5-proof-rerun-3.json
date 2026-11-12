@@ -1,0 +1,25 @@
+{
+  "bead_id": "vb-njju",
+  "state": 5,
+  "sublane": "proof-evidence-rerun",
+  "delegate": "proof-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/proof-obligations.planned.jsonl",
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-repair-guide.md",
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md",
+    "target/test-output/PO-004-cargo-mutants-admission.log",
+    "target/test-output/PO-005-moon-mutants-smoke.log",
+    "target/test-output/PO-017-moon-ci.log"
+  ],
+  "attempt": "repair-3-of-7",
+  "reason": "Run repaired PO-004 command and rerun PO-005/PO-017 with non-recursive temp setup."
+}

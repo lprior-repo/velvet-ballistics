@@ -30,9 +30,9 @@
 //   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
 //   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:11-49
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:98-132
-//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:208-277
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:17-55
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:104-138
+//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:214-283
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
 //   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:24-59
 //   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
@@ -142,7 +142,7 @@ fn prod_methods_drift_check(
     };
 
     // Reference every field of AggregateResourceBudget to surface any
-    // rename in budget/aggregate.rs:11-49.
+    // rename in budget/aggregate.rs:17-55.
     let arb = production_inner::AggregateResourceBudget {
         max_steps_executable: 0,
         max_action_tickets: 0,
@@ -175,11 +175,11 @@ fn prod_methods_drift_check(
     };
 
     // AggregateResourceUsage derives Default; use it to surface the
-    // production field set (budget/aggregate.rs:98-132).
+    // production field set (budget/aggregate.rs:104-138).
     let aru = production_inner::AggregateResourceUsage::default();
 
     // Reference every field of AggregateResourceCapacity to surface
-    // any rename in budget/aggregate.rs:53-94.
+    // any rename in budget/aggregate.rs:59-100.
     let cap = production_inner::AggregateResourceCapacity {
         max_steps_executable: 0,
         max_action_tickets: 0,
@@ -255,6 +255,7 @@ fn prod_methods_drift_check(
     let node_step = production_inner::StepIdx::new(0);
     let node_slot = production_inner::SlotIdx::new(0);
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: node_step,
         output: production_inner::workflow::NodeOutput::Slot(node_slot),
         routing: production_inner::workflow::NodeRouting {
@@ -267,6 +268,7 @@ fn prod_methods_drift_check(
         kind: production_inner::CompiledNodeKind::Nop,
     };
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: node_step,
         output: production_inner::workflow::NodeOutput::Discard,
         routing: production_inner::workflow::NodeRouting {

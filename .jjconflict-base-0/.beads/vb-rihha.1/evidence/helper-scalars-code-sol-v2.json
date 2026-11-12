@@ -1,0 +1,100 @@
+{
+  "bead": "vb-rihha.1",
+  "verdict": "PASS",
+  "review_kind": "Same-frozen-revision bounded CODE acceptance with inspected native red/green receipts; not independent TEST acceptance.",
+  "candidate": {
+    "change": "susxpultktxrqmsqxuzrprplrkmrmnkt",
+    "commit": "0cb3ac1167cd686ece968c61b60d1cb5feac154d"
+  },
+  "production_source": "df89acd5adc491c658d0046b800f6d0dc8a9000e",
+  "tests_source": "b0e4773530bf0a39574679261bbdacf8b8efa7d0",
+  "base": "178512867bcecde4532b65f6636442af9eae37d7",
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "review_child": "e4885bf4d133cf9ede613dcc48576b4a1a74b9a6",
+    "clean": true,
+    "validation_workspace_not_modified": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation"
+  },
+  "findings": [],
+  "scope_integrity": [
+    "Full candidate-versus-base delta changes only helper_typecheck.rs and adds autodiscovered workspace_tests/tests/helper_scalar_typecheck.rs. Contract is unchanged from17851286. No deps/API/schema/gate changes.",
+    "Integrated production file is byte-identical to df89acd5; test file is byte-identical to frozen b0e47735. Both match validation-home current source. Baseline author test file matches integrated test; baseline helper production Git blob is exactly4f6c73741d03672ee63071643db3ffe05afbaca2."
+  ],
+  "production_assessment": {
+    "path": "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs",
+    "assessment": "Length/Count/Empty reject precisely known Bool/I64/F64 using TypeMismatch expected=list and existing found boolean/i64/f64. Null/List/Unknown/Text/Object acceptance remains. Contains, other helper branches and return types are unchanged.",
+    "blast_radius": "Only repository production caller of private check_helper_positions is typecheck_helper. It validates arity first, infers argument types, then checks positions and applies unchanged return mapping. Public typecheck_expr recursive callers and compiler canonical_types inference share this guard. Repository source search found compiler canonical_types.rs:27 as the external production call site; external consumers of the public API are not exhaustively enumerated.",
+    "compiler_binding": "Canonical set helper expressions pass shared inference, map TypeMismatch to CompileError::TypeMismatch field=set.value and preserve labels. Entire-helper expressions bypass the bare-I64 fast path. No unrelated compiler behavior changed."
+  },
+  "new_test_assessment": {
+    "path": "crates/workspace_tests/tests/helper_scalar_typecheck.rs",
+    "registration": "Conventional top-level workspace test file, no autotests=false override; actual Nextest binary and four function names are present in both raw receipts.",
+    "groups": [
+      {
+        "name": "scalar_literals_return_exact_helper_type_mismatches",
+        "line": 54,
+        "assessment": "All length/count/empty x 1/true/1.0 pairs assert exact direct ExprError::TypeMismatch expected=list and exact found labels."
+      },
+      {
+        "name": "known_scalar_references_return_exact_helper_type_mismatches",
+        "line": 69,
+        "assessment": "Same three helpers x I64/Bool/F64 known reference types assert exact errors. TypeContext stores the full $known name; actual lexer/parser preserves full reference and context lookup matches it exactly, preventing accidental Unknown deferral."
+      },
+      {
+        "name": "deferred_and_compatible_references_keep_helper_result_types",
+        "line": 88,
+        "assessment": "Each helper checks literal null and separately typed List/Unknown/Text/Object references. Expected result types are explicit I64/I64/Bool, preserving compatibility and deferred behavior."
+      },
+      {
+        "name": "public_compiler_returns_exact_errors_for_all_scalar_helper_pairs",
+        "line": 107,
+        "assessment": "All three helpers x three scalar literals go through canonical manual-trigger Set/Finish workflow YAML and public compile_workflow. Helper expression is the entire quoted value. assert_compiler_mismatch requires total error count exactly1 and collected mismatch tuples exactly[(set.value,list,found)], so success, unrelated schema errors or additional errors cannot pass."
+      }
+    ],
+    "helpers": "infer and infer_reference propagate lexer/parser errors; there is no optional early success or discarded Result. YAML uses version/name/manual trigger, calculate Set producing answer, then done Finish consuming answer. Errors are compared through independent expected constants rather than invoking guard to form expectations.",
+    "style": "All eight new functions <=25 logical lines including signatures; maximum19. No forbidden unwrap/expect/panic/unsafe/todo/unimplemented/dbg or ignored tests added."
+  },
+  "logical_lines_including_signature": {
+    "infer": 4,
+    "infer_reference": 7,
+    "workflow_source": 4,
+    "assert_compiler_mismatch": 19,
+    "scalar_literals_return_exact_helper_type_mismatches": 10,
+    "known_scalar_references_return_exact_helper_type_mismatches": 14,
+    "deferred_and_compatible_references_keep_helper_result_types": 14,
+    "public_compiler_returns_exact_errors_for_all_scalar_helper_pairs": 4,
+    "production_check_scalar_arg": 10,
+    "production_check_helper_positions": 13
+  },
+  "native_evidence": {
+    "baseline": {
+      "directory": "/home/lewis/src/isoloated/velvet-ballistics-helper-tests-repair-luna/target/core-build-20261110/evidence",
+      "files_read": [
+        "helper-scalar-native.log",
+        "helper-scalar-native.exit",
+        "helper-typecheck-production-before.gitblob",
+        "helper-typecheck-production-after.gitblob"
+      ],
+      "run_id": "05ace00f-a34d-4134-bdd6-b8666d9f46a5",
+      "observed": "4 tests run:1 passed,3 failed,0 skipped; explicit exit receipt100. Literal/reference groups fail first i64 case with actual Ok(I64); compiler group fails total-error count0 versus1. Compatibility group passes.",
+      "limit": "Each failing matrix stops at its first assertion. This is three failing groups, not nine separately observed failing baseline cases."
+    },
+    "fixed": {
+      "directory": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence",
+      "files_read": [
+        "helper-scalar-fixed.log",
+        "helper-scalar-fixed-exit.txt"
+      ],
+      "run_id": "8d47fb24-ecf2-4ef4-bfcf-7139b72a608d",
+      "observed": "All four exact function names PASS; summary4 passed,0 skipped; explicit FIXED_NATIVE_EXIT=0. Successful loops execute their defined matrices without an early-Ok branch."
+    }
+  },
+  "limits": [
+    "CODE acceptance is only for the integrated bounded guard/test change at full0cb3ac11 pin. Prior df89 source-only report is preserved.",
+    "Separate independent TEST disposition remains required; this reviewer does not self-approve TEST or full phase/bead closure.",
+    "No fullCI/formal/whole-IR correctness claim. Text/Object master signature-versus-implementation conflict and other helper parity remain open.",
+    "No tests or native commands rerun here; raw supplied receipts inspected and matched to current frozen files, without independent historical binary attestation.",
+    "No DB/source/gate edits, validation workspace changes or agents; only authorized isolated review child and this report created."
+  ]
+}

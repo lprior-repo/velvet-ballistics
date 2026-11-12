@@ -1,0 +1,1423 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-8li6d/contract.md
+	.beads/vb-8li6d/evidence/FINAL-TEST-SUITE.json
+	.beads/vb-8li6d/evidence/FINAL-TEST-SUITE.stderr
+	.beads/vb-8li6d/evidence/FINAL-TEST-SUITE.stdout
+	.beads/vb-8li6d/evidence/FULL-TEST-SUITE.json
+	.beads/vb-8li6d/evidence/FULL-TEST-SUITE.stderr
+	.beads/vb-8li6d/evidence/FULL-TEST-SUITE.stdout
+	.beads/vb-8li6d/evidence/MUTATION-REGRESSION-TEST.json
+	.beads/vb-8li6d/evidence/MUTATION-REGRESSION-TEST.stderr
+	.beads/vb-8li6d/evidence/MUTATION-REGRESSION-TEST.stdout
+	.beads/vb-8li6d/evidence/RUSTFMT-CHECK-FINAL.json
+	.beads/vb-8li6d/evidence/RUSTFMT-CHECK-FINAL.stderr
+	.beads/vb-8li6d/evidence/RUSTFMT-CHECK-FINAL.stdout
+	.beads/vb-8li6d/evidence/RUSTFMT-CHECK.json
+	.beads/vb-8li6d/evidence/RUSTFMT-CHECK.stderr
+	.beads/vb-8li6d/evidence/RUSTFMT-CHECK.stdout
+	.beads/vb-8li6d/evidence/author-v2-mutation-db-preservation.json
+	.beads/vb-8li6d/evidence/v2-FINAL.json
+	.beads/vb-8li6d/evidence/v2-FINAL.stderr
+	.beads/vb-8li6d/evidence/v2-FINAL.stdout
+	.beads/vb-8li6d/evidence/v4-all-tests-final.json
+	.beads/vb-8li6d/evidence/v4-all-tests-final.stderr
+	.beads/vb-8li6d/evidence/v4-all-tests-final.stdout
+	.beads/vb-8li6d/evidence/v4-all-tests.json
+	.beads/vb-8li6d/evidence/v4-all-tests.stderr
+	.beads/vb-8li6d/evidence/v4-all-tests.stdout
+	.beads/vb-8li6d/evidence/v4-mutation-build.json
+	.beads/vb-8li6d/evidence/v4-mutation-build.stderr
+	.beads/vb-8li6d/evidence/v4-mutation-build.stdout
+	.beads/vb-8li6d/evidence/v4-mutation-test.json
+	.beads/vb-8li6d/evidence/v4-mutation-test.stderr
+	.beads/vb-8li6d/evidence/v4-mutation-test.stdout
+	.beads/vb-8li6d/evidence/v4-rustfmt-check.json
+	.beads/vb-8li6d/evidence/v4-rustfmt-check.stderr
+	.beads/vb-8li6d/evidence/v4-rustfmt-check.stdout
+	.beads/vb-8li6d/evidence/v4-rustfmt.json
+	.beads/vb-8li6d/evidence/v4-rustfmt.stderr
+	.beads/vb-8li6d/evidence/v4-rustfmt.stdout
+	.beads/vb-8li6d/evidence/vb-8li6d-1792672496.json
+	.beads/vb-8li6d/evidence/vb-8li6d-1792672496.stderr
+	.beads/vb-8li6d/evidence/vb-8li6d-1792672496.stdout
+	.beads/vb-8li6d/evidence/vb-8li6d-1792672509.json
+	.beads/vb-8li6d/evidence/vb-8li6d-1792672509.stderr
+	.beads/vb-8li6d/evidence/vb-8li6d-1792672509.stdout
+	.beads/vb-8li6d/evidence/vb-8li6d-20261022-073031-metadata.json
+	.beads/vb-8li6d/evidence/vb-8li6d-20261022-073031-stderr.log
+	.beads/vb-8li6d/evidence/vb-8li6d-20261022-073031-stdout.log
+	.beads/vb-8li6d/evidence/vb-8li6d-20261022-073053-metadata.json
+	.beads/vb-8li6d/evidence/vb-8li6d-20261022-073053-stderr.log
+	.beads/vb-8li6d/evidence/vb-8li6d-20261022-073053-stdout.log
+	.beads/vb-8li6d/evidence/vb-run-gate.py
+	.beads/vb-8li6d/final-handoff-v4.md
+	.beads/vb-8li6d/handoff.md
+	.beads/vb-8li6d/implementation-handoff.md
+	.beads/vb-aelha/current-v1-gaps.json
+	.beads/vb-aelha/current-v1-gaps.md
+	.beads/vb-ef0hg/evidence/TEST-V1-b.json
+	.beads/vb-ef0hg/evidence/TEST-V1-b.stderr
+	.beads/vb-ef0hg/evidence/TEST-V1-b.stdout
+	.beads/vb-ef0hg/evidence/TEST-V1-baseline.json
+	.beads/vb-ef0hg/evidence/TEST-V1-baseline.stderr
+	.beads/vb-ef0hg/evidence/TEST-V1-baseline.stdout
+	.beads/vb-ef0hg/evidence/TEST-V1-fmt.json
+	.beads/vb-ef0hg/evidence/TEST-V1-fmt.stderr
+	.beads/vb-ef0hg/evidence/TEST-V1-fmt.stdout
+	.beads/vb-ef0hg/evidence/TEST-V1-m.json
+	.beads/vb-ef0hg/evidence/TEST-V1-m.stderr
+	.beads/vb-ef0hg/evidence/TEST-V1-m.stdout
+	.beads/vb-ef0hg/evidence/TEST-V1-mutant.json
+	.beads/vb-ef0hg/evidence/TEST-V1-mutant.stderr
+	.beads/vb-ef0hg/evidence/TEST-V1-mutant.stdout
+	.beads/vb-ef0hg/evidence/TEST-V1-r.json
+	.beads/vb-ef0hg/evidence/TEST-V1-r.stderr
+	.beads/vb-ef0hg/evidence/TEST-V1-r.stdout
+	.beads/vb-ef0hg/test-suite-review.md
+	.beads/vb-hz0p6/code-review-v2.md
+	.beads/vb-hz0p6/code-review-v3.md
+	.beads/vb-hz0p6/code-review.md
+	.beads/vb-hz0p6/coordinator-review-audit.md
+	.beads/vb-hz0p6/evidence/CODE-V3-cli.json
+	.beads/vb-hz0p6/evidence/CODE-V3-cli.stderr
+	.beads/vb-hz0p6/evidence/CODE-V3-cli.stdout
+	.beads/vb-hz0p6/evidence/CODE-V3-fmt.json
+	.beads/vb-hz0p6/evidence/CODE-V3-fmt.stderr
+	.beads/vb-hz0p6/evidence/CODE-V3-fmt.stdout
+	.beads/vb-hz0p6/evidence/REVIEW-BASELINE.json
+	.beads/vb-hz0p6/evidence/REVIEW-BASELINE.stderr
+	.beads/vb-hz0p6/evidence/REVIEW-BASELINE.stdout
+	.beads/vb-hz0p6/evidence/REVIEW-FINAL.json
+	.beads/vb-hz0p6/evidence/REVIEW-FINAL.stderr
+	.beads/vb-hz0p6/evidence/REVIEW-FINAL.stdout
+	.beads/vb-hz0p6/evidence/REVIEW-MUTATION.json
+	.beads/vb-hz0p6/evidence/REVIEW-MUTATION.stderr
+	.beads/vb-hz0p6/evidence/REVIEW-MUTATION.stdout
+	.beads/vb-hz0p6/evidence/coordinator-formatted-cli-suite-v1.json
+	.beads/vb-hz0p6/evidence/coordinator-formatted-cli-suite-v1.stderr
+	.beads/vb-hz0p6/evidence/coordinator-formatted-cli-suite-v1.stdout
+	.beads/vb-hz0p6/evidence/coordinator-pinned-fmt-v1.json
+	.beads/vb-hz0p6/evidence/coordinator-pinned-fmt-v1.stderr
+	.beads/vb-hz0p6/evidence/coordinator-pinned-fmt-v1.stdout
+	.beads/vb-hz0p6/test-suite-review.md
+	.beads/vb-j3e3s/history/20261022T124705/bench_engine_step_once_save_const_single_transition.log
+	.beads/vb-j3e3s/history/20261022T124705/benchmark-evidence.jsonl
+	.beads/vb-j3e3s/history/20261022T124705/engine_run_until_blocked_budget_10_small_workflow.log
+	.beads/vb-j3e3s/history/20261022T124705/ipc_frame_decode.log
+	.beads/vb-j3e3s/history/20261022T125203/bench_engine_step_once_save_const_single_transition.log
+	.beads/vb-j3e3s/history/20261022T125203/benchmark-evidence.jsonl
+	.beads/vb-j3e3s/history/20261022T125203/engine_run_until_blocked_budget_10_small_workflow.log
+	.beads/vb-j3e3s/history/20261022T125203/ipc_frame_decode.log
+	.beads/vb-oxzbo/evidence/actual-collection-v2/gate/cargo-build-1792673143153446973.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/gate/cargo-build-1792673143153446973.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/gate/cargo-build-1792673143153446973.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/repository-heaptrack-manifest.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792673194361247501.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792673194361247501.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792673194361247501.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-print.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-print.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-print.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-record.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-record.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-record.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-zstd.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-zstd.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792673196715017584.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792673196715017584.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792673196715017584.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792673217856351199.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792673217856351199.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792673217856351199.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-print.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-print.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-print.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-record.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-record.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-record.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-zstd.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-zstd.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792673220154341239.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792673220154341239.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792673220154341239.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-criterion-1792673202390222169.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-criterion-1792673202390222169.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-criterion-1792673202390222169.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-print.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-print.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-print.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-record.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-record.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-record.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-zstd.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-zstd.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-perf-1792673205222573851.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-perf-1792673205222573851.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-perf-1792673205222573851.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/heaptrack-manifest.json
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/heaptrack/ht-ipc_frame_decode.zst
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/perf/bench_engine_step_once_save_const_single_transition.csv
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/perf/engine_run_until_blocked_budget_10_small_workflow.csv
+	.beads/vb-oxzbo/evidence/actual-collection-v2/scratch/perf/ipc_frame_decode.csv
+	.beads/vb-oxzbo/evidence/actual-collection-v3/gate/cargo-build-1792673491279771219.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/gate/cargo-build-1792673491279771219.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/gate/cargo-build-1792673491279771219.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/repository-heaptrack-manifest.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/index.html
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/violin.svg
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792673491396940491.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792673491396940491.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792673491396940491.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-print.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-print.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-print.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-record.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-record.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-record.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-zstd.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-zstd.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792673493784790255.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792673493784790255.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792673493784790255.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792673515408235639.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792673515408235639.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792673515408235639.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-print.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-print.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-print.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-record.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-record.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-record.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-zstd.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-zstd.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792673517813812708.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792673517813812708.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792673517813812708.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-criterion-1792673499624468245.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-criterion-1792673499624468245.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-criterion-1792673499624468245.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-print.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-print.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-print.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-record.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-record.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-record.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-zstd.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-zstd.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-perf-1792673502509197891.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-perf-1792673502509197891.stderr
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-perf-1792673502509197891.stdout
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/heaptrack-manifest.json
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/heaptrack/ht-ipc_frame_decode.zst
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/perf/bench_engine_step_once_save_const_single_transition.csv
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/perf/engine_run_until_blocked_budget_10_small_workflow.csv
+	.beads/vb-oxzbo/evidence/actual-collection-v3/scratch/perf/ipc_frame_decode.csv
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v1.json
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v1.stderr
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v1.stdout
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v2.json
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v2.stderr
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v2.stdout
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v3.json
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v3.stderr
+	.beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v3.stdout
+	.beads/vb-oxzbo/evidence/decompressed-trace-preservation-v1.json
+	.beads/vb-oxzbo/evidence/formatted-cli-canonical-static-v1.json
+	.beads/vb-oxzbo/evidence/local-model-provenance-v1.json
+	.beads/vb-oxzbo/evidence/slice-acceptance-scope-v1.json
+	crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs
+	evidence/benchmark-evidence.jsonl
+	evidence/benchmark-logs/bench_engine_step_once_save_const_single_transition.log
+	evidence/benchmark-logs/engine_run_until_blocked_budget_10_small_workflow.log
+	evidence/benchmark-logs/ipc_frame_decode.log
+▮▮▮▮ Building action graph
+Action count: 18
+Requested targets: 4
+	:fmt
+	:source-length
+	:lint-src
+	:benchmark-regression-policy
+Resolved targets: 4
+	velvet-ballistics:benchmark-regression-policy
+	velvet-ballistics:source-length
+	velvet-ballistics:lint-src
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:workspace-assertions (109ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:fmt (6369faca)
+▮▮▮▮ velvet-ballistics:panic-surface (1d6c0af6)
+▮▮▮▮ velvet-ballistics:fmt (1s 515ms, 6369faca)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (d5b85340)
+              velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing
+              velvet-ballistics:panic-surface | CommitSHA: 15d152e831b9e106e6c880b5a2a2531cb6459921
+              velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+              velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+              velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+              velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+              velvet-ballistics:panic-surface | NoViolationFound
+              velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (3s 450ms, 1d6c0af6)
+▮▮▮▮ velvet-ballistics:unsafe-audit (1693680f)
+▮▮▮▮ velvet-ballistics:unsafe-audit (11ms, 1693680f)
+▮▮▮▮ velvet-ballistics:test-integrity (9e24d009)
+             velvet-ballistics:test-integrity | JUSTIFIED|IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|// Relaxed admission skips artifact loading, but submit_artifact still|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|// (typed evidence contract supersedes "relaxed skips checksum").|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_cli/tests/admission_evidence_integration/chunk_003.rs|removed_exact=1 added_exact=4 added_weak=1|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestFile|crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs|deleted file contained tests or test assertions|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestDeclaration|crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs|removed_declarations=8 added_declarations=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs|removed_exact=38 added_exact=0 added_weak=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestDeclaration|crates/vb_compile/tests/digest_duplicate_parity.rs|removed_declarations=4 added_declarations=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_compile/tests/digest_duplicate_parity.rs|removed_exact=4 added_exact=0 added_weak=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestFile|crates/vb_compile/tests/digest_duplicate_parity.rs|deleted file contained tests or test assertions|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_compile/tests/v1_primitive_lowering.rs|removed_exact=1 added_exact=0 added_weak=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_expr/src/expr_bytecode/tests/expr_bytecode_tests.rs|removed_exact=0 added_exact=49 added_weak=2|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_runtime/src/admission/tests.rs|removed_exact=0 added_exact=1 added_weak=1|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestDeclaration|crates/vb_runtime/src/shard/lifecycle/chunk_001.rs|removed_declarations=5 added_declarations=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs|removed_exact=80 added_exact=80 added_weak=14|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_runtime/src/shard/tests/submission_parity.rs|removed_exact=0 added_exact=13 added_weak=3|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs|removed_exact=0 added_exact=12 added_weak=1|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_runtime/tests/vb_4qog3_independent_review.rs|removed_exact=0 added_exact=4 added_weak=3|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestDeclaration|crates/vb_runtime/tests/vb_wave16_mqa.rs|removed_declarations=1 added_declarations=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/vb_storage/src/inputs/tests.rs|removed_exact=0 added_exact=5 added_weak=1|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestDeclaration|crates/vb_storage/src/types/flux_sequence.rs|removed_declarations=15 added_declarations=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/velvet_ballistics/tests/input_mapping_boundary.rs|removed_exact=0 added_exact=4 added_weak=1|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/workspace_tests/tests/artifact_evidence_support/schema3_cases.rs|removed_exact=0 added_exact=8 added_weak=1|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/workspace_tests/tests/cli/submit_input_boundary.rs|removed_exact=0 added_exact=29 added_weak=2|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/workspace_tests/tests/cli/submit_retained_inputs.rs|removed_exact=0 added_exact=7 added_weak=3|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/workspace_tests/tests/cli/verify_budget_profiles.rs|removed_exact=0 added_exact=8 added_weak=2|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestDeclaration|crates/workspace_tests/tests/runtime_version_barrier_tests.rs|removed_declarations=12 added_declarations=3|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs|removed_exact=18 added_exact=12 added_weak=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|fuzz/fuzz_targets/kind_validation.rs|removed_exact=2 added_exact=0 added_weak=0|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|WeakenedAssertion|scripts/check-test-integrity.rs|removed_exact=5 added_exact=7 added_weak=5|bead=vb-vzyac
+             velvet-ballistics:test-integrity | JUSTIFIED|DeletedTestDeclaration|xtask/src/benchmark_policy.rs|removed_declarations=6 added_declarations=0|bead=vb-i8o2v
+             velvet-ballistics:test-integrity | test integrity: PASS base=da633fe0bbde9e414173d5f7aabe314a37f8752d
+▮▮▮▮ velvet-ballistics:test-integrity (3s 264ms, 9e24d009)
+▮▮▮▮ velvet-ballistics:nightly-feature-gate (14bdaad7)
+▮▮▮▮ velvet-ballistics:nightly-feature-gate (5s 387ms, 14bdaad7)
+▮▮▮▮ velvet-ballistics:agent-cli-contract (95119150)
+▮▮▮▮ velvet-ballistics:agent-cli-contract (39ms, 95119150)
+▮▮▮▮ velvet-ballistics:beads-server-mode (b9261487)
+          velvet-ballistics:beads-server-mode | beads server-mode check passed
+▮▮▮▮ velvet-ballistics:beads-server-mode (7ms, b9261487)
+▮▮▮▮ velvet-ballistics:hot-cold-forbidden-apis (c0d431a3)
+    velvet-ballistics:hot-cold-forbidden-apis | FixturePass: hot/cold forbidden API scanner
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/contract.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/error.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/journal.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/action/journal_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/lifecycle_error.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/name.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/payload.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/registry.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/action/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/ticket.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action_pack.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/artifact.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/budget.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget/tests_and_verification.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget/vb_qi37_2_4_state8_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget_vb_8mdp_7_prop_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/capability.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/contract_encoding.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/contract_encoding/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/diagnostic.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/diagnostic/tests_and_verification.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/choose.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/error_routing.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/accessors.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/core.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/expr_eval/kani_div_zero.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/expr_eval/kani_stack.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/ops.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/ops_text_list.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/stack.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/expr_eval/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/node_helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/object_list.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/run_loop.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/signals.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/step.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/step/action_lifecycle.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/test_support.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_action_resume.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_action_resume_tickets.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_actions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_basic.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_state.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_value_nodes.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_accessor.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_basic.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_budget.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_capability_behavior.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_choose.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_eval.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_frame_behavior.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_object_list_behavior.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_signals_behavior.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_step_behavior.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_taint_propagation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_workflow.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/validate.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/validate/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/validate/tests/red_phase_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/error.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/errors.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/errors/action_lifecycle_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/errors/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/checkpoint.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_001_construct.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_002_accessors.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_003_slots_taints.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_004_state_machines.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/initialized_slot_entry.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_f1_exhaustive.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_f2345_transitions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_parallel.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_pc_proofs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_slot_proofs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/tests_and_verification.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/kani_id_arbitrary.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/kani_id_bounds.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/kani_shard_index_bounds.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/ids/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/ids/parts/chunk_001_custom_types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/tests_and_verification.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_determinism.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_diagnostic_constructor.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_from_str_compat.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_is_supported_code.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_registry_bijection.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_registry_category.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_reverse_lookup.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_serde_roundtrip.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_span_try_new.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_symbolic_code_validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_zero_alloc.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_budget_arithmetic_refinement.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_capability_harnesses.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_expr_bound.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_idempotency_gates.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_index_access.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_resource_budget_bounded.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget_one.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget_try_take_arbitrary.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget_zero.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_harnesses.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_state_transition.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_taint.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_taint_propagation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_vbjpq733_proofs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_workflow_arbitrary.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_workflow_budget_generators.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_workflow_budget_harnesses.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/lib.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/limits.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/limits/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/policy.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/envelope_header.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/envelope_header/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/resource_budget.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/resource_budget/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/step_state.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/step_state/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/taint.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/taint/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization/cargo_kernel.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization/verus_kernel.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/choose/kani/kani_choose_bool_condition.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/choose/kani/kani_choose_no_otherwise.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/choose/kani/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/choose/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/kani_harnesses.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/ops.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/ops/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/step.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/step_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/shard/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/shard/partition/kani_key_range_properties.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/shard/partition/kani_partition_plan_safety.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/shard/partition/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/span.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/span/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/time.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/blobs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/checkpoint.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value_store/extended_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/lists.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/objects.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/symbols.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value_store/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value_store/tests_and_verification.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/kani/kani_choose_replay.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/kani/kani_parallel_in_flight.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/kani/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/workflow/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/workflow/proptest_collect_budget.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/workflow/proptest_collect_traversal.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/workflow/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/action.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/action/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/action_queue.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/artifact_envelope_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/evidence_test_support.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_002_records.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_003_stores.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_004_validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_006_admit_budget.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/registered_verification.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/counters.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/counters/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/durability_matrix.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/durability_matrix/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/action.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/actions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/loop_step.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/recovery.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_advanced.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_basics.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_branch.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_dwa.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_evidence.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_extras.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_regression.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/common.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/timers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/transitions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/budget.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/dispatch.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/dispatch/action_signal.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/dispatch/compound.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/handlers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/handlers_compound.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/handlers_suspend.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/signals.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/execute_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/property_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/retry_math.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/retry_math/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/signal.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/conversions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/diagnostics.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/display.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality/admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality/core.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality/unit.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_basic.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_conversion_refinement.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_diagnostics.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_diagnostics/proptest_vb_edvbj_diagnostic_code.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_equality.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/for_each_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/frame_pool.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/frame_pool/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/idempotency.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/idempotency/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/ipc_refinement.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal/chunk_001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal/chunk_002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal/chunk_003.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_003.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_004.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/proptest_vb_edvbj_all_21_variants.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/proptest_vb_edvbj_resumed_replay.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_admission_store.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_capability_harnesses.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_engine_yaml_admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_shard_command_queue.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_trace_ring.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vb_edvbj_propagation_strict_gate.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vb_edvbj_storage_event_no_fabricate.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vt2f_runtime_facade.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/lib.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/action_completion_cancel.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/bounded_queue.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/journal_writer_queue.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/shutdown_drain.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/timer_fired_cancel.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/models/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/models/sync.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/collect.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/collect/checkpoint.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/collect/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/for_each.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/for_each/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/reduce.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/reduce/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/reentry_proofs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/reentry_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/repeat.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/repeat/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/retry.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/retry/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/together.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/wait_ask.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/frame.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/full_ask_schedule.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/pending.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/product.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/input_binding.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/product.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/recovery/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/retry.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/retry/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/run_checkpoint.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/run_checkpoint_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/runtime.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/runtime/registered_executor.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/runtime/shutdown.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime/shutdown_failure_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime/shutdown_fixtures.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime/shutdown_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/ask_authority.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/completion_watermark.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/contract_validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/directive.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/helpers/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_003.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_004.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/impl_tests/chunk_001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/impl_tests/chunk_002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_drive_apply.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_000_ask_answer.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_001_boundary_control.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_002_drive_core.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_003_drive_apply.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_003.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_002_failure_preflight.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_005.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_005_drive_apply.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_005_prepare.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/execution_binding.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/flux_cancel_kill.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/registered_completion.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_003.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_005.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_006.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_007.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_008.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_010.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/recovery_context_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/snapshot.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/snapshot_chunks/chunk_001_boundary_types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/snapshot_chunks/chunk_002_shard_impl.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_003.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_004.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_005.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_006.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_007.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_008.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_009.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_010.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_011.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_012.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_013.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_014.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_016.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_017.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_018.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_019.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_020.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_021.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_022.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_023.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_024.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_025.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_026.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_027.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_028.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_029.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_030.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_031.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/submission_parity.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/test_fixtures.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/tick_shard_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_015.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/timer_wheel.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/transitions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/transitions_cleanup.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/taint.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/test_harness.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/together_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/trace.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/trace/event.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/trace/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/flux/vb_edvbj_diagnostic_code_refinement.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/flux/vb_sxkz6_shard_for_run.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/flux/vb_y9d3v_action_ticket_refinements.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_admission_ordering.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_ask_answer_lifecycle.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_engine_signals.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_retry_math.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_sxkz6_shard_for_run.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_together_ordering.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/proptest/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/proptest/sxkz6_proptest.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/verus/vb_sxkz6_shard_for_run.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/yaml_e2e_admission_matrix.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/evidence_test_support.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/verification.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/verification/executor_profile.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/artifact_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/artifacts.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/action_index.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/append_event.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/commit.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/inputs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/putters.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_append_event.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part1.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part2.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part3.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part4.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_construction.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_putters_a.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_putters_b.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_strict.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/batch/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/writer_queue.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/binary.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/binary/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/blob_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/blobs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/envelope.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/flux_validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/header.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/kind_parity.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/payload.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests/admission_receipt.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests/kill_kind_admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests/replay_integrity.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec_miri_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/constants.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/edge_case_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/artifact.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/codes.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/conversions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/key_decode.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/warnings.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/error_code_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/error_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/event.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_category.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_compat.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_action.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_run.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_step.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_wait_ask.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_action.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_run.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_step.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_wait.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_defaults.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_action.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_run.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_step.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_wait_ask.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_tags.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/authority.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/catalog.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/conformance.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/error.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/packed.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/receipt.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/register.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/header_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/headers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/hydrate_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/index_maintenance_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/index_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/indexes.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/digest.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/inputs/receipt_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/submission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/inputs/submission_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/inputs/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/append.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/batch.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/core.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/incident.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/injection.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/internal.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/journal_event_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/parse.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/readonly.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/regression_tests_vb_1rqz7.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/replay.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/source.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_admission.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_codec.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_digest_checks_vb_2bzz.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_hydrate_proofs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_postcard_envelope_wire.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_crc.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_kind.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_magic.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_payload_len.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_schema.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_typed_partitioned_ids.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_u8gi_storage_decode_order.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_u8gi_storage_numeric_fields.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_u8gi_storage_payload_bounds.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps001.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps002.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps003.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps004.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps005.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps006.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps007.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps008.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps009.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vbjpq733_proofs.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/keys.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/keys/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/lib.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/po010_proptests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/preview.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/preview/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/process_lock.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/process_lock_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/proptest_storage.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/proptests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/public_api.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/batch.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/queue/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/flush.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/queue/writer/flush_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/group.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/shutdown.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/stage.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/record_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/records.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recover_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/flux_replay.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/hydrate.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/hydrate_support.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/kani.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/recover.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/recovery_unit_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/attempt.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/core.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/core/full.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/observation/normalize.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/accumulator.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/apply.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/apply/envelope.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/derive.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/dimensions.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/hydrate.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/replay/summary/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/vb_h6ix_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery_type_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/replay_core_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/security_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/slot_extra.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/snapshot_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/snapshots.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/test_helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/trimming/helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/trimming/logic.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/trimming/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/trimming/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/type_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/types/flux_sequence.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/types/flux_sequence/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/action_output.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/bounded.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/client.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/client/connection.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/client/error.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/client/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/codec.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/commands.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/constants.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/error.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame/codec.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame/io.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/frame/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame/validate.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame_types.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/frame_types/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/ids.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/ids/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/ingress.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/ingress/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_flag_validation.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_ipc_decode_order.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_ipc_header.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_ipc_header_rejects_oversize.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/lib.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/metrics.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/metrics/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/payloads.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/payloads/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/queue/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/queue/tests/array_queue_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/connection_io.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/dispatch.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/error.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers/command.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers/event.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers/session.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/handlers/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/handlers_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/helpers.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/impl_.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/impl_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/mod.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/reactor.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/reactor_tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/response_io.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/ticket.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/trace.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/tests.rs
+    velvet-ballistics:hot-cold-forbidden-apis | ScanSummary|hot_crates=vb_core,vb_runtime,vb_storage,vb_ipc|classified=680|violations=0|justified=0
+▮▮▮▮ velvet-ballistics:hot-cold-forbidden-apis (234ms, c0d431a3)
+▮▮▮▮ velvet-ballistics:check (078241a7)
+▮▮▮▮ velvet-ballistics:check (421ms, 078241a7)
+▮▮▮▮ velvet-ballistics:bench-build (ead7068b)
+▮▮▮▮ velvet-ballistics:bench-build (104ms, ead7068b)
+▮▮▮▮ velvet-ballistics:benchmark-regression-policy (df995dfa)
+velvet-ballistics:benchmark-regression-policy | BenchmarkRegressionPolicyOk budget=/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/contracts/perf-budget.yaml evidence=/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/evidence/benchmark-evidence.jsonl claims=3
+▮▮▮▮ velvet-ballistics:benchmark-regression-policy (128ms, df995dfa)
+   velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+   velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+   velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+   velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+   velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+   velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+   velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (26s 303ms, d5b85340)
+▮▮▮▮ velvet-ballistics:lint-src (f0f5e09e)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, 791bc1fb)
+▮▮▮▮ velvet-ballistics:source-length (1e4ea23d)
+▮▮▮▮ velvet-ballistics:lint-src (185ms, f0f5e09e)
+▮▮▮▮ velvet-ballistics:source-length (4s 24ms, 1e4ea23d)
+
+Tasks: 16 completed
+ Time: 34s 612ms
+

@@ -40,9 +40,9 @@ fn fixture_parts() -> Result<CompiledWorkflow, String> {
             },
         ),
         fin(2, 1),
-        fin(3, 1),
+        fin(3, 0),
     ];
-    mkwfc(nodes, 3, vec![])
+    mkwfc(nodes, 3, vec![], &[0])
 }
 
 #[test]

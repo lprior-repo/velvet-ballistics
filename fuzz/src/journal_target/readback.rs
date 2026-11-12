@@ -109,7 +109,9 @@ fn one_node_parts(name: &'static str, digest: [u8; 32]) -> vb_core::WorkflowPart
         name: Box::<str>::from(name),
         digest: vb_core::WorkflowDigest::from_bytes(digest),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::new([vb_core::CompiledNode {
+            retry: None,
             id: vb_core::StepIdx::ZERO,
             output: vb_core::workflow::NodeOutput::Slot(vb_core::SlotIdx::ZERO),
             routing: vb_core::workflow::NodeRouting {

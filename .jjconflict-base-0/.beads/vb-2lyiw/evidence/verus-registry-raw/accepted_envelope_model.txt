@@ -1,0 +1,20 @@
+[verus] verus --crate-type=lib verification/verus/accepted_envelope_model.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/extern_accepted_envelope.rs:58:17
+   |
+58 | #[derive(Debug, Clone, PartialEq, Eq)]
+   |                 ^^^^^
+
+verification results:: 10 verified, 0 errors
+warning: 1 warning emitted
+
+warning: function `SPEC_REQUIRED_GATE_COUNT` should have a snake case name
+  --> verification/verus/accepted_envelope_model.rs:39:18
+   |
+39 | pub open spec fn SPEC_REQUIRED_GATE_COUNT() -> int { 15 }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `spec_required_gate_count`
+   |
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: 1 warning emitted
+

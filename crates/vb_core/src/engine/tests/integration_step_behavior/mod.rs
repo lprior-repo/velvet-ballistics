@@ -3,7 +3,7 @@
 //! state transitions, idempotency, budget tracking, invalid transitions,
 //! action retry, edge cases, and Kani boundedness harnesses.
 
-use super::{ensure_equal, test_frame, test_store};
+use super::{ensure_equal, external_input, test_frame, test_store};
 use crate::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionJournalEvent, ActionName,
     ActionOutputReady, ActionTicket, Idempotency, RetryPolicy, RetrySafety, SideEffect,
@@ -25,7 +25,8 @@ use crate::workflow::{
 fn tiny_workflow_parts(name: &'static str, value: ConstValue) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: vec![
@@ -96,6 +97,7 @@ fn step_transitions_pending_to_running_then_succeeded_on_completion() -> Result<
 fn all_steps_in_chain_transition_correctly_through_completion() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("chain_tx"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
@@ -199,7 +201,8 @@ fn signal_finished_maps_step_state_to_succeeded() -> Result<(), String> {
 fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("do_finish"),
         digest: WorkflowDigest::from_bytes([0x1A; 32]),
         nodes: vec![
@@ -411,7 +414,8 @@ fn resume_action_completion_journal_has_completed_variant_with_correct_fields() 
 fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("fail_no_handler"),
         digest: WorkflowDigest::from_bytes([0x2B; 32]),
         nodes: vec![node(
@@ -467,7 +471,8 @@ fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(),
 fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("fail_journal"),
         digest: WorkflowDigest::from_bytes([0x2C; 32]),
         nodes: vec![node(
@@ -535,7 +540,8 @@ fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Resul
 fn resume_action_failure_with_retry_policy_preserves_policy_in_journal() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("fail_retry"),
         digest: WorkflowDigest::from_bytes([0x2D; 32]),
         nodes: vec![node(
@@ -846,6 +852,7 @@ fn succeeded_to_running_rejected_in_run_frame() -> Result<(), String> {
 fn empty_workflow_parts_rejected_at_try_from_parts() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
@@ -897,6 +904,7 @@ fn run_frame_creation_rejects_zero_step_count() -> Result<(), String> {
 fn workflow_compile_rejects_entry_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("bad_entry"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
@@ -931,6 +939,7 @@ fn workflow_compile_rejects_entry_out_of_bounds() -> Result<(), String> {
 fn jump_to_out_of_bounds_target_rejected_at_compilation() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("bad_jump"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
@@ -1002,7 +1011,8 @@ fn resume_action_completion_nonexistent_step_returns_invalid_pc() -> Result<(), 
 fn resume_action_completion_missing_next_returns_error() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("do_no_next"),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
         nodes: vec![node(
@@ -1105,6 +1115,7 @@ mod kani_boundedness {
         let slot_val = kani::any::<i64>();
         let plan = match CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("kani_nop_finish"),
             digest: WorkflowDigest::from_bytes([0x10; 32]),
@@ -1156,6 +1167,7 @@ mod kani_boundedness {
     fn resume_action_completion_panic_freedom_bounded() {
         let plan = match CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("kani_resume"),
             digest: WorkflowDigest::from_bytes([0x20; 32]),

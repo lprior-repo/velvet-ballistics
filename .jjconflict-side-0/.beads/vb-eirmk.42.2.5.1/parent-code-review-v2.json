@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "review_role": "independent CODE contract and behavioral-plan readiness",
+  "bead": "vb-eirmk.42.2.5",
+  "verdict": "PASS",
+  "status": "Corrected V2 contract/test plan technically ready for the scoped implementation, subject to the existing exact dependency integration fence",
+  "review_workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "git_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "jj_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "source_pin": "be64456d5e5deb93e5a12fe7a1252831098a2296",
+  "draft_source_baseline": "2cbd7084c9bdd614c5bdebab6d520fa8c85bc71b",
+  "artifact_sha256": "1040f380ca7e10989187d312fabc6cf5d98d6a3c0dd6e5e45e3cc9d011a61720",
+  "revision_manifest": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/runtime-bound-symbol-contract-revision-v2.json",
+  "reviewed_artifacts": {
+    "contract": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/.beads/vb-eirmk.42.2.5/contract.md",
+      "sha256": "54d28cbe2e69ff608ef3adac9da6a4020dea28b3b33f980ab8e7b0c8c9b637ae"
+    },
+    "test_plan": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/.beads/vb-eirmk.42.2.5/test-plan.md",
+      "sha256": "10c897e3a62bb4614c144be0d236af5bb4e54572a2da08b9f3ff429309396bb4"
+    }
+  },
+  "previous_review": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/runtime-bound-symbol-contract-code-review-v1.json",
+    "sha256": "57c575d146fa1ceeff951aac76e4901549050dd196097fe79767a3b516acdaa4",
+    "preserved": true
+  },
+  "governing_contract_sha256": "81eb944a02f07359636ad4686d236111b89e36f672f8e6d2de90a54bbcd8a2e8",
+  "findings": [],
+  "finding_dispositions": [
+    {
+      "id": "R1",
+      "disposition": "fixed_with_evidence",
+      "contract_line": 49,
+      "evidence": "Actual V2 text requires private structure-only factoring preserving every existing check/order; raw retry handling calls structure -> full historical admission -> prefix before mutations. Public context-free validate_against remains structure+prefix, and restore/capture remain complete; no public signature or DTO change.",
+      "mandatory_oracles": [
+        "Raw Unverified RecoverRunCommand::new(...).with_retry_checkpoint(...) with matching identities/nested state but wrong historical Pinned digest + wrong compiler prefix0 returns exactly RecoveryCannotResume { reason: \"admission_policy_pin_mismatch\" }.",
+        "Fresh paired fixture changes only historical pin to valid and keeps wrong prefix0; exact Recovery text is \"retry checkpoint validation failed: checkpoint compiler symbol prefix mismatch at index 0\".",
+        "Wrong checkpoint workflow digest plus bad pin/prefix retains exact workflow mismatch Recovery text.",
+        "Malformed nested store plus bad pin/prefix retains exact nested validation Recovery text, with a direct structural-validity check to prevent masking."
+      ],
+      "source_facts_rechecked": [
+        "run_checkpoint.rs identity/nested validation does not itself check historical pin.",
+        "recovered_admission.rs validates attached checkpoint's historical evidence after original structural validation; command-level Unverified identity checks do not replace that.",
+        "recovery/full/admission.rs:77-96 returns RecoveryCannotResume(\"admission_policy_pin_mismatch\") for a mismatched Pinned digest."
+      ],
+      "atomicity": "Each actual-handler negative captures complete BEFORE journal/counters/run/terminal/sequence/authority/boundary/gate/pool and retained input/DTO state. A public durable-chain failure cannot substitute for these tests."
+    },
+    {
+      "id": "R2",
+      "disposition": "fixed_with_evidence",
+      "contract_line": 61,
+      "evidence": "Corrected manual PartialEq/Eq fact; exact boxed nested equality, explicit Display, actual Error::source chain and all diagnostic/symbolic/runtime dispatches are scoped. All eleven current metadata variants have exhaustive explicit mapping; no new registry entry or stored-cause replacement.",
+      "verified_display_literals": {
+        "outer_metadata": "runtime input symbol binding failed: source metadata validation failed",
+        "outer_core": "runtime input symbol binding failed: value store operation failed",
+        "metadata_leaf": "source symbol count 1000001 exceeds the arena limit 1000000",
+        "core_leaf": "budget exceeded: max_slots limit was 3"
+      },
+      "source_chain": "New outer returns actual boxed InputSymbolBindingError; its existing #[source] variant returns exact SourceMetadataError or CoreError. Selected TooManySymbols and BudgetExceeded leaves have no further source.",
+      "equality_oracles": "Reflexivity, clones, independently equal boxes, different complete nested fields/variants, same-code unequal causes, and new binding wrapper unequal to legacy RuntimeError::Core are mandatory.",
+      "legacy_preservation": "New Core branch delegates directly to CoreError; it does not route through legacy RuntimeError::Core. Existing Core wrapper special queue/storage diagnostic/runtime projections and historical symbolic fallback are explicitly retained."
+    },
+    {
+      "id": "R3",
+      "disposition": "fixed_with_evidence",
+      "contract_line": 29,
+      "evidence": "Once-per-consuming-attempt is now an explicit CODE caller/call-graph obligation: zero composition from pristine prefix/read-only validation; one per successful V2 fresh/owned/input-only-cold preparation; zero for V1 or full prepared stores. The false observational mutant-kill promise is removed.",
+      "behavioral_requirement_retained": "Full-store checkpoint with distinct live duplicate-string tail IDs/field keys remains mandatory; recomposition there changes real identity and is observable.",
+      "not_claimed": "No claim that final-state equality proves redundant fresh helper invocation count; no test-only instrumentation or new execution API required."
+    }
+  ],
+  "error_policy_review": {
+    "existing_registry_entries_verified": {
+      "BUDGET_EXCEEDED": "0x1406",
+      "INTERNAL_INVARIANT_VIOLATION": "0x1309",
+      "ALLOCATION_FAILED": "0x1303",
+      "INVALID_COMPILED_WORKFLOW_CORE": "0x1307",
+      "SYMBOL_OUT_OF_BOUNDS": "0x1311",
+      "CORE_QUEUE_FULL": "0x1301",
+      "STORAGE_JOURNAL_APPEND_FAILED": "0x2008"
+    },
+    "unregistered_name": "STORAGE_JOURNAL_APPEND",
+    "unregistered_lookup_result": "SymbolicCode::from_static returns None; existing RuntimeError storage helper falls back to INTERNAL_INVARIANT_VIOLATION.",
+    "metadata_projection": [
+      {
+        "variants": [
+          "TooManySymbols",
+          "SymbolTooLong"
+        ],
+        "numeric": "0x1406",
+        "symbolic": "BUDGET_EXCEEDED",
+        "runtime": "BUDGET_EXCEEDED"
+      },
+      {
+        "variants": [
+          "SymbolIndexOverflow",
+          "SymbolBytesOverflow"
+        ],
+        "numeric": "0x1309",
+        "symbolic": "INTERNAL_INVARIANT_VIOLATION",
+        "runtime": "INTERNAL_INVARIANT_VIOLATION"
+      },
+      {
+        "variants": [
+          "ValidationAllocationFailed"
+        ],
+        "numeric": "0x1303",
+        "symbolic": "ALLOCATION_FAILED",
+        "runtime": null
+      },
+      {
+        "variants": [
+          "DuplicateSymbol",
+          "TooManyRequirements",
+          "RequirementNameOutOfBounds",
+          "EmptyRequirementName",
+          "RequirementsNotStrictlyOrdered",
+          "SymbolCountMismatch"
+        ],
+        "numeric": "0x1307",
+        "symbolic": "INVALID_COMPILED_WORKFLOW_CORE",
+        "runtime": "INVALID_COMPILED_WORKFLOW"
+      }
+    ],
+    "new_core_delegation_controls": [
+      {
+        "cause": "BudgetExceeded",
+        "numeric": "0x1406",
+        "symbolic": "BUDGET_EXCEEDED",
+        "runtime": "BUDGET_EXCEEDED"
+      },
+      {
+        "cause": "SymbolOutOfBounds",
+        "numeric": "0x1311",
+        "symbolic": "SYMBOL_OUT_OF_BOUNDS",
+        "runtime": null
+      },
+      {
+        "cause": "QueueFull",
+        "numeric": "0x1301",
+        "symbolic": "CORE_QUEUE_FULL",
+        "runtime": "QUEUE_FULL"
+      }
+    ],
+    "legacy_RuntimeError_Core_controls": [
+      {
+        "cause": "BudgetExceeded",
+        "numeric": "0x2008",
+        "symbolic": "INTERNAL_INVARIANT_VIOLATION",
+        "runtime": "STORAGE_ERROR"
+      },
+      {
+        "cause": "QueueFull",
+        "numeric": "0x2001",
+        "symbolic": "INTERNAL_INVARIANT_VIOLATION",
+        "runtime": "QUEUE_FULL"
+      }
+    ],
+    "no_old_mapping_retuning": true,
+    "implementation_test_requirement": "Literal expected codes, source downcasts and exact Display strings are specified as future tests; this read-only review did not execute new behavior."
+  },
+  "scope_preservation": {
+    "original_public_scenario_rows": 14,
+    "dropped": [],
+    "added_raw_retry_scenario_rows": 3,
+    "old_full_store_tail_identity_and_cold_Fjall_requirements_retained": true,
+    "phase_distinction": "Original owned input records are validated then composed; full prepared stores are prefix-checked without remapping; journal SlotWrites keep runtime IDs.",
+    "direct_V2_handles": "Exact UnsupportedOperation { operation: \"bound_input_requires_owned_store\" } remains before publication.",
+    "cold_wrapper": "Existing RuntimeError::Recovery remains string-valued, using the specified composition/prefix texts. No fabricated typed source is claimed there.",
+    "caps": "Keep original input configured cap, reject combined exhaustion before frame/publication, do not reconstruct OwnedRootBundle from already-prepared runtime arena.",
+    "new_non_wire_surface": "Only the scoped RuntimeError::InputSymbolBinding boxed variant, planned prefix error and crate-private helpers; no new public execution method, persisted DTO/version, registry entry, dependency or gate change."
+  },
+  "source_hash_manifest": {
+    "crates/vb_runtime/src/run_checkpoint.rs": "6aafce990bfe548dec38e91e237619019c61a9cb2520c163696a923110f91f1c",
+    "crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs": "055fffb445451a0277a0fddd8ab24481471eb9464bd6bfdaf6d271ca99021e72",
+    "crates/vb_runtime/src/recovery/full/admission.rs": "ea62ed73e761888806e7c953a416e04b40246fb781a77b5fd64db0ff2bc79f4f",
+    "crates/vb_runtime/src/error/equality.rs": "47c20ac0dca4b2a3f873dce46703e49403cca0422c4df6270ef7f162c66f3197",
+    "crates/vb_runtime/src/error/equality/core.rs": "c2260230e0c56c8d68ba51ae4c148d4df293bc25832e16fa165aaa0dd000b733",
+    "crates/vb_runtime/src/error/display.rs": "35dc643411ac1f63d8b933fb8e33933252743187cad464c438076b9726ae0102",
+    "crates/vb_runtime/src/error/diagnostics.rs": "4e9c5a11c1c2bfd6555c9dbbd9a18ca3e462c2eebc6a6948a8f3f187bec0a5e7",
+    "crates/vb_core/src/errors.rs": "1cd6c4a2fa00ad3983ec0803002bb9958f72c2124d6337f324e888bf714edf0f",
+    "crates/vb_core/src/diagnostic.rs": "145586dd0e56dfe0e467da812fef2635346125f4389a80c6a3f6fbd147849f14",
+    "crates/vb_core/src/value_store/symbol_inputs.rs": "fdf73dd6682d2a478bd81092a9353dde6491db7c98117743521994456cc973ca",
+    "crates/vb_core/src/workflow/source_metadata.rs": "ffc4613528c8e555bbdd856cc09148e9731a531006237021138c39e07eb48a30"
+  },
+  "validation": {
+    "before_and_after_artifact_hashes_match_manifest": true,
+    "all_declared_source_hashes_match_both_pins": true,
+    "full_V1_to_V2_text_delta_inspected": true,
+    "read_only_source_and_registry_inspection": true,
+    "execution": "none"
+  },
+  "future_verification": {
+    "commands": "Pinned nightly package/target scopes, jobs2/-Dwarnings, 300s timeout, 24G memory/swap0, configured RUN scratch.",
+    "target": "Explicit unique own-workspace target/native-vb-eirmk-42-2-5; no shared core-current-review Cargo target.",
+    "wrappers": "Both command-level compiler wrappers disabled as specified; retain the user's wrapper-off verification requirement when executing.",
+    "receipt_expectations": "Actual registrations, command/env/source/binary hashes, raw logs and exits; no zero-test or queued-Ok substitution."
+  },
+  "limits": [
+    "This PASS discharges contract/test-plan CODE readiness only. No runtime implementation, native tests, mutants, proof or CI accepted or executed.",
+    "Existing exact reviewed codec/lowering dependency integration remains required by the contract; implementation source must be reviewed at its eventual frozen combined pin.",
+    "Full source-literal runtime/cold/retry acceptance and separate independent TEST review remain future obligations; whole feature/master/formal closure is not granted.",
+    "Original V1 REJECT report and before artifacts preserved unchanged; no DB/source/gate writes or new agents."
+  ]
+}

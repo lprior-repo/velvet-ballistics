@@ -1,0 +1,2 @@
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_validate)
+error: could not compile `vb_validate` (lib test) due to 5 previous errors

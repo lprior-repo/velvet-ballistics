@@ -1,0 +1,125 @@
+crates/vb_core/src/action_pack.rs:1: #![forbid(unsafe_code)]
+crates/vb_core/src/action_pack.rs:2: //! Untrusted action-pack declarations; execution authority lives at the storage boundary.
+crates/vb_core/src/action_pack.rs:3: 
+crates/vb_core/src/action_pack.rs:4: use crate::{ActionId, WorkflowDigest};
+crates/vb_core/src/action_pack.rs:5: use serde::{Deserialize, Serialize};
+crates/vb_core/src/action_pack.rs:6: 
+crates/vb_core/src/action_pack.rs:7: /// Independent idempotency classification from master77.6.
+crates/vb_core/src/action_pack.rs:8: #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_core/src/action_pack.rs:9: pub enum IdempotencyClass {
+crates/vb_core/src/action_pack.rs:10:     /// No external effect.
+crates/vb_core/src/action_pack.rs:11:     PureDeterministic,
+crates/vb_core/src/action_pack.rs:12:     /// A key is declared without an enforcement guarantee.
+crates/vb_core/src/action_pack.rs:13:     KeyRequiredDeclared,
+crates/vb_core/src/action_pack.rs:14:     /// Registered executor actually enforces duplicate keys.
+crates/vb_core/src/action_pack.rs:15:     KeyEnforcedByExecutor,
+crates/vb_core/src/action_pack.rs:16:     /// Provider guarantee, unsupported by the local register.
+crates/vb_core/src/action_pack.rs:17:     ProviderEnforced,
+crates/vb_core/src/action_pack.rs:18:     /// Observation, without a general guarantee.
+crates/vb_core/src/action_pack.rs:19:     ObservedIdempotent,
+crates/vb_core/src/action_pack.rs:20:     /// No classification established.
+crates/vb_core/src/action_pack.rs:21:     Unknown,
+crates/vb_core/src/action_pack.rs:22: }
+crates/vb_core/src/action_pack.rs:23: 
+crates/vb_core/src/action_pack.rs:24: /// Recovery is independent of idempotency; writes default to blocked.
+crates/vb_core/src/action_pack.rs:25: #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_core/src/action_pack.rs:26: pub enum RecoveryClass {
+crates/vb_core/src/action_pack.rs:27:     /// Pure action.
+crates/vb_core/src/action_pack.rs:28:     NoRecoveryNeeded,
+crates/vb_core/src/action_pack.rs:29:     /// Retry with the identical logical key.
+crates/vb_core/src/action_pack.rs:30:     RetrySameKey,
+crates/vb_core/src/action_pack.rs:31:     /// Read an existing durable receipt without a production effect.
+crates/vb_core/src/action_pack.rs:32:     ReconcileReceipt,
+crates/vb_core/src/action_pack.rs:33:     /// Requires a separately implemented compensation protocol.
+crates/vb_core/src/action_pack.rs:34:     Compensate,
+crates/vb_core/src/action_pack.rs:35:     /// Requires a separately implemented operator gate.
+crates/vb_core/src/action_pack.rs:36:     ManualGate,
+crates/vb_core/src/action_pack.rs:37:     /// No automatic recovery authority.
+crates/vb_core/src/action_pack.rs:38:     #[default]
+crates/vb_core/src/action_pack.rs:39:     Blocked,
+crates/vb_core/src/action_pack.rs:40: }
+crates/vb_core/src/action_pack.rs:41: 
+crates/vb_core/src/action_pack.rs:42: /// Registered implementation selector; strings never select runtime code.
+crates/vb_core/src/action_pack.rs:43: #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_core/src/action_pack.rs:44: pub enum ExecutorIdentity {
+crates/vb_core/src/action_pack.rs:45:     /// Desired-state I64 register with atomic Fjall target/receipt commit.
+crates/vb_core/src/action_pack.rs:46:     FjallRegisterV1,
+crates/vb_core/src/action_pack.rs:47: }
+crates/vb_core/src/action_pack.rs:48: 
+crates/vb_core/src/action_pack.rs:49: macro_rules! digest_type {
+crates/vb_core/src/action_pack.rs:50:     ($name:ident, $doc:literal) => {
+crates/vb_core/src/action_pack.rs:51:         #[doc = $doc]
+crates/vb_core/src/action_pack.rs:52:         #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_core/src/action_pack.rs:53:         pub struct $name(WorkflowDigest);
+crates/vb_core/src/action_pack.rs:54:         impl $name {
+crates/vb_core/src/action_pack.rs:55:             /// Wrap untrusted digest bytes; this does not establish authority.
+crates/vb_core/src/action_pack.rs:56:             pub const fn from_digest(digest: WorkflowDigest) -> Self {
+crates/vb_core/src/action_pack.rs:57:                 Self(digest)
+crates/vb_core/src/action_pack.rs:58:             }
+crates/vb_core/src/action_pack.rs:59:             /// Return the role-specific digest bytes.
+crates/vb_core/src/action_pack.rs:60:             pub const fn digest(self) -> WorkflowDigest {
+crates/vb_core/src/action_pack.rs:61:                 self.0
+crates/vb_core/src/action_pack.rs:62:             }
+crates/vb_core/src/action_pack.rs:63:         }
+crates/vb_core/src/action_pack.rs:64:     };
+crates/vb_core/src/action_pack.rs:65: }
+crates/vb_core/src/action_pack.rs:66: digest_type!(
+crates/vb_core/src/action_pack.rs:67:     ExecutorVersionDigest,
+crates/vb_core/src/action_pack.rs:68:     "Fingerprint of registered implementation sources."
+crates/vb_core/src/action_pack.rs:69: );
+crates/vb_core/src/action_pack.rs:70: digest_type!(
+crates/vb_core/src/action_pack.rs:71:     ManifestDigest,
+crates/vb_core/src/action_pack.rs:72:     "Digest of the exact action ABI declaration."
+crates/vb_core/src/action_pack.rs:73: );
+crates/vb_core/src/action_pack.rs:74: digest_type!(
+crates/vb_core/src/action_pack.rs:75:     ReceiptSchemaDigest,
+crates/vb_core/src/action_pack.rs:76:     "Fingerprint of the receipt wire schema."
+crates/vb_core/src/action_pack.rs:77: );
+crates/vb_core/src/action_pack.rs:78: digest_type!(
+crates/vb_core/src/action_pack.rs:79:     ActionPackDigest,
+crates/vb_core/src/action_pack.rs:80:     "Digest of an exact action-pack declaration."
+crates/vb_core/src/action_pack.rs:81: );
+crates/vb_core/src/action_pack.rs:82: digest_type!(InputDigest, "Digest of canonical executor input bytes.");
+crates/vb_core/src/action_pack.rs:83: digest_type!(ReceiptDigest, "Digest of a complete durable receipt.");
+crates/vb_core/src/action_pack.rs:84: digest_type!(
+crates/vb_core/src/action_pack.rs:85:     ConformanceReportDigest,
+crates/vb_core/src/action_pack.rs:86:     "Digest of executed observations, not authority by itself."
+crates/vb_core/src/action_pack.rs:87: );
+crates/vb_core/src/action_pack.rs:88: 
+crates/vb_core/src/action_pack.rs:89: /// Exact numeric target, with no wildcard or prefix expansion.
+crates/vb_core/src/action_pack.rs:90: #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_core/src/action_pack.rs:91: pub struct CapabilityScopeSpec {
+crates/vb_core/src/action_pack.rs:92:     /// Local register namespace.
+crates/vb_core/src/action_pack.rs:93:     pub namespace: u64,
+crates/vb_core/src/action_pack.rs:94:     /// Exact key within the namespace.
+crates/vb_core/src/action_pack.rs:95:     pub key: u64,
+crates/vb_core/src/action_pack.rs:96: }
+crates/vb_core/src/action_pack.rs:97: 
+crates/vb_core/src/action_pack.rs:98: /// Synchronous adapter never retries automatically after an uncertain failure.
+crates/vb_core/src/action_pack.rs:99: #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_core/src/action_pack.rs:100: pub struct TimeoutPolicy {
+crates/vb_core/src/action_pack.rs:101:     /// Deadline checked before starting I/O; late acknowledgement requires reconciliation.
+crates/vb_core/src/action_pack.rs:102:     /// Fjall fsync is synchronous and does not promise a hard syscall time bound.
+crates/vb_core/src/action_pack.rs:103:     pub timeout_ms: u64,
+crates/vb_core/src/action_pack.rs:104: }
+crates/vb_core/src/action_pack.rs:105: 
+crates/vb_core/src/action_pack.rs:106: /// Raw serialized metadata cannot construct checked executor conformance.
+crates/vb_core/src/action_pack.rs:107: #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_core/src/action_pack.rs:108: pub struct ActionPack {
+crates/vb_core/src/action_pack.rs:109:     /// Numeric action dispatch index.
+crates/vb_core/src/action_pack.rs:110:     pub action: ActionId,
+crates/vb_core/src/action_pack.rs:111:     /// Exact action contract identity.
+crates/vb_core/src/action_pack.rs:112:     pub manifest: ManifestDigest,
+crates/vb_core/src/action_pack.rs:113:     /// Built-in executor selector.
+crates/vb_core/src/action_pack.rs:114:     pub executor: ExecutorIdentity,
+crates/vb_core/src/action_pack.rs:115:     /// Exact implementation version.
+crates/vb_core/src/action_pack.rs:116:     pub executor_version: ExecutorVersionDigest,
+crates/vb_core/src/action_pack.rs:117:     /// Exact authorized resource.
+crates/vb_core/src/action_pack.rs:118:     pub scope: CapabilityScopeSpec,
+crates/vb_core/src/action_pack.rs:119:     /// Exact receipt wire schema.
+crates/vb_core/src/action_pack.rs:120:     pub receipt_schema: ReceiptSchemaDigest,
+crates/vb_core/src/action_pack.rs:121:     /// Explicit timeout behavior.
+crates/vb_core/src/action_pack.rs:122:     pub timeout: TimeoutPolicy,
+crates/vb_core/src/action_pack.rs:123:     /// Declared idempotency axis.
+crates/vb_core/src/action_pack.rs:124:     pub idempotency: IdempotencyClass,
+crates/vb_core/src/action_pack.rs:125:     /// Declared recovery axis.

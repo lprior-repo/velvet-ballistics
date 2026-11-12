@@ -1,0 +1,11 @@
+[
+  "crates/vb_storage/src/executor/packed.rs",
+  "crates/vb_storage/src/executor/mod.rs",
+  "crates/workspace_tests/tests/artifact_evidence_support/mod.rs",
+  "crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs",
+  "crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs",
+  "crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs",
+  "crates/vb_storage/src/executor/catalog.rs",
+  "crates/vb_storage/src/executor/error.rs",
+  "crates/vb_storage/src/admission/verification/executor_profile.rs"
+]

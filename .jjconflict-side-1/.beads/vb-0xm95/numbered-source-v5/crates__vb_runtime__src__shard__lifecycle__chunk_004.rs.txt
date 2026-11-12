@@ -1,0 +1,86 @@
+1: impl Shard {
+2:     fn reserve_cancel_kill_terminalization(&mut self, run: RunId) -> RuntimeResult<()> {
+3:         self.reserve_checked_out_run_slot(run)?;
+4:         self.reserve_terminal_run_slot(run)
+5:     }
+6: 
+7:     fn append_cancel_terminal_events(
+8:         &mut self,
+9:         run: RunId,
+10:         reason: Option<String>,
+11:         attempt: u16,
+12:     ) -> RuntimeResult<()> {
+13:         self.append_terminal_events_with_pending_action(
+14:             run,
+15:             RuntimeJournalEvent::RunCancelled {
+16:                 run,
+17:                 reason,
+18:                 attempt,
+19:             },
+20:         )
+21:     }
+22: 
+23:     fn append_kill_terminal_events(&mut self, run: RunId, attempt: u16) -> RuntimeResult<()> {
+24:         self.append_terminal_events_with_pending_action(
+25:             run,
+26:             RuntimeJournalEvent::RunKilled { run, attempt },
+27:         )
+28:     }
+29: 
+30:     fn append_terminal_events_with_pending_action(
+31:         &mut self,
+32:         run: RunId,
+33:         terminal: RuntimeJournalEvent,
+34:     ) -> RuntimeResult<()> {
+35:         match self.pending_action_get(run) {
+36:             Some(ticket) if ticket.run == run => self.append_journal_events_atomically([
+37:                 RuntimeJournalEvent::ActionAbandoned { ticket },
+38:                 terminal,
+39:             ]),
+40:             Some(_) => Err(RuntimeError::InvalidActionCompletion),
+41:             None => self.append_journal_event(terminal),
+42:         }
+43:     }
+44: 
+45:     pub(super) fn require_pending_action_ownership(
+46:         &self,
+47:         ticket: ActionTicket,
+48:     ) -> RuntimeResult<()> {
+49:         if !self.run_state_contains(ticket.run) {
+50:             return Err(RuntimeError::RunNotFound);
+51:         }
+52:         match self.pending_action_get(ticket.run) {
+53:             Some(pending) if pending == ticket => Ok(()),
+54:             Some(pending)
+55:                 if ticket.attempt > 0
+56:                     && ticket.attempt < pending.attempt
+57:                     && ticket.run == pending.run
+58:                     && ticket.step == pending.step
+59:                     && ticket.action == pending.action
+60:                     && ticket.capacity == pending.capacity
+61:                     && vb_core::action::action_ticket_has_valid_key(ticket)
+62:                     && ticket.seq <= pending.seq =>
+63:             {
+64:                 Err(RuntimeError::StaleAttempt {
+65:                     incoming: ticket.attempt,
+66:                     current: pending.attempt,
+67:                 })
+68:             }
+69:             Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+70:         }
+71:     }
+72: 
+73:     fn require_legacy_pending_action_ownership(
+74:         &self,
+75:         run: RunId,
+76:         step: StepIdx,
+77:     ) -> RuntimeResult<ActionTicket> {
+78:         if !self.run_state_contains(run) {
+79:             return Err(RuntimeError::RunNotFound);
+80:         }
+81:         match self.pending_action_get(run) {
+82:             Some(pending) if pending.run == run && pending.step == step => Ok(pending),
+83:             Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+84:         }
+85:     }
+86: }

@@ -232,7 +232,7 @@ fn replay_set_const_null() -> Result<(), CoreError> {
 
 #[test]
 fn replay_set_const_missing_output_returns_error() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_rejected_plan(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -253,6 +253,7 @@ fn replay_set_const_missing_output_returns_error() -> Result<(), CoreError> {
         ],
         vec![ConstValue::I64(1)],
         vec![],
+        crate::workflow::SlotFlowFailure::InvalidReference,
     )?;
 
     let mut run = RunFrame::new(
@@ -411,7 +412,7 @@ fn replay_copy_clean_source_has_clean_taint() -> Result<(), CoreError> {
 
 #[test]
 fn replay_copy_uninitialized_source_returns_error() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_rejected_plan(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -432,6 +433,7 @@ fn replay_copy_uninitialized_source_returns_error() -> Result<(), CoreError> {
         ],
         vec![],
         vec![],
+        crate::workflow::SlotFlowFailure::UninitializedRead,
     )?;
 
     let mut run = RunFrame::new(

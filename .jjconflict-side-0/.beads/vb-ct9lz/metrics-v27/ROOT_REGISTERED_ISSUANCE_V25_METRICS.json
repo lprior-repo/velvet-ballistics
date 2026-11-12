@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4",
+    "--commit",
+    "6d6ee939a48d805c56d631e904854ad94c93e68a",
+    "--output-dir",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v25"
+  ],
+  "exit_code": 1,
+  "seconds": 0.036,
+  "timeout_seconds": 1200,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_REGISTERED_ISSUANCE_V25_METRICS"
+}

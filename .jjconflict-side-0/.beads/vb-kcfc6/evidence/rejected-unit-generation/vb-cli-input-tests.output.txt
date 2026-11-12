@@ -1,0 +1,238 @@
+```rust
+use super::{map_runtime_inputs, InputMappingError};
+use crate::app_impl::prelude::*;
+
+fn fixture_with_input_slots(input_slots: Vec<CompiledInputSlot>) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    let node = CompiledNode {
+        id: 0,
+        kind: CompiledNodeKind::Finish { result: 2 },
+        targets: Box::from([]),
+        exprs: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+    };
+    let parts = WorkflowParts {
+        name: Box::from("test"),
+        digest: WorkflowDigest([0; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: 0,
+        resource_contract: ResourceContract::default(),
+        step_names: Box::from([]),
+        input_slots: Box::from(input_slots),
+    };
+    match CompiledWorkflow::try_from_parts(parts) {
+        Ok(c) => Ok(c),
+        Err(e) => Err(Box::from(e.to_string())),
+    }
+}
+
+fn serialize_slot_values(values: Vec<SlotValue>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let boxed = Box::<[SlotValue]>::from(values);
+    let bytes = postcard::to_allocvec(&boxed)?;
+    Ok(bytes)
+}
+
+fn slot_value_i64(n: i64) -> SlotValue {
+    SlotValue::I64(n)
+}
+
+fn slot_value_bool(b: bool) -> SlotValue {
+    SlotValue::Bool(b)
+}
+
+#[test]
+fn test_zero_ports_raw_empty() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![])?;
+    let result = map_runtime_inputs(&wf, &[]);
+    assert!(result.is_ok(), "expected Ok");
+    let mapped = result?;
+    assert_eq!(mapped.len(), 0);
+    Ok(())
+}
+
+#[test]
+fn test_zero_ports_encoded_empty() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![])?;
+    let bytes = serialize_slot_values(vec![])?;
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_ok(), "expected Ok");
+    let mapped = result?;
+    assert_eq!(mapped.len(), 0);
+    Ok(())
+}
+
+#[test]
+fn test_zero_ports_malformed_b0xff() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![])?;
+    let result = map_runtime_inputs(&wf, &[0xff]);
+    assert!(result.is_err(), "expected error");
+    let err = result.unwrap_err();
+    assert_eq!(err, InputMappingError::DecodeFailed);
+    Ok(())
+}
+
+#[test]
+fn test_zero_ports_encoded_i64() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![])?;
+    let bytes = serialize_slot_values(vec![slot_value_i64(42)])?;
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_err(), "expected error");
+    let err = result.unwrap_err();
+    assert_eq!(err, InputMappingError::SlotCountExceeded);
+    Ok(())
+}
+
+#[test]
+fn test_zero_ports_encoded_empty_trailing_0xff() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![])?;
+    let mut bytes = serialize_slot_values(vec![])?;
+    bytes.push(0xff);
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_err(), "expected error");
+    let err = result.unwrap_err();
+    assert_eq!(err, InputMappingError::DecodeFailed);
+    Ok(())
+}
+
+#[test]
+fn test_input_ports_raw_empty() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+    ])?;
+    let result = map_runtime_inputs(&wf, &[]);
+    assert!(result.is_ok(), "expected Ok");
+    let mapped = result?;
+    assert_eq!(mapped.len(), 0);
+    Ok(())
+}
+
+#[test]
+fn test_declared_slot2_i64_exact() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+    ])?;
+    let bytes = serialize_slot_values(vec![slot_value_i64(42)])?;
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_ok(), "expected Ok");
+    let mapped = result?;
+    assert_eq!(mapped.len(), 1);
+    assert_eq!(mapped[0].0, 2);
+    match &mapped[0].1 {
+        SlotValue::I64(n) => assert_eq!(*n, 42),
+        other => panic!("expected I64 value, got {other:?}"),
+    }
+    Ok(())
+}
+
+#[test]
+fn test_declared_2_ports_slots2_i64_3_bool_partial_prefix1() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+        CompiledInputSlot { slot: 3, kind: InputSlotKind::Bool },
+    ])?;
+    let bytes = serialize_slot_values(vec![slot_value_i64(10)])?;
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_ok(), "expected Ok");
+    let mapped = result?;
+    assert_eq!(mapped.len(), 1);
+    assert_eq!(mapped[0].0, 2);
+    match &mapped[0].1 {
+        SlotValue::I64(n) => assert_eq!(*n, 10),
+        other => panic!("expected I64 value, got {other:?}"),
+    }
+    Ok(())
+}
+
+#[test]
+fn test_full_2_correct_order() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+        CompiledInputSlot { slot: 3, kind: InputSlotKind::Bool },
+    ])?;
+    let bytes = serialize_slot_values(vec![
+        slot_value_i64(10),
+        slot_value_bool(true),
+    ])?;
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_ok(), "expected Ok");
+    let mapped = result?;
+    assert_eq!(mapped.len(), 2);
+    assert_eq!(mapped[0].0, 2);
+    match &mapped[0].1 {
+        SlotValue::I64(n) => assert_eq!(*n, 10),
+        other => panic!("expected I64 value, got {other:?}"),
+    }
+    assert_eq!(mapped[1].0, 3);
+    match &mapped[1].1 {
+        SlotValue::Bool(b) => assert_eq!(*b, true),
+        other => panic!("expected Bool value, got {other:?}"),
+    }
+    Ok(())
+}
+
+#[test]
+fn test_wrong_kind_at_slot2() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+    ])?;
+    let bytes = serialize_slot_values(vec![slot_value_bool(true)])?;
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_err(), "expected error");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err,
+        InputMappingError::KindMismatch {
+            slot: 2,
+            expected_kind: InputSlotKind::I64,
+        }
+    );
+    Ok(())
+}
+
+#[test]
+fn test_excess_2_values_for_1() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+    ])?;
+    let bytes = serialize_slot_values(vec![
+        slot_value_i64(1),
+        slot_value_i64(2),
+    ])?;
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_err(), "expected error");
+    let err = result.unwrap_err();
+    assert_eq!(err, InputMappingError::SlotCountExceeded);
+    Ok(())
+}
+
+#[test]
+fn test_malformed_input_with_ports() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+    ])?;
+    let result = map_runtime_inputs(&wf, &[0xff, 0xfe, 0xfd]);
+    assert!(result.is_err(), "expected error");
+    let err = result.unwrap_err();
+    assert_eq!(err, InputMappingError::DecodeFailed);
+    Ok(())
+}
+
+#[test]
+fn test_valid_1_payload_trailing_junk() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture_with_input_slots(vec![
+        CompiledInputSlot { slot: 2, kind: InputSlotKind::I64 },
+    ])?;
+    let mut bytes = serialize_slot_values(vec![slot_value_i64(99)])?;
+    bytes.push(0xaa);
+    let result = map_runtime_inputs(&wf, &bytes);
+    assert!(result.is_err(), "expected error");
+    let err = result.unwrap_err();
+    assert_eq!(err, InputMappingError::DecodeFailed);
+    Ok(())
+}
+```

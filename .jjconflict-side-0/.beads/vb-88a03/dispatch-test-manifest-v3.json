@@ -1,0 +1,63 @@
+{
+  "candidate": "3fca010b5f5aaaafb5f41b08b95200db001bab3e",
+  "base": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "scope": "Independent TEST review of strict policy journal ports/internal sequence tests and nine registered-executor plus three fail-closed cases. Recovery/fuzz/wrong-run separately reviewed.",
+  "inputs": [
+    {
+      "path": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+      "sha256": "245231738602c145ec41e4b3e10c05cf62f22e60ba67ea86d477b0677c86f372"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+      "sha256": "a4bf38ad0779428880ee5d96e938b758f2478e0f588fbc093fef436077187089"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "sha256": "d965f02ff2bf46173a896e68b40634e1cd0abd2be5d1efb4b28dd007249b41dc"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch.rs",
+      "sha256": "3a5c562377f61e10096ef80ffd24c2bccc79c5dec9c676aaf42306cd082132f3"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs",
+      "sha256": "9bcbcb94e913a2555a33f12a100e80224cc753a3bcc7a6935ab1f608dc8c1d17"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs",
+      "sha256": "9d5083fb6081473c90d0fc178a2947b8775e84c60f0e2c4813968d7b7686b99f"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs",
+      "sha256": "17347f0be4afa5ed7a7982b7d286591f95d108973695cd6d1f77fae6b3afe1c0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs",
+      "sha256": "4fe58a8f39183b91fdec71384e1e2787c2d1a148088b15a9a878ec187c572321"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs",
+      "sha256": "e55e61c8953c2561491035ce185b75a42401ac92a29490ee6708a24552e3ce68"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs",
+      "sha256": "879cedc759564ac48fe915fdc3decbd9ff0e573ac713dcafa515f327ccddaa25"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs",
+      "sha256": "3e45754f2e56b5cd08397c4a89cc387613b638f1b8a6a8acaac64b9f07c52b7c"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs",
+      "sha256": "4ca503301748e2c78bcf99a1617150466ac9dc484cdb10e608fc43d90ff6c81f"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs",
+      "sha256": "72eec121ec29d278df1f357de38a919083083762fdd68cfb0faec7ba67ff9b0b"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/test_journal.rs",
+      "sha256": "64dfef2a392c0126657fcfcb5c4ca25080f87dc0fbeb3e4631d5a6c0847afeef"
+    }
+  ]
+}

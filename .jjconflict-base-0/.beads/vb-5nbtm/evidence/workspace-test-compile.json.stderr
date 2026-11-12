@@ -1,0 +1,627 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling libc v0.2.186
+   Compiling syn v2.0.117
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling serde_derive v1.0.228
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling jobserver v0.1.35
+   Compiling shlex v1.3.0
+   Compiling find-msvc-tools v0.1.9
+   Compiling cc v1.2.62
+   Compiling once_cell v1.21.4
+   Compiling thiserror v2.0.18
+   Compiling thiserror-impl v2.0.18
+   Compiling equivalent v1.0.2
+   Compiling zerocopy v0.8.48
+   Compiling zerocopy-derive v0.8.48
+   Compiling regex-syntax v0.8.10
+   Compiling bitflags v2.11.1
+   Compiling getrandom v0.4.2
+   Compiling rustix v1.1.4
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.0
+   Compiling linux-raw-sys v0.12.1
+   Compiling getrandom v0.3.4
+   Compiling fastrand v2.4.1
+   Compiling iana-time-zone v0.1.65
+   Compiling chrono v0.4.44
+   Compiling tempfile v3.27.0
+   Compiling bytes v1.11.1
+   Compiling fnv v1.0.7
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling arrayvec v0.7.6
+   Compiling spin v0.9.8
+   Compiling heapless v0.7.17
+   Compiling byteorder v1.5.0
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_core)
+   Compiling hash32 v0.2.1
+   Compiling blake3 v1.8.5
+   Compiling stable_deref_trait v1.2.1
+   Compiling cobs v0.3.0
+   Compiling cpufeatures v0.3.0
+   Compiling arrayref v0.3.9
+   Compiling constant_time_eq v0.4.2
+   Compiling postcard v1.1.3
+   Compiling crossbeam-utils v0.8.21
+   Compiling crossbeam-epoch v0.9.18
+   Compiling memchr v2.8.0
+   Compiling lazy_static v1.5.0
+   Compiling smallvec v1.15.1
+   Compiling log v0.4.29
+   Compiling byteorder-lite v0.1.0
+   Compiling parking_lot_core v0.9.12
+   Compiling xxhash-rust v0.8.15
+   Compiling twox-hash v2.1.2
+   Compiling compare v0.0.6
+   Compiling hashbrown v0.16.1
+   Compiling quick_cache v0.6.22
+   Compiling interval-heap v0.0.5
+   Compiling lz4_flex v0.13.1
+   Compiling sfa v1.0.0
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling enum_dispatch v0.3.13
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_validate)
+   Compiling byteview v0.10.1
+   Compiling varint-rs v2.2.0
+   Compiling self_cell v1.2.2
+   Compiling hashbrown v0.14.5
+   Compiling rustc-hash v2.1.2
+   Compiling dashmap v6.2.1
+   Compiling lsm-tree v3.1.4
+   Compiling flume v0.12.0
+   Compiling crc32c v0.6.8
+   Compiling fjall v3.1.4
+   Compiling aho-corasick v1.1.4
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_storage)
+   Compiling regex-automata v0.4.14
+   Compiling rand_core v0.9.5
+   Compiling ppv-lite86 v0.2.21
+   Compiling zmij v1.0.21
+   Compiling rand_chacha v0.9.0
+   Compiling arraydeque v0.5.1
+   Compiling rand v0.9.4
+   Compiling wait-timeout v0.2.1
+   Compiling quick-error v1.2.3
+   Compiling anstyle v1.0.14
+   Compiling serde_json v1.0.150
+   Compiling itoa v1.0.18
+   Compiling bit-vec v0.8.0
+   Compiling foldhash v0.1.5
+   Compiling hashbrown v0.15.5
+   Compiling bit-set v0.8.0
+   Compiling rusty-fork v0.3.1
+   Compiling rand_xorshift v0.4.0
+   Compiling crossbeam-queue v0.3.12
+   Compiling logos-codegen v0.15.1
+   Compiling unarray v0.1.4
+   Compiling rtrb v0.3.4
+   Compiling proptest v1.11.0
+   Compiling hashlink v0.10.0
+   Compiling beef v0.5.2
+   Compiling saphyr-parser v0.0.6
+   Compiling ordered-float v5.3.0
+   Compiling saphyr v0.0.6
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_runtime)
+   Compiling logos-derive v0.15.1
+   Compiling logos v0.15.1
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_yaml)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_compile)
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling anstream v1.0.0
+   Compiling heck v0.5.0
+   Compiling clap_lex v1.1.0
+   Compiling strsim v0.11.1
+   Compiling clap_builder v4.6.0
+   Compiling clap_derive v4.6.1
+   Compiling clap v4.6.1
+   Compiling regex v1.12.3
+   Compiling crossbeam-channel v0.5.15
+   Compiling crc32fast v1.5.0
+   Compiling mio v1.2.0
+   Compiling version_check v0.9.5
+   Compiling ahash v0.8.12
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_ipc)
+   Compiling encoding_rs v0.8.35
+   Compiling unicode-width v0.2.2
+   Compiling annotate-snippets v0.12.16
+   Compiling encoding_rs_io v0.1.7
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling nohash-hasher v0.2.0
+   Compiling base64 v0.22.1
+   Compiling serde-saphyr v0.0.25
+   Compiling simd-adler32 v0.3.9
+   Compiling adler2 v2.0.1
+   Compiling miniz_oxide v0.8.9
+   Compiling winnow v1.0.3
+   Compiling camino v1.2.2
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling flate2 v1.1.9
+   Compiling fdeflate v0.3.7
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling winnow v0.7.15
+   Compiling anyhow v1.0.102
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling pxfm v0.1.29
+   Compiling unsafe-libyaml v0.2.11
+   Compiling ryu v1.0.23
+   Compiling moxcms v0.8.1
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling png v0.18.1
+   Compiling cargo-platform v0.1.9
+   Compiling bytemuck v1.25.0
+   Compiling image v0.25.10
+   Compiling cargo_metadata v0.19.2
+   Compiling rayon-core v1.13.0
+   Compiling either v1.16.0
+   Compiling crossbeam-deque v0.8.6
+   Compiling half v2.7.1
+   Compiling alloca v0.4.0
+   Compiling ciborium-io v0.2.2
+   Compiling plotters-backend v0.3.7
+   Compiling plotters-svg v0.3.7
+   Compiling ciborium-ll v0.2.2
+   Compiling itertools v0.13.0
+   Compiling cast v0.3.0
+   Compiling same-file v1.0.6
+   Compiling walkdir v2.5.0
+   Compiling criterion-plot v0.8.2
+   Compiling rayon v1.12.0
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/xtask)
+   Compiling ciborium v0.2.2
+   Compiling plotters v0.3.7
+   Compiling tinytemplate v1.2.1
+   Compiling page_size v0.6.0
+   Compiling anes v0.1.6
+   Compiling oorandom v11.1.5
+   Compiling criterion v0.8.2
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/workspace_tests)
+   Compiling libfuzzer-sys v0.4.13
+   Compiling arbitrary v1.4.2
+   Compiling rustversion v1.0.22
+   Compiling tracing-core v0.1.36
+   Compiling generator v0.8.8
+   Compiling pin-project-lite v0.2.17
+   Compiling tracing v0.1.44
+   Compiling tracing-log v0.2.0
+   Compiling matchers v0.2.0
+   Compiling sharded-slab v0.1.7
+   Compiling thread_local v1.1.9
+   Compiling nu-ansi-term v0.50.3
+   Compiling tracing-subscriber v0.3.23
+   Compiling scoped-tls v1.0.1
+   Compiling loom v0.7.2
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/fuzz)
+warning: unused variable: `tick_before`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:264:9
+    |
+264 |     let tick_before = runtime.tick_all();
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_before`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `tick_after_fail`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:314:9
+    |
+314 |     let tick_after_fail = runtime.tick_all();
+    |         ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_after_fail`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:353:9
+    |
+353 |     let mut runtime = recover_and_schedule(&path, run, checkpoint, next_seq)?;
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (test "durable_retry_run_attempt_authority") generated 3 warnings (run `cargo fix --test "durable_retry_run_attempt_authority" -p vb_runtime` to apply 3 suggestions)
+warning: unused imports: `ActionContract`, `ActionName`, `Idempotency`, `RetrySafety`, and `SideEffect`
+ --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:5:23
+  |
+5 | use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+  |                       ^^^^^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `CompiledNodeKind`, `CompiledNode`, `ResourceContract`, and `WorkflowParts`
+ --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:6:25
+  |
+6 | use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+  |                         ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused imports: `SlotIdx` and `StepIdx`
+ --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:8:64
+  |
+8 |     ActionId, Capability, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
+  |                                                                ^^^^^^^  ^^^^^^^
+
+warning: unused imports: `VerificationProof` and `accepted_artifact_digest`
+  --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:15:23
+   |
+15 |     AcceptedArtifact, VerificationProof, accepted_artifact_digest, prepare_compiled_artifact,
+   |                       ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `EventSeq`
+  --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:17:36
+   |
+17 | use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal, put_compiled_ir};
+   |                                    ^^^^^^^^
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_lp2v_proof_admission_bdd") generated 5 warnings (run `cargo fix --test "vb_lp2v_proof_admission_bdd" -p velvet-ballistics-workspace-tests` to apply 5 suggestions)
+warning: unused import: `AdmissionError`
+ --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:8:52
+  |
+8 | use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError};
+  |                                                    ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `ActionReplayTracker` and `replay_journal`
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:10:5
+   |
+10 |     ActionReplayTracker, EventSeq, FjallJournal, JournalError, JournalEvent, replay_journal,
+   |     ^^^^^^^^^^^^^^^^^^^                                                      ^^^^^^^^^^^^^^
+
+warning: struct `FixedArtifactStore` is never constructed
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:14:8
+   |
+14 | struct FixedArtifactStore {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `ticket` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:37:4
+   |
+37 | fn ticket(run: u64, step: u16, key: u128) -> ActionTicket {
+   |    ^^^^^^
+
+warning: function `valid_artifact` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:50:4
+   |
+50 | fn valid_artifact(_artifact_digest: WorkflowDigest) -> vb_storage::AcceptedArtifact {
+   |    ^^^^^^^^^^^^^^
+
+warning: function `count_scheduled` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:389:4
+    |
+389 | fn count_scheduled(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+warning: function `count_completed` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:396:4
+    |
+396 | fn count_completed(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") generated 7 warnings (run `cargo fix --test "vb_ko29_5_public_idempotency" -p velvet-ballistics-workspace-tests` to apply 2 suggestions)
+warning: function `assert_tick_cannot_resume` is never used
+   --> crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:564:4
+    |
+564 | fn assert_tick_cannot_resume(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `velvet-ballistics-workspace-tests` (test "runtime_fjall_pending_action_recovery") generated 1 warning
+warning: unused variable: `ticket_a`
+   --> crates/vb_core/src/action/tests.rs:392:9
+    |
+392 |     let ticket_a = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_a`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ticket_b`
+   --> crates/vb_core/src/action/tests.rs:402:9
+    |
+402 |     let ticket_b = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_b`
+
+warning: `vb_core` (lib test) generated 2 warnings (run `cargo fix --lib -p vb_core --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 15s
+  Executable unittests src/lib.rs (target/debug/deps/vb_compile-eac6521d7f4d67d9)
+  Executable tests/compiled_digest_payload.rs (target/debug/deps/compiled_digest_payload-7b3f10bc35578f6d)
+  Executable tests/digest_ask_determinism.rs (target/debug/deps/digest_ask_determinism-d065b6000753c093)
+  Executable tests/digest_ask_empty_prompt.rs (target/debug/deps/digest_ask_empty_prompt-9793f1e3887f51e5)
+  Executable tests/digest_ask_explicit_arm.rs (target/debug/deps/digest_ask_explicit_arm-505206ae33309e6a)
+  Executable tests/digest_ask_prompt_sensitivity.rs (target/debug/deps/digest_ask_prompt_sensitivity-6abc50c15fb6305e)
+  Executable tests/digest_ask_timeout_sensitivity.rs (target/debug/deps/digest_ask_timeout_sensitivity-e7db8cb5410aa4d2)
+  Executable tests/digest_compilation_pipeline.rs (target/debug/deps/digest_compilation_pipeline-7e3500df6314d1d4)
+  Executable tests/digest_framing_collision.rs (target/debug/deps/digest_framing_collision-50f66b7f496a2458)
+  Executable tests/digest_repeat_unit.rs (target/debug/deps/digest_repeat_unit-74b80d4dfa8eff67)
+  Executable tests/digest_set_finish_regression.rs (target/debug/deps/digest_set_finish_regression-8159b169d9fc7d1c)
+  Executable tests/digest_structural_fields.rs (target/debug/deps/digest_structural_fields-23c5d11e9500fc6a)
+  Executable tests/digest_yaml_e2e.rs (target/debug/deps/digest_yaml_e2e-36ba471437fa2a8b)
+  Executable tests/finish_digest_integration.rs (target/debug/deps/finish_digest_integration-99e9289e30376215)
+  Executable tests/finish_digest_structural.rs (target/debug/deps/finish_digest_structural-d23e844a2f426ba9)
+  Executable tests/idempotency_parity.rs (target/debug/deps/idempotency_parity-4b13b6e5c6caafeb)
+  Executable tests/integration_choose_body.rs (target/debug/deps/integration_choose_body-acabba0c5b973c79)
+  Executable tests/proptest/proptest_choose_depth.rs (target/debug/deps/proptest_choose_depth-47f9e348435c490a)
+  Executable tests/proptest/proptest_choose_emission.rs (target/debug/deps/proptest_choose_emission-c65925fe8b811513)
+  Executable tests/proptest/proptest_choose_fallthrough.rs (target/debug/deps/proptest_choose_fallthrough-fcbf8c6bd63b761a)
+  Executable tests/proptest/proptest_choose_otherwise.rs (target/debug/deps/proptest_choose_otherwise-0d79ee55caf25115)
+  Executable tests/proptest/proptest_choose_width.rs (target/debug/deps/proptest_choose_width-38c011bada06c77c)
+  Executable tests/proptest_digest_ask_ordering.rs (target/debug/deps/proptest_digest_ask_ordering-5bb499b4d76e8842)
+  Executable tests/proptest_digest_ask_prompt_sensitivity.rs (target/debug/deps/proptest_digest_ask_prompt_sensitivity-c7df812307365ca0)
+  Executable tests/proptest_digest_ask_timeout_sensitivity.rs (target/debug/deps/proptest_digest_ask_timeout_sensitivity-6a500b2ce360b56d)
+  Executable tests/proptest_digest_determinism.rs (target/debug/deps/proptest_digest_determinism-514750e906a6c320)
+  Executable tests/proptest_digest_foreach.rs (target/debug/deps/proptest_digest_foreach-445a26206cc1848f)
+  Executable tests/proptest_secret_results_digest_sensitivity.rs (target/debug/deps/proptest_secret_results_digest_sensitivity-a92d3488095b8bf8)
+  Executable tests/repeat_digest_integration.rs (target/debug/deps/repeat_digest_integration-2ff12070b21a7563)
+  Executable tests/repeat_digest_proptest.rs (target/debug/deps/repeat_digest_proptest-aaaa6425b87f4235)
+  Executable tests/together_digest_sensitivity.rs (target/debug/deps/together_digest_sensitivity-a6f63ed300380f57)
+  Executable tests/v1_primitive_lowering.rs (target/debug/deps/v1_primitive_lowering-e85f8fdf467b3e23)
+  Executable tests/vb_8mdp_7_collect_lowering_props.rs (target/debug/deps/vb_8mdp_7_collect_lowering_props-b4a2161bd53796e8)
+  Executable tests/vb_a001_for_each_topology.rs (target/debug/deps/vb_a001_for_each_topology-dd492938eeba7e92)
+  Executable tests/vb_core_yaml_e2e_chain_strict_yaml.rs (target/debug/deps/vb_core_yaml_e2e_chain_strict_yaml-f37cb951a906acce)
+  Executable tests/vb_xi2f_compile_source_proptest.rs (target/debug/deps/vb_xi2f_compile_source_proptest-7791142c959800a5)
+  Executable tests/vb_xi2f_error_variant_proptest.rs (target/debug/deps/vb_xi2f_error_variant_proptest-2d31ffd1753d0659)
+  Executable tests/vb_xi2f_nested_do_lowering.rs (target/debug/deps/vb_xi2f_nested_do_lowering-78333870328c4249)
+  Executable unittests src/lib.rs (target/debug/deps/vb_core-439384a59687d100)
+  Executable tests/aggregate_resource_budget_kani_red.rs (target/debug/deps/aggregate_resource_budget_kani_red-f324ff38002e5c04)
+  Executable tests/aggregate_resource_budget_properties_red.rs (target/debug/deps/aggregate_resource_budget_properties_red-cd031f268d3254cd)
+  Executable tests/aggregate_resource_budget_red.rs (target/debug/deps/aggregate_resource_budget_red-f6f8c0e6becc4623)
+  Executable tests/aggregate_resource_budget_snapshot_red.rs (target/debug/deps/aggregate_resource_budget_snapshot_red-5c3aa4e252f4bd0a)
+  Executable tests/phase1_core_types.rs (target/debug/deps/phase1_core_types-5b682a39f2963145)
+  Executable tests/proptest_choose_replay.rs (target/debug/deps/proptest_choose_replay-269351f7675fcf39)
+  Executable tests/proptest_core_error_codes.rs (target/debug/deps/proptest_core_error_codes-0a28a18afe65a3db)
+  Executable tests/proptest_core_types.rs (target/debug/deps/proptest_core_types-95fe11991a0d9e78)
+  Executable tests/proptest_diagnostic_code_determinism.rs (target/debug/deps/proptest_diagnostic_code_determinism-0620c893acd2cd01)
+  Executable tests/proptest_diagnostic_constructor.rs (target/debug/deps/proptest_diagnostic_constructor-3fe1db0a0b52d048)
+  Executable tests/proptest_error_code_registration.rs (target/debug/deps/proptest_error_code_registration-0d88db274adb64b2)
+  Executable tests/proptest_registry_consistency.rs (target/debug/deps/proptest_registry_consistency-f06461aa0cb48199)
+  Executable tests/proptest_runtime_code_determinism.rs (target/debug/deps/proptest_runtime_code_determinism-33470c9564f2755d)
+  Executable tests/proptest_section16_parity.rs (target/debug/deps/proptest_section16_parity-8854489bee31540f)
+  Executable tests/proptest_serde_roundtrip.rs (target/debug/deps/proptest_serde_roundtrip-529a64392f605f96)
+  Executable tests/proptest_span_try_new.rs (target/debug/deps/proptest_span_try_new-992b038933c04349)
+  Executable tests/proptest_supported_codes.rs (target/debug/deps/proptest_supported_codes-a73579f6fd43ad34)
+  Executable tests/proptest_symbolic_code.rs (target/debug/deps/proptest_symbolic_code-1f524e6b83e72607)
+  Executable tests/proptest_symbolic_code_determinism.rs (target/debug/deps/proptest_symbolic_code_determinism-58baaff3d79aedbc)
+  Executable tests/resource_contract_type_integrity.rs (target/debug/deps/resource_contract_type_integrity-78383847825fcdc0)
+  Executable tests/resource_contract_validation.rs (target/debug/deps/resource_contract_validation-dfb397a96d2dde16)
+  Executable tests/section36_mandatory_coverage.rs (target/debug/deps/section36_mandatory_coverage-728ee8c774855172)
+  Executable tests/section38_behavioral_properties.rs (target/debug/deps/section38_behavioral_properties-e28d3ae5192795e3)
+  Executable tests/vb_5m8w_step_budget_suspension.rs (target/debug/deps/vb_5m8w_step_budget_suspension-e136a605c3d3aaea)
+  Executable tests/vb_qi37_2_5_boundedness_adversarial.rs (target/debug/deps/vb_qi37_2_5_boundedness_adversarial-228ac94ee083761a)
+  Executable unittests src/lib.rs (target/debug/deps/vb_expr-e3fa9688746b246e)
+  Executable unittests src/lib.rs (target/debug/deps/vb_ipc-2ffa460a6b19e941)
+  Executable tests/ipc_command_properties.rs (target/debug/deps/ipc_command_properties-a257b3f130ef912d)
+  Executable tests/proptest_ipc_error_codes.rs (target/debug/deps/proptest_ipc_error_codes-970df37419a37ba5)
+  Executable unittests src/lib.rs (target/debug/deps/vb_runtime-72f27f64b082fd1f)
+  Executable tests/atomic_fire_enqueue_test.rs (target/debug/deps/atomic_fire_enqueue_test-3fe16259a43b6770)
+  Executable tests/authority_validation_test.rs (target/debug/deps/authority_validation_test-9619fb9a4488ef55)
+  Executable tests/capacity_bounds_test.rs (target/debug/deps/capacity_bounds_test-ea230505384530dc)
+  Executable tests/clock_advancement_test.rs (target/debug/deps/clock_advancement_test-31e374ec5d520f6b)
+  Executable tests/duplicate_key_test.rs (target/debug/deps/duplicate_key_test-28f04b60ca57606a)
+  Executable tests/durability_matrix_integration.rs (target/debug/deps/durability_matrix_integration-71abeabbdf31c8ed)
+  Executable tests/durable_resume_red_phase.rs (target/debug/deps/durable_resume_red_phase-e7dc1183d155c25e)
+  Executable tests/durable_retry_boundary.rs (target/debug/deps/durable_retry_boundary-9302c7fa52c75033)
+  Executable tests/durable_retry_execution.rs (target/debug/deps/durable_retry_execution-dbf521170f77bbd8)
+  Executable tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-3e9989a34b4c52d0)
+  Executable tests/durable_retry_run_attempt_authority.rs (target/debug/deps/durable_retry_run_attempt_authority-cb43ac8f22184be7)
+  Executable tests/generation_exhaustion_test.rs (target/debug/deps/generation_exhaustion_test-1bc90fd155b3b776)
+  Executable tests/numeric_timer_state_test.rs (target/debug/deps/numeric_timer_state_test-321791d3d6df647e)
+  Executable tests/proptest_admission_error_paths.rs (target/debug/deps/proptest_admission_error_paths-f38daf9bb42db23e)
+  Executable tests/proptest_runtime_error_codes.rs (target/debug/deps/proptest_runtime_error_codes-1ace0f7fda28357e)
+  Executable tests/rb_r7o2a_phantom.rs (target/debug/deps/rb_r7o2a_phantom-c3e36d773cd53b7c)
+  Executable tests/recovery_bdd_tests.rs (target/debug/deps/recovery_bdd_tests-1a5ea405370fbbba)
+  Executable tests/recovery_hydration_tests.rs (target/debug/deps/recovery_hydration_tests-312216f4d0a2c66b)
+  Executable tests/recovery_integration.rs (target/debug/deps/recovery_integration-6d94a938a83b472e)
+  Executable tests/replay_resume.rs (target/debug/deps/replay_resume-10fcf3b47ef9709d)
+  Executable tests/rs_026_phantom.rs (target/debug/deps/rs_026_phantom-1a4c505107cc0c75)
+  Executable tests/slot_validation_test.rs (target/debug/deps/slot_validation_test-8dec2781a84eab35)
+  Executable tests/static_analysis_gates_test.rs (target/debug/deps/static_analysis_gates_test-e19d4870ee46e586)
+  Executable tests/ticket_authority_matrix.rs (target/debug/deps/ticket_authority_matrix-bc05c9de44996388)
+  Executable tests/timer_deadline_safety_test.rs (target/debug/deps/timer_deadline_safety_test-5324cfb8e53678dd)
+  Executable tests/timer_lifecycle_e2e_test.rs (target/debug/deps/timer_lifecycle_e2e_test-233c7d9c345e23d5)
+  Executable tests/timer_wheel_behavior_tests.rs (target/debug/deps/timer_wheel_behavior_tests-95b7ebbadc4a963d)
+  Executable tests/vb_4qog3_independent_review.rs (target/debug/deps/vb_4qog3_independent_review-81dc53dd4407b5b2)
+  Executable tests/vb_5m8w_step_budget_suspension_runtime.rs (target/debug/deps/vb_5m8w_step_budget_suspension_runtime-45b7b6d87f03b366)
+  Executable tests/vb_h6ix_integration.rs (target/debug/deps/vb_h6ix_integration-691a7b90a75d8de3)
+  Executable tests/vb_jggy_journal_event_tests.rs (target/debug/deps/vb_jggy_journal_event_tests-cb45f80b34c40187)
+  Executable tests/vb_jggy_lifecycle_tests.rs (target/debug/deps/vb_jggy_lifecycle_tests-c2856c78264561fe)
+  Executable tests/vb_jggy_property_tests.rs (target/debug/deps/vb_jggy_property_tests-933490f815671515)
+  Executable tests/vb_ko29_7_idempotency_miri.rs (target/debug/deps/vb_ko29_7_idempotency_miri-463779faf3964f32)
+  Executable tests/vb_l2d7_joined_taint_propagation_red.rs (target/debug/deps/vb_l2d7_joined_taint_propagation_red-39a8a0478dfbce1c)
+  Executable tests/vb_qi37_12_2_resume_error_propagation.rs (target/debug/deps/vb_qi37_12_2_resume_error_propagation-1ba6d8fa58ea5e14)
+  Executable tests/vb_r4fm9_event_generation.rs (target/debug/deps/vb_r4fm9_event_generation-d0af4cd1b5eeab03)
+  Executable tests/vb_wave16_mqa.rs (target/debug/deps/vb_wave16_mqa-8e8ebd82882c9907)
+  Executable tests/zero_duration_test.rs (target/debug/deps/zero_duration_test-be9ba25ed925eb64)
+  Executable unittests src/lib.rs (target/debug/deps/vb_storage-b2c74bcbb8790326)
+  Executable tests/accepted_artifact_red_phase.rs (target/debug/deps/accepted_artifact_red_phase-8d36d1457372db28)
+  Executable tests/manual_qa_smoke.rs (target/debug/deps/manual_qa_smoke-f02d640c2770b3c7)
+  Executable tests/proptest_journal_error_codes.rs (target/debug/deps/proptest_journal_error_codes-165d29a5d961664f)
+  Executable tests/proptest_journal_idempotency.rs (target/debug/deps/proptest_journal_idempotency-8ea2bfc2a423f70d)
+  Executable tests/proptest_vb_vzcuf_PS_001.rs (target/debug/deps/proptest_vb_vzcuf_PS_001-24e5adcfed506102)
+  Executable tests/proptest_vb_vzcuf_PS_002.rs (target/debug/deps/proptest_vb_vzcuf_PS_002-6d9ec26ba5ba23df)
+  Executable tests/proptest_vb_vzcuf_PS_003.rs (target/debug/deps/proptest_vb_vzcuf_PS_003-bb225bae795b3056)
+  Executable tests/proptest_vb_vzcuf_PS_004.rs (target/debug/deps/proptest_vb_vzcuf_PS_004-ffea8af08722f85a)
+  Executable tests/proptest_vb_vzcuf_PS_005.rs (target/debug/deps/proptest_vb_vzcuf_PS_005-a0bd1ce4f2ea8011)
+  Executable tests/proptest_vb_vzcuf_PS_006.rs (target/debug/deps/proptest_vb_vzcuf_PS_006-43abfadff5ff6534)
+  Executable tests/proptest_vb_vzcuf_PS_007.rs (target/debug/deps/proptest_vb_vzcuf_PS_007-71e29e13387ac063)
+  Executable tests/proptest_vb_vzcuf_PS_008.rs (target/debug/deps/proptest_vb_vzcuf_PS_008-dabfcc257a31577c)
+  Executable tests/proptest_vb_vzcuf_PS_009.rs (target/debug/deps/proptest_vb_vzcuf_PS_009-7ac6e516203d26a1)
+  Executable tests/recovery_property_tests.rs (target/debug/deps/recovery_property_tests-896d87bbf9624792)
+  Executable tests/vb_core_atomic_admission_red.rs (target/debug/deps/vb_core_atomic_admission_red-c025427c2faeeb6d)
+  Executable unittests src/lib.rs (target/debug/deps/vb_validate-98b7359279258e11)
+  Executable tests/capability_contract_schema.rs (target/debug/deps/capability_contract_schema-841994ca4dddf4b9)
+  Executable tests/capability_schema_kani.rs (target/debug/deps/capability_schema_kani-b4b9b4b7308b1cce)
+  Executable tests/gate_08_accessor_parity.rs (target/debug/deps/gate_08_accessor_parity-ef8093b647f60d51)
+  Executable tests/idempotency_contract_red.rs (target/debug/deps/idempotency_contract_red-0fd406b8cdbaf64b)
+  Executable tests/proptest_diag_codes_promotion.rs (target/debug/deps/proptest_diag_codes_promotion-1a24ccb81ffac994)
+  Executable tests/proptest_validation_error_code_registry_extended.rs (target/debug/deps/proptest_validation_error_code_registry_extended-75bb98054ac4c2d5)
+  Executable tests/proptest_validation_error_codes.rs (target/debug/deps/proptest_validation_error_codes-82c149561b8ae3c8)
+  Executable tests/red_phase_validation.rs (target/debug/deps/red_phase_validation-609f42ba3799923f)
+  Executable unittests src/lib.rs (target/debug/deps/vb_yaml-2f20f4ee8005a75e)
+  Executable unittests src/lib.rs (target/debug/deps/velvet_ballistics-becc5b7b590ee63a)
+  Executable unittests src/main.rs (target/debug/deps/velvet_ballistics-fa44c3f14259ee77)
+  Executable tests/admission_durability_code.rs (target/debug/deps/admission_durability_code-5cb5dd788b0fc402)
+  Executable tests/admission_evidence_integration.rs (target/debug/deps/admission_evidence_integration-b3eb9c367ac0c2f8)
+  Executable tests/agent_context_snapshot.rs (target/debug/deps/agent_context_snapshot-c3decc70dededf57)
+  Executable tests/cli_integration.rs (target/debug/deps/cli_integration-9914562c77a51227)
+  Executable tests/cli_trace_integration.rs (target/debug/deps/cli_trace_integration-3bd1d9a1ac66d1ac)
+  Executable tests/cli_vb_m214_bdd_scenarios.rs (target/debug/deps/cli_vb_m214_bdd_scenarios-ecca4139bb724712)
+  Executable tests/cli_verify_integration.rs (target/debug/deps/cli_verify_integration-359950f2e1299da2)
+  Executable tests/cross_crate_adversarial.rs (target/debug/deps/cross_crate_adversarial-6031d6561c0bf4b6)
+  Executable tests/deliver_sink_integration.rs (target/debug/deps/deliver_sink_integration-c18e94cfa17ffca9)
+  Executable tests/durable_retry_cli.rs (target/debug/deps/durable_retry_cli-652b1d60ae9f7755)
+  Executable tests/error_chain_integration.rs (target/debug/deps/error_chain_integration-59e86553ec31704f)
+  Executable ../workspace_tests/tests/cli/finish_input_execution.rs (target/debug/deps/finish_input_execution-7e5ae824feb86474)
+  Executable tests/input_mapping_boundary.rs (target/debug/deps/input_mapping_boundary-92102ff357784036)
+  Executable tests/ir_artifact_admission.rs (target/debug/deps/ir_artifact_admission-f18e117b33654859)
+  Executable tests/lifecycle_integration.rs (target/debug/deps/lifecycle_integration-bb7008b3c26ede16)
+  Executable tests/mode_activation_integration_tests.rs (target/debug/deps/mode_activation_integration_tests-ae309ea853ee81a2)
+  Executable ../workspace_tests/tests/cli/submit_input_boundary.rs (target/debug/deps/submit_input_boundary-feb4ba9cbecf456d)
+  Executable ../workspace_tests/tests/cli/submit_retained_inputs.rs (target/debug/deps/submit_retained_inputs-97e62d1c24641573)
+  Executable tests/vb_7x0ol_probe_c6_continue.rs (target/debug/deps/vb_7x0ol_probe_c6_continue-3bb827c626bea75b)
+  Executable tests/vb_md3w_retained_input_recovery.rs (target/debug/deps/vb_md3w_retained_input_recovery-368b875ae80277a7)
+  Executable tests/vb_qi37_14_1_run_step.rs (target/debug/deps/vb_qi37_14_1_run_step-1b926d5d2d2ef746)
+  Executable tests/vb_qi37_17_1_incident_command.rs (target/debug/deps/vb_qi37_17_1_incident_command-6228fc2f574e3320)
+  Executable ../workspace_tests/tests/cli/verify_budget_profiles.rs (target/debug/deps/verify_budget_profiles-a7deaf768cb36284)
+  Executable unittests src/lib.rs (target/debug/deps/fuzz_lib-589b6f0be05639e8)
+  Executable tests/proptest_digest_coherence.rs (target/debug/deps/proptest_digest_coherence-515484bd05597d7c)
+  Executable tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-33b794eff3aa8131)
+  Executable tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-079210e3d3aa722a)
+  Executable tests/proptest_roundtrip_determinism.rs (target/debug/deps/proptest_roundtrip_determinism-633e366d201a99c2)
+  Executable unittests src/lib.rs (target/debug/deps/velvet_ballistics_workspace_tests-19a44ac68a411c94)
+  Executable tests/bdd_idempotency.rs (target/debug/deps/bdd_idempotency-6b5e2593286d1d55)
+  Executable tests/bdd_runner_tests.rs (target/debug/deps/bdd_runner_tests-d6e09becc6606430)
+  Executable tests/behavior_symbolic_code_serde.rs (target/debug/deps/behavior_symbolic_code_serde-a0c271e1169063c1)
+  Executable tests/bounded_memory_lease_tests.rs (target/debug/deps/bounded_memory_lease_tests-e3eaf879772fc4a6)
+  Executable tests/cancel_kill_lattice_props.rs (target/debug/deps/cancel_kill_lattice_props-1ef992d14ba78e77)
+  Executable tests/cancel_kill_lattice_tests.rs (target/debug/deps/cancel_kill_lattice_tests-764d9116c25381ad)
+  Executable tests/compiler_input_schema_kinds.rs (target/debug/deps/compiler_input_schema_kinds-89424586f54fb0ee)
+  Executable tests/contracts_as_data_kani.rs (target/debug/deps/contracts_as_data_kani-68d830efef5c074b)
+  Executable tests/contracts_as_data_props.rs (target/debug/deps/contracts_as_data_props-25cd1293000f08f0)
+  Executable tests/contracts_integration.rs (target/debug/deps/contracts_integration-7de2432cf1b5f6e5)
+  Executable tests/contracts_production_binding.rs (target/debug/deps/contracts_production_binding-17b8216dcc7d1d7c)
+  Executable tests/derived_status_replay_timeline_tests.rs (target/debug/deps/derived_status_replay_timeline_tests-8981fed5b050a84f)
+  Executable tests/diagnostic_code_ranges_test.rs (target/debug/deps/diagnostic_code_ranges_test-9c91d53aff7a1046)
+  Executable tests/e2e_diagnostic_chain.rs (target/debug/deps/e2e_diagnostic_chain-ca711aa1e8ee18d5)
+  Executable tests/finish_input_binding.rs (target/debug/deps/finish_input_binding-23f76ac87c7baed5)
+  Executable tests/fjall_keyspace_manifest_tests.rs (target/debug/deps/fjall_keyspace_manifest_tests-9a6d057576fec31d)
+  Executable tests/integration_boundary_inventory_evidence_validation.rs (target/debug/deps/integration_boundary_inventory_evidence_validation-66651b1b75f80720)
+  Executable tests/integration_compile_error_message_quality.rs (target/debug/deps/integration_compile_error_message_quality-f93673e3f114edc5)
+  Executable tests/integration_runtime_storage_fault_tolerance.rs (target/debug/deps/integration_runtime_storage_fault_tolerance-9887c56d429aec8f)
+  Executable tests/integration_storage_runtime_recovery.rs (target/debug/deps/integration_storage_runtime_recovery-b98a850435226f79)
+  Executable tests/integration_storage_runtime_validate_pipeline.rs (target/debug/deps/integration_storage_runtime_validate_pipeline-486f9ab2329fbf80)
+  Executable tests/integration_strict_persist_drop_reopen.rs (target/debug/deps/integration_strict_persist_drop_reopen-4600142245201a94)
+  Executable tests/integration_subprocess_wal_crash_recovery.rs (target/debug/deps/integration_subprocess_wal_crash_recovery-b5fb70dc8c10dcbf)
+  Executable tests/integration_validate_policy_enforcement.rs (target/debug/deps/integration_validate_policy_enforcement-dd1b9035a3ceaa91)
+  Executable tests/integration_validate_yaml_parsing.rs (target/debug/deps/integration_validate_yaml_parsing-228cd7607b470c93)
+  Executable tests/journal_batch_accounting_tests.rs (target/debug/deps/journal_batch_accounting_tests-d780ed8fe2e77a4d)
+  Executable tests/journal_side_index_contracts.rs (target/debug/deps/journal_side_index_contracts-480c1533646e147b)
+  Executable tests/phase0_scaffold_test.rs (target/debug/deps/phase0_scaffold_test-74f0ba0ab567818e)
+  Executable tests/postcard_envelope_wire_tests.rs (target/debug/deps/postcard_envelope_wire_tests-01ae002fe0258cd9)
+  Executable tests/proptest_compile_error_codes.rs (target/debug/deps/proptest_compile_error_codes-4ac5733c44ddd515)
+  Executable tests/proptest_diagnostic_codes.rs (target/debug/deps/proptest_diagnostic_codes-a043f4658ce59794)
+  Executable tests/proptest_equality.rs (target/debug/deps/proptest_equality-6456c5310d44c520)
+  Executable tests/proptest_error_types_nonzero_codes.rs (target/debug/deps/proptest_error_types_nonzero_codes-8222af8b0b53fce1)
+  Executable tests/proptest_error_types_registration.rs (target/debug/deps/proptest_error_types_registration-7c5b0ea3f1d112f5)
+  Executable tests/raii_introspection_registry_tests.rs (target/debug/deps/raii_introspection_registry_tests-b374529118b6e6d6)
+  Executable tests/recovery_watermark_tests.rs (target/debug/deps/recovery_watermark_tests-9ad01d4d3636dd1a)
+  Executable tests/restate_adapter_contamination_guard.rs (target/debug/deps/restate_adapter_contamination_guard-10f0bfdc13d14a70)
+  Executable tests/restate_completion_watermark_tests.rs (target/debug/deps/restate_completion_watermark_tests-036314397110b467)
+  Executable tests/restate_decode_error_taxonomy_tests.rs (target/debug/deps/restate_decode_error_taxonomy_tests-13eadb0bba983ebb)
+  Executable tests/restate_doctor_key_decode_tests.rs (target/debug/deps/restate_doctor_key_decode_tests-faeabf7224459600)
+  Executable tests/restate_doctor_storage_scan_decode_tests.rs (target/debug/deps/restate_doctor_storage_scan_decode_tests-ba8c7c8868505762)
+  Executable tests/restate_explicit_migration_skeleton_tests.rs (target/debug/deps/restate_explicit_migration_skeleton_tests-eccae64929d088a0)
+  Executable tests/restate_fifo_backpressure_tests.rs (target/debug/deps/restate_fifo_backpressure_tests-6a99046d7b7b46f6)
+  Executable tests/restate_ipc_flag_matrix_tests.rs (target/debug/deps/restate_ipc_flag_matrix_tests-b6445a9520c657b3)
+  Executable tests/restate_journal_tail_scan_fallback_tests.rs (target/debug/deps/restate_journal_tail_scan_fallback_tests-d9e9a5f82ded5774)
+  Executable tests/restate_postcard_newtype_compat_tests.rs (target/debug/deps/restate_postcard_newtype_compat_tests-8aba88643cd170dd)
+  Executable tests/restate_retry_policy_math_tests.rs (target/debug/deps/restate_retry_policy_math_tests-81b47bd9ec9e7ccc)
+  Executable tests/restate_shard_partition_math_properties.rs (target/debug/deps/restate_shard_partition_math_properties-6185b5ce2ba0fee9)
+  Executable tests/restate_shutdown_drain_tests.rs (target/debug/deps/restate_shutdown_drain_tests-d12aa0af6c16bb26)
+  Executable tests/restate_storage_blackhat_fixture_corpus.rs (target/debug/deps/restate_storage_blackhat_fixture_corpus-1e9b9faa4521843d)
+  Executable tests/restate_sync_drr_scheduler_tests.rs (target/debug/deps/restate_sync_drr_scheduler_tests-b3a6f0309104e766)
+  Executable tests/restate_timer_deadline_primitive_tests.rs (target/debug/deps/restate_timer_deadline_primitive_tests-85e0ea2ebd75623f)
+  Executable tests/restate_typed_partitioned_id_tests.rs (target/debug/deps/restate_typed_partitioned_id_tests-191b8b68cd745f40)
+  Executable tests/runtime_fjall_pending_action_recovery.rs (target/debug/deps/runtime_fjall_pending_action_recovery-dbc8b3d039cf0e44)
+  Executable tests/runtime_input_schema_kinds.rs (target/debug/deps/runtime_input_schema_kinds-8412915a4509693a)
+  Executable tests/runtime_version_barrier_tests.rs (target/debug/deps/runtime_version_barrier_tests-ba2f623dd25f9e0c)
+  Executable tests/section17_runtime_code_coverage_report.rs (target/debug/deps/section17_runtime_code_coverage_report-8ed9cdc4ae8d2108)
+  Executable tests/section17_runtime_code_reverse_parity.rs (target/debug/deps/section17_runtime_code_reverse_parity-0891c868a173f31d)
+  Executable tests/slot_written_ordering_integration_tests.rs (target/debug/deps/slot_written_ordering_integration_tests-162260bc0a9a00a9)
+  Executable tests/snapshot_sequence_precondition_tests.rs (target/debug/deps/snapshot_sequence_precondition_tests-6720043183ca4aa6)
+  Executable tests/storage_contract_pack_runner.rs (target/debug/deps/storage_contract_pack_runner-729b2a37f127f802)
+  Executable tests/storage_ipc_resource_scenarios.rs (target/debug/deps/storage_ipc_resource_scenarios-aba0421087a336a5)
+  Executable tests/symbolic_code_behavior_tests.rs (target/debug/deps/symbolic_code_behavior_tests-b9008a2a298a198b)
+  Executable tests/vb_37lc_canonical_spelling_red.rs (target/debug/deps/vb_37lc_canonical_spelling_red-577508fe57383901)
+  Executable tests/vb_5xs4_test_loop_inventory_red.rs (target/debug/deps/vb_5xs4_test_loop_inventory_red-1377f5ecbd4f83d1)
+  Executable tests/vb_7r7jv_executor_conformance.rs (target/debug/deps/vb_7r7jv_executor_conformance-a0195d803bc8b520)
+  Executable tests/vb_7x0ol_probe_registered_executor.rs (target/debug/deps/vb_7x0ol_probe_registered_executor-fb5d0aa9a9840dfd)
+  Executable tests/vb_8ma2_workspace_assertions.rs (target/debug/deps/vb_8ma2_workspace_assertions-fbfc7f35ed5ddca3)
+  Executable tests/vb_8mdp_7_resource_admission_props.rs (target/debug/deps/vb_8mdp_7_resource_admission_props-077b95052e2188af)
+  Executable tests/vb_9agmk_artifact_evidence.rs (target/debug/deps/vb_9agmk_artifact_evidence-b017680202c261de)
+  Executable tests/vb_c1s0_orchestration_runtime_tests.rs (target/debug/deps/vb_c1s0_orchestration_runtime_tests-10ec5ae26a199664)
+  Executable tests/vb_c3k9_current_api_mutation_plan.rs (target/debug/deps/vb_c3k9_current_api_mutation_plan-d03421cdfa101258)
+  Executable tests/vb_core_yaml_e2e_chain_contract.rs (target/debug/deps/vb_core_yaml_e2e_chain_contract-fb3c7017db4f9f9c)
+  Executable tests/vb_doc_boundary_inventory_integration.rs (target/debug/deps/vb_doc_boundary_inventory_integration-80994192703d782a)
+  Executable tests/vb_doc_taint_regression.rs (target/debug/deps/vb_doc_taint_regression-84c6f69e49f06c99)
+  Executable tests/vb_eepg_bdd_tests.rs (target/debug/deps/vb_eepg_bdd_tests-af1491951befd798)
+  Executable tests/vb_eyij7_migration_regression.rs (target/debug/deps/vb_eyij7_migration_regression-936aea5aa8c692cc)
+  Executable tests/vb_fzx7_benchmark_groups.rs (target/debug/deps/vb_fzx7_benchmark_groups-0a9185cbad036ca2)
+  Executable tests/vb_fzx7_budget_arithmetic.rs (target/debug/deps/vb_fzx7_budget_arithmetic-831a814a4bb16f30)
+  Executable tests/vb_fzx7_error_variants.rs (target/debug/deps/vb_fzx7_error_variants-7eb625bfd6144bd6)
+  Executable tests/vb_fzx7_evidence_gate.rs (target/debug/deps/vb_fzx7_evidence_gate-7e588107c64aff45)
+  Executable tests/vb_fzx7_invariants.rs (target/debug/deps/vb_fzx7_invariants-be42c2b980b61f5e)
+  Executable tests/vb_hxm0_acceptance_catalog.rs (target/debug/deps/vb_hxm0_acceptance_catalog-33f67ac38f034471)
+  Executable tests/vb_jpq7_3_fail_closed_storage_recovery_contract.rs (target/debug/deps/vb_jpq7_3_fail_closed_storage_recovery_contract-53bffb8feae31e61)
+  Executable tests/vb_kkvb_xtask_command_shell_coverage.rs (target/debug/deps/vb_kkvb_xtask_command_shell_coverage-4753aa29ad713732)
+  Executable tests/vb_kkvb_xtask_density_explicit.rs (target/debug/deps/vb_kkvb_xtask_density_explicit-ebaab017408dbe1e)
+  Executable tests/vb_kkvb_xtask_red_phase.rs (target/debug/deps/vb_kkvb_xtask_red_phase-90de20bc7480f322)
+  Executable tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-fab5d1c76b16b57c)
+  Executable tests/vb_kyyf_cross_run_determinism.rs (target/debug/deps/vb_kyyf_cross_run_determinism-bbe4e60390d777e9)
+  Executable tests/vb_l2d7_doc_reconciliation_contract_red.rs (target/debug/deps/vb_l2d7_doc_reconciliation_contract_red-76f04c1638f4b7f9)
+  Executable tests/vb_lp2v_admission_integration.rs (target/debug/deps/vb_lp2v_admission_integration-5f1c689d94b6f632)
+  Executable tests/vb_lp2v_admission_proptests.rs (target/debug/deps/vb_lp2v_admission_proptests-f99f0bacb3f37b7c)
+  Executable tests/vb_lp2v_proof_admission_bdd.rs (target/debug/deps/vb_lp2v_proof_admission_bdd-b3275fa8c8a5185c)
+  Executable tests/vb_nf2u_ui_release_acceptance.rs (target/debug/deps/vb_nf2u_ui_release_acceptance-31700474890b8656)
+  Executable tests/vb_njju_mutation_fuzz_property_closure.rs (target/debug/deps/vb_njju_mutation_fuzz_property_closure-dd8af66cf930758c)
+  Executable tests/vb_qi37_1_1_red_recovery_contract_test.rs (target/debug/deps/vb_qi37_1_1_red_recovery_contract_test-4f0437d5eecbb92e)
+  Executable tests/vb_qi37_25_quality_gates.rs (target/debug/deps/vb_qi37_25_quality_gates-e5fb65df71f52a11)
+  Executable tests/vb_qi37_2_4_integration_budget_errors.rs (target/debug/deps/vb_qi37_2_4_integration_budget_errors-7c94d9addb24216e)
+  Executable tests/vb_qi37_4_2_strict_runtime_admission.rs (target/debug/deps/vb_qi37_4_2_strict_runtime_admission-1684f27cd0411195)
+  Executable tests/vb_qi37_6_state8_setup.rs (target/debug/deps/vb_qi37_6_state8_setup-cd20ad17b406952d)
+  Executable tests/vb_s25h2_full_journal_reader.rs (target/debug/deps/vb_s25h2_full_journal_reader-360c186b453113de)
+  Executable tests/vb_s25h2_recover_entry_points.rs (target/debug/deps/vb_s25h2_recover_entry_points-4827480395dd1205)
+  Executable tests/vb_ssei_verification_admission_acceptance.rs (target/debug/deps/vb_ssei_verification_admission_acceptance-64ab0a8d9502c2ee)
+  Executable tests/vb_te1i_binary_ipc_acceptance.rs (target/debug/deps/vb_te1i_binary_ipc_acceptance-1a79dc8e49c22312)
+  Executable tests/vb_test_cli_diff_incident_behavior.rs (target/debug/deps/vb_test_cli_diff_incident_behavior-8cded93b298c04d7)
+  Executable tests/vb_test_cli_run_lifecycle_behavior.rs (target/debug/deps/vb_test_cli_run_lifecycle_behavior-26960e7c5fdf29c6)
+  Executable tests/vb_test_cli_storage_io_behavior.rs (target/debug/deps/vb_test_cli_storage_io_behavior-681729b03f6a9395)
+  Executable tests/vb_test_compile_error_quality_behavior.rs (target/debug/deps/vb_test_compile_error_quality_behavior-3fa4697670bde65b)
+  Executable tests/vb_test_compile_parse_validate_behavior.rs (target/debug/deps/vb_test_compile_parse_validate_behavior-41cddaacf9f35e87)
+  Executable tests/vb_test_core_admission_trigger_behavior.rs (target/debug/deps/vb_test_core_admission_trigger_behavior-55751236f97ad03f)
+  Executable tests/vb_test_core_workflow_slot_behavior.rs (target/debug/deps/vb_test_core_workflow_slot_behavior-ddd823021d745c76)
+  Executable tests/vb_test_core_yaml_chain_behavior.rs (target/debug/deps/vb_test_core_yaml_chain_behavior-a64e4318a644db1d)
+  Executable tests/vb_test_runtime_ipc_resource_behavior.rs (target/debug/deps/vb_test_runtime_ipc_resource_behavior-affefad14e302d7a)
+  Executable tests/vb_test_runtime_lifecycle_state_behavior.rs (target/debug/deps/vb_test_runtime_lifecycle_state_behavior-45344a1c837ddc95)
+  Executable tests/vb_test_runtime_queue_timer_behavior.rs (target/debug/deps/vb_test_runtime_queue_timer_behavior-ac430cad4e4ce77c)
+  Executable tests/vb_test_util_crate.rs (target/debug/deps/vb_test_util_crate-5efafdb5ebb47115)
+  Executable tests/vb_test_validate_diagnostic_behavior.rs (target/debug/deps/vb_test_validate_diagnostic_behavior-b6decfb7ec6960c3)
+  Executable tests/vb_test_validate_policy_enforce_behavior.rs (target/debug/deps/vb_test_validate_policy_enforce_behavior-654c74ca1d7f1d12)
+  Executable tests/vb_test_validate_yaml_parsing_behavior.rs (target/debug/deps/vb_test_validate_yaml_parsing_behavior-7d2faeb28da15cc0)
+  Executable tests/vb_vt2f_direct_runtime_api_acceptance.rs (target/debug/deps/vb_vt2f_direct_runtime_api_acceptance-ddf0ef6a2c9eee9b)
+  Executable tests/vb_y1zq_boundary_inventory_contract.rs (target/debug/deps/vb_y1zq_boundary_inventory_contract-380823e9ac3743aa)
+  Executable tests/vb_y1zq_boundary_inventory_properties.rs (target/debug/deps/vb_y1zq_boundary_inventory_properties-e6cd54e668c1aca3)
+  Executable tests/vb_y1zq_boundary_inventory_properties_v2.rs (target/debug/deps/vb_y1zq_boundary_inventory_properties_v2-d9625c0321b2f12d)

@@ -1,0 +1,16 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_lp2v_proof_admission_bdd",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": 101,
+  "elapsed_seconds": 0.38303184509277344,
+  "stdout": "\nrunning 3 tests\ntest given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted ... FAILED\ntest given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch_denies ... ok\ntest given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted ... FAILED\n\nfailures:\n\n---- given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted stdout ----\nError: \"admission rejected: capability count mismatch: required 0, granted 1\"\n\n---- given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted stdout ----\nError: \"admission rejected: capability count mismatch: required 0, granted 1\"\n\n\nfailures:\n    given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted\n    given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted\n\ntest result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s\n\n",
+  "stderr": "   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cd7g8-local5090-review/crates/workspace_tests)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s\n     Running tests/vb_lp2v_proof_admission_bdd.rs (target/debug/deps/vb_lp2v_proof_admission_bdd-806d9871cee47eab)\nerror: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_lp2v_proof_admission_bdd`\n"
+}

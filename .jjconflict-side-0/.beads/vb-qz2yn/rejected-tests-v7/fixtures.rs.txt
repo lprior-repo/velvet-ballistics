@@ -1,0 +1,203 @@
+//! Shared test fixtures for artifact acceptance sequence tests.
+//!
+//! Defines temporary journal setup, minimal workflow construction,
+//! and counter manipulation utilities used across all acceptance tests.
+
+use crate::admission::*;
+use crate::error::JournalError;
+use crate::journal::artifact_acceptance::{decode_counter_value, encode_counter_value, LAST_ISSUED_KEY};
+use crate::journal::core::FjallJournal;
+use blake3::Hash;
+use std::num::NonZeroU64;
+
+/// Temporary journal with automatic cleanup on drop.
+pub struct TestJournal {
+    pub journal: FjallJournal,
+    pub path: tempfile::TempDir,
+}
+
+impl TestJournal {
+    pub fn new() -> Result<Self, JournalError> {
+        let path = tempfile::tempdir().map_err(|e| JournalError::Fjall(fjall::Error::Io(e)))?;
+        let journal = FjallJournal::open(path.path(), None)?;
+        Ok(Self { journal, path })
+    }
+
+    /// Reads the raw counter value from the counter key.
+    pub fn read_counter_bytes(&self) -> Result<Option<Vec<u8>>, JournalError> {
+        Ok(self.journal.artifact_acceptance.get(LAST_ISSUED_KEY)?)
+    }
+
+    /// Reads the decoded counter value.
+    pub fn read_counter_value(&self) -> Result<u64, JournalError> {
+        match self.read_counter_bytes()? {
+            Some(value) => decode_counter_value(&value),
+            None => Ok(0),
+        }
+    }
+}
+
+impl Drop for TestJournal {
+    fn drop(&mut self) {
+        let _ = self.path.close();
+    }
+}
+
+/// Opens a temporary journal and runs the provided test closure.
+pub fn with_temp_journal<F, T>(f: F) -> Result<T, JournalError>
+where
+    F: FnOnce(&FjallJournal) -> Result<T, JournalError>,
+{
+    let tj = TestJournal::new()?;
+    let result = f(&tj.journal)?;
+    let _ = tj.path.close();
+    Ok(result)
+}
+
+/// Minimal valid CompiledWorkflow for testing.
+///
+/// Digest is computed from BLAKE3 of the serialized workflow parts.
+pub fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, JournalError> {
+    let id = vb_core::WorkflowId::new("test-workflow").map_err(|_| JournalError::ArtifactMalformed)?;
+    let actions = vec![vb_core::action::ActionSpec::new(
+        vb_core::ActionId::new(0),
+        vb_core::ActionName::new("noop").map_err(|_| JournalError::ArtifactMalformed)?,
+        0,
+        0,
+    )?];
+    let parts = vb_core::WorkflowParts {
+        id,
+        name: Box::from("test workflow"),
+        description: Box::from("test workflow for acceptance sequence tests"),
+        version: 1,
+        actions,
+        resource_contract: Default::default(),
+    };
+    vb_core::CompiledWorkflow::from_parts(parts).map_err(|_| JournalError::ArtifactMalformed)
+}
+
+/// Computes the compiled IR record digest for a workflow.
+pub fn compiled_record_digest(workflow: &vb_core::CompiledWorkflow) -> Result<vb_core::WorkflowDigest, JournalError> {
+    let parts = workflow.to_parts();
+    let mut buf = Vec::new();
+    postcard::to_allocvec(&parts).map_err(|e| JournalError::PostcardEncodeFailed(Box::new(e)))?;
+    let hash: Hash = blake3::hash(&postcard::to_allocvec(&parts).map_err(|e| JournalError::PostcardEncodeFailed(Box::new(e)))?);
+    Ok(vb_core::WorkflowDigest::from_bytes(*hash.as_bytes()))
+}
+
+/// Submits an artifact with the given policy and returns the stamped artifact.
+pub fn submit(
+    journal: &FjallJournal,
+    policy: vb_core::RuntimePolicy,
+) -> Result<AcceptedArtifact, JournalError> {
+    let workflow = minimal_workflow()?;
+    submit_artifact(journal, &workflow, policy)
+}
+
+pub fn submit_relaxed(journal: &FjallJournal) -> Result<AcceptedArtifact, JournalError> {
+    submit(journal, vb_core::RuntimePolicy::Relaxed)
+}
+
+pub fn submit_journaled(journal: &FjallJournal) -> Result<AcceptedArtifact, JournalError> {
+    submit(journal, vb_core::RuntimePolicy::Journaled)
+}
+
+pub fn submit_strict(journal: &FjallJournal) -> Result<AcceptedArtifact, JournalError> {
+    submit(journal, vb_core::RuntimePolicy::Strict)
+}
+
+/// Submits N artifacts with the given policy.
+pub fn submit_many(
+    journal: &FjallJournal,
+    count: u64,
+    policy: vb_core::RuntimePolicy,
+) -> Result<Vec<AcceptedArtifact>, JournalError> {
+    let mut artifacts = Vec::with_capacity(count as usize);
+    for _ in 0..count {
+        artifacts.push(submit(journal, policy)?);
+    }
+    Ok(artifacts)
+}
+
+/// Reads the counter value directly from the counter key.
+pub fn read_counter(journal: &FjallJournal) -> Result<u64, JournalError> {
+    match journal.artifact_acceptance.get(LAST_ISSUED_KEY)? {
+        Some(value) => decode_counter_value(&value),
+        None => Ok(0),
+    }
+}
+
+/// Sets the counter value to a specific value.
+pub fn set_counter(journal: &FjallJournal, value: u64) -> Result<(), JournalError> {
+    let bytes = encode_counter_value(value);
+    journal
+        .artifact_acceptance
+        .put(LAST_ISSUED_KEY, &bytes)?;
+    Ok(())
+}
+
+/// Verifies that an artifact readback matches the expected digest.
+pub fn verify_artifact_readback(
+    journal: &FjallJournal,
+    digest: vb_core::WorkflowDigest,
+    expected_seq: u64,
+) -> Result<(), String> {
+    let stored = journal
+        .compiled_ir(digest)
+        .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+    let record = stored
+        .ok_or_else(|| format!("artifact not found for digest {digest}"))?;
+    let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)
+        .map_err(|e| format!("postcard decode failed: {e}"))?;
+    if decoded.accepted_at_seq.get() != expected_seq {
+        return Err(format!(
+            "expected seq {}, got {}",
+            expected_seq,
+            decoded.accepted_at_seq.get()
+        ));
+    }
+    let canonical = crate::admission::accepted_artifact_digest(&decoded)
+        .map_err(|e| format!("canonical digest computation failed: {e}"))?;
+    if decoded.digest != canonical {
+        return Err(format!(
+            "artifact digest {} does not match canonical {}",
+            decoded.digest, canonical
+        ));
+    }
+    if decoded.verification.digest != canonical {
+        return Err(format!(
+            "verification digest {} does not match canonical {}",
+            decoded.verification.digest, canonical
+        ));
+    }
+    Ok(())
+}
+
+/// Submits an artifact concurrently from multiple threads.
+pub fn submit_concurrent(
+    journal: &FjallJournal,
+    count: usize,
+    policy: vb_core::RuntimePolicy,
+) -> Result<Vec<AcceptedArtifact>, JournalError> {
+    let journal = Arc::new(journal);
+    let mut handles = Vec::with_capacity(count);
+    for _ in 0..count {
+        let j = Arc::clone(&journal);
+        let handle = thread::spawn(move || -> Result<AcceptedArtifact, JournalError> {
+            let workflow = minimal_workflow()?;
+            submit_artifact(&j, &workflow, policy)
+        });
+        handles.push(handle);
+    }
+    let mut artifacts = Vec::with_capacity(count);
+    for handle in handles {
+        let artifact = handle.join().map_err(|_| {
+            JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "thread join failed",
+            )))
+        })??;
+        artifacts.push(artifact);
+    }
+    Ok(artifacts)
+}

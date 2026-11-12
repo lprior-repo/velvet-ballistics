@@ -1,0 +1,170 @@
+{
+  "independent_reviewer": "RTX3090 local OMP v5 reports dispatch-test-review-v4.md/findings-v4.json",
+  "scope_acceptance": "19 listed tests only; no recovery/fuzz/wholev1 or canonical acceptance",
+  "source_candidate": "3fca010b5f5aaaafb5f41b08b95200db001bab3e",
+  "verified_source_hashes": [
+    {
+      "path": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+      "sha256": "245231738602c145ec41e4b3e10c05cf62f22e60ba67ea86d477b0677c86f372"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+      "sha256": "a4bf38ad0779428880ee5d96e938b758f2478e0f588fbc093fef436077187089"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "sha256": "d965f02ff2bf46173a896e68b40634e1cd0abd2be5d1efb4b28dd007249b41dc"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch.rs",
+      "sha256": "3a5c562377f61e10096ef80ffd24c2bccc79c5dec9c676aaf42306cd082132f3"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs",
+      "sha256": "9bcbcb94e913a2555a33f12a100e80224cc753a3bcc7a6935ab1f608dc8c1d17"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs",
+      "sha256": "9d5083fb6081473c90d0fc178a2947b8775e84c60f0e2c4813968d7b7686b99f"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs",
+      "sha256": "17347f0be4afa5ed7a7982b7d286591f95d108973695cd6d1f77fae6b3afe1c0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs",
+      "sha256": "4fe58a8f39183b91fdec71384e1e2787c2d1a148088b15a9a878ec187c572321"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs",
+      "sha256": "e55e61c8953c2561491035ce185b75a42401ac92a29490ee6708a24552e3ce68"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs",
+      "sha256": "879cedc759564ac48fe915fdc3decbd9ff0e573ac713dcafa515f327ccddaa25"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs",
+      "sha256": "3e45754f2e56b5cd08397c4a89cc387613b638f1b8a6a8acaac64b9f07c52b7c"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs",
+      "sha256": "4ca503301748e2c78bcf99a1617150466ac9dc484cdb10e608fc43d90ff6c81f"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs",
+      "sha256": "72eec121ec29d278df1f357de38a919083083762fdd68cfb0faec7ba67ff9b0b"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/test_journal.rs",
+      "sha256": "64dfef2a392c0126657fcfcb5c4ca25080f87dc0fbeb3e4631d5a6c0847afeef"
+    }
+  ],
+  "exact_test_locations_authoritative_over_report_line_guesses": [
+    {
+      "test": "storage_adapter_persists_full_policy_decision_event",
+      "path": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+      "definition_line": 116
+    },
+    {
+      "test": "queued_adapter_drains_prefix_before_strict_decision",
+      "path": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+      "definition_line": 143
+    },
+    {
+      "test": "noop_and_volatile_adapters_fail_closed",
+      "path": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+      "definition_line": 168
+    },
+    {
+      "test": "successful_strict_policy_port",
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+      "definition_line": 158
+    },
+    {
+      "test": "typed_strict_policy_port_failure",
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+      "definition_line": 188
+    },
+    {
+      "test": "overflow_at_u64_max",
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+      "definition_line": 224
+    },
+    {
+      "test": "wrong_ticket_rejected",
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+      "definition_line": 254
+    },
+    {
+      "test": "execute_registered_action_commits_one_effect_and_completes_run",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "definition_line": 125
+    },
+    {
+      "test": "reconcile_registered_action_reads_receipt_without_new_effect",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "definition_line": 201
+    },
+    {
+      "test": "execute_registered_action_rejects_mismatched_grant_artifact",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "definition_line": 286
+    },
+    {
+      "test": "recovery_of_pending_registered_action_blocked_pack_rejects",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "definition_line": 426
+    },
+    {
+      "test": "recovery_of_pending_registered_action_reconcile_pack_is_resumable",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "definition_line": 467
+    },
+    {
+      "test": "allowed_policy_permits_effect_and_records_decision",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs",
+      "definition_line": 172
+    },
+    {
+      "test": "after_scheduling_policy_change_to_deny",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs",
+      "definition_line": 195
+    },
+    {
+      "test": "reconcile_ignores_policy_change_after_effect",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs",
+      "definition_line": 208
+    },
+    {
+      "test": "unconfigured_policy_denies_execution",
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs",
+      "definition_line": 183
+    },
+    {
+      "test": "emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config",
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs",
+      "definition_line": 266
+    },
+    {
+      "test": "strict_port_failure_returns_typed_runtime_error_with_zero_effects",
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs",
+      "definition_line": 7
+    },
+    {
+      "test": "suspended_policy_denies_execution_with_full_record",
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs",
+      "definition_line": 249
+    }
+  ],
+  "root_corrections": [
+    "Reviewer report line numbers are approximate/wrong for several functions; use exact machine-extracted definition_line mapping here and original source for assertions.",
+    "Reviewer mutation discussion reuse_old_admission_pin does not establish rejecting malicious authority; only full-record admission identity preservation is in this scope. Wrongpin rejection separately covered by actual recovery tests, not accepted here.",
+    "Mutation descriptions are source-inspection thought experiments, not actual cargo-mutants execution.",
+    "All passing execution is root-owned evidence:6nouf V11 includes7internal among1989lib;V12 includes12dispatch among140focused tests; reviewer executed no commands.",
+    "Full record match on strict append failure refers captured call notstoreddecision; no decision isstoredthere.",
+    "7new integration tests+5retained=12 integration;7internal=19, no12newcaseclaim.",
+    "Concretefixturebytes/digest literals and enum spellings in report must be read from unchanged source; prose is not an oracle or contract."
+  ],
+  "root_verdict": "Independent behavioral review accepted for exact hashed dispatch/strict-port test scope with these provenance/citation corrections. No source changes or gate waiver. Final recovery TEST and CODE and canonical gates remain separate."
+}

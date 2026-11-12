@@ -1,0 +1,359 @@
+{
+  "verdict": "PASS",
+  "review_kind": "Independent bounded TEST suite/refactor review of shared helper operand-order candidate",
+  "source_pin": "003e442dfb7a63ecd3882a27b3c72b381dc6e940",
+  "previous_rejected_size_pin": "2c65db75cf2d6ccaecf345b079de94650d0f6dff",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "scope": "All6binary adapters plus1ternary caller have bounded source-order regression coverage across6new caller cases and4inheritedcanonical Has cases. This is not full per-helper semantic/negative coverage or wholeHas/Contains acceptance.",
+  "previous_CODE_size_finding": {
+    "report_path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/helper-bytecode-operand-order-code-review-v2.json",
+    "sha256": "abe26d8f6eb8d9f8ed7e71eff2882e001a23377bc096d930e4e0976d1fcb4563",
+    "read_authorization": "Explicit user request to inspect priorS1; source/oracles independently assessed here, not inherited from CODE reasoning.",
+    "id": "S1",
+    "disposition": "fixed_with_evidence",
+    "old_fixture_logical": 27,
+    "new_fixture_logical": 12,
+    "old_merge_test_logical": 33,
+    "new_merge_test_logical": 14,
+    "strict_counting_rule": "Every nonblank/noncomment line including signature and macro/closure/struct closing punctuation; exclude only standalone brace-only lines.",
+    "maximum_current": 23
+  },
+  "delta_preservation": {
+    "only_changed_path_since_2c65": "crates/workspace_tests/tests/helper_bytecode_argument_order.rs",
+    "production_adapters_backend_environment_and_Has4_byte_identical": true,
+    "six_names_preserved": [
+      "contains_preserves_source_order",
+      "starts_with_preserves_source_order",
+      "ends_with_preserves_source_order",
+      "append_preserves_source_order",
+      "merge_preserves_source_order_and_right_wins",
+      "append_if_preserves_source_order"
+    ],
+    "five_test_bodies_byte_identical": true,
+    "changed_merge_assertions": "Same raw key lookup/value expectations extracted from local closure to assert_field_value/assert_merge_fields. Shared22, left4, right9 retained; missing key givesNone and fails Some(literal), not optional extraction.",
+    "fixture_refactor": "Extracted list insertion returns typed SlotValue::List;10slot positions and exact values/text/keys unchanged. Meaningful setup/assertion helpers added; no statement compression or removed matrix rows."
+  },
+  "independent_oracles": [
+    {
+      "caller": "Contains",
+      "ordered_slots": [
+        0,
+        1
+      ],
+      "fixture": "List[5,11],I64(11)",
+      "expected": "Bool(true)",
+      "wrong_order": "Numeric receiver fails List validation; test setup/evalError propagates as failing Result."
+    },
+    {
+      "caller": "StartsWith",
+      "ordered_slots": [
+        2,
+        3
+      ],
+      "fixture": "woodpecker,wood",
+      "expected": "Bool(true)",
+      "wrong_order": "wood starts_with woodpecker is false; exactBool assertion fails."
+    },
+    {
+      "caller": "EndsWith",
+      "ordered_slots": [
+        2,
+        4
+      ],
+      "fixture": "woodpecker,cker",
+      "expected": "Bool(true)",
+      "wrong_order": "cker ends_with woodpecker is false."
+    },
+    {
+      "caller": "Append",
+      "ordered_slots": [
+        5,
+        6
+      ],
+      "fixture": "List[3],I64(8)",
+      "expected": "List handle resolving to literal[3,8]",
+      "wrong_order": "I64receiver fails; ignored append or wrong item fails exactitems."
+    },
+    {
+      "caller": "Merge",
+      "ordered_slots": [
+        8,
+        9
+      ],
+      "fixture": "Left{shared11,left4},Right{shared22,right9} with same sharedSymbolId",
+      "expected": "Object contains shared22,left4,right9",
+      "wrong_order": "Both operands areObjects so tags alone do not catch reversal; shared22/right-wins literal catches it. Both survivors required independently."
+    },
+    {
+      "caller": "AppendIf",
+      "ordered_slots": [
+        5,
+        6,
+        7
+      ],
+      "fixture": "List[3],I64(8),Bool(true)",
+      "expected": "List resolving to literal[3,8]",
+      "wrong_order": "Distinct List/I64/Bool tag roles discriminate permutations. True condition requires actual append, not a no-op false branch."
+    },
+    {
+      "caller": "Has",
+      "target": "crates/workspace_tests/tests/has_store_bytecode_boundaries.rs",
+      "fixture": "ActualObject followed by actualSymbol, with lower I64surplus only in3case",
+      "expected": "Literal Booltrue; malformed0/1underflow and3finalStackOverflow plus constructorrejects",
+      "preservation": "Canonical order, source hash and4oracles inherited unchanged."
+    }
+  ],
+  "source_adapter_semantics": {
+    "binary_callers": [
+      "Contains",
+      "StartsWith",
+      "EndsWith",
+      "Has",
+      "Append",
+      "Merge"
+    ],
+    "ternary_callers": [
+      "AppendIf"
+    ],
+    "pop_pair": "Environment returns(left,right); adapter forwards unchanged.",
+    "pop_triple": "Environment returns(first,second,third); correctedadapter forwards unchanged.",
+    "contains_backend": "Actual additional component resolves only receiverList and compares rawitems via PartialEq. Separate acceptedpolicy; this10case run does not qualify allF64/rawhandle/error/static/replay Contains cases."
+  },
+  "assertion_integrity": {
+    "public_boundary": "Each helper regression builds actual valid ExprProgram via try_from_ops and executes public eval_expr_program_with_store; no reversed operands/custom fake evaluator.",
+    "expectations": "Expected booleans/items/fieldvalues are fixture literals. Store list/object reads obtain actual output; no production comparator or another evaluator derives expected result.",
+    "failure_handling": "Every setup/eval/lookup failure propagates; result type matches use fatal elseErr. No skips, optional successful errors, is_ok/is_err smoke or dropped Results."
+  },
+  "functions": [
+    {
+      "name": "insert_symbol",
+      "line": 23,
+      "end": 27,
+      "logical_lines_including_signature": 4
+    },
+    {
+      "name": "insert_symbols",
+      "line": 29,
+      "end": 38,
+      "logical_lines_including_signature": 9
+    },
+    {
+      "name": "insert_objects",
+      "line": 40,
+      "end": 63,
+      "logical_lines_including_signature": 23
+    },
+    {
+      "name": "insert_list",
+      "line": 65,
+      "end": 70,
+      "logical_lines_including_signature": 5
+    },
+    {
+      "name": "build_fixture_slots",
+      "line": 72,
+      "end": 91,
+      "logical_lines_including_signature": 19
+    },
+    {
+      "name": "fixture",
+      "line": 93,
+      "end": 105,
+      "logical_lines_including_signature": 12
+    },
+    {
+      "name": "evaluate",
+      "line": 107,
+      "end": 112,
+      "logical_lines_including_signature": 5
+    },
+    {
+      "name": "assert_appended",
+      "line": 114,
+      "end": 132,
+      "logical_lines_including_signature": 18
+    },
+    {
+      "name": "assert_field_value",
+      "line": 134,
+      "end": 142,
+      "logical_lines_including_signature": 8
+    },
+    {
+      "name": "assert_merge_fields",
+      "line": 144,
+      "end": 156,
+      "logical_lines_including_signature": 12
+    },
+    {
+      "name": "contains_preserves_source_order",
+      "line": 159,
+      "end": 171,
+      "logical_lines_including_signature": 12
+    },
+    {
+      "name": "starts_with_preserves_source_order",
+      "line": 174,
+      "end": 186,
+      "logical_lines_including_signature": 12
+    },
+    {
+      "name": "ends_with_preserves_source_order",
+      "line": 189,
+      "end": 201,
+      "logical_lines_including_signature": 12
+    },
+    {
+      "name": "append_preserves_source_order",
+      "line": 204,
+      "end": 207,
+      "logical_lines_including_signature": 3
+    },
+    {
+      "name": "merge_preserves_source_order_and_right_wins",
+      "line": 210,
+      "end": 224,
+      "logical_lines_including_signature": 14
+    },
+    {
+      "name": "append_if_preserves_source_order",
+      "line": 227,
+      "end": 247,
+      "logical_lines_including_signature": 20
+    }
+  ],
+  "source_sha256": [
+    {
+      "path": "crates/workspace_tests/tests/helper_bytecode_argument_order.rs",
+      "sha256": "b89cb67f9a36e61b3ea507f345e71a1fac08a1e91ee9d2bcbf1d95989633febf"
+    },
+    {
+      "path": "crates/workspace_tests/tests/has_store_bytecode_boundaries.rs",
+      "sha256": "5a06e9516a6356086730d5058e5b014848bc4a184a1627fd7493df3c42070bad"
+    },
+    {
+      "path": "crates/vb_expr/src/expr_eval/helper_store.rs",
+      "sha256": "3edb5e65dec08a6e142f9d313b19772fe56dfe5ed3d32b85325c544902a28414"
+    },
+    {
+      "path": "crates/vb_expr/src/expr_eval/helper_store_values.rs",
+      "sha256": "fa41177765ff0beed3222e518d31debe959c67482bf18bef14e0a58802b66146"
+    },
+    {
+      "path": "crates/vb_expr/src/expr_eval/environment.rs",
+      "sha256": "0a208617374cf016c3af93d1bfa26956d2c89d3ca58845693818db63037ea280"
+    }
+  ],
+  "contract_bindings": [
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-rihha.1.3/contains-parity-contract-proposal-v6.md",
+      "sha256": "4b5f05df3803dc88504425e9c2700922f9a3cec31c847fee21d4bf7c492f5477"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/.beads/vb-eirmk.42.1/has-bytecode-contract-clarification-v5.md",
+      "sha256": "b97207da41fcdc3369fe4706f7e6099283de684010f528962a99639903334b51"
+    }
+  ],
+  "retained_native_evidence": {
+    "reviewer_execution": false,
+    "observed_runs": [
+      {
+        "name": "has-store-bytecode-canonical-order-red",
+        "observed_summary": "4 tests run: 2 passed, 2 failed, 0 skipped",
+        "exit": 100
+      },
+      {
+        "name": "helper-bytecode-ternary-order-red",
+        "observed_summary": "1 test run: 0 passed, 1 failed, 5 skipped",
+        "exit": 100
+      },
+      {
+        "name": "helper-bytecode-all-fixed",
+        "observed_summary": "6 tests run: 6 passed, 0 skipped",
+        "exit": 0
+      },
+      {
+        "name": "has-store-bytecode-preserved-fixed",
+        "observed_summary": "4 tests run: 4 passed, 0 skipped",
+        "exit": 0
+      },
+      {
+        "name": "helper-bytecode-ten-native",
+        "observed_summary": "10 tests run: 10 passed, 0 skipped",
+        "exit": 0
+      }
+    ],
+    "current_source_worker": {
+      "run": 10,
+      "passed": 10,
+      "skipped": 0,
+      "exit": 0,
+      "all10names_observed": true
+    },
+    "causal_red_receipts": "Original canonicalHas2fail exposes object/symbol inversion; isolatedAppendIf0pass/1fail exposes list/boolean inversion. Do not call everynewcase baseline-red.",
+    "artifacts": [
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/has-store-bytecode-canonical-order-red.log",
+        "sha256": "bc3d2771c9d5376980ffbc41badad36f41a2afdb949cc624d4c638963bcfde49",
+        "bytes": 2357
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/has-store-bytecode-canonical-order-red.exit",
+        "sha256": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+        "bytes": 16
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/helper-bytecode-ternary-order-red.log",
+        "sha256": "9a836f5bedc40ae20fe78d6fddae05818a543f6db14365eb0d773f06abb507f7",
+        "bytes": 1064
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/helper-bytecode-ternary-order-red.exit",
+        "sha256": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+        "bytes": 16
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/helper-bytecode-all-fixed.log",
+        "sha256": "3f3a3f3fa028c1a42f0879f5520f5a6a32dba8e56d56af0353a87f5f3092d610",
+        "bytes": 1151
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/helper-bytecode-all-fixed.exit",
+        "sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+        "bytes": 14
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/has-store-bytecode-preserved-fixed.log",
+        "sha256": "4f78e103e74bd12612d9a105d898ac46d8b7541d58593fc77cf4e56f34d6febd",
+        "bytes": 831
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/has-store-bytecode-preserved-fixed.exit",
+        "sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+        "bytes": 14
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/helper-bytecode-ten-native.log",
+        "sha256": "0920b302991be60ec1f80aa36bd09800e1a1b1edef50cba94eef00016b0e6057",
+        "bytes": 1639
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/helper-bytecode-ten-native.exit",
+        "sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+        "bytes": 14
+      }
+    ],
+    "provenance_limit": "No independent native rebuild, binary provenance capture or raw-log embedded test-file hash; exact reviewed source/hash separately bound. Authorfunction-counts receipt not used to substitute for independent strict measurement."
+  },
+  "limits": [
+    "AppendIf false, full merge count/order/taint/allocation and complete helper error matrices remain outside these10valid-orderregressions.",
+    "MandatoryHot/Replay9suite repair remains separate. LiteralTextcompiler case and wholeHas/Contains/Timer/fullCI/master/formal acceptance open.",
+    "PASS is independent TEST conclusion only; separate current CODE re-review and broader integration evidence remain required.",
+    "No source/tracker/gate/BD/native/build edits or agents; only requested own report written. Prior raw reports preserved."
+  ]
+}

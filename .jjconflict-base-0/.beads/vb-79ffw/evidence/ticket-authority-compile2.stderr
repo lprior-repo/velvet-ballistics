@@ -1,0 +1,9 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.36s
+     Running tests/vb_79ffw_ticket_authority_probe.rs (target/debug/deps/vb_79ffw_ticket_authority_probe-9c09fb3f19e36ba8)
+Future ticket rejected with correct StaleAttempt error
+Zero ticket rejected with correct StaleAttempt error
+Old ticket rejected after cold recovery with correct error
+Events before stale rejection: 14
+Error: "stale completion rejected with wrong error type: invalid action completion"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_79ffw_ticket_authority_probe`

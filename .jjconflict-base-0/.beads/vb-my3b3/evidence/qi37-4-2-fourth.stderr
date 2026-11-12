@@ -1,0 +1,4 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-my3b3-deepseek-qi37/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.58s
+     Running tests/vb_qi37_4_2_strict_runtime_admission.rs (target/debug/deps/vb_qi37_4_2_strict_runtime_admission-7e747ffab38e373c)
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_qi37_4_2_strict_runtime_admission`

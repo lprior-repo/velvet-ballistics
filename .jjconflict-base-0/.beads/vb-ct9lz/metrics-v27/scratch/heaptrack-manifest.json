@@ -1,0 +1,20 @@
+{
+  "bench_engine_step_once_save_const_single_transition": {
+    "path": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst",
+    "sha256": "31a42cab58afd4998ce0e4260444bee87db1ae7cc7e1c39bdb41d3b5aabae049",
+    "allocation_count": 606935,
+    "bytes_allocated": 116949466
+  },
+  "ipc_frame_decode": {
+    "path": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/heaptrack/ht-ipc_frame_decode.zst",
+    "sha256": "1e6612d529126769a5b9014f1ff7fa04a0cada6be470c17d11b4caf90517e498",
+    "allocation_count": 14319918,
+    "bytes_allocated": 412478459
+  },
+  "engine_run_until_blocked_budget_10_small_workflow": {
+    "path": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst",
+    "sha256": "44063d2eda6712b27e3394a090a9101c8dcea800a5a14f3a30c440c143c5c2b8",
+    "allocation_count": 629414,
+    "bytes_allocated": 118471639
+  }
+}

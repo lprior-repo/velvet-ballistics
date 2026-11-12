@@ -1,0 +1,81 @@
+Rust implementation JSON array {file,old,new} only, exact source substitutions. 1. part_01.rs: `    let parts = WorkflowParts {` becomesmut parts; `        digest: canonical_digest(source)?,` becomeszeroWorkflowDigest; after completeparts before vb_validate sharedvalidate insert postcard::to_allocvec(&parts).map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?; parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());. 2. mod_compile_errors/kind.rs add #[error("compiled workflow IR encoding failed: {0}")] CompiledIrEncode(postcard::Error), after Workflow variant. 3. mod_compile_errors/collection.rs add Self::CompiledIrEncode(_) => "INVALID_COMPILED_WORKFLOW", after Self::Workflow arm. No newfallback/no otherchanges. Source snippets:
+#![allow(unused_imports)]
+use super::*;
+use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
+use crate::mod_compile_validation::{
+    reject_unsupported_for_each_fields, validate_canonical_compile_scope,
+};
+use crate::{AuthorValue, InputField, WorkflowSource};
+use saphyr::Yaml;
+use std::collections::HashMap;
+use vb_core::{
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
+    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+};
+
+/// Compile the canonical cold YAML authoring AST into numeric runtime IR.
+pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
+    validate_canonical_compile_scope(source)?;
+    validate_branch_counts(source)?;
+    let steps = source.steps();
+    let last = steps
+        .len()
+        .checked_sub(1)
+        .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
+    let layout = canonical_layout(steps).map_err(|e| CompileErrors(vec![e]))?;
+    let mut builder = SlotCompiler::new();
+    let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
+    let mut step_names =
+        canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
+    for (index, step) in steps.iter().enumerate() {
+        let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        lower_canonical_step(
+            step,
+            index,
+            last,
+            id,
+            next,
+            &mut outputs,
+            &mut step_names,
+            &mut builder,
+        )?;
+    }
+    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    let parts = WorkflowParts {
+        name: Box::from(source.name()),
+        digest: canonical_digest(source)?,
+        slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
+        symbols_count: 0,
+        nodes: builder.nodes.into_boxed_slice(),
+        expressions: builder.expressions.into_boxed_slice(),
+        accessors: builder.accessors.into_boxed_slice(),
+        constants: builder.constants.into_boxed_slice(),
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: step_names.into_boxed_slice(),
+        input_slots: builder.input_slots.into_boxed_slice(),
+    };
+    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+}
+
+/// Allocate declared input slots after all steps are lowered.
+///
+/// Reads the base slot count from the builder, checked-adds the declaration
+/// index for each input field in source order, creates the `SlotIdx`, calls
+/// `record_slot` and `record_input_slot`.  Source names are intentionally
+/// excluded from the emitted IR.
+pub(super) fn allocate_input_slots(
+    inputs: &[InputField],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileError> {
+    let base = builder.slot_count()?;
+    for (declaration_index, input) in inputs.iter().enumerate() {
+        let declaration_index = u16::try_from(declaration_inde
+KIND:
+    #[error("compiled workflow IR failed validation: {0}")]
+    Workflow(#[from] WorkflowError),
+COLLECTION:
+            Self::Workflow(error) => workflow_error_code(error),

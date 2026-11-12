@@ -1,0 +1,64 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-7e75e2a13304ade0)
+
+running 9 tests
+test record_retry_attempt_integration_gap ... ok
+test action_failure_preserves_action_completed_slots_integration_gap ... ok
+test ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata ... ok
+test retry_is_available_returns_false_for_nonretryable_policy ... ok
+test journal_replay_idempotent_action_failed ... ok
+test apply_action_failure_to_state_resets_pc_to_failed_step_on_retry ... ok
+test retry_is_available_returns_false_when_no_retry_metadata ... ok
+test apply_error_handler_writes_step_index_to_error_slot_integration_gap ... ok
+test ticket_with_retry_capacity_increases_capacity_to_max_attempts ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ticket_authority_matrix.rs (target/debug/deps/ticket_authority_matrix-37b62807c1c1a5ed)
+
+running 2 tests
+test completion_rejects_tampering_without_journal_or_run_mutation ... ok
+test failure_rejects_tampering_without_journal_or_run_mutation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/vb_jggy_lifecycle_tests.rs (target/debug/deps/vb_jggy_lifecycle_tests-01f06dea8d9c1fee)
+
+running 15 tests
+test action_attempts_advances_after_scheduling ... ok
+test action_failed_carries_attempt_field ... ok
+test action_attempts_never_decreases_across_operations ... ok
+test handle_submit_records_first_action_attempt_single_step ... ok
+test each_step_has_independent_attempt_counter ... ok
+test future_attempt_within_capacity_is_rejected ... ok
+test encode_failed_completion_returns_error_and_leaves_state_unchanged ... ok
+test action_attempts_monotonically_advances_on_retry ... ok
+test handle_submit_with_inputs_records_first_action_attempts ... ok
+test equal_attempt_is_not_stale ... ok
+test stale_attempt_completion_rejected_before_journal_write ... ok
+test step_succeeded_carries_attempt_field ... ok
+test stale_attempt_failure_rejected_before_journal_write ... ok
+test validate_ticket_attempt_accepts_valid_ticket ... ok
+test step_succeeded_carries_retry_attempt_number ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

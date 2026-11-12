@@ -1,0 +1,12 @@
+Command: cargo test -p velvet-ballistics --test vb_md3w_retained_input_recovery -- --nocapture
+Env: CARGO_BUILD_JOBS=2, timeout 240s
+Exit code: 101
+Relevant output:
+  running 1 test
+  test retained_inputs_recovered_from_cold_storage_with_runtime_api ... FAILED
+  --- STDOUT (failure detail) ---
+  Error: Error("expected value", line: 1, column: 1)
+  ---
+  test result: FAILED. 0 passed; 1 failed
+  warning: method `validate_registered_recovery` is never used
+    --> crates/vb_runtime/src/runtime/registered_executor.rs:45:19

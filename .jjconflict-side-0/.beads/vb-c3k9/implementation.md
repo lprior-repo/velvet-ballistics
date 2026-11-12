@@ -1,0 +1,2 @@
+STATUS: APPROVED
+Selected implementation: replayed sub4's doc + workspace_tests quality validator + focused tests onto fresh owner workspace, then rebased onto current main 51aec14e. Files changed: docs/current-api-mutation-plan.md; crates/workspace_tests/src/quality.rs; crates/workspace_tests/src/quality/current_api_mutation_plan.rs; crates/workspace_tests/tests/vb_c3k9_current_api_mutation_plan.rs; .beads/vb-c3k9 evidence artifacts.

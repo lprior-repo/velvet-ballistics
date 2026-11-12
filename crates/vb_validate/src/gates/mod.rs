@@ -43,3 +43,14 @@ pub use gate_15::validate_gate_15_determinism_proof;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(any(kani, test))]
+use gate_08::validate_accessor_paths;
+
+#[cfg(kani)]
+#[path = "../verification/kani_gate_08_projection.rs"]
+mod gate_08_projection;
+
+#[cfg(test)]
+#[path = "../gate_08_projection_tests.rs"]
+mod gate_08_projection_tests;

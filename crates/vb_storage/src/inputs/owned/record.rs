@@ -47,10 +47,21 @@ impl OwnedRunInputsRecordV1 {
         source: WorkflowDigest,
         workflow: &CompiledWorkflow,
     ) -> Result<Self, JournalError> {
-        let record = Self::decode_without_source(bytes, run, artifact, workflow)?;
-        if record.source_digest() != source {
+        crate::keys::run_header_key(run)?;
+        let (_, data) = codec::decode_record(bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
+        let record = Self {
+            data: Box::new(data),
+        };
+        if record.run() != run {
+            return Err(JournalError::WrongRun {
+                expected: run,
+                actual: record.run(),
+            });
+        }
+        if record.artifact_digest() != artifact || record.source_digest() != source {
             return Err(OwnedInputError::IdentityMismatch.into());
         }
+        record.validate_workflow(workflow)?;
         Ok(record)
     }
 
@@ -84,6 +95,26 @@ impl OwnedRunInputsRecordV1 {
         Ok(record)
     }
 
+    pub(super) fn decode_admitted(
+        bytes: &[u8],
+        run: RunId,
+        artifact: WorkflowDigest,
+        workflow: &CompiledWorkflow,
+        admission: &JournalEvent,
+    ) -> Result<Self, JournalError> {
+        crate::keys::run_header_key(run)?;
+        let (_, data) = codec::decode_record(bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
+        let record = Self {
+            data: Box::new(data),
+        };
+        if record.run() != run || record.artifact_digest() != artifact {
+            return Err(OwnedInputError::IdentityMismatch.into());
+        }
+        record.validate_admission(admission)?;
+        record.validate_workflow(workflow)?;
+        Ok(record)
+    }
+
     /// Revalidates all stored data against an independently accepted workflow.
     pub fn restore(&self, workflow: &CompiledWorkflow) -> Result<OwnedRootBundle, JournalError> {
         self.data.validate_integrity()?;
@@ -102,6 +133,9 @@ impl OwnedRunInputsRecordV1 {
         }
         if bundle.roots() != body.roots.as_ref() {
             return Err(OwnedInputError::NonCanonicalRoots.into());
+        }
+        if bundle.checkpoint() != &body.checkpoint {
+            return Err(OwnedInputError::ProjectionMismatch.into());
         }
         Ok(bundle)
     }

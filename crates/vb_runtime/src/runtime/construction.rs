@@ -1,4 +1,12 @@
 impl Runtime {
+    /// Installs names available to secret declarations on each shard.
+    pub fn set_available_secret_names(&mut self, names: Box<[Box<str>]>) {
+        let names: std::sync::Arc<[Box<str>]> = names.into();
+        for shard in &mut self.shards {
+            shard.set_available_secret_names(names.clone());
+        }
+    }
+
     /// Creates a new runtime with the given number of shards, per-shard configuration, and
     /// explicit [`SharedRuntimeJournal`].
     ///

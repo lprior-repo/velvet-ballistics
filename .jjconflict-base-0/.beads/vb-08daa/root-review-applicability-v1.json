@@ -1,0 +1,26 @@
+{
+  "candidate": "b9ff52cb98b3136934a353a2c7691cc5420517b6",
+  "source_hashes_unchanged": [
+    {
+      "path": ".cargo/config.toml",
+      "sha256": "2d937027c571950cfce62cfa7c6bd975358b7e521aa5e752f09da8e3c17d06f6"
+    },
+    {
+      "path": "contracts/invariants.yaml",
+      "sha256": "c93f453db26ca05e67122fbdabd0b58e2a3a9ea40151143f1dc962631d2c2c9e"
+    },
+    {
+      "path": "xtask/src/evidence/persistence.rs",
+      "sha256": "9f43c4046e023e27bd1c16421a9ce94578b5b2224a5572e33f44d93d7ee9b4b3"
+    }
+  ],
+  "bounded_review_accepted": true,
+  "corrections": [
+    "Review says configuration-only; xtask/src/evidence/persistence.rs is a Rust tooling source string-literal change, no runtime-core behavior.",
+    "No-unsafe policy remains universal. Existing script exclusions are not proof that excluded first-party files were checked.",
+    "Broader documentation exclusion was root bounded assignment, not user blanket prohibition; followup vb-af5iz created.",
+    "Source gates V1 actualexit0/60.261s compiled author workingtree matching b9ff, while Git HEAD was42fd94f2. This is supplemental scoped evidence; final frozen-source canonical remains required."
+  ],
+  "main_status": "pending integrated actual canonical and push",
+  "new_behavior_tests": "No new runtime behavior or new tests; existing source gates and unchanged tests apply."
+}

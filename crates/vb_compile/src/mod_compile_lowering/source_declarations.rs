@@ -4,10 +4,9 @@ use super::{
     ForEachInputs, SlotCompiler, constraint_from_input_schema, kind_from_input_schema, step_idx,
 };
 use crate::source_symbol_binding::intern_source_text;
-use crate::{AuthorValue, CompileError, WorkflowSource};
+use crate::{AuthorValue, CompileError, CompileErrors, WorkflowSource};
 use std::collections::HashMap;
-use vb_core::workflow::node;
-use vb_core::{CompiledNodeKind, ConstValue, InputSlotKind, SlotIdx};
+use vb_core::{InputSlotKind, SlotIdx};
 use vb_expr::expr_typecheck::ExprType;
 
 pub(super) fn prepare_source_declarations(
@@ -16,16 +15,53 @@ pub(super) fn prepare_source_declarations(
     types: &mut HashMap<SlotIdx, ExprType>,
     builder: &mut SlotCompiler,
     for_each_inputs: &mut ForEachInputs,
-) -> Result<Vec<Box<str>>, CompileError> {
+) -> Result<Vec<Box<str>>, CompileErrors> {
     prepare_inputs(source, outputs, types, builder, for_each_inputs)?;
     let mut names = Vec::with_capacity(source.vars().len());
     for variable in source.vars() {
-        let (value, ty) = scalar_variable(&variable.key, &variable.value, builder)?;
-        let slot = builder.allocate_slot()?;
-        emit_variable(value, slot, builder)?;
+        let first = builder.nodes.len();
+        let steps = HashMap::new();
+        let scope = super::CanonicalScope {
+            outputs,
+            step_outputs: &steps,
+            slot_types: types,
+            parent: None,
+        };
+        let (slot, ty) = super::canonical_values::emit(&variable.value, false, scope, builder)?;
         bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;
         types.insert(slot, ty);
-        names.push(format!("$vars.{}", variable.key).into_boxed_str());
+        names.extend(
+            builder
+                .nodes
+                .iter()
+                .skip(first)
+                .map(|_| format!("$vars.{}", variable.key).into_boxed_str()),
+        );
+    }
+    for secret in source.secrets() {
+        let alias = builder.intern(&secret.key)?;
+        let requirement = builder.intern(&secret.value)?;
+        let slot = builder.allocate_slot()?;
+        builder.record_input_slot(
+            slot,
+            InputSlotKind::Symbol,
+            vb_core::CompiledInputConstraint {
+                secretness: true.into(),
+                default_cold: Some(vb_core::InputDefaultValue::Text(
+                    secret.value.clone().into(),
+                )),
+                ..vb_core::CompiledInputConstraint::required()
+            },
+        );
+        builder.secret_requirements.push(
+            vb_core::workflow::source_metadata::CompiledSecretRequirement::with_slot(
+                alias,
+                requirement,
+                slot,
+            ),
+        );
+        bind_declaration(outputs, format!("$secrets.{}", secret.key), slot)?;
+        types.insert(slot, ExprType::Text);
     }
     Ok(names)
 }
@@ -36,7 +72,7 @@ fn prepare_inputs(
     types: &mut HashMap<SlotIdx, ExprType>,
     builder: &mut SlotCompiler,
     for_each_inputs: &mut ForEachInputs,
-) -> Result<(), CompileError> {
+) -> Result<(), CompileErrors> {
     for input in source.inputs() {
         let kind = kind_from_input_schema(&input.value)?;
         let constraint = constraint_from_input_schema(&input.value)?;
@@ -142,10 +178,6 @@ fn scalar_variable(
     }
 }
 
-#[cfg(test)]
-#[path = "source_text_declaration_tests.rs"]
-mod source_text_tests;
-
 fn input_type(kind: InputSlotKind) -> ExprType {
     match kind {
         InputSlotKind::Null => ExprType::Null,
@@ -158,3 +190,11 @@ fn input_type(kind: InputSlotKind) -> ExprType {
         _ => ExprType::Unknown,
     }
 }
+
+#[cfg(test)]
+#[path = "source_text_declaration_tests.rs"]
+mod source_text_tests;
+
+use vb_core::ConstValue;
+use vb_core::CompiledNodeKind;
+use vb_core::workflow::node;

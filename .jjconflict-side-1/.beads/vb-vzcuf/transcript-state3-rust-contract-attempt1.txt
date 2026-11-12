@@ -1,0 +1,17 @@
+vb-vzcuf state=3 sublane=rust-contract attempt=1
+
+Actions:
+- Loaded rust-contract skill.
+- Read input artifacts: codebase-map.md, delivery-scope.jsonl, baseline-report.md.
+- Inspected relevant production seams read-only: crates/vb_storage/src/batch.rs, error/mod.rs, constants.rs, codec/mod.rs.
+- Authored contract artifacts only; did not edit production Rust, tests, or verifier artifacts.
+
+Key decisions captured:
+- Accumulated journal batch byte accounting counts encoded journal event values returned by encode_record.
+- Exact fit is accepted; over limit or arithmetic overflow is typed storage rejection.
+- Accumulated budget error must be distinct from QueueFull and PayloadTooLarge.
+- Accumulated budget rejection must not partially mutate or abort the batch.
+- Same-batch duplicate accounting remains an open domain decision.
+
+Validator:
+- State 3 validator attempted after artifacts were written; see final response for raw output.

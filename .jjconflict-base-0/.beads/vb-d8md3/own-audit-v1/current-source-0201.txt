@@ -1,0 +1,100 @@
+current-source:201:     /// after the enqueue.
+current-source:202:     pub fn enqueue(&self, ticket: ActionTicket) -> Result<(), ActionQueueError> {
+current-source:203:         let mut inner = match self.inner.lock() {
+current-source:204:             Ok(guard) => guard,
+current-source:205:             Err(poisoned) => poisoned.into_inner(),
+current-source:206:         };
+current-source:207:         if inner.items.len() >= self.capacity.get() {
+current-source:208:             return Err(ActionQueueError::QueueFull {
+current-source:209:                 capacity: self.capacity,
+current-source:210:             });
+current-source:211:         }
+current-source:212: 
+current-source:213:         inner.items.push_back(ticket);
+current-source:214: 
+current-source:215:         let depth = inner.items.len();
+current-source:216:         let threshold = backpressure_threshold(self.capacity);
+current-source:217:         if depth >= threshold
+current-source:218:             && let Some(ref tx) = self.backpressure_tx
+current-source:219:         {
+current-source:220:             match tx.try_send(BackpressureWarning {
+current-source:221:                 depth,
+current-source:222:                 capacity: self.capacity.get(),
+current-source:223:             }) {
+current-source:224:                 Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
+current-source:225:             }
+current-source:226:         }
+current-source:227: 
+current-source:228:         Ok(())
+current-source:229:     }
+current-source:230: 
+current-source:231:     /// Dequeues an action ticket in FIFO order.
+current-source:232:     ///
+current-source:233:     /// Returns `Some(ticket)` if an item was available.
+current-source:234:     /// Returns `None` if the queue is empty.
+current-source:235:     #[must_use]
+current-source:236:     pub fn dequeue(&self) -> Option<ActionTicket> {
+current-source:237:         let mut inner = match self.inner.lock() {
+current-source:238:             Ok(guard) => guard,
+current-source:239:             Err(poisoned) => poisoned.into_inner(),
+current-source:240:         };
+current-source:241:         inner.items.pop_front()
+current-source:242:     }
+current-source:243: 
+current-source:244:     /// Returns the number of items currently in the queue.
+current-source:245:     #[must_use]
+current-source:246:     pub fn len(&self) -> usize {
+current-source:247:         match self.inner.lock() {
+current-source:248:             Ok(guard) => guard.items.len(),
+current-source:249:             Err(poisoned) => poisoned.into_inner().items.len(),
+current-source:250:         }
+current-source:251:     }
+current-source:252: 
+current-source:253:     /// Returns `true` if the queue contains no items.
+current-source:254:     #[must_use]
+current-source:255:     pub fn is_empty(&self) -> bool {
+current-source:256:         self.len() == 0
+current-source:257:     }
+current-source:258: 
+current-source:259:     /// Returns `true` if the queue is at capacity.
+current-source:260:     #[must_use]
+current-source:261:     pub fn is_full(&self) -> bool {
+current-source:262:         self.len() >= self.capacity.get()
+current-source:263:     }
+current-source:264: 
+current-source:265:     /// Returns the number of slots available for new items.
+current-source:266:     #[must_use]
+current-source:267:     pub fn remaining_capacity(&self) -> usize {
+current-source:268:         self.capacity.get().saturating_sub(self.len())
+current-source:269:     }
+current-source:270: 
+current-source:271:     /// Returns the fixed capacity of this queue.
+current-source:272:     #[must_use]
+current-source:273:     pub fn capacity(&self) -> usize {
+current-source:274:         self.capacity.get()
+current-source:275:     }
+current-source:276: }
+current-source:277: 
+current-source:278: fn parse_capacity(capacity: usize) -> Result<ActionQueueCapacity, ActionQueueError> {
+current-source:279:     if capacity == 0 {
+current-source:280:         return Err(ActionQueueError::InvalidCapacity {
+current-source:281:             requested: capacity,
+current-source:282:             reason: InvalidActionQueueCapacity::Zero,
+current-source:283:         });
+current-source:284:     }
+current-source:285: 
+current-source:286:     if capacity > MAX_ACTION_COMPLETION_QUEUE_CAPACITY {
+current-source:287:         return Err(ActionQueueError::InvalidCapacity {
+current-source:288:             requested: capacity,
+current-source:289:             reason: InvalidActionQueueCapacity::AboveMaximum {
+current-source:290:                 maximum: MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+current-source:291:             },
+current-source:292:         });
+current-source:293:     }
+current-source:294: 
+current-source:295:     Ok(ActionQueueCapacity(capacity))
+current-source:296: }
+current-source:297: 
+current-source:298: /// Returns the backpressure threshold for a given capacity.
+current-source:299: ///
+current-source:300: /// The threshold is the smallest integer `>= capacity * 8 / 10` (ceiling of 80%),

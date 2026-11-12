@@ -1,0 +1,4 @@
+Rust contract -> implementation -> tests -> independent code review -> independent test review. Local5090 production plus tests, local3090 tests/reviews. Coordinator inspected and mechanically applied, corrected one explicitly requested helper spelling; direct local inference not autonomous tools.
+Actual CLI bin348passed0fail0ignore PROPTEST_CASES256; production source clippy-Dwarnings exit0. Scoped always-clear-pending mutant killed by new nonmatching-success regression, restored byte-for-byte production source then reran suite.
+Terminal cancellation/finished/active excluded; StepStarted, StepFailed, ActionFailedEvent observed by fold, matching success clears, no fabricated numeric successor.
+Scope: journal analysis only. vb-r5c1c remains open for actual durable retry execution and cmd_retry resume reporting. No complete CLI lifecycle/v1 claim.

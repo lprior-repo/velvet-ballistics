@@ -1,0 +1,100 @@
+crates/vb_core/src/engine/signals.rs:301:         ensure_equal(b.remaining(), 0)?;
+crates/vb_core/src/engine/signals.rs:302:         // Repeated takes on exhausted budget remain false
+crates/vb_core/src/engine/signals.rs:303:         for _ in 0..10 {
+crates/vb_core/src/engine/signals.rs:304:             let taken = b.try_take().map_err(|e| e.to_string())?;
+crates/vb_core/src/engine/signals.rs:305:             ensure_equal(taken, false)?;
+crates/vb_core/src/engine/signals.rs:306:             ensure_equal(b.remaining(), 0)?;
+crates/vb_core/src/engine/signals.rs:307:         }
+crates/vb_core/src/engine/signals.rs:308:         Ok(())
+crates/vb_core/src/engine/signals.rs:309:     }
+crates/vb_core/src/engine/signals.rs:310: 
+crates/vb_core/src/engine/signals.rs:311:     // ===== Additional EngineSignal coverage =====
+crates/vb_core/src/engine/signals.rs:312: 
+crates/vb_core/src/engine/signals.rs:313:     #[test]
+crates/vb_core/src/engine/signals.rs:314:     fn engine_signal_finished_with_null_value() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:315:         let signal = EngineSignal::Finished(SlotValue::Null, Taint::Clean);
+crates/vb_core/src/engine/signals.rs:316:         if let EngineSignal::Finished(value, taint) = signal {
+crates/vb_core/src/engine/signals.rs:317:             ensure_equal(value, SlotValue::Null)?;
+crates/vb_core/src/engine/signals.rs:318:             ensure_equal(taint, Taint::Clean)
+crates/vb_core/src/engine/signals.rs:319:         } else {
+crates/vb_core/src/engine/signals.rs:320:             Err("expected Finished variant".into())
+crates/vb_core/src/engine/signals.rs:321:         }
+crates/vb_core/src/engine/signals.rs:322:     }
+crates/vb_core/src/engine/signals.rs:323: 
+crates/vb_core/src/engine/signals.rs:324:     #[test]
+crates/vb_core/src/engine/signals.rs:325:     fn engine_signal_finished_with_derived_from_secret_taint() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:326:         let signal = EngineSignal::Finished(SlotValue::I64(0), Taint::DerivedFromSecret);
+crates/vb_core/src/engine/signals.rs:327:         if let EngineSignal::Finished(_, taint) = signal {
+crates/vb_core/src/engine/signals.rs:328:             ensure_equal(taint, Taint::DerivedFromSecret)
+crates/vb_core/src/engine/signals.rs:329:         } else {
+crates/vb_core/src/engine/signals.rs:330:             Err("expected Finished variant".into())
+crates/vb_core/src/engine/signals.rs:331:         }
+crates/vb_core/src/engine/signals.rs:332:     }
+crates/vb_core/src/engine/signals.rs:333: 
+crates/vb_core/src/engine/signals.rs:334:     #[test]
+crates/vb_core/src/engine/signals.rs:335:     fn engine_signal_clone_preserves_variant_and_data() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:336:         let original = EngineSignal::Finished(SlotValue::Bool(false), Taint::Secret);
+crates/vb_core/src/engine/signals.rs:337:         let cloned = original.clone();
+crates/vb_core/src/engine/signals.rs:338:         ensure_equal(cloned, original)?;
+crates/vb_core/src/engine/signals.rs:339: 
+crates/vb_core/src/engine/signals.rs:340:         let continue_orig = EngineSignal::Continue;
+crates/vb_core/src/engine/signals.rs:341:         let continue_clone = continue_orig.clone();
+crates/vb_core/src/engine/signals.rs:342:         ensure_equal(continue_clone, EngineSignal::Continue)?;
+crates/vb_core/src/engine/signals.rs:343: 
+crates/vb_core/src/engine/signals.rs:344:         let exhausted_orig = EngineSignal::StepBudgetExhausted;
+crates/vb_core/src/engine/signals.rs:345:         let exhausted_clone = exhausted_orig.clone();
+crates/vb_core/src/engine/signals.rs:346:         ensure_equal(exhausted_clone, EngineSignal::StepBudgetExhausted)
+crates/vb_core/src/engine/signals.rs:347:     }
+crates/vb_core/src/engine/signals.rs:348: 
+crates/vb_core/src/engine/signals.rs:349:     #[test]
+crates/vb_core/src/engine/signals.rs:350:     fn engine_signal_all_suspension_variants_are_distinct() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:351:         let action = EngineSignal::AwaitingAction;
+crates/vb_core/src/engine/signals.rs:352:         let wait = EngineSignal::AwaitingWait;
+crates/vb_core/src/engine/signals.rs:353:         let ask = EngineSignal::AwaitingAsk;
+crates/vb_core/src/engine/signals.rs:354: 
+crates/vb_core/src/engine/signals.rs:355:         ensure_equal(action != wait, true)?;
+crates/vb_core/src/engine/signals.rs:356:         ensure_equal(action != ask, true)?;
+crates/vb_core/src/engine/signals.rs:357:         ensure_equal(wait != ask, true)?;
+crates/vb_core/src/engine/signals.rs:358: 
+crates/vb_core/src/engine/signals.rs:359:         ensure_equal(action.clone(), EngineSignal::AwaitingAction)?;
+crates/vb_core/src/engine/signals.rs:360:         ensure_equal(wait.clone(), EngineSignal::AwaitingWait)?;
+crates/vb_core/src/engine/signals.rs:361:         ensure_equal(ask.clone(), EngineSignal::AwaitingAsk)
+crates/vb_core/src/engine/signals.rs:362:     }
+crates/vb_core/src/engine/signals.rs:363: 
+crates/vb_core/src/engine/signals.rs:364:     #[test]
+crates/vb_core/src/engine/signals.rs:365:     fn engine_signal_debug_format_all_variants() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:366:         ensure_equal(
+crates/vb_core/src/engine/signals.rs:367:             format!("{:?}", EngineSignal::Continue).contains("Continue"),
+crates/vb_core/src/engine/signals.rs:368:             true,
+crates/vb_core/src/engine/signals.rs:369:         )?;
+crates/vb_core/src/engine/signals.rs:370:         ensure_equal(
+crates/vb_core/src/engine/signals.rs:371:             format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"),
+crates/vb_core/src/engine/signals.rs:372:             true,
+crates/vb_core/src/engine/signals.rs:373:         )?;
+crates/vb_core/src/engine/signals.rs:374:         ensure_equal(
+crates/vb_core/src/engine/signals.rs:375:             format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"),
+crates/vb_core/src/engine/signals.rs:376:             true,
+crates/vb_core/src/engine/signals.rs:377:         )?;
+crates/vb_core/src/engine/signals.rs:378:         ensure_equal(
+crates/vb_core/src/engine/signals.rs:379:             format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"),
+crates/vb_core/src/engine/signals.rs:380:             true,
+crates/vb_core/src/engine/signals.rs:381:         )?;
+crates/vb_core/src/engine/signals.rs:382:         let finished_debug = format!(
+crates/vb_core/src/engine/signals.rs:383:             "{:?}",
+crates/vb_core/src/engine/signals.rs:384:             EngineSignal::Finished(SlotValue::I64(1), Taint::Clean)
+crates/vb_core/src/engine/signals.rs:385:         );
+crates/vb_core/src/engine/signals.rs:386:         ensure_equal(finished_debug.contains("Finished"), true)
+crates/vb_core/src/engine/signals.rs:387:     }
+crates/vb_core/src/engine/signals.rs:388: 
+crates/vb_core/src/engine/signals.rs:389:     #[test]
+crates/vb_core/src/engine/signals.rs:390:     fn budget_try_take_on_exactly_max_step_budget_succeeds() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:391:         let mut b = StepBudget::new(MAX_STEP_BUDGET);
+crates/vb_core/src/engine/signals.rs:392:         // First take from a full budget must succeed
+crates/vb_core/src/engine/signals.rs:393:         let taken = b.try_take().map_err(|e| e.to_string())?;
+crates/vb_core/src/engine/signals.rs:394:         ensure_equal(taken, true)?;
+crates/vb_core/src/engine/signals.rs:395:         ensure_equal(b.remaining(), MAX_STEP_BUDGET.saturating_sub(1))
+crates/vb_core/src/engine/signals.rs:396:     }
+crates/vb_core/src/engine/signals.rs:397: 
+crates/vb_core/src/engine/signals.rs:398:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:399:     // Proptest property: PROPTEST-PRE-001
+crates/vb_core/src/engine/signals.rs:400:     // StepBudget::new(v).remaining == min(v, MAX_STEP_BUDGET) for all u64 v

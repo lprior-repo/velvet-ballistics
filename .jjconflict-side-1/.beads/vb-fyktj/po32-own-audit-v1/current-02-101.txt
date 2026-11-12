@@ -1,0 +1,100 @@
+verification/verus/production_inner/signals_production.rs:101: /// in the companion spec file. The spec accesses the `remaining`
+verification/verus/production_inner/signals_production.rs:102: /// field through the bridge alias `ExStepBudget` declared in
+verification/verus/production_inner/signals_production.rs:103: /// `signals_invariant.rs`.
+verification/verus/production_inner/signals_production.rs:104: #[verifier::external]
+verification/verus/production_inner/signals_production.rs:105: #[derive(Debug, Clone)]
+verification/verus/production_inner/signals_production.rs:106: pub struct StepBudget {
+verification/verus/production_inner/signals_production.rs:107:     /// Mirror of production private field `StepBudget::remaining`.
+verification/verus/production_inner/signals_production.rs:108:     /// Visibility relaxed to `pub` so Verus's
+verification/verus/production_inner/signals_production.rs:109:     /// `external_type_specification` mirror can read it.
+verification/verus/production_inner/signals_production.rs:110:     pub remaining: u64,
+verification/verus/production_inner/signals_production.rs:111: }
+verification/verus/production_inner/signals_production.rs:112: 
+verification/verus/production_inner/signals_production.rs:113: impl StepBudget {
+verification/verus/production_inner/signals_production.rs:114:     /// Mirror of `StepBudget::MAX` at signals.rs:19-22.
+verification/verus/production_inner/signals_production.rs:115:     pub const MAX: Self = Self {
+verification/verus/production_inner/signals_production.rs:116:         remaining: MAX_STEP_BUDGET,
+verification/verus/production_inner/signals_production.rs:117:     };
+verification/verus/production_inner/signals_production.rs:118: 
+verification/verus/production_inner/signals_production.rs:119:     /// Mirror of `StepBudget::new(value: u64) -> Self` at
+verification/verus/production_inner/signals_production.rs:120:     /// signals.rs:26-35. Verbatim body; the spec contract is attached
+verification/verus/production_inner/signals_production.rs:121:     /// via `assume_specification` in the companion spec file.
+verification/verus/production_inner/signals_production.rs:122:     /// Function marked `#[verifier::external]` because the mirror
+verification/verus/production_inner/signals_production.rs:123:     /// is included inside `verus!` (so the type is usable in spec
+verification/verus/production_inner/signals_production.rs:124:     /// mode) but Verus should not attempt to verify the body — the
+verification/verus/production_inner/signals_production.rs:125:     /// body is bound to production via `assume_specification`.
+verification/verus/production_inner/signals_production.rs:126:     #[verifier::external]
+verification/verus/production_inner/signals_production.rs:127:     pub const fn new(value: u64) -> Self {
+verification/verus/production_inner/signals_production.rs:128:         Self {
+verification/verus/production_inner/signals_production.rs:129:             remaining: if value > MAX_STEP_BUDGET {
+verification/verus/production_inner/signals_production.rs:130:                 MAX_STEP_BUDGET
+verification/verus/production_inner/signals_production.rs:131:             } else {
+verification/verus/production_inner/signals_production.rs:132:                 value
+verification/verus/production_inner/signals_production.rs:133:             },
+verification/verus/production_inner/signals_production.rs:134:         }
+verification/verus/production_inner/signals_production.rs:135:     }
+verification/verus/production_inner/signals_production.rs:136: 
+verification/verus/production_inner/signals_production.rs:137:     /// Mirror of `StepBudget::try_take(&mut self) -> Result<bool, EngineError>`
+verification/verus/production_inner/signals_production.rs:138:     /// at signals.rs:50-60. Verbatim body; spec contract attached via
+verification/verus/production_inner/signals_production.rs:139:     /// `assume_specification`. Marked external for the same reason
+verification/verus/production_inner/signals_production.rs:140:     /// as `new`.
+verification/verus/production_inner/signals_production.rs:141:     #[verifier::external]
+verification/verus/production_inner/signals_production.rs:142:     pub fn try_take(&mut self) -> Result<bool, EngineError> {
+verification/verus/production_inner/signals_production.rs:143:         if self.remaining > MAX_STEP_BUDGET {
+verification/verus/production_inner/signals_production.rs:144:             return Err(EngineError::StepCounterOverflow);
+verification/verus/production_inner/signals_production.rs:145:         }
+verification/verus/production_inner/signals_production.rs:146:         if self.remaining == 0 {
+verification/verus/production_inner/signals_production.rs:147:             Ok(false)
+verification/verus/production_inner/signals_production.rs:148:         } else {
+verification/verus/production_inner/signals_production.rs:149:             self.remaining = self.remaining.saturating_sub(1);
+verification/verus/production_inner/signals_production.rs:150:             Ok(true)
+verification/verus/production_inner/signals_production.rs:151:         }
+verification/verus/production_inner/signals_production.rs:152:     }
+verification/verus/production_inner/signals_production.rs:153: 
+verification/verus/production_inner/signals_production.rs:154:     /// Mirror of `StepBudget::remaining(&self) -> u64` at
+verification/verus/production_inner/signals_production.rs:155:     /// signals.rs:62-65. Verbatim body; marked external for the
+verification/verus/production_inner/signals_production.rs:156:     /// same reason as `new`.
+verification/verus/production_inner/signals_production.rs:157:     #[verifier::external]
+verification/verus/production_inner/signals_production.rs:158:     pub const fn remaining(&self) -> u64 {
+verification/verus/production_inner/signals_production.rs:159:         self.remaining
+verification/verus/production_inner/signals_production.rs:160:     }
+verification/verus/production_inner/signals_production.rs:161: 
+verification/verus/production_inner/signals_production.rs:162:     /// Mirror of `StepBudget::BENCH_LATENCY_BUDGET_US` at signals.rs:69.
+verification/verus/production_inner/signals_production.rs:163:     const BENCH_LATENCY_BUDGET_US: &'static str = "VB_BENCH_LATENCY_BUDGET_US";
+verification/verus/production_inner/signals_production.rs:164: 
+verification/verus/production_inner/signals_production.rs:165:     /// Mirror of `StepBudget::DEFAULT_BUDGET` at signals.rs:72.
+verification/verus/production_inner/signals_production.rs:166:     const DEFAULT_BUDGET: u64 = MAX_STEP_BUDGET;
+verification/verus/production_inner/signals_production.rs:167: 
+verification/verus/production_inner/signals_production.rs:168:     /// Mirror of `StepBudget::from_env() -> Result<Self, EngineError>`
+verification/verus/production_inner/signals_production.rs:169:     /// at signals.rs:80-94. Body marked `#[verifier::external_body]`
+verification/verus/production_inner/signals_production.rs:170:     /// because the closure pattern `|_| EngineError::BudgetParse { reason }`
+verification/verus/production_inner/signals_production.rs:171:     /// is rejected by Verus 0.2026.05.05 (Rust 1.95.0) as "only
+verification/verus/production_inner/signals_production.rs:172:     /// variables are supported here, not general patterns".
+verification/verus/production_inner/signals_production.rs:173:     /// Signature is production-identical so any drift breaks the
+verification/verus/production_inner/signals_production.rs:174:     /// verification build.
+verification/verus/production_inner/signals_production.rs:175:     #[verifier::external_body]
+verification/verus/production_inner/signals_production.rs:176:     pub fn from_env() -> Result<Self, EngineError> {
+verification/verus/production_inner/signals_production.rs:177:         match std::env::var(Self::BENCH_LATENCY_BUDGET_US) {
+verification/verus/production_inner/signals_production.rs:178:             Ok(raw) => {
+verification/verus/production_inner/signals_production.rs:179:                 let parsed = raw.parse::<u64>().map_err(|_| EngineError::BudgetParse {
+verification/verus/production_inner/signals_production.rs:180:                     reason: "invalid u64 value",
+verification/verus/production_inner/signals_production.rs:181:                 })?;
+verification/verus/production_inner/signals_production.rs:182:                 Ok(Self::new(parsed))
+verification/verus/production_inner/signals_production.rs:183:             }
+verification/verus/production_inner/signals_production.rs:184:             Err(std::env::VarError::NotPresent) => Ok(Self::new(Self::DEFAULT_BUDGET)),
+verification/verus/production_inner/signals_production.rs:185:             Err(_) => Err(EngineError::BudgetParse {
+verification/verus/production_inner/signals_production.rs:186:                 reason: "env var access error",
+verification/verus/production_inner/signals_production.rs:187:             }),
+verification/verus/production_inner/signals_production.rs:188:         }
+verification/verus/production_inner/signals_production.rs:189:     }
+verification/verus/production_inner/signals_production.rs:190: }
+verification/verus/production_inner/signals_production.rs:191: 
+verification/verus/production_inner/signals_production.rs:192: /// Mirror of `EngineSignal` at `crates/vb_core/src/engine/signals.rs:99-115`.
+verification/verus/production_inner/signals_production.rs:193: /// Discriminant set matches production exactly (7 variants).
+verification/verus/production_inner/signals_production.rs:194: #[derive(Clone)]
+verification/verus/production_inner/signals_production.rs:195: pub enum EngineSignal {
+verification/verus/production_inner/signals_production.rs:196:     Continue,
+verification/verus/production_inner/signals_production.rs:197:     Finished(SlotValue, Taint),
+verification/verus/production_inner/signals_production.rs:198:     StepBudgetExhausted,
+verification/verus/production_inner/signals_production.rs:199:     AwaitingAction,
+verification/verus/production_inner/signals_production.rs:200:     ActionFailureUnhandled,

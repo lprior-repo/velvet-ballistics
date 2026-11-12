@@ -45,8 +45,8 @@ pub struct StepAst {
     pub condition: Option<String>,
     /// The primitive operation.
     pub primitive: StepPrimitive,
-    /// Resource / connector reference (optional).
-    pub with: Option<String>,
+    /// Structured action input, alternative to a direct input reference.
+    pub with: Option<AuthorValue>,
     /// Retry policy (optional).
     pub retry: Option<RetryPolicy>,
     /// Error handler (optional).

@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 872, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 776, in main
+    commit = check_commit(root, args.commit)
+  File "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 445, in check_commit
+    raise CollectorError(f"commit mismatch: expected {expected}, HEAD {head}")
+CollectorError: commit mismatch: expected 6d6ee939a48d805c56d631e904854ad94c93e68a, HEAD e80b14470b9e16c67106aa42de912c5df49be461

@@ -6,7 +6,7 @@
 //
 // This file is a minimal production-binding stub for the
 // `collect_ir_structure.rs` Verus spec. The primary production source
-// is `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
+// is `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:225-242`
 // (the `lower_bounded_collect` body). The production file cannot be
 // `#[path]`-included from this single-file Verus unit because:
 //
@@ -39,7 +39,7 @@
 // so the projection is nameable in spec mode.
 //
 // DRIFT POLICY: This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:225-242`
 // whenever production changes. Section headers cite the originating
 // production line range so regeneration is mechanical.
 #![forbid(unsafe_code)]
@@ -85,7 +85,7 @@ impl StepIdx {
     }
 
     /// Mirror of `StepIdx::checked_add(rhs: u16) -> Option<Self>` at
-    /// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`.
+    /// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219`.
     pub const fn checked_add(self, n: u16) -> Option<Self> {
         match self.0.checked_add(n) {
             Some(v) => Some(Self(v)),

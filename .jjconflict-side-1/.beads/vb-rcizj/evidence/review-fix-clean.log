@@ -1,0 +1,30 @@
+running 9 tests
+test action_failure_preserves_action_completed_slots_integration_gap ... ok
+test apply_action_failure_to_state_resets_pc_to_failed_step_on_retry ... ok
+test apply_error_handler_writes_step_index_to_error_slot_integration_gap ... ok
+test journal_replay_idempotent_action_failed ... ok
+test record_retry_attempt_integration_gap ... ok
+test retry_is_available_returns_false_for_nonretryable_policy ... ok
+test retry_is_available_returns_false_when_no_retry_metadata ... ok
+test ticket_with_retry_capacity_increases_capacity_to_max_attempts ... ok
+test ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ticket_authority_matrix.rs (target/debug/deps/ticket_authority_matrix-37b62807c1c1a5ed)
+
+running 11 tests
+test advanced_seq_rejected ... ok
+test attempt_zero_rejected ... ok
+test bad_key_rejected ... ok
+test capacity_zero_rejected ... ok
+test corrupted_key_rejected ... ok
+test future_attempt_rejected ... ok
+test old_seq_rejected ... ok
+test unknown_run_rejected ... ok
+test valid_ticket_accepted ... ok
+test wrong_action_rejected ... ok
+test wrong_step_rejected ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

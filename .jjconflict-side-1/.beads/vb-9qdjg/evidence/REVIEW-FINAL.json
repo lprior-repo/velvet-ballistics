@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-9qdjg-local5090-benchmark-review",
+  "argv": [
+    "python3",
+    ".beads/vb-9qdjg/verify_measurements.py"
+  ],
+  "exit_code": 0,
+  "seconds": 6.277,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-9qdjg/evidence/REVIEW-FINAL"
+}

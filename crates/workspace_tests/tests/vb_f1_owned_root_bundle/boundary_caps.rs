@@ -10,6 +10,7 @@ fn zero_slot_workflow_cap_mismatch() -> TestResult<()> {
     let node = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("zero-slot-test"),
         digest: WorkflowDigest::from_bytes([42; 32]),
         nodes: Box::from([node]),

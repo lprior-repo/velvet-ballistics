@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "vb_79ffw_ticket_authority_probe"
+  ],
+  "exit_code": 101,
+  "seconds": 0.518,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-79ffw/evidence/probe_v4",
+  "coordinator_message": "Root: your context now106k tokens, previous3090 session at113k hit backend image500; prioritize bounded actual evidence/handoff and stop before growth, no false approval if probes do not compile. Existing durable_retry_run_attempt_authority.rs/vb_r4fm9_event_generation.rs have real public fixtures; reuse actual APIs rather than invent nonexistent fields. Strong no-mutation snapshots must compare serialized events/pending/frame beyond count. Critically oldwire bytes must use423d8ae8 exact layout and public current decoder; failclosed or compatible, not newstruct roundtrip. If unfinished write clear INCOMPLETE/REJECTED summary with paths and actualmetadata so fresh3090 context cancontinue. Root will preserve checkpoints. Current compilealltestsmigrated candidate78352490, youraf142base onlyfocusedtests compile. Do not productionfix or VCSmutate."
+}

@@ -1,0 +1,36 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 10,
+  "sublane": "implement-approved-attempt7-public-surface-repairs",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/implementation.md",
+    ".evidence/vb-kyyf/bdd-cross-run-determinism.md",
+    ".evidence/vb-kyyf/non-replay-safe-actions.md",
+    ".evidence/vb-kyyf/recovery-bdd-errors.md",
+    ".evidence/vb-kyyf/generated-ir-parity.md",
+    ".evidence/vb-kyyf/generated-subset-fail-closed.md",
+    ".evidence/vb-kyyf/acceptance-catalog-traceability.md"
+  ],
+  "attempt": 5,
+  "approved_tests": "State 9 final attempt 7 approved; remaining RED failures are implementation/evidence public-surface blockers",
+  "repair_targets": [
+    "BDD-KYYF-002: provide traceable repeated CLI replay/events/inspect evidence or exact supported public-surface behavior so hardened CLI determinism checks pass",
+    "BDD-KYYF-004: provide stable typed repeated public recovery for sequence-gap and duplicate-sequence where required, plus legal handling for action-ABI and policy digest mismatch public surfaces",
+    "BDD-KYYF-005: provide generated durable replay public surface or exact evidence path satisfying terminal result, taint, journal signature/payload digest, suspension state, and typed errors without synthesized constants",
+    "BDD-KYYF-007: preserve catalog evidence path parity"
+  ]
+}

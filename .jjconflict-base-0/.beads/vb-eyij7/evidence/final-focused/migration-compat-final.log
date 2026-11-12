@@ -1,0 +1,35 @@
+   Compiling once_cell v1.21.4
+   Compiling ordered-float v5.3.0
+   Compiling tempfile v3.27.0
+   Compiling saphyr v0.0.6
+   Compiling rusty-fork v0.3.1
+   Compiling proptest v1.11.0
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_yaml)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_validate)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile)
+warning: unused import: `crate::expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:13
+    |
+117 |         use crate::expr_proofs;
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_compile` (lib test) generated 1 warning (run `cargo fix --lib -p vb_compile --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.30s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-774085096e2424b3)
+
+running 9 tests
+test migration_compat::expr_module_paths::expr_modules_resolve ... ok
+test migration_compat::expr_module_paths::expr_lexer_behavioral_check ... ok
+test migration_compat::expr_module_paths::expr_full_pipeline_via_old_paths ... ok
+test migration_compat::yaml_module_paths::yaml_ast_module_accessible ... ok
+test migration_compat::proof_module_paths::expr_proofs_module_accessible ... ok
+test migration_compat::yaml_module_paths::yaml_modules_resolve ... ok
+test migration_compat::yaml_module_paths::yaml_profile_rejects_multiple_documents ... ok
+test migration_compat::yaml_module_paths::yaml_profile_rejects_duplicate_keys ... ok
+test migration_compat::yaml_module_paths::yaml_profile_rejects_anchors ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 474 filtered out; finished in 0.00s
+

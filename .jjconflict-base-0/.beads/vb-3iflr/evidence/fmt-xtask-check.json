@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--manifest-path",
+    "xtask/Cargo.toml",
+    "--check"
+  ],
+  "exit_code": 0,
+  "seconds": 0.085,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-3iflr/evidence/fmt-xtask-check"
+}

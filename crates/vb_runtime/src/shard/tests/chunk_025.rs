@@ -136,7 +136,8 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
     };
     for i in 0..5 {
         assert_eq!(
-            shard.enqueue(ShardCommand::SubmitWithContracts {
+            shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+                inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
                 run: super::RunId::new(i as u64),
                 workflow: workflow.clone(),
                 caps: test_fixtures::contract_capability_for(ActionId::new(0)),

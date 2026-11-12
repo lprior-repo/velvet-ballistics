@@ -1,0 +1,1562 @@
+Independent CODE REVIEW of Rust submission parity cleanup vb-8iilq. Freshcontext, you did not author this diff. Findings first with file/currentline; STATUS:APPROVED only no actionable findings, otherwiseREJECTED. No invented ownerwaivers/pass evidence/newAPIs. Reviewonlyassignedfilegroup; combined reviewcoversall40changedfiles. Userflow rustcontract->implementation->tests->codereview->testreview, noGoskill/proofplanning. Check no securityweakening, fabricatedcontracts/grants/defaultinputs in production, changednegativeexpectations/erasedpublicentrypointcoverage, broadfixturesmaskingdeniedcaps, introducedpanic/ignoredresults/index/casts. Staticpatch: remove cfgtestalternatives +5test-onlyhelpers; positiveDo tests provide explicitactioncontracts/grants/inputs and realpendingtickets. Existing named action-only testhelpers allowed when no caller grants parameter overridden; no new all-in-onewrapper. Namedpublic submit_compiled delegationtest restoredoriginal entrypoint. New3regression tests preserveemptycaps anddenyrealrequiredcapwithexacttypedfields/nojournal orcountermutation. All2452actualpackage tests pass(1unchangedintentionalignoredmarker); original2cfghandlers restored yield2actualregressionassertfails, sourcefinallyrestored. Formattingnormalizedoldsource forsemanticdiff; linepositionsmaydifferfromcurrentfile. Report actionablefindings only, don't invent unrelatedproofrequirements. Filegroup shard_b
+FILES:
+crates/vb_runtime/src/shard/tests/chunk_015.rs
+crates/vb_runtime/src/shard/tests/chunk_016.rs
+crates/vb_runtime/src/shard/tests/chunk_017.rs
+crates/vb_runtime/src/shard/tests/chunk_018.rs
+crates/vb_runtime/src/shard/tests/chunk_019.rs
+crates/vb_runtime/src/shard/tests/chunk_020.rs
+crates/vb_runtime/src/shard/tests/chunk_021.rs
+crates/vb_runtime/src/shard/tests/chunk_022.rs
+crates/vb_runtime/src/shard/tests/chunk_023.rs
+crates/vb_runtime/src/shard/tests/chunk_024.rs
+crates/vb_runtime/src/shard/tests/chunk_025.rs
+crates/vb_runtime/src/shard/tests/chunk_026.rs
+crates/vb_runtime/src/shard/tests/chunk_027.rs
+crates/vb_runtime/src/shard/tests/chunk_029.rs
+CONTRACT:
+# VB-8IILQ: Remove Test-Only Shard Submission Fabrication
+
+## Contract
+
+ONE production implementation of `handle_submit` and `handle_submit_with_inputs` in all builds, no silently substituted action contracts/caps/I64(0) input. Legitimate action tests must explicitly supply typed contracts/grants/inputs at test fixture calls; real production missing/invalid inputs/contracts/caps remain rejected. No all-in-one test wrapper secretly overrides restricted grants; retain negative admission and actual API semantics.
+
+## Scope
+
+- `crates/vb_runtime/src/shard/lifecycle/chunk_001.rs` (production handlers)
+- Test fixtures/call-sites in `crates/vb_runtime/src/shard/tests/` and `crates/vb_runtime/src/shard/lifecycle_tests/`
+- `crates/vb_runtime/src/runtime_tests.rs` (runtime-level submit helpers)
+
+## Acceptance Criteria
+
+1. No `#[cfg(test)]` alternative implementations of `handle_submit` or `handle_submit_with_inputs`
+2. No orphan `#[cfg(test)]` fabrication helpers (`test_first_do_action`, `test_contract_required_capability`, `test_contract_grants`, `test_action_contract`, `test_contracts_through`) in production lifecycle file
+3. All shard tests compile and pass with explicit fixture calls
+4. All runtime tests compile and pass with explicit fixture calls
+5. No new `expect`/`unwrap`/`panic`/index/cast/ignored results in test code (except where explicitly required by existing test patterns)
+6. Negative admission tests (missing/invalid contracts, denied capabilities) unchanged in expectation
+
+ACTUALTESTS:
+# Current aligned parity candidate
+
+Full runtime package2452passed0failed1unchangedintentionalparent-invokedcrashmarkerignored, exit0, after alignment with reviewed baseline87fac9c4. Includes1912unit(old1909+3newregressions). Restoring originalcfgtestsubmissionhandlers caused exactly2newcap-preservationtest assertionfailures and1deniedcaptestpass; sourcefinallyrestored and1912unitpassagain. Allold70fixturefailuresresolved via explicit prerequisites; newregressionmoduleactuallyregistered. Dormantchunk030changesrestoredtobase; unusednewallinonewrapperremoved;3nonactionRuntime APItestsrestored. Code/testreviews pending, no fullCI/v1claim.
+
+RUSTFMT-NORMALIZEDDIFF:
+--- old/crates/vb_runtime/src/shard/tests/chunk_015.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_015.rs
+@@ -6,14 +6,16 @@
+         action_with_error_handler_workflow(),
+         "action_with_error_handler",
+     )?;
+     let run = super::RunId::new(743);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -47,11 +49,11 @@
+     let mut shard = Shard::new(config);
+     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(1),
+-            workflow,
++            workflow: workflow,
+             caps: vb_core::capability::CapabilitySet::empty()
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+@@ -76,14 +78,15 @@
+     let config = small_config();
+     let mut shard = Shard::new(config);
+     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
+     let run = super::RunId::new(750);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     // Run is now waiting on an ask with a pending timer
+@@ -117,14 +120,15 @@
+     let config = small_config();
+     let mut shard = Shard::new(config);
+     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
+     let run = super::RunId::new(751);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -159,14 +163,15 @@
+     let config = small_config();
+     let mut shard = Shard::new(config);
+     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
+     let run = super::RunId::new(752);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -198,14 +203,15 @@
+     let shared: SharedRuntimeJournal = journal.clone();
+     let mut shard = Shard::new_with_journal(config, shared);
+     let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
+     let run = super::RunId::new(760);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+@@ -232,14 +238,15 @@
+     let mut shard = Shard::new_with_journal(config, shared);
+     let workflow = timed_ask_without_answer_workflow()
+         .ok_or_else(|| "timed ask workflow fixture must build".to_owned())?;
+     let run = super::RunId::new(761);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+@@ -328,14 +335,15 @@
+     let mut shard = Shard::new_with_journal(small_config(), shared);
+     let workflow = timed_ask_without_answer_workflow()
+         .ok_or_else(|| "timed ask workflow fixture must build".to_owned())?;
+     let run = super::RunId::new(762);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_contains(run), true);
+@@ -419,14 +427,15 @@
+         timed_ask_without_answer_workflow(),
+         "timed_ask_without_answer",
+     )?;
+     let run = super::RunId::new(770);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_016.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_016.rs
+@@ -9,14 +9,15 @@
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(780);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -38,14 +39,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(790);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -70,14 +73,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(791);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -103,14 +108,15 @@
+     let Some(workflow) = ask_then_finish_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(792);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+@@ -145,14 +151,15 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(793);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+@@ -181,14 +188,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(794);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+@@ -236,15 +244,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(801);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::SubmitWithInputs {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+             run,
+             workflow,
+             inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(42))]),
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_017.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_017.rs
+@@ -8,14 +8,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(802);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.active_run_count(), 1);
+@@ -33,14 +35,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(803);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let drained_before_failure = shard.trace_ring_mut().drain();
+@@ -166,15 +170,18 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(806);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::SubmitWithInputs {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run,
+             workflow,
+             inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]),
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
++                vb_core::ActionId::new(0)
++            )
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+@@ -223,14 +230,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(808);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_018.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_018.rs
+@@ -39,14 +39,15 @@
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(811);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.active_run_count(), 1);
+@@ -66,14 +67,15 @@
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(812);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+@@ -95,14 +97,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(813);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+@@ -124,14 +127,15 @@
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(814);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+@@ -177,25 +181,27 @@
+         return;
+     };
+ 
+     // Submit a finishing run (completes immediately)
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithContracts {
+             run: super::RunId::new(900),
+             workflow: wf_finish,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+     // Submit a suspended run
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithContracts {
+             run: super::RunId::new(901),
+             workflow: wf_suspend,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -241,15 +247,16 @@
+         return;
+     };
+     let run = super::RunId::new(910);
+ 
+     assert_eq!(
+-        shard.enqueue(ShardCommand::SubmitWithInputs {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run,
+             workflow,
+             inputs: Box::from([]),
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_019.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_019.rs
+@@ -9,14 +9,16 @@
+     let Some(wf) = suspended_workflow() else {
+         return;
+     };
+     let run_a = super::RunId::new(920);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run: run_a,
+             workflow: wf,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.active_run_count(), 1);
+@@ -25,14 +27,16 @@
+     let Some(wf2) = suspended_workflow() else {
+         return;
+     };
+     let run_b = super::RunId::new(921);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run: run_b,
+             workflow: wf2,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.active_run_count(), 2);
+@@ -76,28 +80,32 @@
+     let Some(wf1) = suspended_workflow() else {
+         return;
+     };
+     let run1 = super::RunId::new(930);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run: run1,
+             workflow: wf1,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+     // Over capacity should fail
+     let Some(wf2) = suspended_workflow() else {
+         return;
+     };
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run: super::RunId::new(931),
+             workflow: wf2,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(
+         shard.tick(),
+@@ -116,14 +124,16 @@
+ 
+     let Some(wf3) = finished_workflow() else {
+         return;
+     };
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run: super::RunId::new(932),
+             workflow: wf3,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+@@ -139,14 +149,16 @@
+         return;
+     };
+     let run = super::RunId::new(940);
+ 
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -181,14 +193,18 @@
+         return;
+     };
+     let run = super::RunId::new(950);
+ 
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run,
+             workflow: workflow.clone(),
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
++            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
++                vb_core::ActionId::new(0)
++            )
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+@@ -197,15 +213,18 @@
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+     // Resubmit with inputs
+     assert_eq!(
+-        shard.enqueue(ShardCommand::SubmitWithInputs {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run,
+             workflow,
+             inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(99))]),
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
++                vb_core::ActionId::new(0)
++            )
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+@@ -222,14 +241,16 @@
+         return;
+     };
+     let run = super::RunId::new(960);
+ 
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -273,14 +294,16 @@
+     };
+     let run = super::RunId::new(970);
+ 
+     // Enqueue Submit + Resume without ticking in between
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+ 
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_020.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_020.rs
+@@ -12,14 +12,15 @@
+     // Submit a finished workflow -> pool created and frame returned
+     let Some(wf) = finished_workflow() else {
+         return;
+     };
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithContracts {
+             run: super::RunId::new(980),
+             workflow: wf,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+@@ -45,14 +46,18 @@
+         return;
+     };
+     let run = super::RunId::new(990);
+ 
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+             run,
+             workflow: wf,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
++            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
++                vb_core::ActionId::new(0)
++            )
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -99,14 +104,15 @@
+     let Some(wf1) = suspended_workflow() else {
+         return;
+     };
+     let run1 = super::RunId::new(1000);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithContracts {
+             run: run1,
+             workflow: wf1,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -124,14 +130,15 @@
+     let Some(wf2) = finished_workflow() else {
+         return;
+     };
+     let run2 = super::RunId::new(1001);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithContracts {
+             run: run2,
+             workflow: wf2,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+@@ -148,14 +155,15 @@
+         return;
+     };
+     let run = super::RunId::new(1010);
+ 
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+@@ -178,14 +186,15 @@
+         return;
+     };
+     let run = super::RunId::new(1020);
+ 
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_021.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_021.rs
+@@ -10,11 +10,11 @@
+ 
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run,
+             workflow: wf,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_022.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_022.rs
+@@ -9,16 +9,16 @@
+         return;
+     };
+     let a = ShardCommand::Submit {
+         run: super::RunId::new(10),
+         workflow: wf.clone(),
+-        caps: vb_core::capability::CapabilitySet::empty(),
++        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+     };
+     let b = ShardCommand::Submit {
+         run: super::RunId::new(20),
+         workflow: wf,
+-        caps: vb_core::capability::CapabilitySet::empty(),
++        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+     };
+     assert_ne!(a, b);
+ }
+ 
+ #[test]
+@@ -30,17 +30,17 @@
+         Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(7))]);
+     let a = ShardCommand::SubmitWithInputs {
+         run: super::RunId::new(5),
+         workflow: wf.clone(),
+         inputs: inputs.clone(),
+-        caps: vb_core::capability::CapabilitySet::empty(),
++        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+     };
+     let b = ShardCommand::SubmitWithInputs {
+         run: super::RunId::new(5),
+         workflow: wf,
+         inputs,
+-        caps: vb_core::capability::CapabilitySet::empty(),
++        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+     };
+     assert_eq!(a, b);
+ }
+ 
+ #[test]
+@@ -50,17 +50,17 @@
+     };
+     let a = ShardCommand::SubmitWithInputs {
+         run: super::RunId::new(5),
+         workflow: wf.clone(),
+         inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(1))]),
+-        caps: vb_core::capability::CapabilitySet::empty(),
++        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+     };
+     let b = ShardCommand::SubmitWithInputs {
+         run: super::RunId::new(5),
+         workflow: wf,
+         inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(2))]),
+-        caps: vb_core::capability::CapabilitySet::empty(),
++        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+     };
+     assert_ne!(a, b);
+ }
+ 
+ #[test]
+@@ -277,14 +277,15 @@
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(0);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_023.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_023.rs
+@@ -5,14 +5,15 @@
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(1);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+@@ -189,13 +190,13 @@
+     };
+     let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(99))]);
+     assert_eq!(
+         shard.enqueue(ShardCommand::SubmitWithInputs {
+             run: super::RunId::new(42),
+-            workflow,
++            workflow: workflow,
+             inputs,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+@@ -210,36 +211,36 @@
+         return;
+     };
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(0),
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(1),
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(2),
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.counters().snapshot().runs_submitted, 3);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_024.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_024.rs
+@@ -26,11 +26,11 @@
+         return;
+     };
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(1),
+-            workflow,
++            workflow: workflow,
+             caps: vb_core::capability::CapabilitySet::empty()
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+@@ -84,14 +84,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(1001);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+@@ -113,14 +115,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(1002);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+@@ -171,14 +175,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(1003);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     // Pool pre-allocated to capacity (4); one frame in use
+@@ -207,14 +213,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(1004);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_025.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_025.rs
+@@ -129,14 +129,15 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     for i in 0..5 {
+         assert_eq!(
+-            shard.enqueue(ShardCommand::Submit {
++            shard.enqueue(ShardCommand::SubmitWithContracts {
+                 run: super::RunId::new(i as u64),
+                 workflow: workflow.clone(),
+-                caps: vb_core::capability::CapabilitySet::empty()
++                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+             }),
+             Ok(())
+         );
+         let _ = shard.tick();
+         let active_runs = shard.active_run_count();
+@@ -181,14 +182,15 @@
+     let Some(workflow) = finished_workflow() else {
+         return;
+     };
+     for i in 0..4 {
+         assert_eq!(
+-            shard.enqueue(ShardCommand::Submit {
++            shard.enqueue(ShardCommand::SubmitWithContracts {
+                 run: super::RunId::new(i as u64),
+                 workflow: workflow.clone(),
+-                caps: vb_core::capability::CapabilitySet::empty()
++                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+             }),
+             Ok(())
+         );
+         assert_eq!(shard.tick(), Ok(true));
+     }
+@@ -207,11 +209,11 @@
+         return;
+     };
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(0),
+-            workflow,
++            workflow: workflow,
+             caps: vb_core::capability::CapabilitySet::empty()
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+@@ -226,11 +228,11 @@
+         return;
+     };
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(u64::MAX),
+-            workflow,
++            workflow: workflow,
+             caps: vb_core::capability::CapabilitySet::empty()
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+@@ -245,14 +247,15 @@
+         return;
+     };
+     for i in 0..10 {
+         let run_id = super::RunId::new(i);
+         assert_eq!(
+-            shard.enqueue(ShardCommand::Submit {
++            shard.enqueue(ShardCommand::SubmitWithContracts {
+                 run: run_id,
+                 workflow: workflow.clone(),
+-                caps: vb_core::capability::CapabilitySet::empty()
++                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+             }),
+             Ok(())
+         );
+         assert_eq!(shard.tick(), Ok(true));
+         assert_eq!(shard.run_state_get(run_id), None);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_026.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_026.rs
+@@ -23,14 +23,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(9001);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let ticket_min = action_ticket(run, vb_core::ids::StepIdx::ZERO);
+@@ -62,11 +64,11 @@
+         return;
+     };
+     assert_eq!(
+         shard.enqueue(ShardCommand::Submit {
+             run: super::RunId::new(1),
+-            workflow,
++            workflow: workflow,
+             caps: vb_core::capability::CapabilitySet::empty()
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+@@ -113,14 +115,16 @@
+     let Some(workflow) = suspended_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(5001);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
++            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(
+@@ -151,14 +155,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(9001);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+@@ -180,14 +185,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         return;
+     };
+     let run = super::RunId::new(9002);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     assert_eq!(shard.pending_timer_count(), 1);
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_027.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_027.rs
+@@ -14,25 +14,27 @@
+     let run_wait = super::RunId::new(9004);
+     let run_ask = super::RunId::new(9005);
+ 
+     // Submit wait workflow
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithContracts {
+             run: run_wait,
+             workflow: wait_workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+     // Submit ask workflow
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
++        shard.enqueue(ShardCommand::SubmitWithContracts {
+             run: run_ask,
+             workflow: ask_workflow,
+-            caps: vb_core::capability::CapabilitySet::empty()
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+ 
+
+--- old/crates/vb_runtime/src/shard/tests/chunk_029.rs
++++ new/crates/vb_runtime/src/shard/tests/chunk_029.rs
+@@ -6,14 +6,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         panic!("timed_wait_then_finish_workflow fixture must compile for stale replacement test");
+     };
+     let run = super::RunId::new(7_106);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let old_timer = match shard.pending_timer_get(run) {
+@@ -92,14 +93,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         panic!("timed_wait_then_finish_workflow fixture must compile for stale cancel test");
+     };
+     let run = super::RunId::new(7_107);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let active_timer = match shard.pending_timer_get(run) {
+@@ -138,14 +140,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         panic!("timed_wait_then_finish_workflow fixture must compile for terminal stale test");
+     };
+     let run = super::RunId::new(7_108);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let terminal_timer = match shard.pending_timer_get(run) {
+@@ -236,14 +239,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         panic!("timed_wait_then_finish_workflow fixture must compile for overflow test");
+     };
+     let run = super::RunId::new(7_207);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let Some(mut timer) = shard.pending_timer_get(run) else {
+@@ -392,14 +396,15 @@
+     let Some(workflow) = ask_timeout_only_workflow() else {
+         panic!("ask_timeout_only_workflow fixture must compile for append failure test");
+     };
+     let run = super::RunId::new(7_208);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+ 
+     let result = shard.tick();
+@@ -441,14 +446,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         panic!("timed_wait_then_finish_workflow fixture must compile for generation mismatch test");
+     };
+     let run = super::RunId::new(7_111);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let pending_before = shard.pending_timer_clone();
+@@ -481,14 +487,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         panic!("timed_wait_then_finish_workflow fixture must compile for deadline mismatch test");
+     };
+     let run = super::RunId::new(7_112);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let pending_before = shard.pending_timer_clone();
+@@ -522,14 +529,15 @@
+     let Some(workflow) = timed_wait_then_finish_workflow() else {
+         panic!("timed_wait_then_finish_workflow fixture must compile for kind mismatch test");
+     };
+     let run = super::RunId::new(7_113);
+     assert_eq!(
+-        shard.enqueue(ShardCommand::Submit {
+-            run,
+-            workflow,
+-            caps: vb_core::capability::CapabilitySet::empty(),
++        shard.enqueue(ShardCommand::SubmitWithContracts {
++            run: run,
++            workflow: workflow,
++            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
++            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+         }),
+         Ok(())
+     );
+     assert_eq!(shard.tick(), Ok(true));
+     let pending_before = shard.pending_timer_clone();

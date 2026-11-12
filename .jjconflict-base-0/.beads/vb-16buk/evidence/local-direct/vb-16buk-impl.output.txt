@@ -1,0 +1,24 @@
+```json
+[
+  {
+    "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+    "old": "name: Box::from(\"test\"),\n        digest: WorkflowDigest::from_bytes([0u8; 32]),",
+    "new": "name: Box::from(\"test\"),\n        input_slots: Box::from([]),\n        digest: WorkflowDigest::from_bytes([0u8; 32]),"
+  },
+  {
+    "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+    "old": "name: Box::from(\"set_finish\"),\n        digest: WorkflowDigest::from_bytes([1u8; 32]),",
+    "new": "name: Box::from(\"set_finish\"),\n        input_slots: Box::from([]),\n        digest: WorkflowDigest::from_bytes([1u8; 32]),"
+  },
+  {
+    "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+    "old": "name: Box::from(\"budget_test\"),\n        digest: WorkflowDigest::from_bytes([2u8; 32]),",
+    "new": "name: Box::from(\"budget_test\"),\n        input_slots: Box::from([]),\n        digest: WorkflowDigest::from_bytes([2u8; 32]),"
+  },
+  {
+    "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+    "old": "name: Box::from(\"rt_test\"),\n        digest: WorkflowDigest::from_bytes([3u8; 32]),",
+    "new": "name: Box::from(\"rt_test\"),\n        input_slots: Box::from([]),\n        digest: WorkflowDigest::from_bytes([3u8; 32]),"
+  }
+]
+```

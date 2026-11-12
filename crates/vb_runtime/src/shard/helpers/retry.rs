@@ -24,6 +24,9 @@ pub fn retry_metadata_exists(state: &crate::shard::types::RunState, step: StepId
     let Some(node) = state.workflow.node(step) else {
         return false;
     };
+    if node.retry.is_some() {
+        return true;
+    }
     let Some(next) = node.routing.next.step() else {
         return false;
     };
@@ -41,6 +44,13 @@ pub fn retry_policy_after_action(
     let Some(node) = state.workflow.node(step) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
+    if let Some(policy) = node.retry {
+        return Ok(RetryPolicy {
+            max_attempts: policy.max_attempts,
+            base_delay_ms: policy.delay_ms,
+            exponential_backoff: false,
+        });
+    }
     let Some(next) = node.routing.next.step() else {
         return Err(RuntimeError::UnsupportedOperation {
             operation: "retry_metadata_missing",

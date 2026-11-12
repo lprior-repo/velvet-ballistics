@@ -1,0 +1,180 @@
+721: +        assert_eq!(report.written, 2, "queue must report 2 events flushed");
+722: +
+723: +        assert!(
+724: +            !has_index_entry(&journal, action, run, step),
+725: +            "queued + drained lifecycle pair must leave the index empty",
+726: +        );
+727: +        assert_eq!(
+728: +            count_action_index_entries(&journal),
+729: +            0,
+730: +            "queued lifecycle pair must not leave stale pending entries",
+731: +        );
+732: +    }
+733: +
+734: +    #[test]
+735: +    fn queued_flush_batch_action_scheduled_alone_creates_index_entry() {
+736: +        let (_temp, journal, queue) = temp_journal_with_queue();
+737: +        let run = RunId::new(13);
+738: +        let step = StepIdx::new(16);
+739: +        let action = ActionId::new(47);
+740: +
+741: +        queue
+742: +            .enqueue_journaled(JournalEvent::ActionScheduled {
+743: +                run,
+744: +                seq: EventSeq::new(0),
+745: +                step,
+746: +                action,
+747: +                attempt: 1,
+748: +            })
+749: +            .expect("enqueue schedule must succeed");
+750: +        queue.drain_all(&journal).expect("drain_all must succeed");
+751: +
+752: +        assert!(
+753: +            has_index_entry(&journal, action, run, step),
+754: +            "queued ActionScheduled must add the index marker after drain",
+755: +        );
+756: +    }
+757: +
+758: +    // -----------------------------------------------------------------
+759: +    // Idempotency: duplicate events at same seq are rejected.
+760: +    // -----------------------------------------------------------------
+761: +
+762: +    #[test]
+763: +    fn duplicate_action_scheduled_does_not_duplicate_index_entry() {
+764: +        let (_temp, journal) = temp_journal();
+765: +        let run = RunId::new(14);
+766: +        let step = StepIdx::new(17);
+767: +        let action = ActionId::new(53);
+768: +
+769: +        // Successful first schedule: marker present.
+770: +        journal
+771: +            .append_journaled(&JournalEvent::ActionScheduled {
+772: +                run,
+773: +                seq: EventSeq::new(0),
+774: +                step,
+775: +                action,
+776: +                attempt: 1,
+777: +            })
+778: +            .expect("first schedule must succeed");
+779: +        assert!(has_index_entry(&journal, action, run, step));
+780: +
+781: +        // Duplicate at the journal-event layer is rejected, so the
+782: +        // index is not asked to update twice. Direct path surfaces
+783: +        // JournalError::DuplicateEvent.
+784: +        let duplicate_result = journal.append_journaled(&JournalEvent::ActionScheduled {
+785: +            run,
+786: +            seq: EventSeq::new(0),
+787: +            step,
+788: +            action,
+789: +            attempt: 1,
+790: +        });
+791: +        assert!(
+792: +            matches!(duplicate_result, Err(JournalError::DuplicateEvent { .. })),
+793: +            "duplicate ActionScheduled at same seq must be rejected, got {:?}",
+794: +            duplicate_result,
+795: +        );
+796: +        assert!(
+797: +            has_index_entry(&journal, action, run, step),
+798: +            "rejected duplicate must not disturb existing marker",
+799: +        );
+800: +        assert_eq!(
+801: +            count_action_index_entries(&journal),
+802: +            1,
+803: +            "index must contain exactly one entry (Fjall last-write-wins)",
+804: +        );
+805: +    }
+806: +}
+807: diff --git a/crates/vb_storage/src/indexes.rs b/crates/vb_storage/src/indexes.rs
+808: index 17541274d..9ee78648e 100644
+809: --- a/crates/vb_storage/src/indexes.rs
+810: +++ b/crates/vb_storage/src/indexes.rs
+811: @@ -45,4 +45,22 @@ impl FjallJournal {
+812:          self.index_action.insert(key.to_vec(), Vec::<u8>::new())?;
+813:          Ok(())
+814:      }
+815: +
+816: +    /// Removes the pending action index marker for the given triple.
+817: +    ///
+818: +    /// Idempotent: removing a non-existent key is a no-op (Fjall returns
+819: +    /// `Ok(())` for absent keys). Used to clear the index when an action
+820: +    /// reaches a terminal state (completed, failed, abandoned) so the
+821: +    /// runtime journal path leaves the `index_action` keyspace
+822: +    /// consistent with the durable event log.
+823: +    pub fn delete_action_index(
+824: +        &self,
+825: +        action: vb_core::ActionId,
+826: +        run: vb_core::RunId,
+827: +        step: vb_core::StepIdx,
+828: +    ) -> Result<(), JournalError> {
+829: +        let key = index_action_key(action, run, step)?;
+830: +        self.index_action.remove(key.as_slice())?;
+831: +        Ok(())
+832: +    }
+833:  }
+834: diff --git a/crates/vb_storage/src/journal/internal.rs b/crates/vb_storage/src/journal/internal.rs
+835: index ff78650c4..cf07c8884 100644
+836: --- a/crates/vb_storage/src/journal/internal.rs
+837: +++ b/crates/vb_storage/src/journal/internal.rs
+838: @@ -37,6 +37,16 @@ impl FjallJournal {
+839:      /// recovery (crash + restart reads back the memtable) but has not been
+840:      /// force-flushed to stable storage.  Callers that require strict
+841:      /// durability must invoke `persist_strict` after staging.
+842: +    ///
+843: +    /// vb-3wn7x: the runtime journal path uses this entry point for
+844: +    /// direct appends. To keep the `index_action` keyspace consistent
+845: +    /// with the durable event log, the action-lifecycle index mutation
+846: +    /// (insert for `ActionScheduled` / `ActionScheduledTicket`,
+847: +    /// tombstone for completion / failure / abandonment, no-op for
+848: +    /// every other variant) is staged into the SAME
+849: +    /// `fjall::OwnedWriteBatch` as the event write and committed
+850: +    /// atomically. A process crash between the event insert and the
+851: +    /// index mutation is impossible — they share one fsync'd batch.
+852:      pub(crate) fn append_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+853:          let _guard = self
+854:              .write_lock
+855: @@ -59,7 +69,12 @@ impl FjallJournal {
+856:              event,
+857:              MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+858:          )?;
+859: -        self.events.insert(key.to_vec(), value)?;
+860: +        // Stage event + pending-action-index update on one batch so the
+861: +        // index mutation succeeds or fails with the event write.
+862: +        let mut batch = self.database.batch();
+863: +        batch.insert(&self.events, key, value);
+864: +        self.stage_pending_action_index_op(&mut batch, event)?;
+865: +        batch.commit()?;
+866:          Ok(())
+867:      }
+868:  
+869: diff --git a/crates/vb_storage/src/lib.rs b/crates/vb_storage/src/lib.rs
+870: index 5bbbd06a4..14fe63859 100644
+871: --- a/crates/vb_storage/src/lib.rs
+872: +++ b/crates/vb_storage/src/lib.rs
+873: @@ -135,6 +135,11 @@ mod type_tests;
+874:  #[path = "index_tests.rs"]
+875:  mod index_tests;
+876:  
+877: +// vb-3wn7x: pending action index maintenance contract tests.
+878: +#[cfg(test)]
+879: +#[path = "index_maintenance_tests.rs"]
+880: +mod index_maintenance_tests;
+881: +
+882:  #[cfg(test)]
+883:  #[path = "artifact_tests.rs"]
+884:  mod artifact_tests;
+885: diff --git a/crates/workspace_tests/tests/journal_side_index_contracts.rs b/crates/workspace_tests/tests/journal_side_index_contracts.rs
+886: index a1722d7f7..290b1f0f8 100644
+887: --- a/crates/workspace_tests/tests/journal_side_index_contracts.rs
+888: +++ b/crates/workspace_tests/tests/journal_side_index_contracts.rs
+889: @@ -269,6 +269,16 @@ proptest::proptest! {
+890:      /// This test is inherently limited because Fjall's commit() rarely fails in practice.
+891:      /// We verify the batch state machine behaves correctly by checking aborted flag
+892:      /// and len() invariants after failed encode operations.
+893: +    ///
+894: +    /// vb-3wn7x: as of this fix, `append_event` for an action-lifecycle
+895: +    /// event automatically stages the corresponding `index_action`
+896: +    /// mutation in the same batch. A subsequent explicit
+897: +    /// `put_action_index` call from the test is therefore redundant —
+898: +    /// Fjall last-write-wins leaves the marker in place either way.
+899: +    /// The expected `batch.len()` after `append_event` of an
+900: +    /// `ActionScheduled` plus an explicit `put_action_index` is now 3:

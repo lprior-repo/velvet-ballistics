@@ -53,6 +53,10 @@ fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         ]),
         Box::from([]),
         2,
+        Box::new([common::workflow_fixture::required_input(
+            0,
+            vb_core::workflow::InputSlotKind::Any,
+        )]),
     )
 }
 
@@ -79,6 +83,10 @@ fn wait_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         ]),
         Box::from([]),
         1,
+        Box::new([common::workflow_fixture::required_input(
+            0,
+            vb_core::workflow::InputSlotKind::I64,
+        )]),
     )
 }
 
@@ -88,7 +96,7 @@ fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         Box::from([
             node(
                 0,
-                None,
+                Some(1),
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
@@ -114,6 +122,10 @@ fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         ]),
         Box::from([]),
         2,
+        Box::new([common::workflow_fixture::required_input(
+            0,
+            vb_core::workflow::InputSlotKind::Any,
+        )]),
     )
 }
 
@@ -123,7 +135,7 @@ fn timed_ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         Box::from([
             node(
                 0,
-                None,
+                Some(2),
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
@@ -149,6 +161,10 @@ fn timed_ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         ]),
         Box::from([]),
         3,
+        Box::new([
+            common::workflow_fixture::required_input(0, vb_core::workflow::InputSlotKind::Any),
+            common::workflow_fixture::required_input(1, vb_core::workflow::InputSlotKind::I64),
+        ]),
     )
 }
 
@@ -157,8 +173,9 @@ fn workflow_from_parts(
     nodes: Box<[CompiledNode]>,
     constants: Box<[ConstValue]>,
     slot_count: u16,
+    input_slots: Box<[vb_core::workflow::CompiledInputSlot]>,
 ) -> Result<CompiledWorkflow, String> {
-    workflow_from_parts_with_inputs(name, Box::from([]), nodes, constants, slot_count)
+    workflow_from_parts_with_inputs(name, input_slots, nodes, constants, slot_count)
 }
 
 fn workflow_from_parts_with_inputs(
@@ -170,6 +187,7 @@ fn workflow_from_parts_with_inputs(
 ) -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots,
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -1648,12 +1666,12 @@ fn ask_with_list_input_workflow() -> Result<CompiledWorkflow, String> {
         Box::from([CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: InputSlotKind::List,
-            constraint: CompiledInputConstraint::default(),
+            constraint: CompiledInputConstraint::required(),
         }]),
         Box::from([
             node(
                 0,
-                None,
+                Some(1),
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,

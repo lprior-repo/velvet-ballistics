@@ -1,0 +1,5 @@
+{"requirement":"Recover rejected proof target","evidence":"bd show vb-iucs from source plus .beads/vb-qi37.8 artifacts","status":"PASS"}
+{"requirement":"Gate 8 Kani integration","evidence":"crates/vb_validate/src/kani_gate_08_accessor.rs and .beads/vb-qi37.8/formal-verification-report.md","status":"PASS"}
+{"requirement":"StepState production binding","evidence":"crates/vb_core/src/frame.rs delegates to vb_proof_kernels and Kani parity report passes","status":"PASS"}
+{"requirement":"BudgetArithmetic bounded model","evidence":"specs/tla/BudgetArithmetic.tla and TLC report pass","status":"PASS"}
+{"requirement":"Prevent overclaiming deferred obligations","evidence":".beads/vb-qi37.8/final-evidence-decision.md deferred table","status":"PASS"}

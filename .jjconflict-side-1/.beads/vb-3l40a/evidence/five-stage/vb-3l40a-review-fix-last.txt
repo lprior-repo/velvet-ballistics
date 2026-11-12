@@ -1,0 +1,23 @@
+I've completed all the review fix work for vb-3l40a. Here's what was done:
+
+**Fixes Applied:**
+
+1. **[FINDING-001] CRITICAL - Recovery discards action contracts**: Fixed by restoring `artifact.action_contracts.clone()` into the recovered RunState instead of `Box::new([])`. This ensures recovered runs can execute actions by having access to their validated contracts.
+
+2. **[FINDING-002] HIGH - validate_submit_admission_with_contracts is weak**: Added capability coverage validation. The method now checks that the granted `CapabilitySet` covers all `required_capabilities` declared by submitted contracts, returning `AdmissionCapabilityDenied` on violation. Added 2 production tests to verify the behavior.
+
+3. **[FINDING-003] MEDIUM - action_abi_digests_remove is a no-op**: Found to be stale — the method doesn't exist in the codebase. Only the lookup method `action_abi_digest_for_run_action` exists. No action needed.
+
+4. **[FINDING-004] LOW - slot_value_kind has unnecessary dead catch-all**: Corrected the reviewer — `SlotValue` is `#[non_exhaustive]`, so the `&_` wildcard is compiler-required, not dead code. Added explanatory doc comment.
+
+5. **[FINDING-005] MEDIUM - handle_recover is 90 lines**: Found to be 70 lines with clear step-by-step structure. No further splitting performed.
+
+**Additional fixes**:
+- Fixed `handle_recover` function signature to accept `RecoverRunCommand` struct (matching the call site)
+- Fixed test helpers to grant capabilities for all submitted contracts (new validation exposed pre-existing test issues)
+
+**Test results**: All 1877 vb_runtime lib tests pass, including the 2 new contract validation tests.
+
+**Report written to**: `.beads/vb-3l40a/review-fix-report.md`
+
+**Current JJ state**: Changes are in the working copy (not described/committed yet). Ready for review or commit.

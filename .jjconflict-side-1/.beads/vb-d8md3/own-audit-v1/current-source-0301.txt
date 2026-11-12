@@ -1,0 +1,100 @@
+current-source:301: /// with a minimum of 1 so even a capacity-1 queue still emits a warning at depth 1.
+current-source:302: /// Uses checked arithmetic; if `capacity * 8` would overflow `usize`, the function
+current-source:303: /// falls back to `capacity` itself (which is already > the would-be threshold
+current-source:304: /// in any realistic capacity that could overflow).
+current-source:305: fn backpressure_threshold(capacity: ActionQueueCapacity) -> usize {
+current-source:306:     let raw = capacity.get();
+current-source:307:     // INVARIANT: ceiling division `ceil(raw * 8 / 10) = (raw * 8 + 9) / 10` is
+current-source:308:     // computed via checked arithmetic so that capacity values near `usize::MAX / 8`
+current-source:309:     // cannot wrap. On overflow we return `raw` (the original capacity) which is
+current-source:310:     // always >= any valid threshold for inputs the queue can hold.
+current-source:311:     let threshold = usize::checked_mul(raw, 8)
+current-source:312:         .and_then(|scaled| usize::checked_add(scaled, 9))
+current-source:313:         .and_then(|numerator| usize::checked_div(numerator, 10));
+current-source:314:     match threshold {
+current-source:315:         Some(value) => value.max(1),
+current-source:316:         None => raw,
+current-source:317:     }
+current-source:318: }
+current-source:319: 
+current-source:320: #[cfg(test)]
+current-source:321: mod unit_tests {
+current-source:322:     use super::*;
+current-source:323:     use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+current-source:324: 
+current-source:325:     fn make_ticket(seq: u32) -> ActionTicket {
+current-source:326:         ActionTicket {
+current-source:327:             run: RunId::new(1),
+current-source:328:             step: StepIdx::new(0),
+current-source:329:             seq: SeqNo::new(u64::from(seq)),
+current-source:330:             action: ActionId::new(1),
+current-source:331:             run_attempt: 1,
+current-source:332:             attempt: 1,
+current-source:333:             idempotency_key: seq as u128,
+current-source:334:             capacity: 1,
+current-source:335:         }
+current-source:336:     }
+current-source:337: 
+current-source:338:     #[test]
+current-source:339:     fn bounded_action_queue_new_with_capacity_stores_capacity() {
+current-source:340:         let queue = BoundedActionCompletionQueue::new(10).unwrap();
+current-source:341:         assert_eq!(queue.capacity(), 10);
+current-source:342:     }
+current-source:343: 
+current-source:344:     #[test]
+current-source:345:     fn bounded_action_queue_new_is_empty() {
+current-source:346:         let queue = BoundedActionCompletionQueue::new(5).unwrap();
+current-source:347:         assert_eq!(queue.len(), 0);
+current-source:348:         assert!(queue.is_empty());
+current-source:349:     }
+current-source:350: 
+current-source:351:     #[test]
+current-source:352:     fn bounded_action_queue_new_with_zero_capacity_returns_error() {
+current-source:353:         let result = BoundedActionCompletionQueue::new(0);
+current-source:354:         assert!(matches!(
+current-source:355:             result,
+current-source:356:             Err(ActionQueueError::InvalidCapacity {
+current-source:357:                 requested: 0,
+current-source:358:                 reason: InvalidActionQueueCapacity::Zero,
+current-source:359:             })
+current-source:360:         ));
+current-source:361:     }
+current-source:362: 
+current-source:363:     #[test]
+current-source:364:     fn bounded_action_queue_new_with_max_capacity_succeeds() {
+current-source:365:         let queue =
+current-source:366:             BoundedActionCompletionQueue::new(MAX_ACTION_COMPLETION_QUEUE_CAPACITY).unwrap();
+current-source:367:         assert_eq!(queue.capacity(), MAX_ACTION_COMPLETION_QUEUE_CAPACITY);
+current-source:368:     }
+current-source:369: 
+current-source:370:     #[test]
+current-source:371:     fn bounded_action_queue_new_above_max_capacity_returns_error() {
+current-source:372:         let requested = MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1;
+current-source:373:         let result = BoundedActionCompletionQueue::new(requested);
+current-source:374:         assert!(matches!(
+current-source:375:             result,
+current-source:376:             Err(ActionQueueError::InvalidCapacity {
+current-source:377:                 requested: value,
+current-source:378:                 reason: InvalidActionQueueCapacity::AboveMaximum {
+current-source:379:                     maximum,
+current-source:380:                 },
+current-source:381:             }) if value == requested && maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY
+current-source:382:         ));
+current-source:383:     }
+current-source:384: 
+current-source:385:     #[test]
+current-source:386:     fn bounded_action_queue_with_backpressure_rejects_zero_capacity() {
+current-source:387:         let result = BoundedActionCompletionQueue::with_backpressure(0);
+current-source:388:         assert!(matches!(
+current-source:389:             result,
+current-source:390:             Err(ActionQueueError::InvalidCapacity {
+current-source:391:                 requested: 0,
+current-source:392:                 reason: InvalidActionQueueCapacity::Zero,
+current-source:393:             })
+current-source:394:         ));
+current-source:395:     }
+current-source:396: 
+current-source:397:     #[test]
+current-source:398:     fn bounded_action_queue_with_backpressure_rejects_above_max_capacity() {
+current-source:399:         let requested = MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1;
+current-source:400:         let result = BoundedActionCompletionQueue::with_backpressure(requested);

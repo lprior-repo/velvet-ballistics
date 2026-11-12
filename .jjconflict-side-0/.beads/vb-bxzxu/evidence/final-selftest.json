@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-bxzxu-local3090-final-review",
+  "argv": [
+    "bash",
+    "scripts/check-test-integrity.sh",
+    "--self-test"
+  ],
+  "exit_code": 0,
+  "seconds": 2.396,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-bxzxu/evidence/final-selftest"
+}

@@ -1,0 +1,5 @@
+Error: task_runner::run_failed
+
+  × Task velvet-ballistics:fuzz-smoke failed to run.
+  ╰─▶ Process set failed: exit code 1
+

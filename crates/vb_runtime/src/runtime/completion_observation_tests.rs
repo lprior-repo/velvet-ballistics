@@ -16,11 +16,13 @@ fn state(
 ) -> Result<RunState, vb_core::WorkflowError> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("completion_observation"),
         digest: vb_core::WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([
             CompiledNode {
+                retry: None,
                 id: StepIdx::ZERO,
                 output: NodeOutput::Slot(SlotIdx::ZERO),
                 routing: NodeRouting {
@@ -32,6 +34,7 @@ fn state(
                 },
             },
             CompiledNode {
+                retry: None,
                 id: StepIdx::new(1),
                 output: NodeOutput::Discard,
                 routing: NodeRouting {

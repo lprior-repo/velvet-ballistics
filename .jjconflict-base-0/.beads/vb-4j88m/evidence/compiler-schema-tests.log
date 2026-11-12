@@ -1,0 +1,22 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running tests/compiler_input_schema_kinds.rs (target/debug/deps/compiler_input_schema_kinds-752b51bf3bc80045)
+
+running 4 tests
+test test_postcard_ordinals ... ok
+test test_digest_stability_and_roundtrip ... FAILED
+test test_schema_kind_mapping ... ok
+test schema_kind_mapping ... ok
+
+failures:
+
+---- test_digest_stability_and_roundtrip stdout ----
+Error: "different schemas should have different digests"
+
+
+failures:
+    test_digest_stability_and_roundtrip
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test compiler_input_schema_kinds`

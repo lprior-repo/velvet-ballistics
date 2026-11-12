@@ -1,0 +1,239 @@
+[ WARN 2026-10-22 19:29:51.522] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:29:51.620] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:29:53.236] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:29:56.787] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:29:57.147] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:29:57.212] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:30:02.952] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:30:18.100] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:30:18.433] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:30:42.597] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=323   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=415   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=959   warn=198  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+[ WARN 19:30:46.933] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 19:30:50.247] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 961ee285-702c-47c2-9410-6bf4688c94bb with nextest profile: default
+                       velvet-ballistics:test |     Starting 14505 tests across 299 binaries (27 tests skipped)
+                       velvet-ballistics:test |   Cancelling due to signal: 19 tests still running
+                       velvet-ballistics:test |      SIGTERM [ 412.173s] (14487/14505) vb_storage::proptest_vb_vzcuf_PS_006 ps006_commit
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps006_commit has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.212s] (14488/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_len_mono
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_len_mono has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.151s] (14489/14505) vb_storage::proptest_vb_vzcuf_PS_006 ps006_new_empty
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps006_new_empty has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 411.971s] (14490/14505) vb_storage::proptest_vb_vzcuf_PS_009 ps009_dup_rejected
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps009_dup_rejected has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.158s] (14491/14505) vb_storage::proptest_vb_vzcuf_PS_006 ps006_len_mono
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps006_len_mono has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 328.202s] (14492/14505) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_relaxed has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.217s] (14493/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_empty_commit_after_rej
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_empty_commit_after_rej has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.268s] (14494/14505) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps001_duplicate_rejected has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 328.231s] (14495/14505) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_journaled has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.210s] (14496/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_rejection_preserves
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_rejection_preserves has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 338.628s] (14497/14505) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.041s] (14498/14505) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps008_persisted has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.062s] (14499/14505) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps008_key_first has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.267s] (14500/14505) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps001_new_batch_empty has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.275s] (14501/14505) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps001_append_increments has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.214s] (14502/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_no_persist
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_no_persist has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 328.204s] (14503/14505) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_strict has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.104s] (14504/14505) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps008_dup_before_queue has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 412.233s] (14505/14505) vb_storage::proptest_vb_vzcuf_PS_003 ps003_dup_fields
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps003_dup_fields has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 464.890s] 14505 tests run: 14486 passed (10 slow), 19 failed, 27 skipped
+                       velvet-ballistics:test |      SIGTERM [ 412.173s] (14487/14505) vb_storage::proptest_vb_vzcuf_PS_006 ps006_commit
+                       velvet-ballistics:test |      SIGTERM [ 412.212s] (14488/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_len_mono
+                       velvet-ballistics:test |      SIGTERM [ 412.151s] (14489/14505) vb_storage::proptest_vb_vzcuf_PS_006 ps006_new_empty
+                       velvet-ballistics:test |      SIGTERM [ 411.971s] (14490/14505) vb_storage::proptest_vb_vzcuf_PS_009 ps009_dup_rejected
+                       velvet-ballistics:test |      SIGTERM [ 412.158s] (14491/14505) vb_storage::proptest_vb_vzcuf_PS_006 ps006_len_mono
+                       velvet-ballistics:test |      SIGTERM [ 328.202s] (14492/14505) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+                       velvet-ballistics:test |      SIGTERM [ 412.217s] (14493/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_empty_commit_after_rej
+                       velvet-ballistics:test |      SIGTERM [ 412.268s] (14494/14505) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+                       velvet-ballistics:test |      SIGTERM [ 328.231s] (14495/14505) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+                       velvet-ballistics:test |      SIGTERM [ 412.210s] (14496/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_rejection_preserves
+                       velvet-ballistics:test |      SIGTERM [ 338.628s] (14497/14505) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+                       velvet-ballistics:test |      SIGTERM [ 412.041s] (14498/14505) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+                       velvet-ballistics:test |      SIGTERM [ 412.062s] (14499/14505) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+                       velvet-ballistics:test |      SIGTERM [ 412.267s] (14500/14505) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+                       velvet-ballistics:test |      SIGTERM [ 412.275s] (14501/14505) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+                       velvet-ballistics:test |      SIGTERM [ 412.214s] (14502/14505) vb_storage::proptest_vb_vzcuf_PS_004 ps004_no_persist
+                       velvet-ballistics:test |      SIGTERM [ 328.204s] (14503/14505) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+                       velvet-ballistics:test |      SIGTERM [ 412.104s] (14504/14505) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+                       velvet-ballistics:test |      SIGTERM [ 412.233s] (14505/14505) vb_storage::proptest_vb_vzcuf_PS_003 ps003_dup_fields
+                       velvet-ballistics:test | error: test run failed

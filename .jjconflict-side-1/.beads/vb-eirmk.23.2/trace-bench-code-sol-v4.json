@@ -1,0 +1,77 @@
+{
+  "bead": "vb-eirmk.23.2",
+  "verdict": "PASS",
+  "review_scope": "Independent bounded v4 CODE review: source and peak fixture-batch residency only; no execution or performance acceptance.",
+  "candidate": {
+    "change": "zmopxuxntqvrtylzttpwzrlnylusxzru",
+    "commit": "12bd596a17f6f02e095559e7861da44b87f2abbe"
+  },
+  "base": "94f674911c99d732fdf9925de52b7584f3941067",
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "review_child": "3cd949bdbd162c01503608f9d1a1d26f5fdb86f3",
+    "clean": true
+  },
+  "findings": [],
+  "resource_gate": {
+    "code_status": "RESOLVED for the six new public TraceRing/raw component cases",
+    "proof_by_source": [
+      "FIXTURE_BATCH is exactly BatchSize::NumIterations(32), used at all six iter_batched call sites; zero SmallInput references remain in this new module.",
+      "Installed Criterion 0.8.2 src/lib.rs:241-248 returns size directly for NumIterations; no calibration-dependent fixture-count scaling remains.",
+      "Installed Criterion src/bencher.rs:239-270 chooses min(batch_size, self.iters - iteration_counter), builds that many inputs, and reserves corresponding output tuple storage. Each input is consumed into one output; no extra ring fixture is cloned during transfer.",
+      "black_box(outputs) consumes and drops the batch outputs after measurement and before the next loop iteration. Input-vector storage also remains local to one batch. Thus peak live owned ring fixtures are at most32 in these routines, independent of sample iteration count.",
+      "New source has no collect over calibration iterations, global fixture accumulator or other all-iterations residency. Its explicit prefill/drain bounds remain128/16."
+    ],
+    "limits": [
+      "Bound is on simultaneous fixture ownership, not total allocations across the run, exact heap bytes, allocator retention, process RSS, total duration or all Criterion internals.",
+      "Original raw benchmark cases are unchanged; this resource disposition covers only the six new cases, not every workload registered in the rtrb target.",
+      "Independent TEST approval and resource-capped smoke/measurement remain separate execution prerequisites. No run was started."
+    ]
+  },
+  "delta_checks": [
+    "Only contract and new benchmark module changed against v3. Reversing the one constant insertion and six argument substitutions yields byte-identical v3 module.",
+    "All four typed Result oracles, expected returned-event setup, labels, payloads, capacities, preallocated Vecs, routine outputs and drop placement unchanged. No weakening or new waiver.",
+    "All six case names retained. Original rtrb source and registration untouched by this delta. No production/API/dependency/gate change.",
+    "All fourteen functions remain <=25 logical lines including signatures; maximum20. No forbidden constructs found."
+  ],
+  "logical_lines_including_signature": {
+    "benchmark_event": 4,
+    "empty_raw_fixture": 2,
+    "empty_wrapper_fixture": 2,
+    "full_raw_fixture": 9,
+    "full_wrapper_fixture": 10,
+    "raw_drain_fixture": 8,
+    "wrapper_drain_fixture": 15,
+    "bench_raw_push": 12,
+    "bench_wrapper_push": 12,
+    "bench_raw_overflow": 18,
+    "bench_wrapper_overflow": 20,
+    "bench_raw_drain": 19,
+    "bench_wrapper_drain": 16,
+    "bench_trace_ring": 7
+  },
+  "contract_assessment": {
+    "path": ".beads/vb-eirmk.23.2/contract.md",
+    "line": 21,
+    "assessment": "Correctly states at-most32 setup fixtures independent of calibrated iteration count and discloses harness/timer/output-retention overhead. Composite full-ring workloads remain explicitly different; no isolated push ratio, pure-latency or speed interpretation is supported.",
+    "timing_precision": "Setup/input collection/output Vec reservation are outside the per-batch measurement interval, but contribute wall-clock/calibration cost. Vec::extend, routine assertions/black_box and output construction are timed; owning outputs are dropped after measurement."
+  },
+  "evidence": {
+    "directory": "/home/lewis/src/isoloated/velvet-ballistics-trace-overhead-repair-luna/target/core-build-20261110/evidence/vb-eirmk.23.2-luna-reviewfix-v3",
+    "files_read": [
+      "native-check.log",
+      "native-check-exit.txt",
+      "native-check-command.txt",
+      "rustfmt-exit.txt"
+    ],
+    "observed": "Finished dev profile in0.11s; explicit NATIVE_CARGO_CHECK_EXIT=0 and RUSTFMT_EXIT=0.",
+    "command": "CARGO_BUILD_JOBS=2 RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings CARGO_TARGET_DIR=$PWD/target TMPDIR=/home/lewis/.vbs rustup run nightly-2026-04-28 cargo check -p velvet-ballistics-workspace-tests --all-features --bench rtrb",
+    "source_binding": "Author current benchmark module byte-identical to frozen reviewed source."
+  },
+  "limits": [
+    "Source and bounded-fixture methodology PASS only. Actual fixture smoke, measurement, independent TEST, integrated CI and whole-performance acceptance remain pending/separate.",
+    "No speed, percentile, allocation metric, threshold or whole-engine tracing-on/off claim.",
+    "Prior reports preserved and not read for this audit. No source/gate/tracker edits, agents, ancestor amendments or benchmark execution; only authorized review child and this report created."
+  ]
+}

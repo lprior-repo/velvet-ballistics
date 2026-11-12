@@ -1,0 +1,38 @@
+{
+  "base": "4cf251fe1f11978788a587feae125e1ed87c8b7f",
+  "documents": [
+    {
+      "path": "velvet-ballistics-MASTER.md",
+      "replacements": 3,
+      "sha256": "25fcd502b827a4908afd4bedfcb77ff2f1649cdd8007d695e4487e89bd0d419a"
+    },
+    {
+      "path": "docs/rust-governance.md",
+      "replacements": 1,
+      "sha256": "b37c2697b2738c017f01681f969685bd4011cd54224b8ba69b2aa00521ee3704"
+    },
+    {
+      "path": "docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md",
+      "replacements": 1,
+      "sha256": "1ce9f724a3940fd2b0043689c81a80dceda71adae1914b3614236add4b7021a6"
+    },
+    {
+      "path": "docs/master/section-040-ci-gate.md",
+      "replacements": 1,
+      "sha256": "4ff252af1a177afa2b4e5d830b28e69ed41fe4d460b68a0c33912128831305fd"
+    },
+    {
+      "path": "docs/master/section-077-ai-safe-quality-infrastructure.md",
+      "replacements": 2,
+      "sha256": "ee4a372f992e808fe14d108d717a353faec218a67c55f73a59705feb10602b91"
+    },
+    {
+      "path": "docs/master/section-044-evidence-and-bead-contract.md",
+      "replacements": 1,
+      "sha256": "3b56ba2363a57f9f2cf31067e43de800ebae51e6384a729948a60bb5bfe777ae"
+    }
+  ],
+  "total_replacements": 9,
+  "actual_comparison": "Whole files equal base with only clippy-line target-token substitution. All other bytes, warning/unsafe/feature/nightly flags and check/test commands identical.",
+  "scope": "Documentation/source-policy alignment only; no runtime code or config change. Actual canonical/code evidence remains separate."
+}

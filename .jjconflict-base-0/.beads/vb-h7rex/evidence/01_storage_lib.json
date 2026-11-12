@@ -1,0 +1,10 @@
+{
+  "gate": "01-storage-lib",
+  "command": "cargo test -p vb_storage --lib --all-features",
+  "status": "PASS",
+  "exit_code": 0,
+  "elapsed_seconds": 1.11,
+  "timestamp": "2026-10-22 16:14:48 UTC",
+  "stdout_length": 133138,
+  "stderr_length": 155
+}

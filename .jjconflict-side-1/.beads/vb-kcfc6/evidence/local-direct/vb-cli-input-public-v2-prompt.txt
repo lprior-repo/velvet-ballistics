@@ -1,0 +1,15 @@
+Generate a Rust integration test file only. Valid syntax, standard Rust APIs. Test function cli_zero_port_input_boundary -> Result<(), Box<dyn std::error::Error>>. Use tempfile::tempdir()? and std::process::Command. First std::fs::write(&yaml_path, YAML_STRING)?; compile binary env!("CARGO_BIN_EXE_velvet-ballistics") with args compile &yaml_path --emit postcard --out &ir_path; assert_eq(status.code(),Some(0)), outputstderrdiagnostic. Correct YAML_STRING:
+version: velvet-ballistics/v1
+name: input_boundary
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      output: saved
+      value: '42'
+  - id: done
+    finish:
+      result: saved
+
+Serialize Box::<[vb_core::SlotValue]>::from([]) using postcard::to_allocvec for encodedempty. Serialize Box::<[vb_core::SlotValue]>::from([vb_core::SlotValue::I64(42)]) foronevalue. Fivecases [(Vec<u8>,Option<&str>);5]: rawemptyNone,encodedemptyNone,vec![255]Some("INPUT_MAPPING_FAILED: input-bin decode failed"),onevalueSome("INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"), encodedemptyplus255Some("INPUT_MAPPING_FAILED: input-bin decode failed"). Loop5cases writeinput.bin, innerloop [("run",&yaml_path),("run-compiled",&ir_path)] invoke .arg(command).arg(path).arg("--input-bin").arg(&input_path).args(["--durability","none"]).output()?. Someexpected assert_eq(status.code(),Some(3));assert_eq!(String::from_utf8_lossy(&output.stderr).trim(),expected). None assert_eq(status.code(),Some(0)); assert!(String::from_utf8_lossy(&output.stdout).contains("42")). No unwrap, expect, panic, abort, indexing, casts, rawbytesinsteadSlotValue, or YAMLtextaspath. Entire file under110lines. No other functions needed.

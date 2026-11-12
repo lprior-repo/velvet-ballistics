@@ -15,7 +15,7 @@ fn canonical_primitive_name_together_returns_together_direct() {
             steps: vec![],
         }],
     };
-    let name = canonical_primitive_name(&together);
+    let name = canonical_primitive_name(&together).expect("known variant");
     assert_eq!(
         name, "together",
         "canonical_primitive_name(Together) must return 'together', not 'parallel'"
@@ -135,7 +135,7 @@ fn canonical_primitive_name_returns_correct_names_for_all_variants() {
     ];
 
     for (primitive, expected_name) in &cases {
-        let name = canonical_primitive_name(primitive);
+        let name = canonical_primitive_name(primitive).expect("known variant");
         assert_eq!(
             name, *expected_name,
             "canonical_primitive_name({expected_name}) should return \"{expected_name}\""

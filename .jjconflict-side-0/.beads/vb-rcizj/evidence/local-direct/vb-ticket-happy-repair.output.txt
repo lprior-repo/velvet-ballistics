@@ -1,0 +1,49 @@
+```rust
+#[test]
+fn completion_happy_path_writes_output_and_event() -> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = suspended_workflow() else {
+        return Err("missing workflow fixture".into());
+    };
+    let run = RunId::new(50);
+
+    submit_with_contracts(&shard, run, wf);
+    shard.tick()?;
+
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("missing pending ticket")?;
+
+    let journal_len_before = journal.len();
+
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    };
+    shard.enqueue(ShardCommand::ActionCompleted { ticket, output })?;
+    shard.tick()?;
+
+    let journal_len_after = journal.len();
+    assert!(journal_len_after > journal_len_before, "journal should have grown after completion");
+
+    let events = journal.events();
+    let step_succeeded = events.iter().find(|e| {
+        matches!(
+            e,
+            ActualRuntimeJournalEvent::StepSucceeded {
+                run: r,
+                step,
+                attempt
+            } if *r == run && *step == StepIdx::ZERO && *attempt == 1
+        )
+    });
+    assert!(step_succeeded.is_some(), "expected StepSucceeded event for run {run}");
+
+    Ok(())
+}
+```

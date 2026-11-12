@@ -1,0 +1,13 @@
+error: prefix `ffff` is unknown
+   --> /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_storage/src/types/flux_sequence.rs:132:59
+    |
+132 | #[flux_rs::sig(fn(idx: u16) -> bool[0 <= idx && idx <= 16#ffff#])]
+    |                                                           ^^^^ unknown prefix
+    |
+    = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+    |
+132 | #[flux_rs::sig(fn(idx: u16) -> bool[0 <= idx && idx <= 16#ffff #])]
+    |                                                               +
+
+Error writing files: failed to resolve mod `flux_sequence`: cannot parse /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_storage/src/types/flux_sequence.rs

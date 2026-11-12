@@ -1,0 +1,245 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/vb_storage/src/recovery/replay/core/full.rs:40:
+     }
+ 
+     let missing_required_action_schedule = !expected_action_abi_digests.is_empty()
+-        && !events
+-            .iter()
+-            .any(|e| matches!(
++        && !events.iter().any(|e| {
++            matches!(
+                 e,
+-                JournalEvent::ActionScheduled { .. }
+-                    | JournalEvent::ActionScheduledTicket { .. }
+-            ));
++                JournalEvent::ActionScheduled { .. } | JournalEvent::ActionScheduledTicket { .. }
++            )
++        });
+     if missing_required_action_schedule
+         && let Some((action_id, _)) = expected_action_abi_digests.first()
+     {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:6:
+ 
+ use std::sync::Arc;
+ 
+-
+ use vb_core::action::{
+     ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetrySafety,
+     SideEffect,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:73:
+         input_slots: Box::from([]),
+     };
+     parts.digest = canonical_workflow_digest(&parts)?;
+-    CompiledWorkflow::try_from_parts(parts)
+-        .map_err(|e| format!("producer workflow invalid: {e:?}"))
++    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("producer workflow invalid: {e:?}"))
+ }
+ 
+ fn action_contract() -> Result<ActionContract, String> {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:93:
+     })
+ }
+ 
+-
+ fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
+     let encoded =
+         postcard::to_allocvec(&value).map_err(|e| format!("slot encoding failed: {e}"))?;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:142:
+             contracts,
+         )
+         .map_err(|e| format!("submit failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+ 
+     let ticket = pending_ticket(&runtime, run)?;
+-    let journal_events = journal
+-        .events_for_run(run)
+-        .map_err(|e| e.to_string())?;
++    let journal_events = journal.events_for_run(run).map_err(|e| e.to_string())?;
+     let scheduled_event = journal_events
+         .iter()
+         .find(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. }));
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:154:
+     let abi_digest = match scheduled_event {
+-        Some(JournalEvent::ActionScheduledTicket { action_abi_digest, .. }) => {
+-            *action_abi_digest
+-        }
++        Some(JournalEvent::ActionScheduledTicket {
++            action_abi_digest, ..
++        }) => *action_abi_digest,
+         _ => {
+             return Err("scheduled ticket event not found in journal".to_string());
+         }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:162:
+     runtime
+         .complete_action_with_output(ticket, action_output(SlotValue::I64(42))?)
+         .map_err(|e| format!("complete_action failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+ 
+     let counters = runtime.counters_snapshot();
+     if counters.runs_completed != 1 {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:174:
+ 
+     Ok((ticket, abi_digest))
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:11:
+     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
+     admit_artifact_run_with_certificate_floor,
+ };
+-use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
+ use vb_storage::admission::accepted_artifact_digest;
+ use vb_storage::admission::prepare_compiled_artifact;
++use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
+ use velvet_ballistics::lifecycle;
+ 
+ fn compile_fixture() -> Result<vb_core::CompiledWorkflow, String> {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:356:
+ -> Result<(), String> {
+     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+     let run = RunId::new(13);
+-    let (ticket, abi_digest) =
+-        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
++    let (ticket, abi_digest) = vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
+ 
+     let before = journal
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:376:
+     let scheduled_abi = before
+         .iter()
+         .find_map(|e| {
+-            if let JournalEvent::ActionScheduledTicket { action_abi_digest, .. } = e {
++            if let JournalEvent::ActionScheduledTicket {
++                action_abi_digest, ..
++            } = e
++            {
+                 Some(*action_abi_digest)
+             } else {
+                 None
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:386:
+     let completed_abi = before
+         .iter()
+         .find_map(|e| {
+-            if let JournalEvent::ActionCompletedEnvelope { action_abi_digest, .. } = e {
++            if let JournalEvent::ActionCompletedEnvelope {
++                action_abi_digest, ..
++            } = e
++            {
+                 Some(*action_abi_digest)
+             } else {
+                 None
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:393:
+             }
+         })
+         .expect("completion envelope event must exist");
+-    assert_eq!(scheduled_abi, abi_digest, "scheduled ABI must equal expected");
+-    assert_eq!(completed_abi, abi_digest, "completed ABI must equal expected");
+-    assert_eq!(scheduled_abi, completed_abi, "scheduled and completed ABI must match");
+-    assert_ne!(scheduled_abi.as_bytes(), [0u8; 32], "scheduled ABI must be nonzero");
+-    assert_ne!(completed_abi.as_bytes(), [0u8; 32], "completed ABI must be nonzero");
+     assert_eq!(
+-        before.iter().filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })).count(),
++        scheduled_abi, abi_digest,
++        "scheduled ABI must equal expected"
++    );
++    assert_eq!(
++        completed_abi, abi_digest,
++        "completed ABI must equal expected"
++    );
++    assert_eq!(
++        scheduled_abi, completed_abi,
++        "scheduled and completed ABI must match"
++    );
++    assert_ne!(
++        scheduled_abi.as_bytes(),
++        [0u8; 32],
++        "scheduled ABI must be nonzero"
++    );
++    assert_ne!(
++        completed_abi.as_bytes(),
++        [0u8; 32],
++        "completed ABI must be nonzero"
++    );
++    assert_eq!(
++        before
++            .iter()
++            .filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. }))
++            .count(),
+         1,
+         "exactly one scheduled ticket event"
+     );
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:406:
+     assert_eq!(
+-        before.iter().filter(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })).count(),
++        before
++            .iter()
++            .filter(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. }))
++            .count(),
+         1,
+         "exactly one completion envelope event"
+     );
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:411:
+     assert!(
+-        before.iter().any(|e| matches!(e, JournalEvent::RunFinished { .. })),
++        before
++            .iter()
++            .any(|e| matches!(e, JournalEvent::RunFinished { .. })),
+         "run must be marked as finished"
+     );
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:456:
+     assert!(tracker.is_resolved(ticket1.action, ticket1.step));
+     assert_eq!(replayed, before);
+     assert!(
+-        replayed.iter().any(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })),
++        replayed
++            .iter()
++            .any(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })),
+         "replayed journal contains scheduled ticket"
+     );
+     assert!(
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:463:
+-        replayed.iter().any(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })),
++        replayed
++            .iter()
++            .any(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })),
+         "replayed journal contains completion envelope"
+     );
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:716:
+ 
+     match result {
+         Err(vb_storage::recovery::RecoveryError::ActionAbiMismatch { action_id }) => {
+-            assert_eq!(action_id, ActionId::new(1), "must report the expected action");
++            assert_eq!(
++                action_id,
++                ActionId::new(1),
++                "must report the expected action"
++            );
+             Ok(())
+         }
+         other => Err(format!("expected ActionAbiMismatch, got {other:?}")),
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:731:
+     // ActionAbiMismatch, not accept a mismatched completion.
+     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+     let run = RunId::new(2001);
+-    let (ticket, abi_digest) =
+-        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
++    let (ticket, abi_digest) = vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
+ 
+     let before = journal
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-3iflr-deepseek-review/crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:770:
+     // callers from bypassing the schedule guard by passing a null digest.
+     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+     let run = RunId::new(2002);
+-    let (ticket, abi_digest) =
+-        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
++    let (ticket, abi_digest) = vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
+ 
+     let before = journal

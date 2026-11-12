@@ -241,6 +241,7 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "choose_taint_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),

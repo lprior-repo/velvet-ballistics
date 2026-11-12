@@ -83,6 +83,7 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
 
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("test_admission"),
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),

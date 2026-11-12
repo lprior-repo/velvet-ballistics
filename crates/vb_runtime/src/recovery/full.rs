@@ -25,6 +25,7 @@ pub(crate) use admission::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     action_contract_abi_digest, validate_recovered_admission_evidence,
 };
+pub(crate) use boundary::RecoveredRetryTimer;
 pub use boundary::{
     RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind, RecoveredTimerSuspension,
 };

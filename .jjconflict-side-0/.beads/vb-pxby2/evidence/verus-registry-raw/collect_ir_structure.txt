@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/collect_ir_structure.rs
+verification results:: 28 verified, 0 errors

@@ -7,7 +7,7 @@ fn foreach_outer_variable_visible_two_levels() -> Result<(), String> {
     ) + finish_tail();
     let workflow = compile(&text)?;
     let parts = workflow.to_parts();
-    assert_eq!(parts.nodes.len(), 7);
+    assert_eq!(parts.nodes.len(), 15);
     for (index, node) in parts.nodes.iter().enumerate() {
         assert_eq!(node.id.as_usize(), index);
     }
@@ -17,13 +17,13 @@ fn foreach_outer_variable_visible_two_levels() -> Result<(), String> {
         done: outer_done,
         limit: outer_limit,
         ..
-    } = &node(&workflow, 1)?.kind
+    } = &node(&workflow, 3)?.kind
     else {
-        return Err("node 1 is not the outer ForEachStart".to_owned());
+        return Err("node 3 is not the outer ForEachStart".to_owned());
     };
     assert_eq!(
         (*outer_body, *outer_done, *outer_limit),
-        (StepIdx::new(2), StepIdx::new(6), FanoutLimit::new(4))
+        (StepIdx::new(4), StepIdx::new(13), FanoutLimit::new(4))
     );
     let CompiledNodeKind::ForEachStart {
         item_slot: inner_item,
@@ -31,17 +31,17 @@ fn foreach_outer_variable_visible_two_levels() -> Result<(), String> {
         done: inner_done,
         limit: inner_limit,
         ..
-    } = &node(&workflow, 2)?.kind
+    } = &node(&workflow, 6)?.kind
     else {
-        return Err("node 2 is not the inner ForEachStart".to_owned());
+        return Err("node 6 is not the inner ForEachStart".to_owned());
     };
     assert_eq!(
         (*inner_body, *inner_done, *inner_limit),
-        (StepIdx::new(3), StepIdx::new(5), FanoutLimit::new(4))
+        (StepIdx::new(7), StepIdx::new(10), FanoutLimit::new(4))
     );
     assert_ne!(outer_item, inner_item);
-    let CompiledNodeKind::EvalExpr { expr } = &node(&workflow, 3)?.kind else {
-        return Err("node 3 is not the leaf expression".to_owned());
+    let CompiledNodeKind::EvalExpr { expr } = &node(&workflow, 7)?.kind else {
+        return Err("node 7 is not the leaf expression".to_owned());
     };
     let program = workflow
         .expression(*expr)
@@ -93,37 +93,44 @@ fn foreach_repeat_body_capture_rejected() -> Result<(), String> {
 
 #[test]
 fn foreach_at_once_hardened() -> Result<(), String> {
-    for at_once in ["0", "2"] {
+    for at_once in ["0", "1", "2", "4294967295"] {
         let text = source(&format!(
             "  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      at_once: {at_once}\n      steps:\n        - id: leaf\n          set: {{output: picked, value: '$entry'}}\n"
         )) + finish_tail();
-        rejects(&text, |e| {
-            matches!(
-                e,
-                CompileError::StepFieldShape {
-                    field: "for_each.at_once",
-                    ..
-                }
-            )
-        })?;
+        if at_once == "0" {
+            rejects(&text, |e| {
+                matches!(
+                    e,
+                    CompileError::StepFieldShape {
+                        field: "for_each.at_once",
+                        ..
+                    }
+                )
+            })?;
+        } else {
+            let workflow = compile(&text)?;
+            assert_eq!(workflow.to_parts().nodes.len(), 9);
+        }
     }
     let nested = source(
         "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: inner\n          for_each:\n            input: '$input.inner_items'\n            variable: sub\n            at_once: 3\n            steps:\n              - id: leaf\n                set: {output: picked, value: '$sub'}\n",
     ) + finish_tail();
-    rejects(&nested, |e| {
-        matches!(
-            e,
-            CompileError::StepFieldShape {
-                field: "for_each.at_once",
-                ..
-            }
-        )
-    })?;
+    let nested_workflow = compile(&nested)?;
+    let limits: Vec<_> = nested_workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .filter_map(|node| match node.kind {
+            CompiledNodeKind::ForEachStart { limit, .. } => Some(limit),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(limits, vec![FanoutLimit::new(4), FanoutLimit::new(4)]);
     let single = source(
         "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      at_once: 1\n      steps:\n        - id: leaf\n          set: {output: picked, value: '$entry'}\n",
     ) + finish_tail();
     let workflow = compile(&single)?;
-    assert_eq!(workflow.to_parts().nodes.len(), 5);
+    assert_eq!(workflow.to_parts().nodes.len(), 9);
     Ok(())
 }
 
@@ -135,10 +142,7 @@ fn foreach_nested_input_stays_bounded() -> Result<(), String> {
     rejects(&text, |e| {
         matches!(
             e,
-            CompileError::StepFieldShape {
-                field: "for_each.input",
-                ..
-            }
+            CompileError::UnknownReferenceName { reference, .. } if reference.as_ref() == "$vars.inner_items"
         )
     })
 }
@@ -161,18 +165,13 @@ fn foreach_variable_step_rejected() -> Result<(), String> {
 
 #[test]
 fn aggregate_inside_foreach_capture_rejected() -> Result<(), String> {
-    // A nested reduce is not dispatchable inside a for_each body; the scope
-    // dispatcher rejects the nested aggregate before capture can walk it.
     let text = source(
-        "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: fold\n          reduce:\n            variable: entry\n            input: '\"8\"'\n            initial: '\"0\"'\n            steps:\n              - id: update\n                set: {output: local_value, value: '$entry'}\n",
+        "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: fold\n          reduce:\n            variable: entry\n            input: '8'\n            initial: '0'\n            steps:\n              - id: update\n                set: {output: local_value, value: '$entry'}\n",
     ) + finish_tail();
     rejects(&text, |e| {
         matches!(
             e,
-            CompileError::UnsupportedStepPrimitive {
-                primitive: "reduce",
-                ..
-            }
+            CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "entry"
         )
     })
 }

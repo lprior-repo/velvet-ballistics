@@ -14,7 +14,12 @@ pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
 pub(super) fn build_workflow() -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("vb_c4hzw_emergency_reopen"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([

@@ -1,0 +1,42 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/durable_resume_red_phase.rs (target/debug/deps/durable_resume_red_phase-c540fccc360fe6d0)
+
+running 17 tests
+test resume_inv001_no_invalid_transitions ... ok
+test resume_inv001_only_resumable_permits_resume ... ok
+test resume_pre002_from_failed_fails_not_resumable ... ok
+test resume_pre001_run_id_not_found_returns_error ... ok
+test resume_pre002_nonexistent_run_returns_run_id_not_found ... ok
+test resume_post003_error_returns_error_for_invalid_run ... ok
+test resume_inv004_failed_run_not_resumable ... ok
+test resume_post001_journal_append_failure_returns_error ... ok
+test resume_inv003_result_fields_are_present ... ok
+test resume_post002_result_contains_required_fields ... ok
+test resume_inv002_journal_append_is_immutable ... ok
+test resume_post001_journal_appended_before_success ... ok
+test resume_post004_resumed_event_is_durable ... ok
+test resume_pre003_incomplete_hydration_fails ... ok
+test resume_pre002_from_resumable_succeeds ... ok
+test resume_pre002_second_resume_after_action_wait_returns_resumed ... ok
+test resume_pre002_resumable_after_action_wait_returns_resumed ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -1,0 +1,80 @@
+Do NOT call tools or readfiles. Return ONLY JSON {"code":"complete Rust integration test file"}, no XML/fence/explanation. Generate crates/vb_runtime/tests/ticket_authority_matrix.rs from source references below. <300lines, allsetup/testhelpers Result<(),Box<dyn Error>> or Result<T,...> with?; no unwrap/expect/panic/allow/unsafe/uncheckedindex/cast/arithmetic/ignoredResult; no conditional skip assertions. Use imports explicitpublic types; exact existing APIs inreferences.
+A single data-driven test (finite cases) must check BOTH ShardCommand::ActionCompleted and ActionFailed for EACH tampering case: missing run, other existing run, wrongstep, wrongaction, attempt0, futureattempt, capacity0, changedcapacity, badkey, advancedseq. Eachcase/mode builds freshVolatileRuntimeJournal+Shard::new_with_journal withRelaxed policy/stepbudget4; validSetConst42->Doaction0inputslot0/outputslot1->Finishslot1 workflowreference below; enqueueSubmitWithContracts withmake_contract(0,"valid")? andemptycaps; tick()? then mandatorypublic pending_action_get(run).ok_or(...)? realticket. If otherexistingrun case submit second copyworkflow underdifferentRunId first andcapture itsrealticket too. Mutate ONLYonefield of genuine ticket for eachcase, preservingoldkey except advancedseq canrecomputecanonicalkey using vb_core::action::compute_action_idempotency_key(run,seq,action). Otherexistingrun mutation MUST preserve original key (not make exactsecondticket accidentally). Unknownrun returnsRunNotFound; allothersInvalidActionCompletion. Oldsnapshot beforeattempt=journal.snapshot()?; baselinependingticket and frame.slot0I6442 readbefore/after mustmatch; afterrejection assert exact error fromshard.tick(), fullsnapshot ? exactequality, pendingticketunchanged and stillrunstatewithsamepc+slot0+taint (no conditionalchecks). Compare both originalrun and secondexistingrun tickets unchanged ifpresent. Captureimmutable valuescopiedtoavoidborrowconflicts. Tests mustretain realunchangedauthoritytickets and exerciseproductionnoncfg API, no testreplacementhandlers. Type shorthands enum CommandKind,enum Tamper sensible; tableloopconstants no arithmetic. Modifications checked_add forseq/attempt/capacity; constants StepIdx99/ActionId99 validtesttamper; badkey XOR1 isboundedbitoperation.
+ActionCompleted outputslot1/valueI64(100)/TaintClean/encoded_len3; failure use exactexisting non_retryable_failure helper. Do NOT claimvalidcompletionterminalcoverage here; existing24tests providepositive/stale2/current3. This file tests tamperingonly, exact no-mutation. No newAPI/publicprodhelpers. Ifcode>300 splithelpers onlyifneeded but outputonefile initially. Do NOT includeuntestedstale claims. References foractualbuilders/types:
+fn make_contract(
+    id: u16,
+    name: &str,
+) -> Result<vb_core::action::ActionContract, Box<dyn std::error::Error>> {
+    Ok(vb_core::action::ActionContract {
+        id: ActionId::new(id),
+        name: vb_core::action::ActionName::new(name)?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: vb_core::action::Idempotency::DeterministicPure,
+        side_effect: vb_core::action::SideEffect::None,
+        retry_safety: vb_core::action::RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    })
+}
+
+fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    let set = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let do_node = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(action_id),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(1),
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("setconst-do"),
+        digest: WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([set, do_node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    })
+    .map_err(|e| format!("workflow must compile: {}", e).into())
+}
+
+fn non_retryable_failure() -> ActionFailure {
+    ActionFailure {
+        retry_policy: VbRetryPolicy::NonRetryable,
+        code: ActionFailureCode::Timeout,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}

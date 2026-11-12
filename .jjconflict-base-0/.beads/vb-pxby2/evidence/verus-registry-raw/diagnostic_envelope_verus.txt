@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/diagnostic_envelope_verus.rs
+verification results:: 11 verified, 0 errors

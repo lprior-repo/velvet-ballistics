@@ -19,10 +19,19 @@ pub(crate) fn make_parts_full(
     expressions: Vec<ExprProgram>,
     accessors: Vec<AccessorProgram>,
     constants: Vec<ConstValue>,
+    root_slots: &[u16],
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: root_slots
+            .iter()
+            .map(|slot| vb_core::workflow::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(*slot),
+                kind: vb_core::workflow::InputSlotKind::Any,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            })
+            .collect(),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),

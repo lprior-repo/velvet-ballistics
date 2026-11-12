@@ -98,6 +98,7 @@ fn budget_chain_workflow() -> Result<CompiledWorkflow, String> {
             ConstValue::I64(99),
         ]),
         4,
+        Box::new([]),
     )
 }
 
@@ -745,6 +746,7 @@ fn runtime_respects_step_budget_per_tick() -> Result<(), String> {
         ]),
         Box::from([ConstValue::I64(0)]),
         2,
+        Box::new([]),
     )?;
 
     let run = RunId::new(6001);
@@ -1228,9 +1230,12 @@ fn submit_direct_returns_admission_rejected_for_missing_capability() -> Result<(
     // Submit WITHOUT the required capability grant
     // submit_direct (not submit_direct_with_inputs_grants_and_contracts)
     // This should fail at admission due to missing capability
-    let result = runtime.submit_direct(
+    let result = runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?,
+        Box::new([(SlotIdx::ZERO, SlotValue::I64(0))]),
+        CapabilitySet::empty(),
+        action_contracts_through(ActionId::new(7), 1),
     );
 
     // Then: admission rejected due to missing capability

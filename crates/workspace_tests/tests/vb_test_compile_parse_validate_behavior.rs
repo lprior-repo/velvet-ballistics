@@ -832,10 +832,7 @@ steps:
     assert!(
         errors.iter().any(|error| matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "choose.otherwise",
-                ..
-            }
+            CompileError::CanonicalYaml { category: "field_shape", message } if message.as_ref() == "field shape error: otherwise expected a non-empty string"
         )),
         "non-string choose.otherwise should be rejected by canonical validation: {errors:?}"
     );

@@ -1,0 +1,26 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "contract-verification-after-stale-ask-test-oracle-repair",
+  "delegate": "contract-verification-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/test-writer-report.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+    "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/contract-verification-review.md"
+  ],
+  "attempt": 2,
+  "repair_route": "State 6 contract-verification rerun after State 8/9 test oracle repair approval"
+}

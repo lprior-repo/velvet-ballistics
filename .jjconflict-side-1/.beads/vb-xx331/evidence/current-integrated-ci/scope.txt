@@ -1,0 +1,1 @@
+Source merge eaa1062c: parents254c0dd9,38f67b92,1188c383. Isolated Git/JJ root /home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl. Canonical moon ci forced fresh, concurrency2,180secondtimeout, user cgroup MemoryHigh20G MemoryMax24G MemorySwapMax0. Not proof/v1 acceptance.

@@ -1,0 +1,20 @@
+Running as unit: vb-trace-bench-smoke-20261110.scope; invocation ID: 39f9d4f09da644299bb4e29bf54b7a75
+Gnuplot not found, using plotters backend
+Testing trace_ring_public/raw_push_empty
+Success
+
+Testing trace_ring_public/wrapper_push_empty
+Success
+
+Testing trace_ring_public/raw_push_full_and_verify_returned_event
+Success
+
+Testing trace_ring_public/wrapper_push_full_and_observe_dropped
+Success
+
+Testing trace_ring_public/raw_pop_16
+Success
+
+Testing trace_ring_public/wrapper_drain_16
+Success
+

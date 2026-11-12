@@ -1,0 +1,27 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 6,
+  "sublane": "proof-review",
+  "delegate": "proof-reviewer",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/verification-layers.md",
+    ".beads/vb-kyyf/proof-obligations.jsonl",
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-writer-report.md",
+    ".beads/vb-kyyf/proof-evidence.md",
+    "verification/tla/VbKyyfReplayDeterminism.tla",
+    "verification/tla/VbKyyfReplayDeterminism.cfg",
+    "verification/verus/vb_kyyf_normalization.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/proof-findings.jsonl",
+    ".beads/vb-kyyf/proof-repair-guide.md"
+  ],
+  "status": "QUEUED"
+}

@@ -1,0 +1,65 @@
+
+running 3 tests
+test source_identity_survives_parts_roundtrip ... ok
+test compiled_digest_is_hash_of_serialized_parts_with_digest_zeroed ... ok
+test formatting_and_comments_do_not_change_compiled_digest ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test compiled_workflow_digest_matches_canonical_digest_for_ask_workflow ... ok
+test compiled_workflow_digests_differ_when_workflow_name_differs_in_yaml ... ok
+test compiled_workflow_digests_differ_when_ask_prompt_differs_in_yaml ... ok
+test compiled_workflow_digest_is_deterministic_across_parses ... ok
+test compiled_workflow_digest_unchanged_for_set_finish_workflow ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test ask_prompt_none_timeout_parity ... FAILED
+test ask_empty_prompt_parity ... FAILED
+test ask_prompt_some_timeout_parity ... FAILED
+test set_finish_parity ... FAILED
+
+failures:
+
+---- ask_prompt_none_timeout_parity stdout ----
+
+thread 'ask_prompt_none_timeout_parity' (222889) panicked at crates/vb_compile/tests/digest_duplicate_parity.rs:131:5:
+assertion `left == right` failed: PO-UT-003: public and private canonical_digest diverge for Ask(None timeout)
+  left: WorkflowDigest([53, 67, 12, 71, 77, 241, 194, 138, 147, 187, 44, 219, 95, 240, 198, 167, 215, 237, 123, 4, 17, 239, 194, 28, 243, 47, 207, 48, 205, 239, 0, 212])
+ right: WorkflowDigest([67, 8, 17, 29, 118, 238, 164, 30, 172, 172, 186, 197, 237, 146, 9, 230, 148, 91, 210, 251, 18, 20, 243, 187, 141, 249, 174, 169, 181, 49, 218, 249])
+
+---- ask_empty_prompt_parity stdout ----
+
+thread 'ask_empty_prompt_parity' (222888) panicked at crates/vb_compile/tests/digest_duplicate_parity.rs:143:5:
+assertion `left == right` failed: PO-UT-003: public and private canonical_digest diverge for Ask(empty prompt)
+  left: WorkflowDigest([47, 68, 109, 42, 208, 60, 199, 70, 10, 54, 219, 7, 93, 196, 57, 148, 31, 57, 77, 187, 176, 135, 142, 250, 167, 43, 107, 182, 33, 97, 148, 89])
+ right: WorkflowDigest([99, 97, 221, 229, 251, 214, 80, 174, 154, 15, 21, 228, 161, 104, 182, 45, 210, 201, 195, 192, 3, 52, 237, 247, 82, 28, 243, 111, 52, 106, 190, 159])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- ask_prompt_some_timeout_parity stdout ----
+
+thread 'ask_prompt_some_timeout_parity' (222890) panicked at crates/vb_compile/tests/digest_duplicate_parity.rs:119:5:
+assertion `left == right` failed: PO-UT-003: public and private canonical_digest diverge for Ask(Some timeout)
+  left: WorkflowDigest([199, 34, 10, 59, 79, 48, 60, 229, 40, 248, 180, 62, 130, 252, 152, 224, 148, 12, 194, 163, 45, 163, 244, 192, 194, 11, 21, 92, 162, 32, 56, 251])
+ right: WorkflowDigest([41, 146, 218, 148, 39, 239, 79, 7, 100, 100, 2, 146, 23, 209, 94, 107, 214, 25, 253, 185, 255, 50, 10, 63, 135, 226, 43, 140, 249, 137, 136, 68])
+
+---- set_finish_parity stdout ----
+
+thread 'set_finish_parity' (222891) panicked at crates/vb_compile/tests/digest_duplicate_parity.rs:156:5:
+assertion `left == right` failed: PO-UT-003: public and private canonical_digest diverge for Set+Finish
+  left: WorkflowDigest([150, 106, 88, 68, 23, 207, 39, 203, 36, 142, 14, 251, 199, 235, 12, 33, 212, 171, 250, 146, 6, 84, 229, 217, 218, 135, 206, 253, 246, 73, 47, 203])
+ right: WorkflowDigest([246, 204, 76, 105, 27, 6, 68, 62, 17, 150, 137, 52, 17, 116, 108, 81, 243, 168, 246, 47, 76, 139, 182, 51, 23, 226, 190, 165, 155, 187, 35, 71])
+
+
+failures:
+    ask_empty_prompt_parity
+    ask_prompt_none_timeout_parity
+    ask_prompt_some_timeout_parity
+    set_finish_parity
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

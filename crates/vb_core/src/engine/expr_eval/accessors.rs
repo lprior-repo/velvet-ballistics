@@ -162,7 +162,7 @@ pub(super) fn eval_load_accessor(
 ) -> Result<(), EngineError> {
     let (value, accessor_taint) = eval_accessor_with_taint_inner(plan, run, store, accessor)?;
     *taint_accum = crate::value::join_taint(*taint_accum, accessor_taint);
-    super::stack::push_value(stack, value)
+    stack.push_tainted(value, accessor_taint)
 }
 
 pub fn eval_accessor(

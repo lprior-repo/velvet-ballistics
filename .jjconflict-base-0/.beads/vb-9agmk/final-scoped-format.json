@@ -1,0 +1,31 @@
+{
+  "command": [
+    "rustfmt",
+    "--edition",
+    "2024",
+    "--config",
+    "skip_children=true",
+    "crates/vb_core/src/action.rs",
+    "crates/vb_core/src/action/registry.rs",
+    "crates/vb_compile/src/artifact.rs",
+    "crates/vb_storage/src/admission/verification.rs",
+    "crates/vb_storage/src/admission/tests.rs",
+    "crates/vb_storage/src/admission/evidence_test_support.rs",
+    "crates/vb_storage/src/vb_2bok_durability_gate_tests.rs",
+    "crates/vb_storage/src/error/mod.rs",
+    "crates/vb_storage/src/error/codes.rs",
+    "crates/vb_runtime/src/admission/tests.rs",
+    "crates/vb_runtime/src/admission/artifact_envelope_tests.rs",
+    "crates/vb_runtime/src/admission/evidence_test_support.rs",
+    "crates/vb_runtime/src/shard/lifecycle/execution_binding.rs",
+    "crates/workspace_tests/tests/vb_9agmk_artifact_evidence.rs",
+    "crates/workspace_tests/tests/artifact_evidence_support/mod.rs",
+    "crates/workspace_tests/tests/artifact_evidence_support/compiler_cases.rs",
+    "crates/workspace_tests/tests/artifact_evidence_support/admission_cases.rs",
+    "crates/workspace_tests/tests/artifact_evidence_support/runtime_cases.rs"
+  ],
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol",
+  "exit": 0,
+  "duration_seconds": 0.044379234313964844,
+  "cargo_build_jobs": 2
+}

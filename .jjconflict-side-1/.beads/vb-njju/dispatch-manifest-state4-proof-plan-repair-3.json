@@ -1,0 +1,25 @@
+{
+  "bead_id": "vb-njju",
+  "state": 4,
+  "sublane": "proof-planning-repair",
+  "delegate": "proof-planner",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/proof-repair-guide.md",
+    ".beads/vb-njju/proof-review.md",
+    ".beads/vb-njju/proof-findings.jsonl",
+    ".beads/vb-njju/proof-obligations.planned.jsonl",
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-obligations.planned.jsonl"
+  ],
+  "attempt": "repair-3-of-7",
+  "reason": "State 6 rejected PO-004 mutation strategy because cargo-mutants baselined vb_runtime while oracle test target belongs to workspace-tests; repair planned command/strategy."
+}

@@ -1,0 +1,17 @@
+warning: unused variable: `ticket_a`
+   --> crates/vb_core/src/action/tests.rs:392:9
+    |
+392 |     let ticket_a = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_a`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ticket_b`
+   --> crates/vb_core/src/action/tests.rs:402:9
+    |
+402 |     let ticket_b = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_b`
+
+warning: `vb_core` (lib test) generated 2 warnings (run `cargo fix --lib -p vb_core --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/vb_core-fd6cb31c499fe177)

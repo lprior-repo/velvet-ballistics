@@ -17,6 +17,18 @@ fn four_families_cache_exact_owner_and_exclusive_endpoints() -> TestResult {
 #[test]
 fn collect_legacy_source_slot_fallback_is_a_real_owner() -> TestResult {
     let mut parts = paired(Family::Collect)?;
+    parts.input_slots = Box::new([
+        vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        },
+        vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(1),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        },
+    ]);
     let owner = edit(&mut parts, 1)?;
     owner.output = NodeOutput::Discard;
     owner.kind = CompiledNodeKind::CollectStart {
@@ -47,7 +59,25 @@ fn cache_is_derived_without_changing_serialized_parts() -> TestResult {
 fn forward_only_controls_remain_uncached() -> TestResult {
     for family in FAMILIES {
         let mut parts = linear_parts(6)?;
+        parts.input_slots = Box::new([
+            vb_core::workflow::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(0),
+                kind: vb_core::workflow::InputSlotKind::Any,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            },
+            vb_core::workflow::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(1),
+                kind: vb_core::workflow::InputSlotKind::Any,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            },
+            vb_core::workflow::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(2),
+                kind: vb_core::workflow::InputSlotKind::Any,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            },
+        ]);
         let node = edit(&mut parts, 1)?;
+        node.output = NodeOutput::Slot(slot(3));
         node.kind = control_kind(family, 1, 2, 5);
         node.routing.next = if matches!(family, Family::Repeat) {
             NodeContinuation::Step(step(2))
@@ -98,6 +128,8 @@ fn internal_forward_choose_and_jump_bypass_are_closed() -> TestResult {
 fn together_topology_inside_region_is_not_activation_permission() -> TestResult {
     let mut parts = linear_parts(9)?;
     install_pair(&mut parts, Family::ForEach, 1, 2, 7, 8, 1)?;
+    edit(&mut parts, 2)?.output = NodeOutput::Slot(slot(2));
+    edit(&mut parts, 6)?.output = NodeOutput::Slot(slot(2));
     edit(&mut parts, 2)?.kind = CompiledNodeKind::TogetherStart {
         branches: vec![step(3)].into_boxed_slice(),
         join: step(6),
@@ -137,6 +169,18 @@ fn asynchronous_body_continuations_are_checked_without_blanket_rejection() -> Te
     ];
     for kind in kinds {
         let mut parts = paired(Family::ForEach)?;
+        parts.input_slots = Box::new([
+            vb_core::workflow::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(0),
+                kind: vb_core::workflow::InputSlotKind::Any,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            },
+            vb_core::workflow::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(2),
+                kind: vb_core::workflow::InputSlotKind::Any,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            },
+        ]);
         edit(&mut parts, 2)?.kind = kind;
         assert_region(&accept(parts)?, 1, 2, 4, 5)?;
     }

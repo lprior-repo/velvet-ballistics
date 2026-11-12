@@ -1,0 +1,54 @@
+▮▮▮▮ velvet-ballistics:verify-production-inner-drift (174a17b9)
+▮▮▮▮ velvet-ballistics:benchmark-proof (a118589b)
+
+  velvet-ballistics:verify-production-inner-drift | === Summary ===
+  velvet-ballistics:verify-production-inner-drift | Mirror files checked:  64
+  velvet-ballistics:verify-production-inner-drift | Extern files scanned:  78
+  velvet-ballistics:verify-production-inner-drift | Drift findings:        0
+  velvet-ballistics:verify-production-inner-drift | Log:                   target/verus-drift/drift.log
+
+  velvet-ballistics:verify-production-inner-drift | Production-inner drift gate: PASS
+▮▮▮▮ velvet-ballistics:verify-production-inner-drift (5s 69ms, 174a17b9)
+▮▮▮▮ velvet-ballistics:verify-loom (ef4578ad)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 30s)
+
+                    velvet-ballistics:verify-loom | running 13 tests
+▮▮▮▮ velvet-ballistics:verify-loom (running for 30s)
+                    velvet-ballistics:verify-loom | .............
+                    velvet-ballistics:verify-loom | test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 1938 filtered out; finished in 1.49s
+
+▮▮▮▮ velvet-ballistics:verify-loom (31s 317ms, ef4578ad)
+▮▮▮▮ velvet-ballistics:verify-verus-production-binding (79614b28)
+velvet-ballistics:verify-verus-production-binding | ================================================================
+velvet-ballistics:verify-verus-production-binding |   Verus production-binding audit (ABSOLUTE — no exceptions)
+velvet-ballistics:verify-verus-production-binding | ================================================================
+velvet-ballistics:verify-verus-production-binding |   STRONG (direct crates/ binding): 0
+velvet-ballistics:verify-verus-production-binding |   WEAK (production_inner/ mirror): 72
+velvet-ballistics:verify-verus-production-binding |   VACUUM (no production binding):  0
+
+▮▮▮▮ velvet-ballistics:verify-verus-production-binding (1s 456ms, 79614b28)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (aad6bc37)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 60s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 30s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 90s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 60s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 120s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 90s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 150s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 120s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 180s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 150s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 210s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 180s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 240s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 210s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 270s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 240s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 300s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 270s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 330s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 300s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 360s)
+▮▮▮▮ velvet-ballistics:verify-kani-vb-validate (running for 330s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (running for 390s)
+▮▮▮▮ velvet-ballistics:benchmark-proof (6m 34s 241ms, a118589b)

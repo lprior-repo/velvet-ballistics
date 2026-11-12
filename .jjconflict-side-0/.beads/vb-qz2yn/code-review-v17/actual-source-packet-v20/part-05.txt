@@ -1,0 +1,180 @@
+crates/vb_storage/src/journal/artifact_acceptance.rs:116:     let encoded = crate::codec::encode_record(
+crates/vb_storage/src/journal/artifact_acceptance.rs:117:         MAGIC_COMPILED_ARTIFACT,
+crates/vb_storage/src/journal/artifact_acceptance.rs:118:         RecordKind::CompiledIr,
+crates/vb_storage/src/journal/artifact_acceptance.rs:119:         0,
+crates/vb_storage/src/journal/artifact_acceptance.rs:120:         &record,
+crates/vb_storage/src/journal/artifact_acceptance.rs:121:         MAX_COMPILED_IR_BYTES,
+crates/vb_storage/src/journal/artifact_acceptance.rs:122:     )?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:123:     Ok((record, encoded))
+crates/vb_storage/src/journal/artifact_acceptance.rs:124: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:125: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:126: /// Build the raw OwnedWriteBatch with counter and artifact writes.
+crates/vb_storage/src/journal/artifact_acceptance.rs:127: fn build_batch(
+crates/vb_storage/src/journal/artifact_acceptance.rs:128:     journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:129:     next: u64,
+crates/vb_storage/src/journal/artifact_acceptance.rs:130:     stamped: &AcceptedArtifact,
+crates/vb_storage/src/journal/artifact_acceptance.rs:131:     encoded: &[u8],
+crates/vb_storage/src/journal/artifact_acceptance.rs:132: ) -> Result<fjall::OwnedWriteBatch, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:133:     let mut batch = journal.database.batch();
+crates/vb_storage/src/journal/artifact_acceptance.rs:134:     let counter_value = encode_counter_value(next);
+crates/vb_storage/src/journal/artifact_acceptance.rs:135:     batch.insert(
+crates/vb_storage/src/journal/artifact_acceptance.rs:136:         &journal.artifact_acceptance,
+crates/vb_storage/src/journal/artifact_acceptance.rs:137:         LAST_ISSUED_KEY,
+crates/vb_storage/src/journal/artifact_acceptance.rs:138:         counter_value.as_ref(),
+crates/vb_storage/src/journal/artifact_acceptance.rs:139:     );
+crates/vb_storage/src/journal/artifact_acceptance.rs:140:     let artifact_key = compiled_ir_key(stamped.digest.as_bytes())?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:141:     batch.insert(&journal.compiled_ir, &artifact_key, encoded);
+crates/vb_storage/src/journal/artifact_acceptance.rs:142:     Ok(batch)
+crates/vb_storage/src/journal/artifact_acceptance.rs:143: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:144: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:145: /// Apply policy durability and commit the batch.
+crates/vb_storage/src/journal/artifact_acceptance.rs:146: fn commit_batch(
+crates/vb_storage/src/journal/artifact_acceptance.rs:147:     _journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:148:     mut batch: fjall::OwnedWriteBatch,
+crates/vb_storage/src/journal/artifact_acceptance.rs:149:     policy: RuntimePolicy,
+crates/vb_storage/src/journal/artifact_acceptance.rs:150: ) -> Result<(), JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:151:     if policy == RuntimePolicy::Strict {
+crates/vb_storage/src/journal/artifact_acceptance.rs:152:         #[cfg(test)]
+crates/vb_storage/src/journal/artifact_acceptance.rs:153:         if _journal.consume_persist_failure_for_test() {
+crates/vb_storage/src/journal/artifact_acceptance.rs:154:             return Err(JournalError::StrictDurabilityFailed);
+crates/vb_storage/src/journal/artifact_acceptance.rs:155:         }
+crates/vb_storage/src/journal/artifact_acceptance.rs:156:         batch = batch.durability(Some(fjall::PersistMode::SyncAll));
+crates/vb_storage/src/journal/artifact_acceptance.rs:157:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:158:     #[cfg(test)]
+crates/vb_storage/src/journal/artifact_acceptance.rs:159:     if _journal.consume_batch_commit_failure_for_test() {
+crates/vb_storage/src/journal/artifact_acceptance.rs:160:         return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+crates/vb_storage/src/journal/artifact_acceptance.rs:161:             std::io::ErrorKind::Other,
+crates/vb_storage/src/journal/artifact_acceptance.rs:162:             "injected batch commit failure (test hook)",
+crates/vb_storage/src/journal/artifact_acceptance.rs:163:         ))));
+crates/vb_storage/src/journal/artifact_acceptance.rs:164:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:165:     batch.commit()?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:166:     Ok(())
+crates/vb_storage/src/journal/artifact_acceptance.rs:167: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:168: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:169: /// Atomically issues the next artifact sequence and persists the
+crates/vb_storage/src/journal/artifact_acceptance.rs:170: /// stamped artifact in a single `fjall::OwnedWriteBatch`.
+crates/vb_storage/src/journal/artifact_acceptance.rs:171: fn issue_artifact(
+crates/vb_storage/src/journal/artifact_acceptance.rs:172:     journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:173:     artifact: AcceptedArtifact,
+crates/vb_storage/src/journal/artifact_acceptance.rs:174:     policy: RuntimePolicy,
+crates/vb_storage/src/journal/artifact_acceptance.rs:175: ) -> Result<AcceptedArtifact, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:176:     let write_guard = journal
+crates/vb_storage/src/journal/artifact_acceptance.rs:177:         .write_lock
+crates/vb_storage/src/journal/artifact_acceptance.rs:178:         .lock()
+crates/vb_storage/src/journal/artifact_acceptance.rs:179:         .map_err(|_| JournalError::WriteLockPoisoned)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:180: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:181:     let last = read_counter(journal)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:182:     let (next, stamped) = prepare_artifact(last, artifact)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:183:     let (_record, encoded) = encode_record(&stamped)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:184:     let batch = build_batch(journal, next, &stamped, &encoded)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:185:     commit_batch(journal, batch, policy)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:186: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:187:     drop(write_guard);
+crates/vb_storage/src/journal/artifact_acceptance.rs:188:     Ok(stamped)
+crates/vb_storage/src/journal/artifact_acceptance.rs:189: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:190: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:191: /// Exposes the private issuance helper to admission.rs via pub(crate).
+crates/vb_storage/src/journal/artifact_acceptance.rs:192: pub(crate) fn issue_next_artifact_sequence(
+crates/vb_storage/src/journal/artifact_acceptance.rs:193:     journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:194:     artifact: AcceptedArtifact,
+crates/vb_storage/src/journal/artifact_acceptance.rs:195:     policy: RuntimePolicy,
+crates/vb_storage/src/journal/artifact_acceptance.rs:196: ) -> Result<AcceptedArtifact, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:197:     issue_artifact(journal, artifact, policy)
+crates/vb_storage/src/journal/artifact_acceptance.rs:198: }
+FILE crates/vb_storage/src/journal/core.rs
+crates/vb_storage/src/journal/core.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/journal/core.rs:2: //! Fjall-backed journal implementation.
+crates/vb_storage/src/journal/core.rs:3: //!
+crates/vb_storage/src/journal/core.rs:4: //! Provides the main storage interface for workflow artifacts,
+crates/vb_storage/src/journal/core.rs:5: //! run metadata, journal events, snapshots, and blobs.
+crates/vb_storage/src/journal/core.rs:6: 
+crates/vb_storage/src/journal/core.rs:7: use std::path::Path;
+crates/vb_storage/src/journal/core.rs:8: use std::sync::Mutex;
+crates/vb_storage/src/journal/core.rs:9: #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:10: use std::sync::atomic::{AtomicBool, Ordering};
+crates/vb_storage/src/journal/core.rs:11: 
+crates/vb_storage/src/journal/core.rs:12: use crate::{
+crates/vb_storage/src/journal/core.rs:13:     constants::{
+crates/vb_storage/src/journal/core.rs:14:         KEYSPACE_ARTIFACT_ACCEPTANCE, KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_EMERGENCY_DENY,
+crates/vb_storage/src/journal/core.rs:15:         KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS, KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT,
+crates/vb_storage/src/journal/core.rs:16:         KEYSPACE_RUN_HEADER, KEYSPACE_RUN_INPUTS, KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
+crates/vb_storage/src/journal/core.rs:17:     },
+crates/vb_storage/src/journal/core.rs:18:     error::JournalError,
+crates/vb_storage/src/journal/core.rs:19:     process_lock::ProcessLock,
+crates/vb_storage/src/journal/core.rs:20:     types::{FjallConfig, KeyspaceProfile},
+crates/vb_storage/src/journal/core.rs:21: };
+crates/vb_storage/src/journal/core.rs:22: 
+crates/vb_storage/src/journal/core.rs:23: /// Bounded replay limit for journal event collection.
+crates/vb_storage/src/journal/core.rs:24: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+crates/vb_storage/src/journal/core.rs:25: pub struct EventReplayLimit {
+crates/vb_storage/src/journal/core.rs:26:     max_events: usize,
+crates/vb_storage/src/journal/core.rs:27: }
+crates/vb_storage/src/journal/core.rs:28: 
+crates/vb_storage/src/journal/core.rs:29: impl EventReplayLimit {
+crates/vb_storage/src/journal/core.rs:30:     /// Conservative default for operator-facing replay collection.
+crates/vb_storage/src/journal/core.rs:31:     pub const DEFAULT: Self = Self { max_events: 65_536 };
+crates/vb_storage/src/journal/core.rs:32: 
+crates/vb_storage/src/journal/core.rs:33:     /// Creates a replay limit; returns `None` when the limit is zero.
+crates/vb_storage/src/journal/core.rs:34:     #[must_use]
+crates/vb_storage/src/journal/core.rs:35:     pub const fn new(max_events: usize) -> Option<Self> {
+crates/vb_storage/src/journal/core.rs:36:         if max_events == 0 {
+crates/vb_storage/src/journal/core.rs:37:             None
+crates/vb_storage/src/journal/core.rs:38:         } else {
+crates/vb_storage/src/journal/core.rs:39:             Some(Self { max_events })
+crates/vb_storage/src/journal/core.rs:40:         }
+crates/vb_storage/src/journal/core.rs:41:     }
+crates/vb_storage/src/journal/core.rs:42: 
+crates/vb_storage/src/journal/core.rs:43:     /// Returns the maximum number of events that may be collected.
+crates/vb_storage/src/journal/core.rs:44:     #[must_use]
+crates/vb_storage/src/journal/core.rs:45:     pub const fn max_events(self) -> usize {
+crates/vb_storage/src/journal/core.rs:46:         self.max_events
+crates/vb_storage/src/journal/core.rs:47:     }
+crates/vb_storage/src/journal/core.rs:48: }
+crates/vb_storage/src/journal/core.rs:49: 
+crates/vb_storage/src/journal/core.rs:50: /// Fjall-backed append journal.
+crates/vb_storage/src/journal/core.rs:51: pub struct FjallJournal {
+crates/vb_storage/src/journal/core.rs:52:     pub(crate) database: fjall::Database,
+crates/vb_storage/src/journal/core.rs:53:     pub(crate) workflow_source: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:54:     pub(crate) compiled_ir: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:55:     pub(crate) run_header: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:56:     pub(crate) run_inputs: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:57:     pub(crate) events: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:58:     pub(crate) run_snapshot: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:59:     pub(crate) blob: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:60:     pub(crate) index_status: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:61:     pub(crate) index_workflow: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:62:     pub(crate) index_action: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:63:     pub(crate) emergency_deny: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:64:     pub(crate) artifact_acceptance: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:65:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:66:     pub(crate) fail_next_persist: AtomicBool,
+crates/vb_storage/src/journal/core.rs:67:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:68:     pub(crate) fail_next_compiled_ir_readback: AtomicBool,
+crates/vb_storage/src/journal/core.rs:69:     /// Test-only fault hook: forces the next `JournalWriteBatch::commit()`
+crates/vb_storage/src/journal/core.rs:70:     /// (the path `append_strict` uses) to return `Err(JournalError::Fjall(..))`
+crates/vb_storage/src/journal/core.rs:71:     /// WITHOUT touching the real Fjall store. This proves the `append_strict`
+crates/vb_storage/src/journal/core.rs:72:     /// commit-failure contract: the staged event is never made visible and a
+crates/vb_storage/src/journal/core.rs:73:     /// retry is idempotent. Consumed exactly once.
+crates/vb_storage/src/journal/core.rs:74:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:75:     pub(crate) fail_next_batch_commit: AtomicBool,
+crates/vb_storage/src/journal/core.rs:76:     // SAFETY: write_lock is used in append_unfsynced() for poison detection.
+crates/vb_storage/src/journal/core.rs:77:     // The lock guard is acquired and dropped, never read directly.
+crates/vb_storage/src/journal/core.rs:78:     pub(crate) write_lock: Mutex<()>,
+crates/vb_storage/src/journal/core.rs:79:     pub(crate) _process_lock: ProcessLock,
+crates/vb_storage/src/journal/core.rs:80: }
+crates/vb_storage/src/journal/core.rs:81: 
+crates/vb_storage/src/journal/core.rs:82: impl FjallJournal {
+crates/vb_storage/src/journal/core.rs:83:     /// Opens or creates the journal at `path`.
+crates/vb_storage/src/journal/core.rs:84:     ///
+crates/vb_storage/src/journal/core.rs:85:     /// When `config` is `Some`, the cache size is validated against the
+crates/vb_storage/src/journal/core.rs:86:     /// bounds in [`FjallConfig::MIN_CACHE_SIZE_BYTES`] /
+crates/vb_storage/src/journal/core.rs:87:     /// [`FjallConfig::MAX_CACHE_SIZE_BYTES`]. Out-of-range values return
+crates/vb_storage/src/journal/core.rs:88:     /// [`JournalError::InvalidConfig`] before any Fjall call.
+crates/vb_storage/src/journal/core.rs:89:     pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
+crates/vb_storage/src/journal/core.rs:90:         let config = config.unwrap_or_default();
+crates/vb_storage/src/journal/core.rs:91:         if config.cache_size_bytes < crate::types::FjallConfig::MIN_CACHE_SIZE_BYTES
+crates/vb_storage/src/journal/core.rs:92:             || config.cache_size_bytes > crate::types::FjallConfig::MAX_CACHE_SIZE_BYTES
+crates/vb_storage/src/journal/core.rs:93:         {
+crates/vb_storage/src/journal/core.rs:94:             return Err(JournalError::InvalidConfig {
+crates/vb_storage/src/journal/core.rs:95:                 field: "cache_size_bytes",
+crates/vb_storage/src/journal/core.rs:96:                 reason: "cache size must be in [MIN_CACHE_SIZE_BYTES, MAX_CACHE_SIZE_BYTES]",

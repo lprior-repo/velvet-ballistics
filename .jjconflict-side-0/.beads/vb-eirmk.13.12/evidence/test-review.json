@@ -1,0 +1,115 @@
+{
+  "verdict": "PASS",
+  "review_kind": "Independent bounded shared-prebuilt CLI TEST source/oracle and focused receipt review",
+  "source_pin": "0d866b09bed9a97b3d9a7562e6f816c0001b747d",
+  "baseline_pin": "761ec0aec741a38702345100b8808a1ea0bdb887",
+  "comparison_base": "9b61504057c607596aa5d7274d583cf60d4c5e5e",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "contracts": [
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-eirmk.13.12/kyyf-runner-contract-v3.md",
+      "sha256": "49a9bc984a143fc946055d4dd51ebf7bf7c3c3de9861038e397f62e29589b55b"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-eirmk.13.12/relative-path-resolution-notes-v2.md",
+      "sha256": "339d47dbac9afd6466cf8dc288a0ba7484c146c2a1c5cbbe44e0bd37b92cdad4"
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "path": "crates/workspace_tests/tests/support/prebuilt_cli_path.rs",
+      "lines": "4-15,25-61",
+      "result": "Single var_os lookup; pure resolver preserves absolute OS bytes and lexically joins every relative path. Five exact independent resolver oracles: bare cli, ../configured-cli, absolute missing path, empty->root, nonUTF8 c/0xff. Trusted parent components are explicitly authorized by approved V3/V2, not confined; no filesystem/canonicalization/Unicode conversion/new error API."
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs",
+      "result": "Five original scenario bodies plus inventory case byte-identical1de. Runner delegates only lookup/resolution to shared module. None retains original cargo program/prefix/WORKSPACE_ROOT cwd; Some executes resolved path with same cwd and original args. Existing program-before-invalid-spawn guard and exact NotFound retained; explicit-path argv is separately inspected by pure selector guard."
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+      "lines": "715-773,777-852",
+      "result": "None retains env!(CARGO) and complete original run --quiet -p velvet-ballistics --bin velvet-ballistics -- command run_arg --db db_path. Exact whole-argv guard plus current_dir None. Some resolves and executes directly without changing inherited cwd. Output/status/diagnostic mapping unchanged."
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+      "lines": "777-794,829-852",
+      "result": "Pure distinctive explicit-program guard calls actual runner builder and asserts original whole replay argv, with no output/spawn. Invalid Some uses owned TempDir/missing child: exact program AND whole argv asserted BEFORE output; then exact Some(ErrorKind::NotFound), with no optional assertion/early success. Restored Cargo builder fails program assertion before Cargo could execute."
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+      "lines": "1387-1415",
+      "result": "All six original public replay/events/inspect invocations preserve command strings, run arg and owned DB path. Independent function-body comparison against1de finds only run_velvet_ballistics_cli changed; all old normalization, comparison, JSON/report/evidence parsing and history fixture functions remain identical. Whole source diff confirms no comparison/assertion weakening."
+    },
+    {
+      "result": "KYYF pure selector's expected path delegates to resolver; the separate five resolver tests independently assert exact path outputs, so selector test is evaluated as mode/argv oracle, not independent resolver correctness evidence by itself."
+    },
+    {
+      "result": "New/changed KYYF helper lengths12/17/23/18/14/12/21 logical lines including signatures; shared helper/tests max6. NF2U changed builder/lookup preserve previous short-function bounds. No added skip/sleep/unsafe/unwrap/panic or discarded-result oracle. Existing legacy oversized/other debt unchanged, not newly approved."
+    },
+    {
+      "result": "Only shared helper and NF2U/KYYF files differ from reviewed9b source. Both explicit module registrations compile shared five tests separately; observed39 are15 NF2U plus24 KYYF, including10 executions of five shared resolver guards."
+    }
+  ],
+  "execution": {
+    "directory": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence",
+    "baseline": {
+      "files": [
+        "kyyf-prebuilt-baseline-native.log",
+        "kyyf-prebuilt-baseline-native.exit"
+      ],
+      "run_id": "28dc3dfe-ebed-47f1-bcff-b2cd463fd415",
+      "run": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 16,
+      "exit": 100,
+      "result": "Actual Cargo executable selected instead of distinctive prebuilt path. Pure actual builder inspection fails before any subprocess."
+    },
+    "fixed": {
+      "files": [
+        "prebuilt-cli-two-targets-native-v2.log",
+        "prebuilt-cli-two-targets-native-v2.exit"
+      ],
+      "run_id": "901e0a2d-ea02-40df-91cc-f51148c4dc7a",
+      "run": 39,
+      "passed": 39,
+      "skipped": 0,
+      "exit": 0,
+      "binary_counts": {
+        "nf2u": 15,
+        "kyyf": 24
+      }
+    },
+    "focused_cli_hash": {
+      "files": [
+        "prebuilt-cli-two-targets-v2-before.sha256",
+        "prebuilt-cli-two-targets-v2-after.sha256"
+      ],
+      "before": "6e5798bdd8b6c3c6a17f96a73b6b16617918e78973d08963cacc71bd31e923f8",
+      "after": "6e5798bdd8b6c3c6a17f96a73b6b16617918e78973d08963cacc71bd31e923f8",
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/debug/velvet-ballistics",
+      "scope": "Recorded focused39-case run only; equal endpoint hashes do not prove no intermediate writes or wider run stability."
+    },
+    "reviewer_execution": false
+  },
+  "limits": [
+    "Full selected-Moon binary hash stability is NOT proved and remains open. No whole CLI, KYYF feature, fullCI or formal acceptance; original semantics are preserved, not newly exhaustively qualified.",
+    "Runtime env/binary build provenance beyond supplied focused receipts is not inferred from native success. No independent build or rerun performed.",
+    "Approved49a9 contract and339d notes supersede earlier confinement language. Old ignored note in integrated workspace is not used to reject explicitly authorized ../ semantics.",
+    "No DB access, source/test/gate/config edits, new agents or builds. Only requested own report written using TMPDIR=/run/user/1000/vbs; zero-byte author artifacts not accepted as evidence."
+  ],
+  "evidence_sha256": {
+    "kyyf-prebuilt-baseline-native.log": "8052584fbaefae57d5fc63d2fc444d7fa2306482a42de692e3e97f0ebb30fca4",
+    "kyyf-prebuilt-baseline-native.exit": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+    "prebuilt-cli-two-targets-native-v2.log": "2584982088f9f6b8de8adf986e98b8eaaa348f0f1e14aef12851103ae2d0b567",
+    "prebuilt-cli-two-targets-native-v2.exit": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+    "prebuilt-cli-two-targets-v2-before.sha256": "aeea0414cdee9a52f8fab104259b11db9f8a5f95503235101398bf27af6ec084",
+    "prebuilt-cli-two-targets-v2-after.sha256": "aeea0414cdee9a52f8fab104259b11db9f8a5f95503235101398bf27af6ec084"
+  },
+  "source_sha256": {
+    "crates/workspace_tests/tests/support/prebuilt_cli_path.rs": "d6c6b22643ca8b7cf1b2a1af027cd9fd7b503c14e1bbe825a8bddd110c9dd167",
+    "crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs": "33e920b699859da3f49070d5084d0de38ed3df601ab61a2207fc7d8d26a7d788",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs": "a018f597b91c1bb6d05198c5665e055c2e61b94984a55d0634aa623b54006dc8"
+  }
+}

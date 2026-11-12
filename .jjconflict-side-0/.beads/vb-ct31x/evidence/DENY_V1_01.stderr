@@ -1,0 +1,11 @@
+warning: unused import: `std::sync::atomic::Ordering`
+  --> crates/vb_storage/src/journal/emergency_deny_tests.rs:20:5
+   |
+20 | use std::sync::atomic::Ordering;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_storage` (lib test) generated 1 warning (run `cargo fix --lib -p vb_storage --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-ce7dc9c74a468062)

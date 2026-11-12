@@ -1,0 +1,19 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling syn v2.0.117
+   Compiling autocfg v1.5.1
+   Compiling serde_derive v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling thiserror v2.0.18
+   Compiling thiserror-impl v2.0.18
+   Compiling iana-time-zone v0.1.65
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.0
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ga13x-local5090-kani/crates/vb_core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.23s

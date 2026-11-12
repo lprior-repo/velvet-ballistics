@@ -1,0 +1,7 @@
+# Temporary quota interruption
+
+On 2026-10-22, an orphan from a rejected earlier shell selftest remained under systemd after its parent ended. Its deleted stderr grew to 46,173,118,464 bytes. The exact PID2990122 and command were verified before SIGTERM. Its process metadata and bounded error sample are retained in evidence. /tmp usage fell from50GB to6.4GB, with56GB available; the main filesystem had728GB free. No model/data service was stopped.
+
+The current DeepSeek checker and 3090 retry test workers exited during the quota failure. Their actual interrupted drafts are preserved remotely as efee79de238297fbda73b9803e8a84ee194c7b88 and3941432f061ce773df0762d242c0f46e07882ca6. Neither was accepted as complete. Fresh contexts resumed from these drafts, with OMP transcripts on the main disk. The earlier closed318MB CI transcript was copied byte for byte to the local preserved cache and its original path retained as a symlink.
+
+The separate independent governance reviewer completed successfully before freezing db118481. Its report calls the block extractor Python YAML parsing; the implementation uses text block extraction/dedent, without a YAML parser library. Its old extern line count828 follows wc newline counting; splitlines counts829 due the original end of file. Nonblank byte equality and current796/743 lengths were independently checked; neither discrepancy changes code semantics or the approval scope.

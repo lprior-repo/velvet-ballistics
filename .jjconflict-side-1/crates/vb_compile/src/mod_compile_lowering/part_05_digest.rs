@@ -1,0 +1,198 @@
+#![allow(unused_imports)]
+
+#[path = "part_05_digest_primitive.rs"]
+mod part_05_digest_primitive;
+
+#[path = "part_05_digest_step.rs"]
+mod part_05_digest_step;
+
+pub(crate) use part_05_digest_primitive::digest_step_primitive;
+
+#[path = "part_05_digest_validate.rs"]
+mod part_05_digest_validate;
+
+pub(crate) use part_05_digest_validate::{digest_author_value, validate_branch_counts};
+
+#[path = "part_05_digest_sections.rs"]
+mod part_05_digest_sections;
+
+use part_05_digest_sections::{
+    digest_inputs, digest_result_mapping, digest_secrets, digest_trigger, digest_vars,
+};
+
+use crate::mod_compile_errors::{CompileError, CompileErrors};
+use vb_core::WorkflowDigest;
+
+#[path = "digest_scalar.rs"]
+mod digest_scalar;
+use digest_scalar::digest_scalar_value;
+
+// Bead-linked justification for cold-path function length (master §125):
+// This module implements the canonical source digest at the compile boundary.
+// `canonical_digest` and `digest_step_primitive` are cold, compile-time-only
+// encoding functions whose length reflects the number of distinct
+// `StepPrimitive`/`AuthorValue` variants they must exhaustively cover. They
+// never execute on the runtime hot path. Bead: vb-a2l02 (injective canonical
+// encoding) + vb-wlnl4 (integration review repair).
+
+/// Tag for length-prefixed string values.
+const TAG_STRING: u8 = 0x01;
+/// Tag for i64 integer values.
+const TAG_I64: u8 = 0x02;
+/// Tag for u16 values.
+const TAG_U16: u8 = 0x03;
+/// Tag for u32 values.
+const TAG_U32: u8 = 0x04;
+/// Tag for Some variant.
+const TAG_SOME: u8 = 0x10;
+/// Tag for None variant.
+const TAG_NONE: u8 = 0x11;
+/// Tag for container end.
+const TAG_END: u8 = 0x22;
+
+/// Domain separator for the workflow source digest.
+const DOMAIN_SOURCE: &[u8] = b"vb-source-v3:";
+
+fn digest_error(message: &str) -> CompileErrors {
+    CompileErrors(vec![CompileError::CanonicalYaml {
+        category: "digest",
+        message: message.into(),
+    }])
+}
+
+/// Write a length-prefixed string with explicit tag.
+fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), CompileErrors> {
+    hasher.update(&[TAG_STRING]);
+    let len =
+        u32::try_from(value.len()).map_err(|_| digest_error("string length exceeds u32 range"))?;
+    hasher.update(&len.to_le_bytes());
+    hasher.update(value.as_bytes());
+    Ok(())
+}
+
+/// Write a raw (untagged) container length, failing closed on overflow.
+fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<(), CompileErrors> {
+    let len =
+        u32::try_from(value).map_err(|_| digest_error("container length exceeds u32 range"))?;
+    hasher.update(&len.to_le_bytes());
+    Ok(())
+}
+
+/// Write an i64 with explicit tag.
+fn digest_i64(hasher: &mut blake3::Hasher, value: i64) {
+    hasher.update(&[TAG_I64]);
+    hasher.update(&value.to_le_bytes());
+}
+
+/// Write a u16 with explicit tag.
+fn digest_u16(hasher: &mut blake3::Hasher, value: u16) {
+    hasher.update(&[TAG_U16]);
+    hasher.update(&value.to_le_bytes());
+}
+
+/// Write a u32 with explicit tag.
+fn digest_u32(hasher: &mut blake3::Hasher, value: u32) {
+    hasher.update(&[TAG_U32]);
+    hasher.update(&value.to_le_bytes());
+}
+
+/// Write an optional string with Some/None discriminant.
+///
+/// Unlike optional u32 fields, an absent string (`None`) and an empty string
+/// (`Some("")`) are semantically distinct authoring states, so the
+/// discriminant is retained.
+fn digest_optional_string(
+    hasher: &mut blake3::Hasher,
+    field_tag: &[u8],
+    value: Option<&str>,
+) -> Result<(), CompileErrors> {
+    hasher.update(field_tag);
+    match value {
+        Some(s) => {
+            hasher.update(&[TAG_SOME]);
+            digest_string(hasher, s)?;
+        }
+        None => {
+            hasher.update(&[TAG_NONE]);
+        }
+    }
+    Ok(())
+}
+
+/// Write an optional u32 with the lowering default resolved.
+///
+/// `at_once`, `pages`, and `items` all lower via `value.unwrap_or(1)`
+/// (`part_02.rs` / `part_03.rs`), so `None` and `Some(1)` are the same
+/// canonical IR. Hashing the resolved value preserves digest stability:
+/// `None` and `Some(1)` yield identical digests, while `Some(0)` (and every
+/// other explicit value) stays distinct.
+fn digest_optional_u32(
+    hasher: &mut blake3::Hasher,
+    field_tag: &[u8],
+    value: Option<u32>,
+) -> Result<(), CompileErrors> {
+    hasher.update(field_tag);
+    digest_u32(hasher, value.unwrap_or(1));
+    Ok(())
+}
+
+pub(crate) fn canonical_primitive_name(
+    primitive: &crate::StepPrimitive,
+) -> Result<&'static str, CompileError> {
+    match primitive {
+        crate::StepPrimitive::Set { .. } => Ok("set"),
+        crate::StepPrimitive::Save { .. } => Ok("save"),
+        crate::StepPrimitive::Do { .. } => Ok("do"),
+        crate::StepPrimitive::Choose { .. } => Ok("choose"),
+        crate::StepPrimitive::ForEach { .. } => Ok("for_each"),
+        crate::StepPrimitive::Together { .. } => Ok("together"),
+        crate::StepPrimitive::Collect { .. } => Ok("collect"),
+        crate::StepPrimitive::Aggregate { .. } => Ok("reduce"),
+        crate::StepPrimitive::Repeat { .. } => Ok("repeat"),
+        crate::StepPrimitive::Wait { .. } => Ok("wait"),
+        crate::StepPrimitive::Ask { .. } => Ok("ask"),
+        crate::StepPrimitive::Finish { .. } => Ok("finish"),
+        _ => Err(CompileError::CanonicalYaml {
+            category: "digest",
+            message: "unknown step primitive variant cannot be canonicalized".into(),
+        }),
+    }
+}
+
+/// Computes a deterministic, content-addressable digest of the workflow source.
+pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest, CompileErrors> {
+    validate_branch_counts(source)?;
+
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(DOMAIN_SOURCE);
+
+    // Version and name
+    digest_string(&mut hasher, source.version())?;
+    digest_string(&mut hasher, source.name())?;
+
+    digest_trigger(&mut hasher, source.trigger())?;
+    digest_inputs(&mut hasher, source)?;
+    digest_vars(&mut hasher, source)?;
+    digest_secrets(&mut hasher, source)?;
+
+    // Steps (order-sensitive)
+    hasher.update(b"steps:");
+    digest_len(&mut hasher, source.steps().len())?;
+    for step in source.steps() {
+        digest_step(&mut hasher, step)?;
+    }
+    hasher.update(&[TAG_END]);
+
+    digest_result_mapping(&mut hasher, source)?;
+
+    Ok(WorkflowDigest::from_bytes(hasher.finalize().into()))
+}
+
+/// Digest a complete step including all metadata fields.
+///
+/// Iterative heap-stack walk (run in `part_05_digest_step`): identical
+/// pre-order bytes plus `TAG_END` per container, with
+/// `MAX_BODY_NESTING_DEPTH` budget. Top-level steps enter at depth 0.
+fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
+    part_05_digest_step::digest_step_at(hasher, step, 0)
+}

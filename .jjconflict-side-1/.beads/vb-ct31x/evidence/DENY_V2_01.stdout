@@ -1,0 +1,91 @@
+
+running 11 tests
+test journal::emergency_deny_tests::unsupported_version_errors ... ok
+test journal::emergency_deny_tests::failed_persist_returns_error_not_success ... ok
+test journal::emergency_deny_tests::malformed_marker_wrong_length_errors ... ok
+test journal::emergency_deny_tests::activate_returns_active_state ... ok
+test journal::emergency_deny_tests::activation_does_not_corrupt_run_events ... ok
+test journal::emergency_deny_tests::retry_after_injected_failure ... ok
+test journal::emergency_deny_tests::marker_persists_across_journal_close ... ok
+test journal::emergency_deny_tests::already_active_retry_performs_strict_persistence ... ok
+test journal::emergency_deny_tests::separate_stores_are_isolated ... ok
+test journal::emergency_deny_tests::repeated_activation_is_idempotent ... ok
+test journal::emergency_deny_tests::new_store_is_inactive ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 1617 filtered out; finished in 0.02s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

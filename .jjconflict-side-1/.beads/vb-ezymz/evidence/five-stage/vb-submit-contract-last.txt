@@ -1,0 +1,7 @@
+<tool_call>
+<function=read_file>
+<parameter=path>
+/home/lewis/.agents/skills/rust-contract/SKILL.md
+</parameter>
+</function>
+</tool_call>

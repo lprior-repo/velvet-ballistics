@@ -1,0 +1,18 @@
+## Summary
+
+Fixed the 8 `WorkflowParts` constructors in the `velvet-ballistics-fuzz` crate that omitted the newly required `input_slots` field, blocking `fuzz-tsan` and `fuzz-proptest` compilation.
+
+**12 source files modified** across `fuzz/src/`, `fuzz/fuzz_targets/`, and `fuzz/tests/`. Each change adds exactly one line: `input_slots: Box::from([])` to the affected `WorkflowParts` literal. No production code, assertions, or node/slot counts were altered.
+
+**Verification:**
+- `cargo check --lib` for `velvet-ballistics-fuzz` exits 0 with zero `E0063` errors
+- Lib test compilation and execution pass (0 tests in lib, all compile)
+- Specific affected fuzz targets (e.g., `canonical_digest_ask`) build successfully
+
+**Unrelated pre-existing failures recorded:**
+1. `fuzz/fuzz_targets/ipc_frame.rs` references `fuzz_lib::assert_typed_ipc_error` which is defined in `fuzz/src/ipc_target.rs` but not exported from `lib.rs`
+2. `fuzz/fuzz_targets/canonical_digest_ask.rs` requires the `vb_compile/test-util` feature for `WorkflowSourceParts` (resolved when that feature is enabled)
+
+These two bin compilation issues are independent of the `input_slots` schema change and would have been hit regardless of this fix.
+
+**Evidence preserved:** Raw compiler logs (before/after fix), lib test output, and per-file diffs in `.beads/vb-bwdf0/evidence/`.

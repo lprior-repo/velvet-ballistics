@@ -16,7 +16,7 @@ mod tests {
 
     #[test]
     fn cat1_nop_continues() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1, &[0])?;
         let mut r = mkr(2, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -34,6 +34,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             1,
             vec![ConstValue::I64(42)],
+            &[],
         )?;
         let mut r = mkr(2, 1)?;
         let mut b = StepBudget::new(10);
@@ -47,7 +48,7 @@ mod tests {
 
     #[test]
     fn cat1_copy_propagates() -> Result<(), String> {
-        let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2)?;
+        let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2, &[0, 1])?;
         let mut r = mkr(2, 2)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         ws(&mut r, 1, SlotValue::I64(99))?;
@@ -62,7 +63,7 @@ mod tests {
 
     #[test]
     fn cat1_finish_immediate() -> Result<(), String> {
-        let wf = mkwf(vec![fin(0, 0)], 1)?;
+        let wf = mkwf(vec![fin(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::Bool(true))?;
         let mut b = StepBudget::new(10);
@@ -86,7 +87,11 @@ mod tests {
                 target: StepIdx::new(2),
             },
         ]);
-        let wf = mkwf(vec![cslot(0, branches, None), fin(1, 2), fin(2, 2)], 3)?;
+        let wf = mkwf(
+            vec![cslot(0, branches, None), fin(1, 2), fin(2, 2)],
+            3,
+            &[0, 1, 2],
+        )?;
         let mut r = mkr(3, 3)?;
         ws(&mut r, 0, SlotValue::Bool(true))?;
         ws(&mut r, 1, SlotValue::Bool(false))?;
@@ -106,7 +111,7 @@ mod tests {
             condition: SlotIdx::new(0),
             target: StepIdx::new(1),
         }]);
-        let wf = mkwf(vec![cslot(0, branches, None), fin(1, 1)], 2)?;
+        let wf = mkwf(vec![cslot(0, branches, None), fin(1, 1)], 2, &[0, 1])?;
         let mut r = mkr(2, 2)?;
         ws(&mut r, 0, SlotValue::Bool(false))?;
         ws(&mut r, 1, SlotValue::I64(0))?;
@@ -124,7 +129,11 @@ mod tests {
             condition: SlotIdx::new(0),
             target: StepIdx::new(1),
         }]);
-        let wf = mkwf(vec![cslot(0, branches, Some(2)), fin(1, 1), fin(2, 1)], 2)?;
+        let wf = mkwf(
+            vec![cslot(0, branches, Some(2)), fin(1, 1), fin(2, 1)],
+            2,
+            &[0, 1],
+        )?;
         let mut r = mkr(3, 2)?;
         ws(&mut r, 0, SlotValue::Bool(false))?;
         ws(&mut r, 1, SlotValue::I64(77))?;
@@ -139,7 +148,7 @@ mod tests {
 
     #[test]
     fn cat3_wait_until_awaiting() -> Result<(), String> {
-        let wf = mkwf(vec![wuntil(0, 0)], 1)?;
+        let wf = mkwf(vec![wuntil(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(1000))?;
         let mut b = StepBudget::new(10);
@@ -152,7 +161,7 @@ mod tests {
 
     #[test]
     fn cat3_ask_awaiting() -> Result<(), String> {
-        let wf = mkwf(vec![askn(0, 0)], 1)?;
+        let wf = mkwf(vec![askn(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::Symbol(SymbolId::new(1)))?;
         let mut b = StepBudget::new(10);
@@ -168,6 +177,7 @@ mod tests {
         let wf = mkwf(
             vec![errh(0, 1, 2, None), nop(1, 3), fin(2, 0), fin(3, 0)],
             1,
+            &[0],
         )?;
         let mut r = mkr(4, 1)?;
         ws(&mut r, 0, SlotValue::I64(55))?;
@@ -182,7 +192,7 @@ mod tests {
 
     #[test]
     fn cat5_budget_exhausted() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 1, &[0])?;
         let mut r = mkr(3, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(2);

@@ -1,0 +1,12 @@
+   Compiling fnv v1.0.7
+   Compiling regex-syntax v0.8.10
+   Compiling getrandom v0.3.4
+   Compiling logos-codegen v0.15.1
+   Compiling ahash v0.8.12
+   Compiling logos-derive v0.15.1
+   Compiling serde-saphyr v0.0.25
+   Compiling logos v0.15.1
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hrvix-local3090-input-validation/crates/vb_expr)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hrvix-local3090-input-validation/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hrvix-local3090-input-validation/crates/velvet_ballistics)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.52s

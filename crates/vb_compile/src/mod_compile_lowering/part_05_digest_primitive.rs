@@ -18,6 +18,13 @@ pub(super) fn child_depth(depth: u16, primitive: &'static str) -> Result<u16, Co
         .ok_or_else(|| body_nesting_error(primitive, depth))
 }
 
+/// Single shared stack operation for the digest walkers.
+pub(super) enum DigestOp<F> {
+    Push(F),
+    Pop,
+    Nothing,
+}
+
 pub(super) enum HeaderNested<'a> {
     None,
     Body(&'a [crate::StepAst]),
@@ -149,7 +156,16 @@ pub(super) fn digest_step_post(
     hasher: &mut blake3::Hasher,
     step: &crate::StepAst,
 ) -> Result<(), CompileErrors> {
-    super::digest_optional_string(hasher, b"step_with:", step.with.as_deref())?;
+    hasher.update(b"step_with:");
+    match &step.with {
+        Some(value) => {
+            hasher.update(&[1]);
+            super::digest_author_value(hasher, value)?;
+        }
+        None => {
+            hasher.update(&[0]);
+        }
+    }
     hasher.update(b"step_retry:");
     if let Some(retry) = &step.retry {
         hasher.update(&[super::TAG_SOME]);

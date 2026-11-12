@@ -1,0 +1,30 @@
+rust-contract State 3 transcript summary for vb-y9d3v.
+
+Inputs read:
+- .beads/vb-y9d3v/codebase-map.md
+- .beads/vb-y9d3v/delivery-scope.jsonl
+- .beads/vb-y9d3v/baseline-report.md
+- velvet-ballistics-MASTER.md
+- crates/vb_core/src/action.rs
+- crates/vb_runtime/src/engine/action.rs
+- crates/vb_runtime/src/shard/helpers.rs
+- crates/vb_runtime/src/shard/transitions.rs
+- crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+- crates/vb_runtime/src/shard/lifecycle/chunk_003.rs
+- crates/vb_runtime/src/shard/timer_wheel.rs
+
+Outputs written:
+- domain-model.md
+- type-contracts.md
+- workflow-model.md
+- error-taxonomy.md
+- boundary-map.md
+- hazard-analysis.md
+- contract.md
+- proof-seeds.jsonl
+- traceability-matrix.jsonl
+- transcript-state3-rust-contract.txt
+
+Production Rust edits: none.
+Verifier artifacts written: none.
+Key contract decision: external action completion/failure must require exact current attempt equality; lower and future attempts are both invalid authority. Current fresh-main acceptance of future attempts within capacity is recorded as an implementation gap.

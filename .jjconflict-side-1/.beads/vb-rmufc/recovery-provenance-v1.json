@@ -1,0 +1,45 @@
+{
+  "preserved_original_commit": "a46c3723dc467807ac34f590550c36b6c539fb19",
+  "base": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "method": "Exact own-commit git diff applied after git apply --check. Whole branch merge-base diff not used.",
+  "own_commit_paths": [
+    "crates/vb_ipc/src/frame_types.rs",
+    "crates/workspace_tests/src/test_util/fixture.rs",
+    "crates/workspace_tests/src/test_util/seed.rs"
+  ],
+  "scope": "Three mutable full-slice -> as_mut_slice changes only; current source still missing all3. No behavioral feature claim.",
+  "actual_command": {
+    "cwd": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1",
+    "argv": [
+      "env",
+      "RUSTFLAGS=-Dwarnings",
+      "RUSTC_WRAPPER=",
+      "rustup",
+      "run",
+      "nightly-2026-04-28",
+      "cargo",
+      "test",
+      "--quiet",
+      "-p",
+      "vb_ipc",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--all-features",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "seconds": 33.823,
+    "timeout_seconds": 240,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_PRESERVED_SLICES_V1_EXISTING_TESTS"
+  },
+  "source_sha256": {
+    "crates/vb_ipc/src/frame_types.rs": "d8231b69c173cb6a125f4be3828758c9ada61d424b0f771bd81eda45df50f784",
+    "crates/workspace_tests/src/test_util/fixture.rs": "48eaa54a9eb89a042d4d82f98b156b65122e0ae393d42ebc847db759291c7357",
+    "crates/workspace_tests/src/test_util/seed.rs": "1c6ff536f38c4bcedde112edecfb41f3d46486ed266bbb390fd660bc6db51434"
+  },
+  "acceptance": "focused existing tests green; independent local review and final gates/main pending"
+}

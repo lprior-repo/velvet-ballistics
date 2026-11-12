@@ -1,0 +1,100 @@
+crates/vb_storage/src/executor/issuance_tests.rs:1: //! Isolated issuance tests using support PackedFixture.
+crates/vb_storage/src/executor/issuance_tests.rs:2: //! No production modifications; all behavior verified through actual fixtures.
+crates/vb_storage/src/executor/issuance_tests.rs:3: 
+crates/vb_storage/src/executor/issuance_tests.rs:4: use super::issuance_test_support::{
+crates/vb_storage/src/executor/issuance_tests.rs:5:     PackedFixture, TestResult, minimal_workflow, open_test_journal, read_counter,
+crates/vb_storage/src/executor/issuance_tests.rs:6:     verify_artifact_readback,
+crates/vb_storage/src/executor/issuance_tests.rs:7: };
+crates/vb_storage/src/executor/issuance_tests.rs:8: use crate::admission;
+crates/vb_storage/src/executor/issuance_tests.rs:9: use vb_core::RuntimePolicy;
+crates/vb_storage/src/executor/issuance_tests.rs:10: 
+crates/vb_storage/src/executor/issuance_tests.rs:11: // Case 1: Pure prepare across policies produces empty sequence.
+crates/vb_storage/src/executor/issuance_tests.rs:12: #[test]
+crates/vb_storage/src/executor/issuance_tests.rs:13: fn prepare_produces_no_sequence() -> TestResult {
+crates/vb_storage/src/executor/issuance_tests.rs:14:     for policy in [
+crates/vb_storage/src/executor/issuance_tests.rs:15:         &RuntimePolicy::Strict,
+crates/vb_storage/src/executor/issuance_tests.rs:16:         &RuntimePolicy::Journaled,
+crates/vb_storage/src/executor/issuance_tests.rs:17:         &RuntimePolicy::Relaxed,
+crates/vb_storage/src/executor/issuance_tests.rs:18:     ] {
+crates/vb_storage/src/executor/issuance_tests.rs:19:         let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_tests.rs:20:         let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_tests.rs:21:         assert_eq!(read_counter(&journal)?, None);
+crates/vb_storage/src/executor/issuance_tests.rs:22:         assert!(journal.list_artifacts()?.is_empty());
+crates/vb_storage/src/executor/issuance_tests.rs:23:         let artifact = fixture.prepare(*policy)?;
+crates/vb_storage/src/executor/issuance_tests.rs:24:         assert_eq!(artifact.accepted_at_seq.get(), 0);
+crates/vb_storage/src/executor/issuance_tests.rs:25:         let restored = fixture.catalog.verify_artifact(&artifact, *policy)?;
+crates/vb_storage/src/executor/issuance_tests.rs:26:         assert_eq!(&restored, &fixture.workflow);
+crates/vb_storage/src/executor/issuance_tests.rs:27:         assert_eq!(read_counter(&journal)?, None);
+crates/vb_storage/src/executor/issuance_tests.rs:28:         assert!(journal.list_artifacts()?.is_empty());
+crates/vb_storage/src/executor/issuance_tests.rs:29:     }
+crates/vb_storage/src/executor/issuance_tests.rs:30:     Ok(())
+crates/vb_storage/src/executor/issuance_tests.rs:31: }
+crates/vb_storage/src/executor/issuance_tests.rs:32: 
+crates/vb_storage/src/executor/issuance_tests.rs:33: // Case 2a: Strict policy submit returns sequence 1.
+crates/vb_storage/src/executor/issuance_tests.rs:34: #[test]
+crates/vb_storage/src/executor/issuance_tests.rs:35: fn strict_submit_sequence_one() -> TestResult {
+crates/vb_storage/src/executor/issuance_tests.rs:36:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_tests.rs:37:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_tests.rs:38:     let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:39:     assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:40:     assert_eq!(read_counter(&journal)?, Some(1));
+crates/vb_storage/src/executor/issuance_tests.rs:41:     fixture.check(&journal, &artifact, RuntimePolicy::Strict)
+crates/vb_storage/src/executor/issuance_tests.rs:42: }
+crates/vb_storage/src/executor/issuance_tests.rs:43: 
+crates/vb_storage/src/executor/issuance_tests.rs:44: // Case 2b: Journaled policy submit returns sequence 1.
+crates/vb_storage/src/executor/issuance_tests.rs:45: #[test]
+crates/vb_storage/src/executor/issuance_tests.rs:46: fn journaled_submit_sequence_one() -> TestResult {
+crates/vb_storage/src/executor/issuance_tests.rs:47:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_tests.rs:48:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_tests.rs:49:     let artifact = fixture.submit(&journal, RuntimePolicy::Journaled)?;
+crates/vb_storage/src/executor/issuance_tests.rs:50:     assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:51:     assert_eq!(read_counter(&journal)?, Some(1));
+crates/vb_storage/src/executor/issuance_tests.rs:52:     fixture.check(&journal, &artifact, RuntimePolicy::Journaled)
+crates/vb_storage/src/executor/issuance_tests.rs:53: }
+crates/vb_storage/src/executor/issuance_tests.rs:54: 
+crates/vb_storage/src/executor/issuance_tests.rs:55: // Case 2c: Relaxed policy submit returns sequence 1.
+crates/vb_storage/src/executor/issuance_tests.rs:56: #[test]
+crates/vb_storage/src/executor/issuance_tests.rs:57: fn relaxed_submit_sequence_one() -> TestResult {
+crates/vb_storage/src/executor/issuance_tests.rs:58:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_tests.rs:59:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_tests.rs:60:     let artifact = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_tests.rs:61:     assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:62:     assert_eq!(read_counter(&journal)?, Some(1));
+crates/vb_storage/src/executor/issuance_tests.rs:63:     fixture.check(&journal, &artifact, RuntimePolicy::Relaxed)
+crates/vb_storage/src/executor/issuance_tests.rs:64: }
+crates/vb_storage/src/executor/issuance_tests.rs:65: 
+crates/vb_storage/src/executor/issuance_tests.rs:66: // Case 3: Same journal, three policies increment sequence.
+crates/vb_storage/src/executor/issuance_tests.rs:67: #[test]
+crates/vb_storage/src/executor/issuance_tests.rs:68: fn sequential_submissions_increment() -> TestResult {
+crates/vb_storage/src/executor/issuance_tests.rs:69:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_tests.rs:70:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_tests.rs:71:     let strict = fixture.submit(&journal, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:72:     assert_eq!(strict.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:73:     let journaled = fixture.submit(&journal, RuntimePolicy::Journaled)?;
+crates/vb_storage/src/executor/issuance_tests.rs:74:     assert_eq!(journaled.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_tests.rs:75:     let relaxed = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_tests.rs:76:     assert_eq!(relaxed.accepted_at_seq.get(), 3);
+crates/vb_storage/src/executor/issuance_tests.rs:77:     assert_ne!(strict.digest, journaled.digest);
+crates/vb_storage/src/executor/issuance_tests.rs:78:     assert_ne!(journaled.digest, relaxed.digest);
+crates/vb_storage/src/executor/issuance_tests.rs:79:     assert_ne!(strict.digest, relaxed.digest);
+crates/vb_storage/src/executor/issuance_tests.rs:80:     fixture.check(&journal, &strict, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:81:     fixture.check(&journal, &journaled, RuntimePolicy::Journaled)?;
+crates/vb_storage/src/executor/issuance_tests.rs:82:     fixture.check(&journal, &relaxed, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_tests.rs:83:     assert_eq!(read_counter(&journal)?, Some(3));
+crates/vb_storage/src/executor/issuance_tests.rs:84:     Ok(())
+crates/vb_storage/src/executor/issuance_tests.rs:85: }
+crates/vb_storage/src/executor/issuance_tests.rs:86: 
+crates/vb_storage/src/executor/issuance_tests.rs:87: // Case 4: Mixed default and catalog workflow submissions.
+crates/vb_storage/src/executor/issuance_tests.rs:88: #[test]
+crates/vb_storage/src/executor/issuance_tests.rs:89: fn mixed_default_and_catalog_submissions() -> TestResult {
+crates/vb_storage/src/executor/issuance_tests.rs:90:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_tests.rs:91:     let default_workflow = minimal_workflow()?;
+crates/vb_storage/src/executor/issuance_tests.rs:92:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_tests.rs:93:     let default_artifact =
+crates/vb_storage/src/executor/issuance_tests.rs:94:         admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_tests.rs:95:     assert_eq!(default_artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:96:     let catalog_artifact = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_tests.rs:97:     assert_eq!(catalog_artifact.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_tests.rs:98:     let default_artifact2 =
+crates/vb_storage/src/executor/issuance_tests.rs:99:         admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_tests.rs:100:     assert_eq!(default_artifact2.accepted_at_seq.get(), 3);

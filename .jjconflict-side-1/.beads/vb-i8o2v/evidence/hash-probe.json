@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-i8o2v-native5090-records",
+  "argv": [
+    "python3",
+    ".beads/vb-i8o2v/evidence/hash-probe-valid.py",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-i8o2v-native5090-records/target/gate-tools/check-test-integrity"
+  ],
+  "exit_code": 0,
+  "seconds": 0.497,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-i8o2v/evidence/hash-probe"
+}

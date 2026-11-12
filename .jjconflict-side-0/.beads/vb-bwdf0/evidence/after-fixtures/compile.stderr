@@ -1,0 +1,12 @@
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests)
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_37lc_canonical_spelling_red") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_test_cli_diff_incident_behavior") due to 2 previous errors
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_test_validate_policy_enforce_behavior") due to 1 previous error
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 1 previous error
+error: could not compile `velvet-ballistics-workspace-tests` (test "derived_status_replay_timeline_tests") due to 9 previous errors
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_validate)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_ipc)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_storage)
+error: could not compile `vb_ipc` (lib test) due to 1 previous error

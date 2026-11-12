@@ -73,6 +73,7 @@ mod submit;
 mod trace;
 mod validate;
 mod verify;
+mod workflow_examples;
 
 pub(crate) use output::{OutputError, json_out, write_stdout_line, write_stdout_line_checked};
 

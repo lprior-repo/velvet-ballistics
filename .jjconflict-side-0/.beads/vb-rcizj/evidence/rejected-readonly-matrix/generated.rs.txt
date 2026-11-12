@@ -1,0 +1,427 @@
+use std::error::Error;
+use std::fmt;
+
+use vb_core::action::{
+    ActionContract, ActionFailure, ActionFailureCode, ActionId, ActionName, Idempotency, RetrySafety,
+    SideEffect, VbRetryPolicy,
+};
+use vb_core::compiled::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, StepIdx, WorkflowDigest, WorkflowParts,
+};
+use vb_core::value::{ConstIdx, ConstValue, SlotIdx};
+use vb_core::value::{Taint, Value};
+use vb_runtime::command::{CommandKind, ShardCommand};
+use vb_runtime::error::{RunNotFound, ShardError};
+use vb_runtime::journal::VolatileRuntimeJournal;
+use vb_runtime::shard::{Shard, ShardConfig};
+use vb_types::run::{ResourceContract, RunId};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CommandKindTest {
+    Completed,
+    Failed,
+}
+
+impl fmt::Display for CommandKindTest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CommandKindTest::Completed => write!(f, "completed"),
+            CommandKindTest::Failed => write!(f, "failed"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Tamper {
+    MissingRun,
+    OtherExistingRun,
+    WrongStep,
+    WrongAction,
+    AttemptZero,
+    FutureAttempt,
+    CapacityZero,
+    ChangedCapacity,
+    BadKey,
+    AdvancedSeq,
+}
+
+impl Tamper {
+    fn expected_error(&self) -> &'static str {
+        match self {
+            Tamper::MissingRun => "run_not_found",
+            _ => "invalid_action_completion",
+        }
+    }
+}
+
+fn make_contract(id: u16, name: &str) -> Result<ActionContract, Box<dyn Error>> {
+    Ok(ActionContract {
+        id: ActionId::new(id),
+        name: ActionName::new(name)?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    })
+}
+
+fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn Error>> {
+    let set = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let do_node = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(action_id),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(1),
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("setconst-do"),
+        digest: WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([set, do_node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    })
+    .map_err(|e| format!("workflow must compile: {}", e).into())
+}
+
+fn non_retryable_failure() -> ActionFailure {
+    ActionFailure {
+        retry_policy: VbRetryPolicy::NonRetryable,
+        code: ActionFailureCode::Timeout,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+fn submit_valid_workflow(
+    shard: &mut Shard,
+    journal: &mut VolatileRuntimeJournal,
+) -> Result<(RunId, vb_runtime::command::PendingAction), Box<dyn Error>> {
+    let contract = make_contract(0, "valid")?;
+    let caps = Box::new([]);
+    let action = setconst_do_workflow(0)?;
+    let run_id = RunId::generate();
+    shard.submit_with_contracts(run_id, action, Box::new([contract]), caps)?;
+    shard.tick(journal)?;
+    let ticket = shard
+        .pending_action_get(run_id)?
+        .ok_or("ticket must exist after submit")?;
+    Ok((run_id, ticket))
+}
+
+fn assert_ticket_unchanged(
+    shard: &Shard,
+    journal: &mut VolatileRuntimeJournal,
+    run_id: RunId,
+    original: &vb_runtime::command::PendingAction,
+) -> Result<(), Box<dyn Error>> {
+    let current = shard.pending_action_get(run_id)?;
+    if current.is_none() {
+        return Err("ticket must still exist".into());
+    }
+    let current = current.unwrap();
+    if current.idempotency_key != original.idempotency_key {
+        return Err("idempotency key changed".into());
+    }
+    if current.step != original.step {
+        return Err("step changed".into());
+    }
+    if current.action != original.action {
+        return Err("action changed".into());
+    }
+    Ok(())
+}
+
+fn tamper_and_reject(
+    tamper: Tamper,
+    kind: CommandKindTest,
+) -> Result<(), Box<dyn Error>> {
+    let journal = VolatileRuntimeJournal::new();
+    let mut shard = Shard::new_with_journal(
+        journal,
+        ShardConfig { policy: "relaxed".into(), step_budget: 4 },
+    )?;
+    let (run_id, original_ticket) = submit_valid_workflow(&mut shard, &mut shard.journal)?;
+
+    let original_key = original_ticket.idempotency_key;
+    let original_step = original_ticket.step;
+    let original_action = original_ticket.action;
+    let original_attempt = original_ticket.attempt;
+    let original_capacity = original_ticket.max_capacity;
+
+    let second_run = if tamper == Tamper::OtherExistingRun {
+        let (other_id, _) = submit_valid_workflow(&mut shard, &mut shard.journal)?;
+        Some(other_id)
+    } else {
+        None
+    };
+
+    let mut cmd = match kind {
+        CommandKindTest::Completed => ShardCommand::ActionCompleted {
+            run: run_id,
+            key: original_key,
+            step: original_step,
+            action: original_action,
+            attempt: original_attempt,
+            output_slot: SlotIdx::new(1),
+            value: Value::I64(100),
+            taint: Taint::Clean,
+            encoded_len: 3,
+        },
+        CommandKindTest::Failed => ShardCommand::ActionFailed {
+            run: run_id,
+            key: original_key,
+            step: original_step,
+            action: original_action,
+            attempt: original_attempt,
+            failure: non_retryable_failure(),
+        },
+    };
+
+    match tamper {
+        Tamper::MissingRun => {
+            let missing = RunId::generate();
+            cmd = match kind {
+                CommandKindTest::Completed => ShardCommand::ActionCompleted {
+                    run: missing, ..
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::OtherExistingRun => {
+            if let Some(other_id) = second_run {
+                cmd = match cmd {
+                    ShardCommand::ActionCompleted {
+                        key, step, action, attempt, output_slot, value, taint, encoded_len,
+                        ..
+                    } => ShardCommand::ActionCompleted {
+                        run: other_id, key, step, action, attempt, output_slot, value, taint,
+                        encoded_len,
+                    },
+                    _ => unreachable!(),
+                };
+            }
+        }
+        Tamper::WrongStep => {
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    key, action, attempt, output_slot, value, taint, encoded_len, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key,
+                    step: StepIdx::new(99),
+                    action,
+                    attempt,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len,
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::WrongAction => {
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    key, step, attempt, output_slot, value, taint, encoded_len, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key,
+                    step,
+                    action: ActionId::new(99),
+                    attempt,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len,
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::AttemptZero => {
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    key, step, action, output_slot, value, taint, encoded_len, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key,
+                    step,
+                    action,
+                    attempt: 0,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len,
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::FutureAttempt => {
+            let future = match original_attempt.checked_add(5) {
+                Some(v) => v,
+                None => original_attempt + 5,
+            };
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    key, step, action, output_slot, value, taint, encoded_len, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key,
+                    step,
+                    action,
+                    attempt: future,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len,
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::CapacityZero => {
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    key, step, action, attempt, output_slot, value, taint, encoded_len, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key,
+                    step,
+                    action,
+                    attempt,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len: 0,
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::ChangedCapacity => {
+            let bigger = match original_capacity.checked_add(100) {
+                Some(v) => v,
+                None => original_capacity + 100,
+            };
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    key, step, action, attempt, output_slot, value, taint, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key,
+                    step,
+                    action,
+                    attempt,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len: bigger,
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::BadKey => {
+            let bad = original_key ^ 1;
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    step, action, attempt, output_slot, value, taint, encoded_len, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key: bad,
+                    step,
+                    action,
+                    attempt,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len,
+                },
+                _ => unreachable!(),
+            };
+        }
+        Tamper::AdvancedSeq => {
+            let advanced = match original_attempt.checked_add(1) {
+                Some(v) => v,
+                None => original_attempt + 1,
+            };
+            let new_key = vb_core::action::compute_action_idempotency_key(
+                run_id, advanced, original_action,
+            );
+            cmd = match cmd {
+                ShardCommand::ActionCompleted {
+                    step, action, output_slot, value, taint, encoded_len, ..
+                } => ShardCommand::ActionCompleted {
+                    run: run_id,
+                    key: new_key,
+                    step,
+                    action,
+                    attempt: advanced,
+                    output_slot,
+                    value,
+                    taint,
+                    encoded_len,
+                },
+                _ => unreachable!(),
+            };
+        }
+    }
+}
+
+#[test]
+fn ticket_authority_matrix() -> Result<(), Box<dyn Error>> {
+    let tampers = [
+        Tamper::MissingRun,
+        Tamper::OtherExistingRun,
+        Tamper::WrongStep,
+        Tamper::WrongAction,
+        Tamper::AttemptZero,
+        Tamper::FutureAttempt,
+        Tamper::CapacityZero,
+        Tamper::ChangedCapacity,
+        Tamper::BadKey,
+        Tamper::AdvancedSeq,
+    ];
+    let kinds = [CommandKindTest::Completed, CommandKindTest::Failed];
+
+    for tamper in tampers {
+        for kind in kinds {
+            tamper_and_reject(tamper, kind)?;
+        }
+    }
+
+    Ok(())
+}

@@ -1,5 +1,5 @@
 use std::error::Error;
-use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{StepIdx, WorkflowDigest};
 use vb_core::value_store::ValueStoreCheckpointV1;
 use vb_core::workflow::{
     CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
@@ -13,16 +13,10 @@ pub(super) fn fixture(
     max_slots: u16,
     max_blob_bytes: u64,
 ) -> TestResult<CompiledWorkflow> {
-    let node = vb_core::workflow::node(
-        StepIdx::new(0),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        None,
-        None,
-    );
+    let node = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("owned-root-bundle-test"),
         digest: WorkflowDigest::from_bytes([42; 32]),
         nodes: Box::from([node]),

@@ -1,0 +1,29 @@
+**Git/JJ roots verified:**
+- Git root: `/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090`
+- JJ root: `/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090`
+
+**Four assertions added** (lines 687-697, 808-818) in `crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs`:
+
+**Test `shard_boundary_accepts_valid_contract_and_executes_do`:**
+```rust
+assert_eq!(ticket.attempt, 1, "first attempt must be 1");
+let run_state = shard.run_state_get(run).ok_or("run state must exist after tick")?;
+assert_eq!(run_state.frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(42),
+    "Do input slot must hold the SetConst value 42");
+assert_eq!(run_state.frame.read_taint(SlotIdx::ZERO)?, vb_core::value::Taint::Clean,
+    "Do input slot must be Clean-tainted");
+```
+
+**Test `shard_boundary_accepts_valid_contract_with_seeded_input`:**
+```rust
+assert_eq!(ticket.attempt, 1, "first attempt must be 1");
+let run_state = shard.run_state_get(run).ok_or("run state must exist after tick")?;
+assert_eq!(run_state.frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(55),
+    "Do input slot must hold the seeded value 55");
+assert_eq!(run_state.frame.read_taint(SlotIdx::ZERO)?, vb_core::value::Taint::Clean,
+    "Do input slot must be Clean-tainted");
+```
+
+**API used (from source, not invented):** `shard.run_state_get(run)` → `RunState.frame.read_slot(SlotIdx)` → `&SlotValue`; `RunState.frame.read_taint(SlotIdx)` → `Taint`.
+
+**Test results:** All 4 `shard_boundary_` tests passed (2 new input-check assertions + 2 existing fabricated-ID rejection tests). Log at `.beads/vb-3l40a/evidence/admission-review-fix/input-check.log`.

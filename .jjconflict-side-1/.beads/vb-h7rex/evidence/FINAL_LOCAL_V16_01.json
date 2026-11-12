@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "policy_pin_durable_recovery"
+  ],
+  "exit_code": 0,
+  "seconds": 9.909,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/FINAL_LOCAL_V16_01"
+}

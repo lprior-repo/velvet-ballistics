@@ -1,0 +1,9 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-module-guard-5090/crates/vb_compile)
+error[E0425]: cannot find type `ExprProofsBroken` in module `expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:52
+    |
+117 |         let _ = std::any::type_name::<expr_proofs::ExprProofsBroken>();
+    |                                                    ^^^^^^^^^^^^^^^^ not found in `expr_proofs`
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `vb_compile` (lib test) due to 1 previous error

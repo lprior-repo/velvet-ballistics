@@ -1,0 +1,58 @@
+# Transcript: vb-shvxy State 5 proof-writer (attempt 1)
+
+## Invocation: vb-shvxy-state5-proof-writer-attempt1
+- Skill: proof-writer
+- Start: 2026-05-29T19:00:00.000000+00:00
+- Complete: 2026-05-29T20:00:00.000000+00:00
+
+## Actions Performed
+
+1. Loaded proof-writer skill from /home/lewis/.opencode/skill/proof-writer/SKILL.md
+2. Read all State 4 artifacts: proof-obligations.planned.jsonl, proof-plan-review.md, verifier-lane-decisions.jsonl, proof-strategy.md, trusted-base-plan.md, waiver-candidates.jsonl, traceability-matrix.jsonl
+3. Read State 3 contract artifacts: codebase-map.md, contract.md, delivery-scope.jsonl
+4. Read existing tooling scripts: scripts/kani-list.sh, scripts/flux-check-package.sh
+5. Read existing infrastructure: crates/vb_core/Cargo.toml, crates/vb_runtime/Cargo.toml, fuzz/Cargo.toml, crates/vb_runtime/src/models/loom/, xtask/src/loom.rs, xtask/src/cli.rs
+6. Created scripts/guard-zero-tests.sh — fail-closed zero-test detector with passthrough wrapper
+7. Created scripts/loom-list.sh — loom model enumeration wrapper for xtask loom
+8. Executed PO-001: bash scripts/kani-list.sh vb_core — exit 0, 176 harnesses, valid JSON
+9. Executed PO-002: bash scripts/kani-list.sh vb_runtime — exit 0, 6 harnesses, valid JSON
+10. Executed PO-003: KANI_FEATURES=vb_runtime/kani-diagnostic-codes bash scripts/kani-list.sh vb_runtime — exit 1 (fail-closed, feature not declared)
+11. Executed PO-003 supplementary: KANI_FEATURES=vb_core/kani-diagnostic-codes bash scripts/kani-list.sh vb_core — exit 0 (feature declared)
+12. Executed PO-004: bash scripts/flux-check-package.sh vb_core — exit 0, flux refinement checks ran
+13. Executed PO-005a: bash scripts/flux-check-package.sh vb_core --lib — exit 2, unsupported selector rejected
+14. Executed PO-005b: bash scripts/flux-check-package.sh vb_core --test — exit 2, unsupported selector rejected
+15. Executed PO-006: bash scripts/guard-zero-tests.sh -- cargo test -p vb_core --test aggregate_resource_budget_properties_red -- nonexistent_filter_xyz — exit 1, zero tests detected
+16. Executed PO-007: bash scripts/guard-zero-tests.sh -- cargo test -p vb_core --test aggregate_resource_budget_properties_red — exit 0, 5 tests executed
+17. Executed PO-008: cargo fuzz list — exit 0, 57 fuzz targets listed
+18. Executed PO-009: cargo fuzz build --target x86_64-unknown-linux-gnu — exit 0, all targets compiled
+19. Executed PO-010: RUSTFLAGS="--cfg loom" cargo test -p vb_runtime --lib -- models::loom — exit 0, 13 loom tests passed
+20. Executed PO-011: bash scripts/loom-list.sh — exit 0, 5 models enumerated
+21. Wrote proof-writer-report.md summarizing all 11 obligations
+22. Wrote proof-evidence.md with raw command evidence
+23. Fixed guard-zero-tests.sh arg parsing bug (removed spurious cargo prefix)
+24. Fixed guard-zero-tests.sh output parsing for "cargo test: N passed" format
+25. Fixed loom-list.sh grep pattern for em-dash separators, switched to JSON array parsing
+26. Created trusted-base-ledger.jsonl with 7 entries (TB-001 through TB-007)
+27. Updated agent-invocation-ledger.jsonl with seq 6 entry (corrected hash fields)
+
+## Tools Used
+
+- cargo 1.97.0-nightly (eb9b60f1f 2026-04-24)
+- cargo-kani 0.67.0
+- cargo-flux 4d329f2 (2026-05-23)
+- python3 3.14.5
+- cargo-fuzz 0.13.1
+- loom 0.7 (dev-dependency)
+
+## Obligations Verified
+
+All 11 tooling obligations (PO-001 through PO-011) produced evidence.
+5 closure obligations (PO-012K/012F/012P/012C/012L) assigned to State 10 — not executed.
+
+## Findings
+
+1. vb_runtime Cargo.toml does not declare kani-diagnostic-codes feature (PO-003 assumption contradicted)
+2. xtask/src/loom.rs list_models() function is dead code — not wired to CLI
+3. cargo test output format uses "cargo test: N passed" not "running N tests" or "test result:" — guard script adapted
+4. vb_core has 176 harnesses (substantial); vb_runtime has only 6 (minimal)
+5. All 57 fuzz targets compile cleanly for GNU target triple

@@ -1,0 +1,100 @@
+fuzz/src/yaml_target.rs:101:         );
+fuzz/src/yaml_target.rs:102:         assert!(
+fuzz/src/yaml_target.rs:103:             workflow.node_count() >= 1,
+fuzz/src/yaml_target.rs:104:             "compiled workflow must have at least 1 node"
+fuzz/src/yaml_target.rs:105:         );
+fuzz/src/yaml_target.rs:106:     }
+fuzz/src/yaml_target.rs:107: }
+fuzz/src/yaml_target.rs:108: 
+fuzz/src/yaml_target.rs:109: pub fn fuzz_compile_source_ast_marks(data: &[u8]) {
+fuzz/src/yaml_target.rs:110:     use vb_compile::compile_workflow;
+fuzz/src/yaml_target.rs:111: 
+fuzz/src/yaml_target.rs:112:     let result = compile_workflow(data);
+fuzz/src/yaml_target.rs:113: 
+fuzz/src/yaml_target.rs:114:     match result {
+fuzz/src/yaml_target.rs:115:         Ok(_compiled) => {}
+fuzz/src/yaml_target.rs:116:         Err(errors) => {
+fuzz/src/yaml_target.rs:117:             assert!(
+fuzz/src/yaml_target.rs:118:                 !errors.is_empty(),
+fuzz/src/yaml_target.rs:119:                 "CompileErrors must contain at least one error"
+fuzz/src/yaml_target.rs:120:             );
+fuzz/src/yaml_target.rs:121:         }
+fuzz/src/yaml_target.rs:122:     }
+fuzz/src/yaml_target.rs:123: }
+fuzz/src/yaml_target.rs:124: 
+fuzz/src/yaml_target.rs:125: pub fn fuzz_span_bridge(data: &[u8]) {
+fuzz/src/yaml_target.rs:126:     use vb_compile::{SourceSpan, build_semantic_source_map, build_source_map};
+fuzz/src/yaml_target.rs:127: 
+fuzz/src/yaml_target.rs:128:     let mut values = [0usize; 6];
+fuzz/src/yaml_target.rs:129:     for (slot, byte) in values.iter_mut().zip(data.iter().copied()) {
+fuzz/src/yaml_target.rs:130:         *slot = usize::from(byte);
+fuzz/src/yaml_target.rs:131:     }
+fuzz/src/yaml_target.rs:132: 
+fuzz/src/yaml_target.rs:133:     let span = SourceSpan::new(
+fuzz/src/yaml_target.rs:134:         values[0], values[1], values[2], values[3], values[4], values[5],
+fuzz/src/yaml_target.rs:135:     );
+fuzz/src/yaml_target.rs:136:     assert_eq!(span.start_offset, values[0]);
+fuzz/src/yaml_target.rs:137:     assert_eq!(span.end_offset, values[1]);
+fuzz/src/yaml_target.rs:138:     assert_eq!(span.start_line, values[2]);
+fuzz/src/yaml_target.rs:139:     assert_eq!(span.start_col, values[3]);
+fuzz/src/yaml_target.rs:140:     assert_eq!(span.end_line, values[4]);
+fuzz/src/yaml_target.rs:141:     assert_eq!(span.end_col, values[5]);
+fuzz/src/yaml_target.rs:142: 
+fuzz/src/yaml_target.rs:143:     let Ok(text) = std::str::from_utf8(data) else {
+fuzz/src/yaml_target.rs:144:         return;
+fuzz/src/yaml_target.rs:145:     };
+fuzz/src/yaml_target.rs:146: 
+fuzz/src/yaml_target.rs:147:     if let Ok(map) = build_source_map(text) {
+fuzz/src/yaml_target.rs:148:         for (index, mapped_span) in map.iter() {
+fuzz/src/yaml_target.rs:149:             assert_eq!(map.span_for_node(index), Some(mapped_span));
+fuzz/src/yaml_target.rs:150:         }
+fuzz/src/yaml_target.rs:151:     }
+fuzz/src/yaml_target.rs:152: 
+fuzz/src/yaml_target.rs:153:     if let Ok(map) = build_semantic_source_map(text) {
+fuzz/src/yaml_target.rs:154:         let _root = map.span_for_path("$");
+fuzz/src/yaml_target.rs:155:         let _manual = map.span_for_path("$.when.manual");
+fuzz/src/yaml_target.rs:156:         let _step_zero = map.span_for_path("$.steps[0]");
+fuzz/src/yaml_target.rs:157:         // `_root`, `_manual`, and `_step_zero` are deliberately bound to
+fuzz/src/yaml_target.rs:158:         // underscore-prefixed identifiers so the strict
+fuzz/src/yaml_target.rs:159:         // `let_underscore_must_use` lint stays triggered only on
+fuzz/src/yaml_target.rs:160:         // bare `let _ = must_use_call()`. They prove the lookup table
+fuzz/src/yaml_target.rs:161:         // returns a span option without exercising it.
+fuzz/src/yaml_target.rs:162:     }
+fuzz/src/yaml_target.rs:163: }
+fuzz/src/yaml_target.rs:164: 
+fuzz/src/yaml_target.rs:165: #[cfg(test)]
+fuzz/src/yaml_target.rs:166: mod tests {
+fuzz/src/yaml_target.rs:167:     use super::*;
+fuzz/src/yaml_target.rs:168: 
+fuzz/src/yaml_target.rs:169:     #[test]
+fuzz/src/yaml_target.rs:170:     fn large_yaml_exceeds_4096_bound() -> Result<(), Box<dyn std::error::Error>> {
+fuzz/src/yaml_target.rs:171:         // Build valid YAML with >4096 events: a sequence of 5001 scalars
+fuzz/src/yaml_target.rs:172:         // stays within default max_sequence_len=10000 and max_source_bytes=1048576.
+fuzz/src/yaml_target.rs:173:         let item_count = 5001usize;
+fuzz/src/yaml_target.rs:174:         let mut yaml = "items:\n".to_string();
+fuzz/src/yaml_target.rs:175:         for i in 0..item_count {
+fuzz/src/yaml_target.rs:176:             yaml.push_str(&format!("  - item{}\n", i));
+fuzz/src/yaml_target.rs:177:         }
+fuzz/src/yaml_target.rs:178: 
+fuzz/src/yaml_target.rs:179:         // Validate via the real compile pipeline
+fuzz/src/yaml_target.rs:180:         vb_compile::validate_yaml_profile(&yaml)?;
+fuzz/src/yaml_target.rs:181: 
+fuzz/src/yaml_target.rs:182:         let events = vb_compile::parse_yaml_events(&yaml)?;
+fuzz/src/yaml_target.rs:183:         assert!(
+fuzz/src/yaml_target.rs:184:             events.len() > 4096,
+fuzz/src/yaml_target.rs:185:             "test YAML must produce >4096 events, got {}",
+fuzz/src/yaml_target.rs:186:             events.len()
+fuzz/src/yaml_target.rs:187:         );
+fuzz/src/yaml_target.rs:188:         assert!(
+fuzz/src/yaml_target.rs:189:             events.len() <= 100000,
+fuzz/src/yaml_target.rs:190:             "test YAML must stay within default max_nodes, got {}",
+fuzz/src/yaml_target.rs:191:             events.len()
+fuzz/src/yaml_target.rs:192:         );
+fuzz/src/yaml_target.rs:193: 
+fuzz/src/yaml_target.rs:194:         let source_map = vb_compile::build_source_map(&yaml)?;
+fuzz/src/yaml_target.rs:195:         assert!(
+fuzz/src/yaml_target.rs:196:             source_map.len() > 4096,
+fuzz/src/yaml_target.rs:197:             "test YAML must produce >4096 source map entries, got {}",
+fuzz/src/yaml_target.rs:198:             source_map.len()
+fuzz/src/yaml_target.rs:199:         );
+fuzz/src/yaml_target.rs:200:         assert!(

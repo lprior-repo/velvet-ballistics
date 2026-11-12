@@ -1,0 +1,158 @@
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling serde v1.0.228
+   Compiling getrandom v0.3.4
+   Compiling lock_api v0.4.14
+   Compiling bitflags v2.11.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling rustix v1.1.4
+   Compiling num-traits v0.2.19
+   Compiling getrandom v0.4.2
+   Compiling crossbeam-utils v0.8.21
+   Compiling equivalent v1.0.2
+   Compiling fastrand v2.4.1
+   Compiling tempfile v3.27.0
+   Compiling rand_core v0.9.5
+   Compiling spin v0.9.8
+   Compiling cc v1.2.62
+   Compiling thiserror v2.0.18
+   Compiling zerocopy v0.8.48
+   Compiling crossbeam-epoch v0.9.18
+   Compiling byteorder v1.5.0
+   Compiling compare v0.0.6
+   Compiling byteorder-lite v0.1.0
+   Compiling log v0.4.29
+   Compiling smallvec v1.15.1
+   Compiling hashbrown v0.16.1
+   Compiling twox-hash v2.1.2
+   Compiling xxhash-rust v0.8.15
+   Compiling sfa v1.0.0
+   Compiling lz4_flex v0.13.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling quick_cache v0.6.22
+   Compiling parking_lot_core v0.9.12
+   Compiling interval-heap v0.0.5
+   Compiling hash32 v0.2.1
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling blake3 v1.8.5
+   Compiling wait-timeout v0.2.1
+   Compiling enum_dispatch v0.3.13
+   Compiling hashbrown v0.17.1
+   Compiling iana-time-zone v0.1.65
+   Compiling varint-rs v2.2.0
+   Compiling byteview v0.10.1
+   Compiling hashbrown v0.14.5
+   Compiling self_cell v1.2.2
+   Compiling fnv v1.0.7
+   Compiling rustc-hash v2.1.2
+   Compiling quick-error v1.2.3
+   Compiling stable_deref_trait v1.2.1
+   Compiling bit-vec v0.8.0
+   Compiling bit-set v0.8.0
+   Compiling dashmap v6.2.1
+   Compiling heapless v0.7.17
+   Compiling rusty-fork v0.3.1
+   Compiling lsm-tree v3.1.4
+   Compiling chrono v0.4.44
+   Compiling indexmap v2.14.0
+   Compiling rand_chacha v0.9.0
+   Compiling cobs v0.3.0
+   Compiling flume v0.12.0
+   Compiling rand v0.9.4
+   Compiling rand_xorshift v0.4.0
+   Compiling bytes v1.11.1
+   Compiling regex-syntax v0.8.10
+   Compiling constant_time_eq v0.4.2
+   Compiling arrayref v0.3.9
+   Compiling cpufeatures v0.3.0
+   Compiling arrayvec v0.7.6
+   Compiling unarray v0.1.4
+   Compiling proptest v1.11.0
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-d7c9e-kind-lint-5090/crates/vb_core)
+   Compiling fjall v3.1.4
+   Compiling postcard v1.1.3
+   Compiling crc32c v0.6.8
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-d7c9e-kind-lint-5090/crates/vb_storage)
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_storage/src/admission/tests.rs:194:21
+    |
+194 |     let mut parts = WorkflowParts {
+    |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_storage/src/proptests.rs:602:24
+    |
+602 |     let parts_zeroed = WorkflowParts {
+    |                        ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_storage/src/proptests.rs:668:17
+    |
+668 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_storage/src/proptests.rs:724:24
+    |
+724 |     let parts_zeroed = WorkflowParts {
+    |                        ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_storage/src/proptests.rs:813:17
+    |
+813 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_storage/src/proptests.rs:881:17
+    |
+881 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0027]: pattern does not mention field `expected_run`
+  --> crates/vb_storage/src/hydrate_tests.rs:37:34
+   |
+37 |               matches!(result, Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+   |  __________________________________^
+38 | |                 snapshot_run: sr,
+39 | |                 snapshot_seq: _
+40 | |             }) if sr == RunId::new(1)),
+   | |_____________^ missing field `expected_run`
+   |
+help: include the missing field in the pattern
+   |
+39 |                 snapshot_seq: _, expected_run }) if sr == RunId::new(1)),
+   |                                ~~~~~~~~~~~~~~~~
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+39 |                 snapshot_seq: _, expected_run: _ }) if sr == RunId::new(1)),
+   |                                ~~~~~~~~~~~~~~~~~~~
+help: or always ignore missing fields here
+   |
+39 |                 snapshot_seq: _, .. }) if sr == RunId::new(1)),
+   |                                ~~~~~~
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/vb_storage/src/recovery/tests.rs:32:5
+   |
+32 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_storage/src/recovery/tests.rs:684:17
+    |
+684 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:45:25
+   |
+45 |         let mut parts = WorkflowParts {
+   |                         ^^^^^^^^^^^^^ missing `input_slots`
+
+Some errors have detailed explanations: E0027, E0063.
+For more information about an error, try `rustc --explain E0027`.
+error: could not compile `vb_storage` (lib test) due to 10 previous errors

@@ -1,0 +1,16 @@
+{
+  "config_candidate": "d3dd3d7aade085979f2ac4868a90a7f41350f247",
+  "frozen_failed_integration": "42fd94f21c3615c8fbe322806a76beea671b6d16",
+  "actual_moon_fuzz_smoke": {
+    "exit_code": 1,
+    "seconds": 485.933,
+    "reason": "Existing decode_record.dict parse failure after target build; task correctly stopped."
+  },
+  "all_supplied_dictionary_checks": {
+    "valid": 2,
+    "invalid": 6,
+    "mode": "actualcompiledbinaries -runs=0 performed2initializer cases; dictionary parser applicability only, not fulltargetcampaign. Missingmatchingtargetnames useactualdecode_recordbinary as genericparser."
+  },
+  "config_review_prose_correction": "Actual fuzz-smoke begins set -e, not set -euo pipefail claimed by reviewer. New direct command failures do propagate, as actual failed run proves. No source switch added to ignore failure.",
+  "next": "Local3090 repairs six malformed grammars preserving exact tokenbytes. Independent5090 review, all8actualparser checks and actualMoonloop required before main."
+}

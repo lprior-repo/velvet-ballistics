@@ -1,0 +1,42 @@
+{
+  "bead_id": "vb-rnj7l",
+  "reviewer": "RTX 3090 local independent",
+  "candidate_commit": "d3dd3d7aade085979f2ac4868a90a7f41350f247",
+  "base_commit": "e3b7e718",
+  "delta_lines": {"added": 8, "removed": 1, "verified": true},
+  "file_changed": ".moon/tasks/all.yml",
+  "flag_format": {
+    "used": "flag=value",
+    "example": "-dict=/abs/path/file.dict",
+    "confirmed_against": "libfuzzer-sys 0.4.13 FuzzerDriver.cpp FlagValue() requires =",
+    "correct": true
+  },
+  "bash_safety": {
+    "array_reset_per_loop": true,
+    "absent_path_zero_args": true,
+    "quoted_absolute_path": true,
+    "no_eval": true,
+    "no_unquoted_expansion": true
+  },
+  "preservation": {
+    "build_command_unchanged": true,
+    "target_enumeration_unchanged": true,
+    "seed_copy_unchanged": true,
+    "evidence_paths_unchanged": true,
+    "smoke_deadline_1sec": true,
+    "existing_inputs_preserved": true,
+    "new_input_corpus_added": true
+  },
+  "failure_preservation": {
+    "set_e_preserved": true,
+    "no_error_swallowing": true,
+    "malformed_dict_propagates": true
+  },
+  "scope_fidelity": {
+    "tooling_recovery_only": true,
+    "no_proof_claims": true,
+    "no_performance_claims": true
+  },
+  "open_findings": [],
+  "verdict": "APPROVED"
+}

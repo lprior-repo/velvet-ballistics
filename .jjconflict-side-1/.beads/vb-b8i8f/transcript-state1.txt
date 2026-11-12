@@ -1,0 +1,61 @@
+# State 1 Transcript: vb-b8i8f
+
+timestamp: 2026-05-29T19:19:41Z
+source_checkout: /home/lewis/src/velvet-ballistics
+isolated_workdir: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-b8i8f
+branch: fresh/vb-b8i8f
+main_base_commit: 46cf61591
+
+## bd show vb-b8i8f --json
+```json
+[
+  {
+    "id": "vb-b8i8f",
+    "title": "Fresh recovery: cancel/kill lattice State 9 ledger and storage gap",
+    "description": "Fresh recovery bead for capped vb-9l7l. Preserve evidence from /home/lewis/isolated/velvet-ballistics-main-review/vb-9l7l. Goal: restart from clean main, recover cancel/kill tests and implementation without corrupt ledger history; resolve StorageJournalAppend RecordKindFamilyMismatch exposed by final test repair.",
+    "acceptance_criteria": "Clean main-based worktree; no legacy corrupt ledger rows; cancel/kill lattice tests compile and pass or fail only on reviewed production gap; State 9/10/11 validators pass before advancement.",
+    "status": "in_progress",
+    "priority": 0,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-29T19:16:46Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-29T19:17:18Z",
+    "labels": [
+      "go-skill",
+      "replacement",
+      "runtime",
+      "test-recovery"
+    ],
+    "dependencies": [
+      {
+        "id": "vb-9l7l",
+        "title": "runtime: Add cancellation and kill outcome lattice tests",
+        "description": "# Black Hat Repaired Bead Spec\n\nSource docs:\n- to-fix/09-restate-architecture-steal-plan.md\n- to-fix/10-restate-exhaustive-sweep.md\n\nNo-copy fence:\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\n\nTest file:\n- crates/workspace_tests/tests/restate_cancel_kill_lattice_tests.rs\n\nCommand evidence:\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_cancel_kill_lattice_tests\n- moon ci\n\nScope:\nAdd VB lifecycle tests inspired by Restate kill_cancel.rs for queued, running, suspended, retrying, and action-blocked runs.\n\nTarget public surface / files to read:\n- /tmp/opencode/restate/crates/worker/src/partition/state_machine/tests/kill_cancel.rs\n- crates/vb_runtime/src/shard/transitions.rs\n- crates/vb_storage/src/events.rs\n\nAcceptance tests:\nHappy paths:\n- Cancel running run records cancellation and preserves replayable terminal status\n- Kill action-suspended run removes pending action and prevents later completion\n\nError paths:\n- missing run id returns typed not-found error\n- invalid input terminal transition returns typed no-op or rejection outcome\n\nEdge cases:\n- Cancel completed run does not append duplicate terminal event\n- Kill retrying run removes retry timer generation\n\nContract assertions:\n- Terminal states do not regress\n- Pending indexes agree with journal after termination\n\nPreconditions:\n- Restate kill_cancel.rs and VB lifecycle transition files have been read\n- The test matrix enumerates at least queued running suspended retrying and action-blocked states\n\nPostconditions:\n- Each lifecycle state has a cancel and kill assertion\n- Journal evidence and pending indexes match the terminal outcome\n\nInvariants:\n- Terminal state never becomes pending\n- No action ticket survives kill\n- Cancel propagation touches unfinished children only\n\nImplementation gates:\n- Write failing tests in the named workspace_tests file before production changes.\n- Implement only the minimal VB change required by those tests.\n- Close only with raw output from the scoped cargo nextest command and moon ci.\n\n",
+        "spec_id": "to-fix/09-restate-architecture-steal-plan.md",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-25T04:50:15Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-25T12:00:06Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  }
+]
+```
+
+## git branch --show-current
+```text
+fresh/vb-b8i8f
+```
+
+## git status --short --branch
+```text
+## fresh/vb-b8i8f
+```
+

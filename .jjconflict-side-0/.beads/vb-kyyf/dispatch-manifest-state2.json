@@ -1,0 +1,18 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 2,
+  "sublane": "explore-scope",
+  "delegate": "explore",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-kyyf-bdd",
+  "inputs": [
+    "bd show vb-kyyf --json",
+    "velvet-ballistics-MASTER.md",
+    "existing tests and crate surfaces"
+  ],
+  "outputs": [
+    ".beads/vb-kyyf/codebase-map.md",
+    ".beads/vb-kyyf/delivery-scope.jsonl"
+  ],
+  "attempt": 1
+}

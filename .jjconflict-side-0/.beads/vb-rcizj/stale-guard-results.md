@@ -1,0 +1,5 @@
+# Current stale-ticket coverage repair
+
+Actual targeted9durable+2authoritymatrix+17retrytests=28pass0fail0ignore. New childmodule2Rusttests each5old-ticketcorruptions. All use issuedattempt2/current3, canonicalkeyrecomputed for changedaction/advancedseq, precise InvalidActionCompletion, completejournal/pendingticket/PC/bothslotvalueandtaint equality. ExistinggenuineoldStaleAttempt positiveclassifications retained. Misleadingencode-failuretest now honest happycompletion verifies exactly1atomicActionCompletedEnvelope with fullticket, outputslot, I64(42)encodedbytes, encodedlen2, Clean taint,valuedigest.
+
+Bounded differential mutation check changed only one guard in isolatedproductionfunction atatime:step/action/capacity/key/sequence. All5deletions killed by named newstaleguardtests (actualexit101, assertionfailure), rawlogs/results.json retained. Original source restored in finally and entire28suite reranpassing. This is5specificmutations, not exhaustive mutation/proof coverage or fullCI/v1acceptance. Productiondiff remains unchanged fromf335candidate. Independentrenewedreviews pending.

@@ -1,0 +1,114 @@
++zsh:1> cargo fuzz --version
+cargo-fuzz 0.13.2
++zsh:1> rustc --version
+rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
++zsh:1> cargo --version
+cargo 1.97.0-nightly (eb9b60f1f 2026-04-24)
++zsh:1> bd show vb-k7bsz vb-3or6p vb-i0fkp vb-1f4h3 vb-87qtk --short
+◐ vb-k7bsz ● P1 Fuzz: assert exact storage codec corruption errors
+◐ vb-3or6p ● P1 Fuzz: add slot-extra and collect hydration targets
+◐ vb-i0fkp ● P1 Fuzz: add close-reopen durability boundary fuzzing
+◐ vb-1f4h3 ● P1 Fuzz: add snapshot-tail and full-journal recovery targets
+◐ vb-87qtk ● P1 Fuzz: make journal event target use shared round-trip oracle
++zsh:1> df -h . /tmp/opencode
+Filesystem        Size  Used Avail Use% Mounted on
+/dev/mapper/root  1.9T  1.1T  689G  62% /home
+tmpfs              62G   47G   15G  76% /tmp
++zsh:1> du -sh target fuzz/target /tmp/opencode
+3.7G	target
+11G	fuzz/target
+15G	/tmp/opencode
++zsh:1> cargo fuzz list
+accessor_traversal
+action_tracker
+admission_flow
+admission_fuzz
+aggregate_artifact_budget
+aggregate_workflow_budget
+binary_payload_fuzz_boundary
+boundary_evidence_reference
+boundary_inventory_parser
+boundary_metadata
+budget_compute
+canonical_digest_ask
+check_doc_taint_consistency_accepts_arbitrary_markdown
+choose_lowering_fuzzer
+compile_source_ast_marks
+compile_workflow_fuzz
+compiled_ir_fuzz
+decode_record
+diagnostic_code_from_str_fuzz
+diagnostic_from_error_fuzz
+expr_bytecode
+expr_eval
+expr_eval_fuzz
+expression_fuzz
+external_input_adapter_fuzz
+extract_terminal
+fuzz_choose_depth
+fuzz_choose_when_parse
+fuzz_collect_lowering
+fuzz_diagnostic_code_from_str
+fuzz_digest_compile
+fuzz_finish_digest_encoding
+fuzz_finish_lowering
+fuzz_for_each_lowering
+fuzz_retry_normalize_ticket
+fuzz_retry_postcard_codec
+fuzz_retry_record_attempt
+fuzz_retry_validate_completion
+fuzz_set_lowering
+fuzz_storage_codec_digest
+fuzz_storage_codec_header
+fuzz_storage_codec_kind_family
+fuzz_storage_codec_payload_corruption
+fuzz_storage_codec_roundtrip
+fuzz_storage_codec_schema_version
+fuzz_wait_lowering
+ipc_decode
+ipc_frame_fuzz
+ipc_frame_fuzz_boundary
+journal_decode
+journal_event_fuzz
+kind_validation
+lex_expr
+parse_workflow_source_fuzz
+recover_runtime_frame_seed_contract
+recovery_decode
+replay_events
+resource_budget
+slot_value_roundtrip
+span_bridge_fuzz
+step_budget_new
+storage_envelope_fuzz_boundary
+strict_yaml_profile
+structured_status_render_hostile
+taint_propagation
+tooling_flux_check_selector
+tooling_guard_zero_parser
+tooling_kani_list_args
+tooling_loom_list_xtask
+vb_f04l_yaml_compiler_compile
+vb_rpch_hydrate_events_fuzz
+vb_rpch_hydrate_snapshot_tail_fuzz
+vb_rpch_replay_events_fuzz
+vb_rpch_seed_dimensions_fuzz
+vb_rpch_slot_extra_collect_fuzz
+vb_vzcuf_PS_001
+vb_vzcuf_PS_002
+vb_vzcuf_PS_003
+vb_vzcuf_PS_004
+vb_vzcuf_PS_005
+vb_vzcuf_PS_006
+vb_vzcuf_PS_007
+vb_vzcuf_PS_008
+vb_vzcuf_PS_009
+verifier_gates
+wait_digest_exhaustive_collision
+wait_digest_sensitivity
+wait_sentinel_collision
+xtask_parse_argv_hostile
+xtask_parse_options_hostile
+yaml_events
+
+exit_status=0

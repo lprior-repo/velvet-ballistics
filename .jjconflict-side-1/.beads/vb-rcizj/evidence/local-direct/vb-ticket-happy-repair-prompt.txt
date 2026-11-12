@@ -1,0 +1,39 @@
+Write only valid Rust replacement for the existing test below. Rename to completion_happy_path_writes_output_and_event. Signature ->Result<(),Box<dyn std::error::Error>>. Existing wf helper Option ->ok_or("missing workflow")?. Existing submit_with_contracts returns unit, do not ?. Real issuedticket via shard.pending_action_get(run).ok_or("missing pendingticket")?. Capturejournalbefore, enqueuefullActionCompletedSlot0I64(42)Cleanencoded2;tickassertOktrue;assert actualjournal grewand containsStepSucceeded{attempt:1,..} and outputslot event if realtypeknownotherwiseavoidinventing. Assertjournal exacteventmatchingActualRuntimeJournalEvent::StepSucceeded {run,step,attempt} pattern, fullframe mayrunremoved aftersingleDono next so can't inspectafter. No fake encode-failure claim: this test is simply happycompletion. No unwrap/expect/panic/allow/index/cast. Actualsourcebelow.
+fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
+    // This test would require forcing postcard serialization to fail.
+    // We test the error path exists and state is unchanged on error.
+    // Note: Actual EncodeFailed forcing would require a custom encoder or oversized value.
+    // This test documents the expected behavior.
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(50);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Verify run is active and in correct state
+    let _state_before = shard
+        .run_state_get_mut(run)
+        .expect("run should exist")
+        .clone();
+
+    // Complete action normally (happy path to verify event structure)
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    // The tick processes the completion - we just verify it doesn't panic
+    assert_eq!(shard.tick(), Ok(true));
+}

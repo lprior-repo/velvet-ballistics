@@ -1,0 +1,31 @@
+Dictionary: 36 entries
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 404464554
+INFO: Loaded 1 modules   (54287 inline 8-bit counters): 54287 [0x55d3a3d7a063, 0x55d3a3d87472), 
+INFO: Loaded 1 PC tables (54287 PCs): 54287 [0x55d3a3d87478,0x55d3a3e5b568), 
+INFO:        1 files found in /home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-validation/present
+INFO: seed corpus: files: 1 min: 54b max: 54b total: 54b rss: 37Mb
+#2	INITED cov: 1488 ft: 1489 corp: 1/54b exec/s: 0 rss: 40Mb
+	NEW_FUNC[1/4]: 0x55d3a3a4a8d0  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f58d0) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+	NEW_FUNC[2/4]: 0x55d3a3c0c280  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x4b7280) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+#3	NEW    cov: 1549 ft: 1798 corp: 2/108b lim: 54 exec/s: 0 rss: 40Mb L: 54/54 MS: 1 CopyPart-
+#4	NEW    cov: 1554 ft: 1804 corp: 3/162b lim: 54 exec/s: 0 rss: 40Mb L: 54/54 MS: 1 ChangeBinInt-
+#10	NEW    cov: 1557 ft: 1808 corp: 4/216b lim: 54 exec/s: 0 rss: 40Mb L: 54/54 MS: 1 ChangeBinInt-
+#11	NEW    cov: 1557 ft: 1825 corp: 5/244b lim: 54 exec/s: 0 rss: 40Mb L: 28/54 MS: 1 CrossOver-
+#15	REDUCE cov: 1557 ft: 1825 corp: 5/233b lim: 54 exec/s: 0 rss: 41Mb L: 43/54 MS: 4 CopyPart-CopyPart-ManualDict-CrossOver- DE: "trigger_manual=\"manual"-
+#18	REDUCE cov: 1557 ft: 1825 corp: 5/224b lim: 54 exec/s: 0 rss: 41Mb L: 45/54 MS: 3 ChangeBit-ChangeBit-CrossOver-
+#24	NEW    cov: 1558 ft: 1826 corp: 6/278b lim: 54 exec/s: 0 rss: 42Mb L: 54/54 MS: 1 ChangeBit-
+#27	REDUCE cov: 1607 ft: 2093 corp: 7/321b lim: 54 exec/s: 0 rss: 42Mb L: 43/54 MS: 3 ChangeByte-ShuffleBytes-CrossOver-
+#28	NEW    cov: 1607 ft: 2103 corp: 8/350b lim: 54 exec/s: 0 rss: 42Mb L: 29/54 MS: 1 CopyPart-
+#38	NEW    cov: 1644 ft: 2436 corp: 9/356b lim: 54 exec/s: 0 rss: 43Mb L: 6/54 MS: 5 PersAutoDict-CMP-ChangeBit-ChangeByte-CrossOver- DE: "trigger_manual=\"manual"-"\376\357\330m"-
+	NEW_FUNC[1/1]: 0x55d3a3a2ca10  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2d7a10) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+#39	NEW    cov: 1660 ft: 2843 corp: 10/385b lim: 54 exec/s: 0 rss: 43Mb L: 29/54 MS: 1 ChangeByte-
+	NEW_FUNC[1/1]: 0x55d3a3bf95e0  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x4a45e0) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+#65	NEW    cov: 1672 ft: 2894 corp: 11/391b lim: 54 exec/s: 0 rss: 43Mb L: 6/54 MS: 1 ChangeBinInt-
+#70	NEW    cov: 1683 ft: 2960 corp: 12/409b lim: 54 exec/s: 0 rss: 43Mb L: 18/54 MS: 5 CrossOver-CrossOver-ChangeByte-ChangeBit-CrossOver-
+#96	REDUCE cov: 1684 ft: 2973 corp: 13/454b lim: 54 exec/s: 0 rss: 44Mb L: 45/54 MS: 1 ChangeBinInt-
+#100	DONE   cov: 1684 ft: 2973 corp: 13/454b lim: 54 exec/s: 0 rss: 44Mb
+###### Recommended dictionary. ######
+"\376\357\330m" # Uses: 1
+###### End of recommended dictionary. ######
+Done 100 runs in 0 second(s)

@@ -1,0 +1,23 @@
+[
+  {
+    "original": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792715326191457833-zstd.stdout",
+    "bytes": 16060480,
+    "sha256": "6b5ed260a97a06f13f62254f760c20a69199573394d628e765875fdda4bb5d5a",
+    "compressed": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792715326191457833-zstd.stdout.zst",
+    "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792715326191457833-zstd.stdout"
+  },
+  {
+    "original": "scratch/gate/ipc_frame_decode-heaptrack-1792715335116260900-zstd.stdout",
+    "bytes": 209320638,
+    "sha256": "676adc75cb324e89de4eba62d0b98639828c6f7bc014604f889f6d9111c8b565",
+    "compressed": "scratch/gate/ipc_frame_decode-heaptrack-1792715335116260900-zstd.stdout.zst",
+    "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/gate/ipc_frame_decode-heaptrack-1792715335116260900-zstd.stdout"
+  },
+  {
+    "original": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792715350129789243-zstd.stdout",
+    "bytes": 17532675,
+    "sha256": "2a979617e744faf0efb25778ff9923cf4695e80441491e2d049c522d35b0d913",
+    "compressed": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792715350129789243-zstd.stdout.zst",
+    "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792715350129789243-zstd.stdout"
+  }
+]

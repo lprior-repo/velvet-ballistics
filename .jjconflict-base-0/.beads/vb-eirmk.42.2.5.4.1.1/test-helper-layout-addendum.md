@@ -1,0 +1,7 @@
+# Test helper filename classification
+
+Preserve frozen e7a83cd4ca94ae9ffa91ea1289f055c2d303ec9a. Parent b682709d4182dfc3a6f0e0c0a95067841dfd0d6f canonical source-length-r19.log reports panic-surface failures in both owned helper files: bound_symbol_duplicate_retry_assertions.rs and bound_symbol_duplicate_retry_fixture.rs. Their cfg(test) parent-module wiring does not qualify their original filenames for the existing scanner's test-file selection.
+
+Rename those two owned files to bound_symbol_duplicate_retry_assertions_tests.rs and bound_symbol_duplicate_retry_fixture_tests.rs, retaining every body byte. Change only their two path attributes in bound_symbol_duplicate_retry_tests.rs. Keep the assertion and fixture module identifiers, all calls, test identity, actual producer/cold recovery route, literal expected values and the private-origin boundary unchanged. No checker, exemption, cfg, suppression, feature, production hook, schema/API or dependency change.
+
+Prove frozen-to-successor helper body SHA256 equality, exact two-string parent delta, unchanged remaining frozen Rust paths and function/file limits after pinned file-only formatting. Execute the actual bash scripts/check-panic-surface.sh and the original one-test native command in the existing explicit owned target with jobs2/wrappers off/-Dwarnings and bounded24G scope. Keep separate raw argv/log/exit receipts, then freeze the successor plus empty child for amended independent CODE/TEST review.

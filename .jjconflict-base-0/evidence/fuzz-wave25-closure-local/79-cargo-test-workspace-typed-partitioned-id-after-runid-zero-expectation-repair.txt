@@ -1,0 +1,13 @@
+COMMAND: cargo test -p velvet-ballistics-workspace-tests --all-features --test restate_typed_partitioned_id_tests
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running tests/restate_typed_partitioned_id_tests.rs (target/debug/deps/restate_typed_partitioned_id_tests-c46af03f0baec310)
+
+running 2 tests
+test explicit_edges_and_stable_record_kinds_hold ... ok
+test generated_typed_partitioned_ids_preserve_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+EXIT_STATUS=0

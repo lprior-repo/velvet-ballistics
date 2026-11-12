@@ -80,6 +80,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
             | RuntimeJournalEvent::RunKilled { .. }
+            | RuntimeJournalEvent::RetryTimerScheduled { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
@@ -88,6 +89,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::StepFailed { .. }
             | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
@@ -97,6 +99,17 @@ impl StorageRuntimeJournal {
         seq: EventSeq,
     ) -> RuntimeResult<Option<JournalEvent>> {
         match event {
+            RuntimeJournalEvent::RetryTimerScheduled { run, step, timer } => {
+                timer.validate()?;
+                let attempt = timer.failed_ticket.run_attempt;
+                Ok(Some(JournalEvent::RetryTimerScheduled {
+                    run,
+                    seq,
+                    step,
+                    attempt,
+                    timer,
+                }))
+            }
             RuntimeJournalEvent::WaitScheduled { run, step } => {
                 Ok(Some(JournalEvent::WaitScheduledEvent {
                     run,
@@ -168,6 +181,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionAbandoned { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::StepFailed { .. }
             | RuntimeJournalEvent::Resumed { .. } => Ok(None),
         }
     }

@@ -1,0 +1,67 @@
+{
+  "scope": "Four-owner current qualification repair only; full190plan unaccepted",
+  "design_before_sha256": "9b3529dffcd966d5854782572101e9c2628c2e3d0e39188b808bb81c9783f03a",
+  "design_after_sha256": "cdb6d341fd36c2196e797be8cd17b3758e112be3c57556d8d4b437089e9c39e6",
+  "files": [
+    {
+      "source": "ownership-repair/qualification-owner-proposals.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/proposals-v1.json",
+      "sha256": "d8353f84d3949a875902db7edabfc15c0f4c46b4b1736508e0a9f33bd5b9652a",
+      "bytes": 5290
+    },
+    {
+      "source": "ownership-repair/qualification-owner-proposals-v2.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/proposals-v2.json",
+      "sha256": "a4e1de27f65df6195071e7b09af862d3066c87cca19e896e4f6cad2261a84dc2",
+      "bytes": 31038
+    },
+    {
+      "source": "ownership-repair/creation-receipts.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/creation-receipts.json",
+      "sha256": "af6df1425f2ccdb70382397e8296778810cae2411f9671e0a9977b4a4a7af2a5",
+      "bytes": 39214
+    },
+    {
+      "source": "ownership-repair/remap-audit.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/remap-audit.json",
+      "sha256": "11ca9181fa814e40ce431fc734b455d3369f12bbf44ce037de3c3765e736b1de",
+      "bytes": 4976
+    },
+    {
+      "source": "ownership-repair-code-review.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/planning-code-v1.json",
+      "sha256": "b40b4043c83d072ef869025527d0db8991592766d89abcbc88daf2957c951d33",
+      "bytes": 10440
+    },
+    {
+      "source": "ownership-repair-code-review-v2.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/planning-code-v2.json",
+      "sha256": "a20dc56e3dc125f6728857221d28d27534614afebf85b316cb357832b8def89a",
+      "bytes": 7978
+    },
+    {
+      "source": "ownership-repair-post-code-review.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/post-apply-code.json",
+      "sha256": "b0db92b0fa3d474aa3a9718b1f074a66eaf4afcec22e9193f03cbc71e1fd5715",
+      "bytes": 6396
+    },
+    {
+      "source": "ownership-repair-test-review.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/planning-test-v1.json",
+      "sha256": "aa74cf79bbf5d5d0908d836c14d5f88d318c4b791573e5c80031eeaba0b67064",
+      "bytes": 12264
+    },
+    {
+      "source": "ownership-repair-test-review-v2.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/planning-test-v2.json",
+      "sha256": "54fb19cbff2188d7192df3d209d1b2bdf221ab039a7b451c5f823830d4e09883",
+      "bytes": 9143
+    },
+    {
+      "source": "ownership-repair-post-test-review.json",
+      "archive": ".beads/vb-eirmk.12/ownership-repair/post-apply-test.json",
+      "sha256": "9de68aa7e9bdc5f9cbe3de6076c7768a03a0ce785f8ad12fb29bb6db674b2269",
+      "bytes": 8929
+    }
+  ]
+}

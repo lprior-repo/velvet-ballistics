@@ -1,0 +1,19 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3129538252
+INFO: Loaded 1 modules   (901 inline 8-bit counters): 901 [0x55cc9f7c08e3, 0x55cc9f7c0c68), 
+INFO: Loaded 1 PC tables (901 PCs): 901 [0x55cc9f7c0c68,0x55cc9f7c44b8), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/tooling_flux_check_selector
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 40 ft: 41 corp: 1/1b exec/s: 0 rss: 32Mb
+	NEW_FUNC[1/5]: 0x55cc9f7522c0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/tooling_flux_check_selector+0x1602c0) (BuildId: 1c05f96f6056bd68b1e5773d8f70217cd82e1dcb)
+	NEW_FUNC[2/5]: 0x55cc9f7537a0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/tooling_flux_check_selector+0x1617a0) (BuildId: 1c05f96f6056bd68b1e5773d8f70217cd82e1dcb)
+#5	NEW    cov: 96 ft: 106 corp: 2/2b lim: 4 exec/s: 0 rss: 32Mb L: 1/1 MS: 3 CopyPart-ShuffleBytes-ChangeBinInt-
+#7	NEW    cov: 97 ft: 107 corp: 3/3b lim: 4 exec/s: 7 rss: 32Mb L: 1/1 MS: 2 ShuffleBytes-ChangeByte-
+#8	NEW    cov: 98 ft: 111 corp: 4/5b lim: 4 exec/s: 8 rss: 32Mb L: 2/2 MS: 1 CrossOver-
+#10	NEW    cov: 99 ft: 113 corp: 5/6b lim: 4 exec/s: 10 rss: 32Mb L: 1/2 MS: 2 ShuffleBytes-ChangeBit-
+#11	NEW    cov: 99 ft: 114 corp: 6/8b lim: 4 exec/s: 11 rss: 32Mb L: 2/2 MS: 1 InsertByte-
+#12	NEW    cov: 99 ft: 117 corp: 7/11b lim: 4 exec/s: 12 rss: 32Mb L: 3/3 MS: 1 CrossOver-
+#13	NEW    cov: 99 ft: 118 corp: 8/13b lim: 4 exec/s: 13 rss: 32Mb L: 2/3 MS: 1 CopyPart-
+#23	DONE   cov: 99 ft: 118 corp: 8/13b lim: 4 exec/s: 11 rss: 32Mb
+Done 23 runs in 2 second(s)

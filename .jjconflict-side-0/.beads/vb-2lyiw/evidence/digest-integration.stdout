@@ -1,0 +1,67 @@
+
+running 5 tests
+test canonical_digest_is_deterministic_when_called_multiple_times_with_ask_and_timeout ... ok
+test canonical_digest_is_deterministic_when_called_multiple_times_with_set_finish_source ... ok
+test canonical_digest_is_deterministic_when_called_multiple_times_with_ask_empty_prompt_none_timeout ... ok
+test canonical_digest_produces_same_digest_for_same_fields_different_declaration_order ... ok
+test digest_step_primitive_hashes_ask_fields_in_deterministic_order_same_source_twice ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test compiled_workflow_digest_matches_canonical_digest_for_ask_workflow ... ok
+test compiled_workflow_digest_is_deterministic_across_parses ... ok
+test compiled_workflow_digest_unchanged_for_set_finish_workflow ... ok
+test compiled_workflow_digests_differ_when_workflow_name_differs_in_yaml ... ok
+test compiled_workflow_digests_differ_when_ask_prompt_differs_in_yaml ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test finish_string_vs_integer_type_tag ... ok
+test author_value_text_vs_sequence_boundary ... ok
+test author_value_sequence_vs_mapping_boundary ... ok
+test do_action_input_fields_hashed ... ok
+test input_declarations_hashed ... ok
+test save_value_hashed ... ok
+test optional_field_none_vs_some_discriminant ... ok
+test yaml_key_order_canonical ... ok
+test nested_step_id_output_framing_collision_regression ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test canonical_digest_finish_string_vs_integer_produce_distinct_digests ... ok
+test canonical_digest_is_deterministic_for_finish_source ... ok
+test canonical_digest_is_deterministic_for_set_finish_source ... ok
+test canonical_digest_produces_distinct_digests_when_finish_result_string_differs ... ok
+test canonical_digest_is_deterministic_for_set_only_source ... ok
+test canonical_digest_produces_distinct_digests_when_set_output_differs ... ok
+test canonical_digest_produces_distinct_digests_when_finish_result_integer_differs ... ok
+test canonical_digest_produces_distinct_digests_when_set_value_differs ... ok
+test canonical_digest_produces_valid_digest_for_finish_integer_only_source ... ok
+test canonical_digest_produces_distinct_digests_when_step_order_differs_set_vs_finish ... ok
+test canonical_digest_produces_valid_digest_for_finish_string_only_source ... ok
+test canonical_digest_produces_valid_digest_for_set_only_source ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test canonical_digest_is_deterministic_when_source_has_no_steps ... ok
+test canonical_digest_produces_distinct_digests_when_name_differs ... ok
+test canonical_digest_produces_distinct_digests_when_step_id_differs ... ok
+test canonical_digest_produces_distinct_digests_when_step_is_added ... ok
+test canonical_digest_produces_distinct_digests_when_trigger_is_manual_vs_webhook ... ok
+test canonical_digest_produces_distinct_digests_when_step_order_differs_ask_set_vs_set_ask ... ok
+test canonical_digest_produces_distinct_digests_when_version_differs ... ok
+test canonical_digest_produces_distinct_digests_when_trigger_schedule_cron_differs ... ok
+test canonical_digest_produces_distinct_digests_when_trigger_is_manual_vs_event ... ok
+test canonical_digest_produces_distinct_digests_when_step_order_differs_within_same_type ... ok
+test canonical_digest_produces_valid_digest_when_source_has_no_steps ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

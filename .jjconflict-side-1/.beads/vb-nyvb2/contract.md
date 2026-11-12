@@ -1,0 +1,36 @@
+**Contract:**
+
+1. **Unused snap (runtime_tests.rs:767):** Consume the counters snapshot with a meaningful pre-completion assertion (`snap.runs_completed == 0`) rather than discarding it.
+2. **Unnecessary mut (chunk_001.rs:346,394):** Remove `mut` from `let mut shard = Shard::new(...)` declarations where the shard is only passed by reference to validation methods.
+3. **Unnecessary mut (contract_validation_tests.rs:163,182,203,224,259,291,349,367,442,462,484,505,530):** Remove `mut` from all `let mut shard = test_shard();` declarations where the shard is only used for validation (not mutation).
+4. **Preservation:** All existing assertions, test names, and test logic remain unchanged. No lint suppression attributes added.
+5. **Verification:** All 1914 existing runtime lib tests pass with `-D warnings` enabled.
+
+**Implementation:**
+
+```bash
+# Fix 1: Consume unused snap with meaningful pre-completion assertion
+sed -i '767s/let snap = runtime.counters_snapshot();/let snap = runtime.counters_snapshot();\n        assert_eq!(snap.runs_completed, 0, "no runs completed before action completion");/' crates/vb_runtime/src/runtime_tests.rs
+
+# Fix 2: Remove unnecessary mut from chunk_001.rs
+sed -i '346s/let mut shard = Shard::new/let shard = Shard::new/' crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs
+sed -i '394s/let mut shard = Shard::new/let shard = Shard::new/' crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs
+
+# Fix 3: Remove unnecessary mut from contract_validation_tests.rs
+for line in 163 182 203 224 259 291 349 367 442 462 484 505 530; do
+    sed -i "${line}s/let mut shard = test_shard();/let shard = test_shard();/" crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs
+done
+```
+
+**Verification:**
+
+```bash
+# Verify no warnings remain
+cd crates/vb_runtime && cargo test --lib 2>&1 | grep -E "warning|error" || echo "No warnings or errors"
+
+# Verify all tests pass
+cd crates/vb_runtime && cargo test --lib 2>&1 | tail -1
+```
+Coordinator acceptance constraints: illustrative sed commands and piped grep/tail commands are not authoritative and will not run. Use actual immutable binding lines and execute tests capturing real exit status with RUSTFLAGS=-D warnings. Consume pre-completion snapshot by asserting runs_completed=0. No original assertion may be removed or weakened.
+
+Implementation application: JSON used unqualified runtime_tests.rs for one target; coordinator resolved it to the exact contract path crates/vb_runtime/src/runtime_tests.rs. Fifteen unnecessary mut tokens removed and one pre-completion assertion added, all original assertions retained.

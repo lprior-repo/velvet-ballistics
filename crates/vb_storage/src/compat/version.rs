@@ -13,7 +13,7 @@ pub struct SchemaVersion {
 
 /// Current compiled-IR schema version. Admission stamps it onto accepted
 /// artifacts; the admission/dispatch gates classify against it.
-pub const CURRENT_IR_VERSION: SchemaVersion = SchemaVersion::new(1, 0, 0);
+pub const CURRENT_IR_VERSION: SchemaVersion = SchemaVersion::new(2, 0, 0);
 
 impl std::fmt::Display for SchemaVersion {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-my3b3-deepseek-qi37",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_qi37_4_2_strict_runtime_admission"
+  ],
+  "exit_code": 0,
+  "seconds": 0.669,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-my3b3/evidence/qi37-4-2-fifth"
+}

@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission.rs:101:     /// Artifact IR is size-bounded claim flag.
+crates/vb_storage/src/admission.rs:102:     pub(crate) bounded_claimed: bool,
+crates/vb_storage/src/admission.rs:103:     /// Artifact taint-safety claim flag.
+crates/vb_storage/src/admission.rs:104:     pub(crate) taint_safe_claimed: bool,
+crates/vb_storage/src/admission.rs:105:     /// Artifact retry-safety claim flag.
+crates/vb_storage/src/admission.rs:106:     pub(crate) retry_safe_claimed: bool,
+crates/vb_storage/src/admission.rs:107:     /// Artifact idempotency claim flag.
+crates/vb_storage/src/admission.rs:108:     pub(crate) idempotency_verified_claimed: bool,
+crates/vb_storage/src/admission.rs:109:     /// Artifact replayability claim flag.
+crates/vb_storage/src/admission.rs:110:     pub(crate) replayable_claimed: bool,
+crates/vb_storage/src/admission.rs:111: }
+crates/vb_storage/src/admission.rs:112: 
+crates/vb_storage/src/admission.rs:113: pub(crate) const fn verification_proof_core(
+crates/vb_storage/src/admission.rs:114:     digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission.rs:115:     _gate_count: u8,
+crates/vb_storage/src/admission.rs:116:     _durable: bool,
+crates/vb_storage/src/admission.rs:117: ) -> VerificationProofCore {
+crates/vb_storage/src/admission.rs:118:     VerificationProofCore {
+crates/vb_storage/src/admission.rs:119:         digest,
+crates/vb_storage/src/admission.rs:120:         gate_count: 0,
+crates/vb_storage/src/admission.rs:121:         durable: false,
+crates/vb_storage/src/admission.rs:122:         bounded_claimed: false,
+crates/vb_storage/src/admission.rs:123:         taint_safe_claimed: false,
+crates/vb_storage/src/admission.rs:124:         retry_safe_claimed: false,
+crates/vb_storage/src/admission.rs:125:         idempotency_verified_claimed: false,
+crates/vb_storage/src/admission.rs:126:         replayable_claimed: false,
+crates/vb_storage/src/admission.rs:127:     }
+crates/vb_storage/src/admission.rs:128: }
+crates/vb_storage/src/admission.rs:129: 
+crates/vb_storage/src/admission.rs:130: impl VerificationProof {
+crates/vb_storage/src/admission.rs:131:     /// Creates unverified legacy metadata. Supplied counts and durability are
+crates/vb_storage/src/admission.rs:132:     /// intentionally ignored: caller assertions cannot mint verification.
+crates/vb_storage/src/admission.rs:133:     /// Use `prepare_compiled_artifact` for checked artifact construction.
+crates/vb_storage/src/admission.rs:134:     #[must_use]
+crates/vb_storage/src/admission.rs:135:     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
+crates/vb_storage/src/admission.rs:136:         let core = verification_proof_core(digest, gate_count, durable);
+crates/vb_storage/src/admission.rs:137:         Self {
+crates/vb_storage/src/admission.rs:138:             digest: core.digest,
+crates/vb_storage/src/admission.rs:139:             gate_count: core.gate_count,
+crates/vb_storage/src/admission.rs:140:             durable: core.durable,
+crates/vb_storage/src/admission.rs:141:             bounded_claimed: core.bounded_claimed,
+crates/vb_storage/src/admission.rs:142:             taint_safe_claimed: core.taint_safe_claimed,
+crates/vb_storage/src/admission.rs:143:             retry_safe_claimed: core.retry_safe_claimed,
+crates/vb_storage/src/admission.rs:144:             idempotency_verified_claimed: core.idempotency_verified_claimed,
+crates/vb_storage/src/admission.rs:145:             replayable_claimed: core.replayable_claimed,
+crates/vb_storage/src/admission.rs:146:             idempotency_keyed: Box::new([]),
+crates/vb_storage/src/admission.rs:147:             idempotency_attested: Box::new([]),
+crates/vb_storage/src/admission.rs:148:             warnings: Vec::new(),
+crates/vb_storage/src/admission.rs:149:             evidence: vb_core::artifact::ArtifactEvidence::Unverified,
+crates/vb_storage/src/admission.rs:150:         }
+crates/vb_storage/src/admission.rs:151:     }
+crates/vb_storage/src/admission.rs:152: }
+crates/vb_storage/src/admission.rs:153: 
+crates/vb_storage/src/admission.rs:154: fn zero_workflow_digest() -> vb_core::WorkflowDigest {
+crates/vb_storage/src/admission.rs:155:     vb_core::WorkflowDigest::from_bytes([0u8; 32])
+crates/vb_storage/src/admission.rs:156: }
+crates/vb_storage/src/admission.rs:157: 
+crates/vb_storage/src/admission.rs:158: /// Computes the content digest for an accepted artifact envelope.
+crates/vb_storage/src/admission.rs:159: ///
+crates/vb_storage/src/admission.rs:160: /// The artifact carries its own digest and the proof repeats that digest, so
+crates/vb_storage/src/admission.rs:161: /// hashing the final postcard bytes directly would create an unsolvable
+crates/vb_storage/src/admission.rs:162: /// self-reference. This mirrors `CompiledWorkflow` digesting: the two
+crates/vb_storage/src/admission.rs:163: /// self-digest fields are zeroed, the canonical envelope bytes are serialized,
+crates/vb_storage/src/admission.rs:164: /// and BLAKE3 binds the remaining artifact payload, proof, policy, capability,
+crates/vb_storage/src/admission.rs:165: /// and compiled IR bytes.
+crates/vb_storage/src/admission.rs:166: pub fn accepted_artifact_digest(
+crates/vb_storage/src/admission.rs:167:     artifact: &AcceptedArtifact,
+crates/vb_storage/src/admission.rs:168: ) -> Result<vb_core::WorkflowDigest, JournalError> {
+crates/vb_storage/src/admission.rs:169:     let mut canonical = artifact.clone();
+crates/vb_storage/src/admission.rs:170:     let zero = zero_workflow_digest();
+crates/vb_storage/src/admission.rs:171:     canonical.digest = zero;
+crates/vb_storage/src/admission.rs:172:     canonical.verification.digest = zero;
+crates/vb_storage/src/admission.rs:173:     let bytes = postcard::to_allocvec(&canonical).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission.rs:174:     Ok(vb_core::WorkflowDigest::from_bytes(
+crates/vb_storage/src/admission.rs:175:         blake3::hash(&bytes).into(),
+crates/vb_storage/src/admission.rs:176:     ))
+crates/vb_storage/src/admission.rs:177: }
+crates/vb_storage/src/admission.rs:178: 
+crates/vb_storage/src/admission.rs:179: pub(crate) fn bind_artifact_digest(artifact: &mut AcceptedArtifact) -> Result<(), JournalError> {
+crates/vb_storage/src/admission.rs:180:     let digest = accepted_artifact_digest(artifact)?;
+crates/vb_storage/src/admission.rs:181:     artifact.digest = digest;
+crates/vb_storage/src/admission.rs:182:     artifact.verification.digest = digest;
+crates/vb_storage/src/admission.rs:183:     Ok(())
+crates/vb_storage/src/admission.rs:184: }
+crates/vb_storage/src/admission.rs:185: 
+crates/vb_storage/src/admission.rs:186: /// Accepted artifact record produced by the admission flow.
+crates/vb_storage/src/admission.rs:187: ///
+crates/vb_storage/src/admission.rs:188: /// GAP-002/GAP-003 FIX: Added `source_digest` and `policy_digest` fields to satisfy
+crates/vb_storage/src/admission.rs:189: /// Backend DoD requirement for durable evidence chain binding.
+crates/vb_storage/src/admission.rs:190: ///
+crates/vb_storage/src/admission.rs:191: /// Tracks the binding between a run and its accepting artifact per Backend DoD:
+crates/vb_storage/src/admission.rs:192: /// - `source_digest` binds the run to the workflow source that produced the artifact
+crates/vb_storage/src/admission.rs:193: /// - `policy_digest` binds the run to the policy/resource contract in effect
+crates/vb_storage/src/admission.rs:194: ///
+crates/vb_storage/src/admission.rs:195: /// GAP-004 FIX: Per-action digests are NOT added because actions are already
+crates/vb_storage/src/admission.rs:196: /// cryptographically bound via the `CompiledWorkflow` digest. Each action's
+crates/vb_storage/src/admission.rs:197: /// bytecode and parameters are part of the workflow structure that is hashed
+crates/vb_storage/src/admission.rs:198: /// to produce the workflow digest. The workflow digest therefore serves as
+crates/vb_storage/src/admission.rs:199: /// a composite binding for all actions in the workflow.
+crates/vb_storage/src/admission.rs:200: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

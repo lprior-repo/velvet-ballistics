@@ -1,0 +1,79 @@
+{
+  "frozen_dictionary_commit": "81315959b5275099f7d6265b6576ac95478c181b",
+  "compiled_binary_source": "42fd94f21c3615c8fbe322806a76beea671b6d16",
+  "checks": [
+    {
+      "dictionary": "fuzz/fuzz_targets/decode_record.dict",
+      "matching_binary": true,
+      "actual_binary": "decode_record",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 17 entries",
+      "done_line": "Done 100 runs in 0 second(s)"
+    },
+    {
+      "dictionary": "fuzz/fuzz_targets/expression.dict",
+      "matching_binary": false,
+      "actual_binary": "decode_record",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 28 entries",
+      "done_line": "Done 100 runs in 0 second(s)"
+    },
+    {
+      "dictionary": "fuzz/fuzz_targets/ipc_frame.dict",
+      "matching_binary": false,
+      "actual_binary": "decode_record",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 16 entries",
+      "done_line": "Done 100 runs in 0 second(s)"
+    },
+    {
+      "dictionary": "fuzz/fuzz_targets/journal_decode.dict",
+      "matching_binary": true,
+      "actual_binary": "journal_decode",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 10 entries",
+      "done_line": "Done 100 runs in 0 second(s)"
+    },
+    {
+      "dictionary": "fuzz/fuzz_targets/journal_event.dict",
+      "matching_binary": false,
+      "actual_binary": "decode_record",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 3 entries",
+      "done_line": "Done 100 runs in 0 second(s)"
+    },
+    {
+      "dictionary": "fuzz/fuzz_targets/kind_validation.dict",
+      "matching_binary": true,
+      "actual_binary": "kind_validation",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 10 entries",
+      "done_line": "Done 100 runs in 1 second(s)"
+    },
+    {
+      "dictionary": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.dict",
+      "matching_binary": true,
+      "actual_binary": "vb_f04l_yaml_compiler_compile",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 36 entries",
+      "done_line": "Done 100 runs in 0 second(s)"
+    },
+    {
+      "dictionary": "fuzz/fuzz_targets/vb_storage_codec.dict",
+      "matching_binary": true,
+      "actual_binary": "vb_storage_codec",
+      "exit_code": 0,
+      "parse_error": false,
+      "dictionary_line": "Dictionary: 9 entries",
+      "done_line": "Done 100 runs in 0 second(s)"
+    }
+  ],
+  "scope": "All8 actual parser checks, matching target100-run smoke for5 names, fallbackdecode_record for3unmatchednames is parser applicability only."
+}

@@ -1,0 +1,2 @@
+{"severity":"MINOR","obligation":"VERUS-INV-001","location":".beads/vb-0253.1/formal-waivers.jsonl","problem":"Verus not executable against ArrayQueue-backed live queue boundary","decision":"WAIVED_WITH_COMPENSATING_EVIDENCE"}
+{"severity":"MINOR","obligation":"VERUS-INV-002","location":".beads/vb-0253.1/formal-waivers.jsonl","problem":"Length accessor proof covered by tests rather than Verus binding","decision":"WAIVED_WITH_COMPENSATING_EVIDENCE"}

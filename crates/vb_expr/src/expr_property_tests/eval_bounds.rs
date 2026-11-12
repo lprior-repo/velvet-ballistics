@@ -90,32 +90,30 @@ fn be_division_depth_is_two() {
 }
 
 // ---------------------------------------------------------------------------
-// BE-9: eval_binary_op with mixed I64/F64 types promotes to F64 (vb-cofe1)
+// BE-9: eval_binary_op with mixed I64/F64 types returns TypeMismatch
 // ---------------------------------------------------------------------------
 
 proptest! {
     #[test]
-    fn be_eval_add_i64_plus_f64_promotes_to_f64(i in any::<i64>()) {
+    fn be_eval_add_i64_plus_f64_promotes(i in any::<i64>()) {
         let f64_val = FiniteF64::new(1.5).expect("valid finite f64");
         let result = eval_binary_op(
             BinaryOp::Add,
             SlotValue::I64(i),
             SlotValue::F64(f64_val),
         );
-        let is_f64 = matches!(result, Ok(SlotValue::F64(_)));
-        prop_assert!(is_f64, "mixed I64 + F64 must promote to F64");
+        prop_assert_eq!(result, FiniteF64::new(FiniteF64::from_i64(i).get() + 1.5).map(SlotValue::F64).map_err(crate::ExprError::from));
     }
 
     #[test]
-    fn be_eval_sub_f64_minus_i64_promotes_to_f64(i in any::<i64>()) {
+    fn be_eval_sub_f64_minus_i64_promotes(i in any::<i64>()) {
         let f64_val = FiniteF64::new(1.5).expect("valid finite f64");
         let result = eval_binary_op(
             BinaryOp::Sub,
             SlotValue::F64(f64_val),
             SlotValue::I64(i),
         );
-        let is_f64 = matches!(result, Ok(SlotValue::F64(_)));
-        prop_assert!(is_f64, "mixed F64 - I64 must promote to F64");
+        prop_assert_eq!(result, FiniteF64::new(1.5 - FiniteF64::from_i64(i).get()).map(SlotValue::F64).map_err(crate::ExprError::from));
     }
 }
 

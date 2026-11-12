@@ -1,0 +1,75 @@
++zsh:1> cargo test --workspace --all-features --no-run
+   Compiling getrandom v0.3.4
+   Compiling fnv v1.0.7
+   Compiling ppv-lite86 v0.2.21
+   Compiling wait-timeout v0.2.1
+   Compiling bit-vec v0.8.0
+   Compiling quick-error v1.2.3
+   Compiling unarray v0.1.4
+   Compiling logos-codegen v0.15.1
+   Compiling rusty-fork v0.3.1
+   Compiling ahash v0.8.12
+   Compiling rand_core v0.9.5
+   Compiling bit-set v0.8.0
+   Compiling rand_chacha v0.9.0
+   Compiling rand_xorshift v0.4.0
+   Compiling rand v0.9.4
+   Compiling serde-saphyr v0.0.25
+   Compiling logos-derive v0.15.1
+   Compiling proptest v1.11.0
+   Compiling logos v0.15.1
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/xtask)
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.88s
+  Executable unittests src/lib.rs (target/debug/deps/fuzz_lib-e7d418a2208889b7)
+  Executable tests/proptest_digest_coherence.rs (target/debug/deps/proptest_digest_coherence-f49cda0ba8903631)
+  Executable tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-aa8d7ff7e1d1d55b)
+  Executable tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-d248e888f385cb01)
+  Executable tests/proptest_roundtrip_determinism.rs (target/debug/deps/proptest_roundtrip_determinism-c59e8c8ab7470db3)
++zsh:1> cargo test --workspace --all-features
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/fuzz_lib-e7d418a2208889b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/proptest_digest_coherence.rs (target/debug/deps/proptest_digest_coherence-f49cda0ba8903631)
+
+running 1 test
+test proptest_workflow_digest_coherence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-aa8d7ff7e1d1d55b)
+
+running 2 tests
+test proptest_validate_frame_magic_typed ... ok
+test proptest_ipc_frame_errors_are_typed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.54s
+
+     Running tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-d248e888f385cb01)
+
+running 1 test
+test proptest_decode_record_errors_are_typed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/proptest_roundtrip_determinism.rs (target/debug/deps/proptest_roundtrip_determinism-c59e8c8ab7470db3)
+
+running 2 tests
+test proptest_step_started_roundtrip ... ok
+test proptest_journal_event_roundtrip ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests fuzz_lib
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit_status=0

@@ -1,0 +1,1 @@
+{"state":6,"status":"approved","severity":"none","finding":"previous direct-gate and verify-standard blockers repaired","evidence":["scripts/check-ignored-fallible-results.sh exit 0","moon run :verify-standard exit 0"]}

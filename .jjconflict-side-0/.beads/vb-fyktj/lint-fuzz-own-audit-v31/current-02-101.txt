@@ -1,0 +1,80 @@
+crates/vb_ipc/src/frame_types.rs:101:             .read_u64::<LittleEndian>()
+crates/vb_ipc/src/frame_types.rs:102:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:103:         let payload_len = cursor
+crates/vb_ipc/src/frame_types.rs:104:             .read_u32::<LittleEndian>()
+crates/vb_ipc/src/frame_types.rs:105:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:106:         let payload_len_usize = crate::error::u32_to_usize(payload_len)?;
+crates/vb_ipc/src/frame_types.rs:107:         if payload_len_usize > max_payload.get() {
+crates/vb_ipc/src/frame_types.rs:108:             return Err(IpcError::PayloadTooLarge {
+crates/vb_ipc/src/frame_types.rs:109:                 actual: payload_len_usize,
+crates/vb_ipc/src/frame_types.rs:110:                 limit: max_payload.get(),
+crates/vb_ipc/src/frame_types.rs:111:             });
+crates/vb_ipc/src/frame_types.rs:112:         }
+crates/vb_ipc/src/frame_types.rs:113: 
+crates/vb_ipc/src/frame_types.rs:114:         Ok(Self {
+crates/vb_ipc/src/frame_types.rs:115:             command,
+crates/vb_ipc/src/frame_types.rs:116:             flags,
+crates/vb_ipc/src/frame_types.rs:117:             correlation,
+crates/vb_ipc/src/frame_types.rs:118:             payload_len,
+crates/vb_ipc/src/frame_types.rs:119:         })
+crates/vb_ipc/src/frame_types.rs:120:     }
+crates/vb_ipc/src/frame_types.rs:121: }
+crates/vb_ipc/src/frame_types.rs:122: 
+crates/vb_ipc/src/frame_types.rs:123: /// Decoded IPC frame with bounded postcard payload bytes.
+crates/vb_ipc/src/frame_types.rs:124: #[derive(Debug, Clone, PartialEq, Eq)]
+crates/vb_ipc/src/frame_types.rs:125: pub struct IpcFrame {
+crates/vb_ipc/src/frame_types.rs:126:     header: IpcFrameHeader,
+crates/vb_ipc/src/frame_types.rs:127:     payload: BoundedPayload,
+crates/vb_ipc/src/frame_types.rs:128: }
+crates/vb_ipc/src/frame_types.rs:129: 
+crates/vb_ipc/src/frame_types.rs:130: impl IpcFrame {
+crates/vb_ipc/src/frame_types.rs:131:     /// Builds a frame after enforcing header/payload length agreement.
+crates/vb_ipc/src/frame_types.rs:132:     pub fn new(
+crates/vb_ipc/src/frame_types.rs:133:         header: IpcFrameHeader,
+crates/vb_ipc/src/frame_types.rs:134:         payload: Bytes,
+crates/vb_ipc/src/frame_types.rs:135:         max_payload: MaxPayloadBytes,
+crates/vb_ipc/src/frame_types.rs:136:     ) -> Result<Self, IpcError> {
+crates/vb_ipc/src/frame_types.rs:137:         let actual_len = payload.len();
+crates/vb_ipc/src/frame_types.rs:138:         let expected_len = crate::error::u32_to_usize(header.payload_len)?;
+crates/vb_ipc/src/frame_types.rs:139:         if actual_len != expected_len {
+crates/vb_ipc/src/frame_types.rs:140:             return Err(IpcError::PayloadLengthMismatch {
+crates/vb_ipc/src/frame_types.rs:141:                 header: expected_len,
+crates/vb_ipc/src/frame_types.rs:142:                 actual: actual_len,
+crates/vb_ipc/src/frame_types.rs:143:             });
+crates/vb_ipc/src/frame_types.rs:144:         }
+crates/vb_ipc/src/frame_types.rs:145: 
+crates/vb_ipc/src/frame_types.rs:146:         Ok(Self {
+crates/vb_ipc/src/frame_types.rs:147:             header,
+crates/vb_ipc/src/frame_types.rs:148:             payload: BoundedPayload::new(payload, max_payload)?,
+crates/vb_ipc/src/frame_types.rs:149:         })
+crates/vb_ipc/src/frame_types.rs:150:     }
+crates/vb_ipc/src/frame_types.rs:151: 
+crates/vb_ipc/src/frame_types.rs:152:     /// Returns the decoded frame header.
+crates/vb_ipc/src/frame_types.rs:153:     #[must_use]
+crates/vb_ipc/src/frame_types.rs:154:     pub const fn header(&self) -> IpcFrameHeader {
+crates/vb_ipc/src/frame_types.rs:155:         self.header
+crates/vb_ipc/src/frame_types.rs:156:     }
+crates/vb_ipc/src/frame_types.rs:157: 
+crates/vb_ipc/src/frame_types.rs:158:     /// Returns bounded postcard payload bytes.
+crates/vb_ipc/src/frame_types.rs:159:     #[must_use]
+crates/vb_ipc/src/frame_types.rs:160:     pub const fn payload(&self) -> &BoundedPayload {
+crates/vb_ipc/src/frame_types.rs:161:         &self.payload
+crates/vb_ipc/src/frame_types.rs:162:     }
+crates/vb_ipc/src/frame_types.rs:163: }
+crates/vb_ipc/src/frame_types.rs:164: 
+crates/vb_ipc/src/frame_types.rs:165: /// Decodes a fixed header and already-read payload bytes into a bounded frame.
+crates/vb_ipc/src/frame_types.rs:166: pub fn decode_frame(
+crates/vb_ipc/src/frame_types.rs:167:     header: &[u8; IPC_HEADER_LEN],
+crates/vb_ipc/src/frame_types.rs:168:     payload: Bytes,
+crates/vb_ipc/src/frame_types.rs:169:     max_payload: MaxPayloadBytes,
+crates/vb_ipc/src/frame_types.rs:170: ) -> Result<IpcFrame, IpcError> {
+crates/vb_ipc/src/frame_types.rs:171:     IpcFrame::new(
+crates/vb_ipc/src/frame_types.rs:172:         IpcFrameHeader::decode(header, max_payload)?,
+crates/vb_ipc/src/frame_types.rs:173:         payload,
+crates/vb_ipc/src/frame_types.rs:174:         max_payload,
+crates/vb_ipc/src/frame_types.rs:175:     )
+crates/vb_ipc/src/frame_types.rs:176: }
+crates/vb_ipc/src/frame_types.rs:177: 
+crates/vb_ipc/src/frame_types.rs:178: #[cfg(test)]
+crates/vb_ipc/src/frame_types.rs:179: #[path = "frame_types/tests.rs"]
+crates/vb_ipc/src/frame_types.rs:180: mod tests;

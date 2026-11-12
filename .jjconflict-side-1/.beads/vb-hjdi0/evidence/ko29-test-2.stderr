@@ -1,0 +1,14 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair/crates/workspace_tests)
+error[E0425]: cannot find function `prepare_compiled_artifact` in this scope
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:25:5
+   |
+25 |     prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+ 5 + use vb_storage::admission::prepare_compiled_artifact;
+   |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 1 previous error

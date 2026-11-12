@@ -1,0 +1,7 @@
+{"obligation":"PO-IDEM-ADMIT-001","command":"rtk cargo test -p vb_runtime admission::tests::admit_artifact_run","status":"PASS","evidence":"7 passed; includes missing idempotency gate rejection"}
+{"obligation":"PO-IDEM-ADMIT-002","command":"rtk cargo test -p vb_runtime admission::tests::admit_artifact_run","status":"PASS","evidence":"7 passed; includes missing keyed attestation rejection"}
+{"obligation":"PO-IDEM-ADMIT-003","command":"rtk cargo test -p vb_runtime admission::tests::admit_artifact_run","status":"PASS","evidence":"7 passed; includes RunAdmission attested action carry"}
+{"obligation":"PO-IDEM-STORAGE-001","command":"rtk cargo test -p vb_storage admission::tests::submit_artifact","status":"PASS","evidence":"7 passed; includes evidence derivation and invalid contract rejection"}
+{"obligation":"PO-IDEM-PARITY-001","command":"rtk cargo kani -p vb_compile --harness idempotency_gate_parity","status":"PASS","evidence":"VERIFICATION:- SUCCESSFUL; 1 harness verified; all 45 combinations"}
+{"obligation":"CI-CANONICAL","command":"moon ci","status":"PASS","evidence":"20 tasks completed in 4m 48s 923ms"}
+{"obligation":"ALL_TARGETS_CLIPPY","command":"rtk cargo clippy -p vb_runtime -p vb_storage --all-targets -- -D warnings -D clippy::unwrap_used -D clippy::panic -D clippy::expect_used","status":"DEFERRED_GLOBAL","evidence":"291 errors in pre-existing vb_storage tests; not touched source; source clippy passed"}

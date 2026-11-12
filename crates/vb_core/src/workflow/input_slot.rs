@@ -52,7 +52,7 @@ pub enum InputSlotKind {
 /// Source names are intentionally excluded; the compiler emits only numeric
 /// references so the runtime never pays for string lookups on hot paths.
 /// The `kind` field describes the runtime value shape held at that slot index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledInputSlot {
     /// Numeric slot index.
     pub slot: SlotIdx,

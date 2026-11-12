@@ -1,5 +1,7 @@
 use super::step_once;
-use super::test_support::{ensure_equal, finish_node, nop_then_finish_workflow, test_frame};
+use super::test_support::{
+    ensure_equal, external_input, finish_node, nop_then_finish_workflow, test_frame,
+};
 use super::tests_basic::{ask_workflow, wait_workflow};
 use crate::EngineSignal;
 use crate::frame::StepState;
@@ -12,7 +14,8 @@ use crate::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, Work
 fn step_once_error_handler_jumps_to_body() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from("error_handler_test"),
         digest: WorkflowDigest::from_bytes([0xB1; 32]),
         nodes: vec![
@@ -113,7 +116,8 @@ fn assert_ask_maps_to_asking() -> Result<(), String> {
 fn single_do_workflow(name: &str, digest: [u8; 32]) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
         nodes: vec![node(

@@ -1,0 +1,96 @@
+{
+  "historical_own_commit": "0f71f398cf66a3c8acb881826683aa36f6d7c850",
+  "current_frozen_source": "0dd55b94cbdd05c21951e6e239313d393816a99d",
+  "audit_date": "2026-10-22",
+  "summary": {
+    "total_hunks": 30,
+    "exact_present": 30,
+    "semantically_present": 0,
+    "superseded_with_replacement": 0,
+    "missing_useful": 0,
+    "obsolete": 0,
+    "unresolved": 0
+  },
+  "conclusion": "All 30 own hunks from commit 0f71f398 are exactly present in the current frozen source. No hunks were lost, superseded, or drifted.",
+  "files": [
+    {
+      "path": "crates/vb_runtime/src/frame_pool.rs",
+      "hunks": [
+        {
+          "id": "H1",
+          "function": "new()",
+          "change": "Pre-allocate all frames at construction",
+          "status": "exact_present",
+          "evidence": "Lines 30-49: loop creates capacity frames via RunFrame::new, stores in frames Vec"
+        },
+        {
+          "id": "H2",
+          "function": "take()",
+          "change": "No fresh allocation fallback, only pop from pool",
+          "status": "exact_present",
+          "evidence": "Lines 57-65: only self.frames.pop(), returns AllocationFailed if empty"
+        },
+        {
+          "id": "H3",
+          "function": "release()",
+          "change": "Dimension + capacity checks before push",
+          "status": "exact_present",
+          "evidence": "Lines 70-87: checks step_count/slot_count match, checks len() >= capacity, then pushes"
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "hunks": [
+        { "id": "T1", "test": "take_returns_preallocated_frame", "change": "renamed from take_allocates_when_empty", "status": "exact_present", "evidence": "Line 44: exact name and body match" },
+        { "id": "T2", "test": "release_and_reuse_frame", "change": "available() == 4 after release", "status": "exact_present", "evidence": "Line 62: assert_eq!(pool.available(), 4)" },
+        { "id": "T3", "test": "release_drops_when_at_capacity", "change": "second take() fails", "status": "exact_present", "evidence": "Lines 74-78: AllocationFailed match on frame2" },
+        { "id": "T4", "test": "is_empty_returns_false_for_new_pool", "change": "is_empty() == false", "status": "exact_present", "evidence": "Line 92: exact assertion with message" },
+        { "id": "T5", "test": "is_empty_returns_true_after_taking_all", "change": "takes 4, then is_empty() == true", "status": "exact_present", "evidence": "Lines 99-113: loop takes 4 frames" },
+        { "id": "T6", "test": "capacity_returns_configured_value", "change": "available() == 42", "status": "exact_present", "evidence": "Line 117: assert_eq!(pool.available(), 42)" },
+        { "id": "T7", "test": "frame_pool_new_preallocates_capacity_frames", "change": "new test, available() == 8", "status": "exact_present", "evidence": "Lines 120-128: exact test body" },
+        { "id": "T8", "test": "frame_pool_no_runtime_allocation_after_construction", "change": "new test, 100 cycles", "status": "exact_present", "evidence": "Lines 131-145: exact test body" },
+        { "id": "T9", "test": "frame_pool_exhausted_take_returns_error", "change": "new test, 3rd take fails", "status": "exact_present", "evidence": "Lines 148-162: exact test body" },
+        { "id": "T10", "test": "frame_pool_new_creates_pool_with_capacity", "change": "available() == 8", "status": "exact_present", "evidence": "Line 171: exact assertion" },
+        { "id": "T11", "test": "frame_pool_release_returns_frame_to_pool", "change": "available() == 4", "status": "exact_present", "evidence": "Line 186: exact assertion" },
+        { "id": "T12", "test": "frame_pool_is_empty_when_all_acquired", "change": "comment change only", "status": "exact_present", "evidence": "Line 197: exact comment" },
+        { "id": "T13", "test": "frame_pool_is_not_empty_after_release", "change": "available() == 4", "status": "exact_present", "evidence": "Line 221: exact assertion" },
+        { "id": "T14", "test": "frame_pool_multiple_release_and_take_cycle", "change": "available() == 4 then 3", "status": "exact_present", "evidence": "Lines 283-285: exact assertions" },
+        { "id": "T15", "test": "frame_pool_take_returns_preallocated_frame_when_no_recycled", "change": "renamed", "status": "exact_present", "evidence": "Line 330: exact name and body" },
+        { "id": "T16", "test": "frame_pool_available_starts_at_capacity", "change": "available() == 4", "status": "exact_present", "evidence": "Line 469: exact assertion" },
+        { "id": "T17", "test": "frame_pool_exhausted_take_returns_error_no_fresh_alloc", "change": "renamed, f3 fails", "status": "exact_present", "evidence": "Lines 492-508: exact test body" },
+        { "id": "T18", "test": "frame_pool_release_wrong_dimension_frame_is_silently_dropped", "change": "available() == 4", "status": "exact_present", "evidence": "Lines 514-531: exact assertions" },
+        { "id": "T19", "test": "frame_pool_zero_step_count_rejects_construction", "change": "renamed, construction fails", "status": "exact_present", "evidence": "Lines 545-562: exact test body" },
+        { "id": "T20", "test": "frame_pool_release_after_release_at_capacity_drops_all_extras", "change": "2 frames only", "status": "exact_present", "evidence": "Lines 628-640: exact test body" },
+        { "id": "T21", "test": "frame_pool_large_capacity_at_boundary_succeeds", "change": "available() == 4096", "status": "exact_present", "evidence": "Line 664: exact assertion" },
+        { "id": "T22", "test": "frame_pool_concurrent_dimension_pools_do_not_interfere", "change": "available() == 4", "status": "exact_present", "evidence": "Lines 695-708: exact assertions" },
+        { "id": "T23", "test": "frame_pool_take_returns_error_when_exhausted", "change": "renamed, second take fails", "status": "exact_present", "evidence": "Lines 717-729: exact test body" }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+      "hunks": [
+        { "id": "C3-H1", "test": "finished_run_releases_frame_to_dimension_pool", "change": "available() == Some(4)", "status": "exact_present", "evidence": "Line 111: exact assertion with comment" },
+        { "id": "C3-H2", "test": "cancelled_run_releases_frame_to_dimension_pool", "change": "available() == Some(3) then Some(4)", "status": "exact_present", "evidence": "Lines 134, 145: exact assertions with comments" }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_010.rs",
+      "hunks": [
+        { "id": "C10-H1", "test": "shard_submit_run_reuses_frame_from_pool_after_prior_finish", "change": "available() == Some(4)", "status": "exact_present", "evidence": "Lines 38-40: exact assertion with comment" }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_017.rs",
+      "hunks": [
+        { "id": "C17-H1", "test": "bh_shd_07_frame_pool_bounded_no_fresh_alloc", "change": "renamed, f3 AllocationFailed", "status": "exact_present", "evidence": "Lines 201-214: exact test body" }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_024.rs",
+      "hunks": [
+        { "id": "C24-H1", "test": "vb1u88_cancel_removes_run_and_releases_frame", "change": "available() == Some(3) then Some(4)", "status": "exact_present", "evidence": "Lines 179, 190: exact assertions with comments" }
+      ]
+    }
+  ]
+}

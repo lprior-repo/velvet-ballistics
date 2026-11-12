@@ -1,0 +1,3 @@
+STATUS APPROVED
+
+The change adds the required `input_slots` field to four `WorkflowParts` test fixtures in `cross_crate_adversarial.rs`. All additions use `Box::from([])`, which is correct for self-contained test workflows with no external input ports. No production code, assertions, or test logic were modified. The 70 focused tests pass. Remaining missing initializers in other test files are tracked separately and do not block this change.

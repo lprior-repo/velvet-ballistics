@@ -26,9 +26,7 @@ use std::collections::HashMap;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
 
-use super::part_01::ForEachInputs;
 use super::part_02::{CanonicalScope, bounded_collect::CollectLowering};
-use super::part_14::BodyCtx;
 
 // ─────────────────────────────────────────────────────────────────
 // Generation strategies
@@ -95,7 +93,6 @@ struct ScopeMaps {
     outputs: HashMap<String, SlotIdx>,
     step_outputs: HashMap<String, SlotIdx>,
     slot_types: HashMap<SlotIdx, ExprType>,
-    inputs: ForEachInputs,
 }
 
 /// Build a `CollectLowering` over borrowed scope maps.
@@ -119,12 +116,6 @@ fn scoped_collect<'a>(
             step_outputs: &maps.step_outputs,
             slot_types: &maps.slot_types,
             parent: None,
-        },
-        nested: BodyCtx {
-            inputs: &maps.inputs,
-            step_names: &[],
-            index: 0,
-            depth: 0,
         },
     }
 }

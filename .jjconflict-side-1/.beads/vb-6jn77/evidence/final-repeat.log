@@ -1,0 +1,10 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running tests/digest_repeat_unit.rs (target/debug/deps/digest_repeat_unit-62b55af1031046c1)
+
+running 1 test
+test test_repeat_different_set_output_changes_digest ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s

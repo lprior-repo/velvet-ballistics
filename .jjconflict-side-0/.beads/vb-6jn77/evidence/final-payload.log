@@ -1,0 +1,14 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running tests/compiled_digest_payload.rs (target/debug/deps/compiled_digest_payload-a75686f47db6b1bd)
+
+running 3 tests
+test compiled_digest_is_hash_of_serialized_parts_with_digest_zeroed ... ok
+test source_identity_survives_parts_roundtrip ... ok
+test formatting_and_comments_do_not_change_compiled_digest ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

@@ -1,0 +1,9 @@
+{
+  "status": "invalid full session; A2 premeasurement guard refused",
+  "latency_exit": 1,
+  "accepted_measurements": false,
+  "all_completed_sides_excluded": true,
+  "busy_process_record": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/session01-busy-processes.json",
+  "raw_log_sha256": "ae4c95ee86dc142de228da319b0942ea3b102190e9d915beaab873d9765d3a3d",
+  "processes_stopped_by_parent": false
+}

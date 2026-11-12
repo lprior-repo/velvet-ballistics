@@ -1,0 +1,24 @@
+
+running 5 tests
+test tests::tests::declared_keyspaces_returns_ten_entries ... FAILED
+test journal::tests::declared_keyspaces_count_matches_opened_keyspaces ... ok
+test journal::tests::all_declared_keyspaces_are_iterable_after_open ... ok
+test tests::tests::journal_opens_declared_keyspaces_and_round_trips_typed_records ... ok
+test tests::tests::public_open_wrappers_create_declared_keyspaces ... ok
+
+failures:
+
+---- tests::tests::declared_keyspaces_returns_ten_entries stdout ----
+
+thread 'tests::tests::declared_keyspaces_returns_ten_entries' (2744254) panicked at crates/vb_storage/src/tests.rs:2276:9:
+assertion `left == right` failed
+  left: "run_inputs"
+ right: "run_event"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::tests::declared_keyspaces_returns_ten_entries
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 1607 filtered out; finished in 0.01s
+

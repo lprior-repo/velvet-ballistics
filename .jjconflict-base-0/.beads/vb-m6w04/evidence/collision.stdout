@@ -1,0 +1,14 @@
+
+running 9 tests
+test input_declarations_hashed ... ok
+test finish_string_vs_integer_type_tag ... ok
+test do_action_input_fields_hashed ... ok
+test author_value_text_vs_sequence_boundary ... ok
+test author_value_sequence_vs_mapping_boundary ... ok
+test optional_field_none_vs_some_discriminant ... ok
+test yaml_key_order_canonical ... ok
+test save_value_hashed ... ok
+test nested_step_id_output_framing_collision_regression ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

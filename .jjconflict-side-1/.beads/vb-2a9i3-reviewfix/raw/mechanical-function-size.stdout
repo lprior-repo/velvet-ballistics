@@ -1,0 +1,267 @@
+[
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "handle_readable",
+    "line": 27,
+    "physical_lines": 19
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "read_client_request",
+    "line": 47,
+    "physical_lines": 9
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "dispatch_request",
+    "line": 57,
+    "physical_lines": 19
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "reject_frame",
+    "line": 77,
+    "physical_lines": 22
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "handle_writable",
+    "line": 100,
+    "physical_lines": 15
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "clone_registry",
+    "line": 117,
+    "physical_lines": 5
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "write_pending_chunk",
+    "line": 123,
+    "physical_lines": 15
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "read_request",
+    "line": 139,
+    "physical_lines": 13
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "completed_request",
+    "line": 153,
+    "physical_lines": 6
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "read_request_chunk",
+    "line": 160,
+    "physical_lines": 22
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "request_remaining",
+    "line": 183,
+    "physical_lines": 15
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "queue_response",
+    "line": 199,
+    "physical_lines": 20
+  },
+  {
+    "file": "crates/vb_ipc/src/server/connection_io.rs",
+    "function": "finish_response",
+    "line": 220,
+    "physical_lines": 15
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "rejected_clients",
+    "line": 13,
+    "physical_lines": 3
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "has_pending_responses",
+    "line": 19,
+    "physical_lines": 5
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "take_client_error",
+    "line": 26,
+    "physical_lines": 3
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "poll_turn",
+    "line": 30,
+    "physical_lines": 18
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "has_ready_work",
+    "line": 49,
+    "physical_lines": 9
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "record_events",
+    "line": 59,
+    "physical_lines": 10
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "accept_pending",
+    "line": 70,
+    "physical_lines": 17
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "admit_client",
+    "line": 88,
+    "physical_lines": 8
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "accept_client",
+    "line": 98,
+    "physical_lines": 10
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "register_client",
+    "line": 109,
+    "physical_lines": 13
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "client_tokens",
+    "line": 123,
+    "physical_lines": 9
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "service_clients",
+    "line": 133,
+    "physical_lines": 14
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "apply_client_result",
+    "line": 148,
+    "physical_lines": 20
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "service_client",
+    "line": 169,
+    "physical_lines": 19
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "remove_client",
+    "line": 189,
+    "physical_lines": 7
+  },
+  {
+    "file": "crates/vb_ipc/src/server/reactor.rs",
+    "function": "new_client",
+    "line": 198,
+    "physical_lines": 11
+  },
+  {
+    "file": "crates/vb_ipc/src/server/response_io.rs",
+    "function": "prepare_response",
+    "line": 8,
+    "physical_lines": 20
+  },
+  {
+    "file": "crates/vb_ipc/src/server/response_io.rs",
+    "function": "encode_payload",
+    "line": 29,
+    "physical_lines": 7
+  },
+  {
+    "file": "crates/vb_ipc/src/server/response_io.rs",
+    "function": "encode_header",
+    "line": 37,
+    "physical_lines": 9
+  },
+  {
+    "file": "crates/vb_ipc/src/server/response_io.rs",
+    "function": "write_response_once",
+    "line": 47,
+    "physical_lines": 21
+  },
+  {
+    "file": "crates/vb_ipc/src/server/response_io.rs",
+    "function": "finish_write",
+    "line": 69,
+    "physical_lines": 17
+  },
+  {
+    "file": "crates/vb_ipc/src/server/response_io.rs",
+    "function": "flush_stream",
+    "line": 87,
+    "physical_lines": 7
+  },
+  {
+    "file": "crates/vb_ipc/src/server/response_io.rs",
+    "function": "flush_result",
+    "line": 95,
+    "physical_lines": 10
+  },
+  {
+    "file": "crates/vb_storage/src/queue/writer/flush.rs",
+    "function": "flush_batch",
+    "line": 30,
+    "physical_lines": 6
+  },
+  {
+    "file": "crates/vb_storage/src/queue/writer/flush.rs",
+    "function": "flush_batch_durable",
+    "line": 39,
+    "physical_lines": 6
+  },
+  {
+    "file": "crates/vb_storage/src/queue/writer/flush.rs",
+    "function": "flush_batch_with_durability",
+    "line": 46,
+    "physical_lines": 20
+  },
+  {
+    "file": "crates/vb_storage/src/queue/writer/flush.rs",
+    "function": "prepare_batch",
+    "line": 68,
+    "physical_lines": 19
+  },
+  {
+    "file": "crates/vb_storage/src/queue/writer/flush.rs",
+    "function": "commit_prepared",
+    "line": 88,
+    "physical_lines": 22
+  },
+  {
+    "file": "crates/vb_storage/src/queue/writer/flush.rs",
+    "function": "retire_committed",
+    "line": 111,
+    "physical_lines": 13
+  },
+  {
+    "file": "crates/vb_storage/src/queue/writer/flush.rs",
+    "function": "inject_commit_failure",
+    "line": 126,
+    "physical_lines": 8
+  },
+  {
+    "file": "crates/vb_ipc/src/server/helpers.rs",
+    "function": "send_response",
+    "line": 143,
+    "physical_lines": 15
+  }
+]
+PASS 44 functions, max 22

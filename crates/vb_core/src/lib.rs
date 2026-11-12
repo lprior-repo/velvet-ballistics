@@ -26,6 +26,8 @@ pub mod error;
 pub mod errors;
 pub mod frame;
 pub mod ids;
+pub mod input_schema;
+pub mod input_validation;
 pub mod limits;
 pub mod manual_gate;
 pub mod numeric;
@@ -158,6 +160,7 @@ pub use ids::{
     FanoutLimit, ListId, MaxAttempts, ObjectId, RetryCount, RunId, SeqNo, SlotIdx, StepIdx,
     SymbolId, TenantId, WorkflowDigest, WorkflowId,
 };
+pub use input_schema::{CompiledInputField, InputDefaultValue};
 pub use policy::RuntimePolicy;
 pub use span::{Located, SourceMap, Span, SpanError, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotCell, SlotValue, Taint, join_taint};

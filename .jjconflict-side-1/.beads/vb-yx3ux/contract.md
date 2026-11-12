@@ -1,0 +1,34 @@
+# vb-yx3ux Rust Contract
+
+## Scope
+Fix four exact clippy blockers in `crates/vb_runtime/src/` without behavior changes or lint allowances.
+
+## Blockers
+
+1. **Unused crate-private getters** (`recovery/full.rs`): `RecoveredPendingActionTicket::input()`, `::output()`, `::action_abi_digest()` are never called. Remove the three getter methods only; preserve the struct fields, `new()` constructor, `ticket()`, and `event_seq()`.
+
+2. **Collapsible if** (`shard/helpers.rs`): `slot_value_matches_kind` uses nested `if let Some(kind) = declared { if !slot_value_matches_kind(...) }`. Collapse to a single match expression over `declared`.
+
+3. **`.ok_or_else` → `.ok_or`** (`shard/impl_parts/chunk_001.rs`): `action_abi_digest_for_run_action` uses `.ok_or_else(|| RuntimeError::RunNotFound)`. Replace with `.ok_or(RuntimeError::RunNotFound)`.
+
+4. **Doc list continuation** (`shard/lifecycle/chunk_001.rs`): `handle_recover` doc comment has list items without blank doc lines between them. Insert blank `///` lines between list items.
+
+## Preservation Requirements
+- All `RecoveredPendingActionTicket` stored fields remain unchanged
+- `new()` constructor signature and behavior unchanged
+- `ticket()` and `event_seq()` getters unchanged
+- All production validation logic in `recovery/full/pending.rs` unchanged
+- No arbitrary getter calls added solely to suppress warnings
+
+## Observational Equivalence
+- Identical error types, messages, and precedence
+- Identical recovery outcomes for all valid and invalid inputs
+- No changes to public API surface or crate-internal call graphs
+
+## Test Scope
+- Compile with `cargo clippy -- -D warnings`
+- Verify no new warnings introduced
+- Existing test suite passes unchanged
+## Source-grounded clarification
+
+The nested if is in seed_input_slots, not in slot_value_matches_kind itself. Use the clippy suggested let-chain equivalent. Doc fix is the blank paragraph separator immediately before handle_recover descriptive paragraph following a numbered list, not a semantic rewrite of list items. The canonical source lint command is moon run :lint-src; existing unrelated blockers must be reported distinctly. No new source check or gate weakening.

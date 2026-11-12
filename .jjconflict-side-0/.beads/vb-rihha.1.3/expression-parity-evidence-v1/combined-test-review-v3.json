@@ -1,0 +1,223 @@
+{
+  "verdict": "PASS",
+  "review_kind": "Final bounded independent TEST delta re-review; closes the two remaining V2 cases only",
+  "source_pin": "5cf6915b16338cd0ec051f5bbca32e25768740d7",
+  "compared_to": "9661872b95e3af01b98070367b021dfb8c59795a",
+  "contracts": {
+    "contains_v6": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-rihha.1.3/contains-parity-contract-proposal-v6.md",
+      "sha256": "4b5f05df3803dc88504425e9c2700922f9a3cec31c847fee21d4bf7c492f5477"
+    },
+    "has_v3": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md",
+      "sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860"
+    },
+    "has_bytecode_v5": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/.beads/vb-eirmk.42.1/has-bytecode-contract-clarification-v5.md",
+      "sha256": "b97207da41fcdc3369fe4706f7e6099283de684010f528962a99639903334b51"
+    }
+  },
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "git_jj_roots_verified": true,
+  "findings": [],
+  "dispositions": [
+    {
+      "id": "CONTAINS-RAW-HANDLES-AND-NULL",
+      "status": "fixed_with_evidence",
+      "path": "crates/workspace_tests/tests/contains_route_edges.rs",
+      "tests": [
+        {
+          "name": "empty_list_invalid_handle_needle_is_false_on_all_routes",
+          "fixture": "Valid empty receiver List; invalid raw ListId(MAX) needle",
+          "oracle": "Independent literal false on Store, Hot, actual public replay_step"
+        },
+        {
+          "name": "invalid_stored_handle_scalar_needle_is_false_on_all_routes",
+          "fixture": "Valid receiver List containing raw ListId(MAX); scalar I64(7) needle",
+          "oracle": "Independent literal false on Store, Hot, actual public replay_step"
+        }
+      ],
+      "evidence": "Both exactly missing V2 cases appended; original file is a byte prefix of new file. Setup failure propagates. Shared helper is byte-identical to966, so routes cannot silently become optional or use a reference evaluator."
+    }
+  ],
+  "route_review": {
+    "support_path": "crates/workspace_tests/tests/support/contains_three_routes.rs",
+    "support_sha256": "26b1229827c31c626d949d928eefc81a7dd38bb6030949c242ac293ac51336a1",
+    "actual_calls": [
+      "vb_expr::eval::eval_helper_with_store",
+      "vb_core::engine::eval_expr_with_store",
+      "vb_core::replay::step::replay_step"
+    ],
+    "fixture": "Real ValueStore and checked workflow/program with four nodes; initialized receiver/needle slots, initial PC1; Choose true2/otherwise3, valid Finish targets.",
+    "assertions": "Store exact Ok(Bool(false)); Hot exact Ok((Bool(false),Clean)); Replay Continue(3) and pc3. A true-result mutant reaches2 and fails; eager invalid-handle lookup returns an error and fails. Expected literals are not computed by evaluators, store lookup or generic equality.",
+    "nonvacuity": "All three calls mandatory with fatal setup propagation and exact result checks. Not ReplayEngine coverage. No new helper/feature/API or production changes."
+  },
+  "preservation": {
+    "delta": "Exactly one existing test file,12appended lines; two new tests only. All old source/assertions retained and support unchanged.",
+    "prior_fixed_findings": "Object/Blob/List identity, Null/same-distinct raw IDs, simultaneous receiver faults, singleton and canonical/cold needle-category fixes from966 remain unchanged.",
+    "has_components": "Has9 feature gating and branch controls, Has4 and shared6 caller oracles unchanged by exact one-file delta.",
+    "prior_reports_preserved": true,
+    "production_dependencies_gates_unchanged": true
+  },
+  "function_lengths": {
+    "rule": "Nonblank/noncomment lines including signatures, excluding standalone brace-only lines",
+    "reviewed": {
+      "crates/workspace_tests/tests/contains_route_edges.rs": [
+        {
+          "name": "fixture",
+          "line": 9,
+          "logical_lines_including_signature": 2
+        },
+        {
+          "name": "assert_route_errors",
+          "line": 13,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "assert_hot_error",
+          "line": 30,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "assert_replay_error",
+          "line": 46,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "null_is_found_in_list_on_all_routes",
+          "line": 63,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "identical_raw_invalid_list_handle_is_found_on_all_routes",
+          "line": 69,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "distinct_raw_invalid_list_handle_is_not_found_on_all_routes",
+          "line": 76,
+          "logical_lines_including_signature": 6
+        },
+        {
+          "name": "singleton_list_missing_value_is_false_on_all_routes",
+          "line": 85,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "null_receiver_wins_over_invalid_symbol_needle_on_all_routes",
+          "line": 91,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "invalid_list_receiver_wins_over_invalid_symbol_needle_on_all_routes",
+          "line": 110,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "empty_list_invalid_handle_needle_is_false_on_all_routes",
+          "line": 126,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "invalid_stored_handle_scalar_needle_is_false_on_all_routes",
+          "line": 132,
+          "logical_lines_including_signature": 3
+        }
+      ],
+      "crates/workspace_tests/tests/support/contains_three_routes.rs": [
+        {
+          "name": "fixture_with_store",
+          "line": 14,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "contains_plan",
+          "line": 29,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_parts",
+          "line": 43,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "contains_nodes",
+          "line": 61,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "choose_node",
+          "line": 76,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "finish_node",
+          "line": 92,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "frame",
+          "line": 103,
+          "logical_lines_including_signature": 17
+        },
+        {
+          "name": "assert_routes",
+          "line": 122,
+          "logical_lines_including_signature": 18
+        },
+        {
+          "name": "assert_replay",
+          "line": 142,
+          "logical_lines_including_signature": 23
+        }
+      ]
+    },
+    "new_tests_each": 3,
+    "maximum_reviewed": 23
+  },
+  "execution": {
+    "new_focused_receipt": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/contains-remaining-raw-native.log",
+      "exit_path": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/contains-remaining-raw-native.exit",
+      "observed_exit": "NATIVE_EXIT=0",
+      "summary": "8run,8passed,0skipped",
+      "scope": "Contains route-edge binary, including both new cases and original six. Reviewer read existing raw receipts; no execution by reviewer."
+    },
+    "retained_full_suite_receipt": {
+      "source_pin": "9661872b95e3af01b98070367b021dfb8c59795a",
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v3.log",
+      "exit_path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v3.exit",
+      "observed_exit": "MOON_EXIT=0",
+      "summary": "16611passed,7skipped;12tasks",
+      "limit": "Prior source966 evidence only. Not a full-suite run at5cf; two appended cases supported only by focused8test receipt."
+    }
+  },
+  "evidence": {
+    "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/contains-has-composition-test-review-v2.json": {
+      "sha256": "f65e748740243895f2ae3e203846c5c09061a2f0ea454c71825221ceca1c1ad2",
+      "bytes": 46757
+    },
+    "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/contains-remaining-raw-native.log": {
+      "sha256": "40b46aee80faf79d42bc00154e7bcbb018975118bdcae4256fe72f364c9dea8f",
+      "bytes": 1503
+    },
+    "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/contains-remaining-raw-native.exit": {
+      "sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "bytes": 14
+    },
+    "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v3.log": {
+      "sha256": "0b827836099b783c405bba4f52083ad2777a82212415470439498d48d944bbeb",
+      "bytes": 3029117
+    },
+    "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v3.exit": {
+      "sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "bytes": 12
+    }
+  },
+  "limits": [
+    "Bounded TEST delta PASS, not whole core/Has/Contains/Timer/master qualification or fullCI acceptance.",
+    "Known protected-ledger test-integrity failure remains; no gate/ledger approval or mutation.",
+    "Has literalText qualifier .53 and Timer15scenario acceptance remain separate.",
+    "No fresh native/build/proof/performance execution, BD calls, source edits, gate changes or agents by reviewer."
+  ]
+}

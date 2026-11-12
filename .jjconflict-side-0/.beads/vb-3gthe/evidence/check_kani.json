@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures",
+  "argv": [
+    "cargo",
+    "check",
+    "--tests",
+    "--workspace"
+  ],
+  "exit_code": 0,
+  "seconds": 0.967,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-3gthe/evidence/check_kani",
+  "coordinator_message": "Coordinator: Last context error reset preserved f53d9fbc. Keep short text only. ALSO migrate cfg(kani) ticket fixtures/calls (crates/vb_core/src/kani_idempotency_gates.rs symbolic_ticket lines169 and652 still missing run_attempt; canonical key call needs same fresh arbitrary run_attempt variable). New field in symbolic generators MUST kani::any()/Arbitrary, NOT constant1; do not weaken assertions/assumptions/contracts or replace structures. Preserve arbitrary existing fields and cover conditions. This is mechanical harness API parity, no full proof planning or fleetwide proof run. Existing arbitrary proptest ticket clones should preserve ticket/base.run_attempt. Root finalCI will require build compatibility. No whole regex/repeated arg insertion; actual errors only. Root handles VCS/push."
+}

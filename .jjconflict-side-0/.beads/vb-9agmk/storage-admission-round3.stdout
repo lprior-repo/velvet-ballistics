@@ -1,0 +1,46 @@
+
+running 41 tests
+test admission::tests::admission_postcard_encode_failed_surfaces_typed_variant ... ok
+test admission::tests::all_valid_gates_pass_is_valid ... ok
+test admission::tests::constructor_never_mints_flags_from_a_gate_count ... ok
+test admission::tests::constructor_never_treats_arbitrary_digests_as_proof ... ok
+test admission::tests::gate_values_outside_range_fail_is_valid ... ok
+test admission::tests::is_valid_accepts_gate_fourteen ... ok
+test admission::tests::is_valid_accepts_gate_one ... ok
+test admission::tests::is_valid_rejects_gate_zero ... ok
+test admission::tests::policy_buffer_fits_canonical_resource_contract ... ok
+test admission::tests::is_valid_accepts_gate_two ... ok
+test admission::tests::verification_proof_new_initializes_empty_warnings ... ok
+test admission::tests::verification_proof_warnings_can_be_populated ... ok
+test admission::tests::verification_warning_display_formats_gate_code_message ... ok
+test admission::tests::verification_warning_clone_preserves_fields ... ok
+test admission::tests::verification_warning_equality_works ... ok
+test admission::tests::verification_warning_inequality_different_gate ... ok
+test admission::tests::verification_proof_serde_roundtrip ... ok
+test admission::tests::verification_warning_serde_roundtrip ... ok
+test admission::tests::verification_warning_inequality_different_code ... ok
+test admission::tests::checked_submission_records_only_scoped_validation_claims ... ok
+test admission::tests::accepted_artifact_fields_are_populated ... ok
+test admission::tests::compute_policy_digest_succeeds_and_yields_nonzero_digest ... ok
+test admission::tests::admit_compiled_artifact_succeeds_for_valid_workflow ... ok
+test admission::tests::submit_artifact_journaled_roundtrip_bytes_match ... ok
+test admission::tests::accepted_artifact_serde_roundtrip ... ok
+test admission::tests::strict_and_journaled_bind_their_actual_requested_policies ... ok
+test admission::tests::sa009_relaxed_rejects_silent_persistence_failure ... ok
+test admission::tests::sa013_relaxed_and_journaled_idempotency_evidence_parity ... ok
+test admission::tests::sa009_strict_rejects_silent_persistence_failure ... ok
+test admission::tests::submit_artifact_relaxed_persists_and_returns_artifact ... ok
+test admission::tests::submit_artifact_journaled_has_independently_checked_evidence ... ok
+test admission::tests::sa013_relaxed_carries_idempotency_evidence_from_contracts ... ok
+test admission::tests::strict_submission_returns_checked_metadata_after_persistence ... ok
+test admission::tests::sa009_journaled_rejects_silent_persistence_failure ... ok
+test admission::tests::submit_artifact_carries_idempotency_evidence_from_contracts ... ok
+test admission::tests::submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability ... ok
+test admission::tests::sa009_relaxed_succeeds_after_failure_flag_consumed ... ok
+test admission::tests::admit_compiled_artifact_idempotent ... ok
+test admission::tests::submit_artifact_relaxed_performs_immediate_live_readback ... ok
+test admission::tests::submit_artifact_rejects_failed_idempotency_contract ... ok
+test admission::tests::every_prepared_artifact_policy_uses_checked_evidence ... ok
+
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 1555 filtered out; finished in 0.03s
+

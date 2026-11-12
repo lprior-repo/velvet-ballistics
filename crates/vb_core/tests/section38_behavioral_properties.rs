@@ -23,6 +23,7 @@ fn default_contract() -> ResourceContract {
 fn simple_workflow() -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "behavioral_test".into(),
         digest: WorkflowDigest::from_bytes([0x38; 32]),
@@ -220,6 +221,7 @@ fn step_budget_exhaustion_resource_contract_rejects_oversized() -> Result<(), St
 fn simple_workflow_parts() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "budget_test".into(),
         digest: WorkflowDigest::from_bytes([0xB5; 32]),
@@ -263,7 +265,12 @@ fn taint_safety_secret_taint_propagates_to_finish_signal() -> Result<(), String>
     // the finish result slot and verify the engine signals the taint.
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::I64,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: "taint_runtime".into(),
         digest: WorkflowDigest::from_bytes([0x54; 32]),
         nodes: vec![node(

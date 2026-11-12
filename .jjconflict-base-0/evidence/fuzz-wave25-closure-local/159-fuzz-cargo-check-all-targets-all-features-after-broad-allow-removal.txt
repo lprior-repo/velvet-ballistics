@@ -1,0 +1,5 @@
+COMMAND: cargo check --workspace --all-targets --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.43s
+EXIT_STATUS=0

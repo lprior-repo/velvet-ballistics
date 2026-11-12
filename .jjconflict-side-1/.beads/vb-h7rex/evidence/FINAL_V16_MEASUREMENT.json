@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+    "--commit",
+    "9d4cf426132d47cfd2c0aaf0060a91b6940286a5",
+    "--output-dir",
+    ".beads/vb-h7rex/evidence/actual-collection-v16"
+  ],
+  "exit_code": 0,
+  "seconds": 86.631,
+  "timeout_seconds": 1200,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/FINAL_V16_MEASUREMENT"
+}

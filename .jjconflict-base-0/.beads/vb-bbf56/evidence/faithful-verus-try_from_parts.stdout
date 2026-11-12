@@ -1,0 +1,21 @@
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:236:10
+    |
+236 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:358:10
+    |
+358 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:402:10
+    |
+402 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 66 verified, 0 errors
+warning: 3 warnings emitted
+

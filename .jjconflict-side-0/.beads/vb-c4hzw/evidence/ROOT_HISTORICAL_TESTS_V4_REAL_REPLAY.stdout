@@ -1,0 +1,15 @@
+
+running 1 test
+historical_replay_preserves_state_under_current_deny --- FAILED
+
+failures:
+
+---- historical_replay_preserves_state_under_current_deny stdout ----
+Error: Recovery { error: "replay divergence at step StepIdx(0): replay blocked by non-deterministic Do step" }
+
+
+failures:
+    historical_replay_preserves_state_under_current_deny
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

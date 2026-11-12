@@ -116,25 +116,28 @@ impl RunFrame {
             return Err(RunFrameCheckpointV1Error::ParallelCountOutOfBounds);
         }
 
-        let mut frame = RunFrame::new(checkpoint.run_id, checkpoint.pc, step_count, slot_count)
-            .map_err(|_| RunFrameCheckpointV1Error::InvalidFrame)?;
-        frame.executed = checkpoint.executed;
-        frame.max_parallel_in_flight = checkpoint.max_parallel_in_flight;
-        frame.parallel_in_flight = checkpoint.parallel_in_flight;
-        for (target, state) in frame.states.iter_mut().zip(checkpoint.states) {
-            *target = StepState::from(state);
+        if checkpoint.pc.as_usize() >= usize::from(step_count) {
+            return Err(RunFrameCheckpointV1Error::InvalidFrame);
         }
-        for (cell, (value, taint)) in frame
-            .cells
-            .iter_mut()
-            .zip(checkpoint.slots.into_iter().zip(checkpoint.taint))
-        {
-            *cell = match value {
-                Some(value) => crate::value::SlotCell::value(value, taint),
-                None => crate::value::SlotCell::empty(),
-            };
-        }
-        Ok(frame)
+        Ok(Self {
+            run_id: checkpoint.run_id,
+            pc: checkpoint.pc,
+            executed: checkpoint.executed,
+            step_count,
+            slot_count,
+            max_parallel_in_flight: checkpoint.max_parallel_in_flight,
+            parallel_in_flight: checkpoint.parallel_in_flight,
+            states: checkpoint.states.into_iter().map(StepState::from).collect(),
+            cells: checkpoint
+                .slots
+                .into_iter()
+                .zip(checkpoint.taint)
+                .map(|(value, taint)| match value {
+                    Some(value) => crate::value::SlotCell::value(value, taint),
+                    None => crate::value::SlotCell::empty(),
+                })
+                .collect(),
+        })
     }
 }
 
@@ -230,3 +233,10 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "checkpoint/equivalence_tests.rs"]
+mod equivalence_tests;
+#[cfg(test)]
+#[path = "checkpoint/reference.rs"]
+mod reference;

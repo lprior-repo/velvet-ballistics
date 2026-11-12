@@ -1,0 +1,114 @@
+error[E0432]: unresolved import `vb_runtime::RegisteredExecutionError`
+  --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:21:5
+   |
+21 | use vb_runtime::RegisteredExecutionError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `RegisteredExecutionError` in the root
+   |
+help: consider importing this enum instead
+   |
+21 | use vb_runtime::runtime::RegisteredExecutionError;
+   |                 +++++++++
+
+error[E0433]: cannot find `Compression` in `fjall`
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:131:33
+    |
+131 |             compression: fjall::Compression::None,
+    |                                 ^^^^^^^^^^^ could not find `Compression` in `fjall`
+
+error[E0308]: mismatched types
+  --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:43:9
+   |
+43 |         id,
+   |         ^^ expected `StepIdx`, found `u16`
+
+error[E0560]: struct `CompiledNode` has no field named `input_slots`
+  --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:44:9
+   |
+44 |         input_slots: Box::new([]),
+   |         ^^^^^^^^^^^ `CompiledNode` does not have this field
+   |
+   = note: available fields are: `output`, `next`, `on_error`
+
+error[E0560]: struct `CompiledNode` has no field named `output_slots`
+  --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:45:9
+   |
+45 |         output_slots: output.map(|o| vec![o]).unwrap_or_default().into(),
+   |         ^^^^^^^^^^^^ `CompiledNode` does not have this field
+   |
+   = note: available fields are: `output`, `next`, `on_error`
+
+error[E0560]: struct `CompiledNode` has no field named `next_nodes`
+  --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:46:9
+   |
+46 |         next_nodes: next.map(|n| vec![n]).unwrap_or_default().into(),
+   |         ^^^^^^^^^^ `CompiledNode` does not have this field
+   |
+   = note: available fields are: `output`, `next`, `on_error`
+
+error[E0063]: missing field `name` in initializer of `WorkflowParts`
+  --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:53:21
+   |
+53 |     let mut parts = WorkflowParts {
+   |                     ^^^^^^^^^^^^^ missing `name`
+
+error[E0560]: struct `KeyspaceCreateOptions` has no field named `block_cache_bytes`
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:130:13
+    |
+130 |             block_cache_bytes: 1 << 20,
+    |             ^^^^^^^^^^^^^^^^^ `KeyspaceCreateOptions` does not have this field
+    |
+    = note: available fields are: `data_block_hash_ratio_policy`
+
+error[E0560]: struct `KeyspaceCreateOptions` has no field named `compression`
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:131:13
+    |
+131 |             compression: fjall::Compression::None,
+    |             ^^^^^^^^^^^ `KeyspaceCreateOptions` does not have this field
+    |
+    = note: available fields are: `data_block_hash_ratio_policy`
+
+error[E0599]: no method named `put` found for struct `Keyspace` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:135:8
+    |
+135 |     ks.put(b"active", &[99u8])?;
+    |        ^^^ method not found in `Keyspace`
+
+error[E0599]: no method named `flush` found for struct `Keyspace` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:136:8
+    |
+136 |     ks.flush()?;
+    |        ^^^^^ method not found in `Keyspace`
+
+error[E0599]: no method named `close` found for struct `Keyspace` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:137:8
+    |
+137 |     ks.close()?;
+    |        ^^^^^
+    |
+help: there is a method `clone` with a similar name
+    |
+137 -     ks.close()?;
+137 +     ks.clone()?;
+    |
+
+error[E0599]: no method named `close` found for struct `Database` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:138:8
+    |
+138 |     db.close()?;
+    |        ^^^^^
+    |
+help: there is a method `clone` with a similar name
+    |
+138 -     db.close()?;
+138 +     db.clone()?;
+    |
+
+error[E0599]: no method named `is_empty` found for struct `RuntimePendingBoundarySnapshot` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:198:29
+    |
+198 |     assert!(!pending_before.is_empty(), "expected non-empty pending before corruption");
+    |                             ^^^^^^^^ method not found in `RuntimePendingBoundarySnapshot`
+
+Some errors have detailed explanations: E0063, E0308, E0432, E0433, E0560, E0599.
+For more information about an error, try `rustc --explain E0063`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_corrupt_marker") due to 14 previous errors

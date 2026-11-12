@@ -1,0 +1,5 @@
+storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
+                        time:   [77.016 ns 77.193 ns 77.441 ns]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+

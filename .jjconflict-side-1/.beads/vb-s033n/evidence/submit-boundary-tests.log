@@ -1,0 +1,41 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-contract-5090/crates/vb_storage)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-contract-5090/crates/vb_compile)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-contract-5090/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-contract-5090/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-contract-5090/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.56s
+     Running ../workspace_tests/tests/cli/submit_input_boundary.rs (target/debug/deps/submit_input_boundary-7f2a3d256dafd474)
+
+running 6 tests
+test bool_kind_mismatch_fails_all_durabilities ... FAILED
+test excess_slots_fails_all_durabilities ... ok
+test encoded_empty_plus_garbage_fails_all_durabilities ... ok
+test malformed_decode_fails_all_durabilities ... ok
+test test_submit_controls ... FAILED
+test validation_precedes_journal_open ... ok
+
+failures:
+
+---- bool_kind_mismatch_fails_all_durabilities stdout ----
+
+thread 'bool_kind_mismatch_fails_all_durabilities' (1276727) panicked at crates/velvet_ballistics/../workspace_tests/tests/cli/submit_input_boundary.rs:113:9:
+assertion `left == right` failed
+  left: [73, 78, 80, 85, 84, 95, 77, 65, 80, 80, 73, 78, 71, 95, 70, 65, 73, 76, 69, 68, 58, 32, 115, 108, 111, 116, 32, 83, 108, 111, 116, 73, 100, 120, 40, 49, 41, 32, 118, 97, 108, 117, 101, 32, 107, 105, 110, 100, 32, 109, 105, 115, 109, 97, 116, 99, 104, 44, 32, 101, 120, 112, 101, 99, 116, 101, 100, 32, 83, 121, 109, 98, 111, 108, 10]
+ right: [73, 78, 80, 85, 84, 95, 77, 65, 80, 80, 73, 78, 71, 95, 70, 65, 73, 76, 69, 68, 58, 32, 115, 108, 111, 116, 32, 83, 108, 111, 116, 73, 100, 120, 40, 49, 41, 32, 118, 97, 108, 117, 101, 32, 107, 105, 110, 100, 32, 109, 105, 115, 109, 97, 116, 99, 104, 44, 32, 101, 120, 112, 101, 99, 116, 101, 100, 32, 73, 54, 52, 10]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_submit_controls stdout ----
+
+thread 'test_submit_controls' (1276732) panicked at crates/velvet_ballistics/../workspace_tests/tests/cli/submit_input_boundary.rs:145:13:
+assertion `left == right` failed
+  left: Some(2)
+ right: Some(0)
+
+
+failures:
+    bool_kind_mismatch_fails_all_durabilities
+    test_submit_controls
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p velvet-ballistics --test submit_input_boundary`

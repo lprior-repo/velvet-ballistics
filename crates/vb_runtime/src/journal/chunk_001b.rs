@@ -38,14 +38,14 @@ impl RuntimeJournalEvent {
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
+            | Self::StepFailed { run, .. }
             | Self::Resumed { run, .. } => *run,
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. }
             | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
-            Self::CompatibilityDecision { run, .. }
-            | Self::TenantAdmission { run, .. } => *run,
-            Self::RetryCheckpoint { run, .. } => *run,
+            Self::CompatibilityDecision { run, .. } | Self::TenantAdmission { run, .. } => *run,
+            Self::RetryCheckpoint { run, .. } | Self::RetryTimerScheduled { run, .. } => *run,
         }
     }
 
@@ -58,6 +58,7 @@ impl RuntimeJournalEvent {
             Self::CompatibilityDecision { .. } => "CompatibilityDecision",
             Self::TenantAdmission { .. } => "TenantAdmission",
             Self::RetryCheckpoint { .. } => "RetryCheckpoint",
+            Self::RetryTimerScheduled { .. } => "RetryTimerScheduled",
             Self::RunFinished { .. } => "RunFinished",
             Self::RunFailed { .. } => "RunFailed",
             Self::RunCancelled { .. } => "RunCancelled",
@@ -86,6 +87,7 @@ impl RuntimeJournalEvent {
             Self::SlotWritten { .. } => "SlotWritten",
             Self::StepStarted { .. } => "StepStarted",
             Self::StepSucceeded { .. } => "StepSucceeded",
+            Self::StepFailed { .. } => "StepFailed",
             Self::Resumed { .. } => "Resumed",
             _ => "",
         }
