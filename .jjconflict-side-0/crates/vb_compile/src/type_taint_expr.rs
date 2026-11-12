@@ -4,6 +4,9 @@ use crate::ast::{AstExpression, AstMapEntry, AstValue};
 use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
 use vb_validate::type_taint::Taint;
 
+#[path = "type_taint_contains.rs"]
+mod contains;
+
 pub(super) fn validate_condition(
     expression: &AstExpression,
     facts: &Facts<'_>,
@@ -135,6 +138,9 @@ fn helper_taint(
     facts: &Facts<'_>,
     field: &'static str,
 ) -> Result<Taint, CompileError> {
+    if name == ExpressionHelper::Contains {
+        return contains::contains_taint(args, facts, field);
+    }
     args.iter()
         .enumerate()
         .try_fold(Taint::Clean, |taint, (position, arg)| {
@@ -152,7 +158,6 @@ fn helper_expected_type(name: ExpressionHelper, position: usize) -> Option<Value
     match (name, position) {
         (ExpressionHelper::Has, 0) => Some(ValueType::Object),
         (ExpressionHelper::Has, 1) => Some(ValueType::Text),
-        (ExpressionHelper::Contains, 0) => Some(ValueType::List),
         _ => None,
     }
 }
