@@ -800,7 +800,7 @@ pub struct SpecWorkflowParts {
     /// `validate_constants_symbols` (workflow/validate_refs.rs:154-164).
     /// `constants_symbols` lists, in pool order, the `SymbolId`
     /// of every `ConstValue::Symbol` constant
-    /// (value.rs:169); non-`Symbol` constants contribute no
+    /// (crates/vb_core/src/value/slot.rs:64); non-`Symbol` constants contribute no
     /// entry, so the inventory is symbol-only by construction
     /// and no sentinel is needed. The projection returns
     /// `SymbolOutOfBounds` for the first entry at or beyond
@@ -945,7 +945,7 @@ pub const fn spec_node_kind_finish() -> u32 { 33 }
 /// node_count <= 65535) so it never collides with a real index.
 pub const fn spec_ref_none() -> u32 { u32::MAX }
 /// Discriminants for the `EdgeOrigin` of a loop-region edge check
-/// (`validate_edge`, loop_regions/edges.rs:62-82). The projection
+/// (`validate_edge`, loop_regions/edges.rs:62-86). The projection
 /// carries the origin as a `u32` so the spec layer can switch on it
 /// without importing the production enum.
 pub const fn spec_loop_edge_origin_next() -> u32 { 0 }
@@ -1611,7 +1611,7 @@ pub fn loop_region_relations_error(parts: &SpecWorkflowParts) -> Option<SpecWork
 }
 
 /// Finds the cached region a node controls, if any
-/// (`regions.get(node.id)` in edges.rs:84-106). The table holds one
+/// (`regions.get(node.id)` in edges.rs:88-110). The table holds one
 /// entry per cached control, so the scan is unique when it hits.
 #[verifier::external]
 fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLoopRegion> {
@@ -1623,7 +1623,7 @@ fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLo
     None
 }
 
-/// Pure projection of `is_finish` (edges.rs:130-135): the step
+/// Pure projection of `is_finish` (edges.rs:128-133): the step
 /// names a `Finish` node. Production indexes the node table by
 /// position; the projection scans by id, which agrees on every
 /// input that reached this step because step 1e validates `meta.id`
@@ -1638,7 +1638,7 @@ fn is_finish_step(parts: &SpecWorkflowParts, step: u32) -> bool {
     false
 }
 
-/// Pure projection of `owned_backedge` (edges.rs:84-106): a
+/// Pure projection of `owned_backedge` (edges.rs:88-110): a
 /// backward edge inside a region is owned iff it comes from the
 /// origin production expects for the node's kind (`Next` for a
 /// RepeatCheck, `Kind` otherwise) and the source node itself
@@ -1668,7 +1668,7 @@ fn owned_backedge(
     }
 }
 
-/// Pure projection of `validate_edge` (edges.rs:62-82) for one edge
+/// Pure projection of `validate_edge` (edges.rs:62-86) for one edge
 /// `from -> to` against one region. An entry edge is allowed only
 /// as a `Kind` edge from the region's start to its body; an exit
 /// edge only to the region's done step or a `Finish` node; a
@@ -1710,7 +1710,7 @@ fn validate_loop_edge(
 /// node is checked in table order — routing `next` edge, routing
 /// error-handler edge, kind-target edges from the caller-supplied
 /// `kind_targets` inventory, then recovery support
-/// (`validate_recovery_support`, edges.rs:108-128): a node inside
+/// (`validate_recovery_support`, edges.rs:112-126): a node inside
 /// the region with an internal error handler, or an `ErrorHandler`
 /// node inside the region, returns `LoopRegionUnsupported`.
 /// Returns the first failure in that order, else `None`; `None`
