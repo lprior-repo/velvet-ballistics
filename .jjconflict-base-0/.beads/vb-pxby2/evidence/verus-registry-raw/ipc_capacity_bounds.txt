@@ -1,2 +1,0 @@
-[verus] verus --crate-type=lib verification/verus/ipc_capacity_bounds.rs
-verification results:: 27 verified, 0 errors

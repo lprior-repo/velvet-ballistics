@@ -1,2 +1,0 @@
-[verus] verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
-verification results:: 65 verified, 0 errors

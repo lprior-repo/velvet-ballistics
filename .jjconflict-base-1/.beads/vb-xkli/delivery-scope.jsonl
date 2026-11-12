@@ -1,1 +1,0 @@
-{"bead_id":"vb-xkli","scope":"p0-kani-repair","workspace":"/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-xkli","required_gate":"TMPDIR=target/tmp bash scripts/rust-verification-gauntlet.sh proof","status":"approved"}

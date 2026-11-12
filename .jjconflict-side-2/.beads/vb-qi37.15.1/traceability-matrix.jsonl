@@ -1,3 +1,0 @@
-{"contract_clause":"POST-001","tests":["cli_simulate_valid_workflow_reports_dry_run_summary"],"proofs":["SIM-CLI-001"],"review":"contract-verification-review.md"}
-{"contract_clause":"POST-002","tests":["cli_simulate_json_emits_deterministic_trace"],"proofs":["SIM-CLI-002"],"review":"contract-verification-review.md"}
-{"contract_clause":"POST-003","tests":["cli_simulate_does_not_create_db_side_effects"],"proofs":["SIM-CLI-003"],"review":"contract-verification-review.md"}

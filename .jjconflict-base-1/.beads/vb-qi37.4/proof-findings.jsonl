@@ -1,1 +1,0 @@
-{"status":"approved","state":6,"attempt":4,"finding_count":0,"evidence":["moon run :verify-proof exit 0","tlc admission_header_before_ack exit 0","verus admission_artifact_model exit 0","verus capability_artifact_model exit 0"],"residual_risk":"Later State 8/11 realization obligations remain required and are not closed by State 6."}

@@ -1,1 +1,0 @@
-{"id":"PF-001","severity":"medium","status":"waived","finding":"State 4 planned raw Verus on ingress.rs, but raw Verus cannot resolve Cargo dependencies or crate facade imports.","evidence":"verus crates/vb_ipc/src/ingress.rs exit_code=1","waiver":"Facade modularization does not change queue algorithm; executable tests and Kani header proof cover changed risk."}

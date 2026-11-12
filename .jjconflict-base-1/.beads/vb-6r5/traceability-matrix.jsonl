@@ -1,7 +1,0 @@
-{"requirement":"R1","contract_clause":"CLI commands","proof_ids":[],"test_ids":["T1","T2","T3","T4","T5"],"evidence":"unit tests for CLI parsing"}
-{"requirement":"R2","contract_clause":"Profile-based lane selection","proof_ids":["P5"],"test_ids":["T6","T7"],"evidence":"unit tests for profile monotonicity"}
-{"requirement":"R3","contract_clause":"DAG scheduler","proof_ids":["P1","P2","P3"],"test_ids":["T8","T9","T10","T11"],"evidence":"property tests for topological order, unit tests for bounded parallelism"}
-{"requirement":"R4","contract_clause":"Structured logging","proof_ids":[],"test_ids":["T12","T13"],"evidence":"unit tests for JSONL output and summary generation"}
-{"requirement":"R5","contract_clause":"Workspace discovery","proof_ids":[],"test_ids":["T14","T15"],"evidence":"unit tests for cargo metadata parsing"}
-{"requirement":"R6","contract_clause":"CLI flags","proof_ids":["P4"],"test_ids":["T16","T17","T18"],"evidence":"unit tests for flag parsing and validation"}
-{"requirement":"R7","contract_clause":"Exit code behavior","proof_ids":[],"test_ids":["T19","T20"],"evidence":"integration tests for exit codes"}

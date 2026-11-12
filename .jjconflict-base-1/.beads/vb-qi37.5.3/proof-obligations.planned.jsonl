@@ -1,5 +1,0 @@
-{"id":"PO-IDEM-ADMIT-001","lane":"unit-test","command":"rtk cargo test -p vb_runtime admission::tests::admit_artifact_run","acceptance":"missing idempotency gate rejects"}
-{"id":"PO-IDEM-ADMIT-002","lane":"unit-test","command":"rtk cargo test -p vb_runtime admission::tests::admit_artifact_run","acceptance":"missing attestation rejects"}
-{"id":"PO-IDEM-ADMIT-003","lane":"unit-test","command":"rtk cargo test -p vb_runtime admission::tests::admit_artifact_run","acceptance":"RunAdmission exposes attested IDs"}
-{"id":"PO-IDEM-STORAGE-001","lane":"unit-test","command":"rtk cargo test -p vb_storage admission::tests::submit_artifact","acceptance":"storage carries valid evidence and rejects invalid idempotency contract"}
-{"id":"PO-IDEM-PARITY-001","lane":"kani","command":"rtk cargo kani -p vb_compile --harness idempotency_gate_parity","acceptance":"VERIFICATION:- SUCCESSFUL"}

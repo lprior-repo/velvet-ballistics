@@ -1,3 +1,0 @@
-{"contract_clause":"POST-001","tests":["cli_submit_persists_ledger_before_success"],"proofs":["SUBMIT-CLI-001","SUBMIT-TLA-001"],"review":"contract-verification-review.md"}
-{"contract_clause":"POST-002","tests":["cli_submit_json_returns_structured_identifiers"],"proofs":["SUBMIT-CLI-001"],"review":"contract-verification-review.md"}
-{"contract_clause":"POST-003","tests":["cli_submit_supports_later_inspection"],"proofs":["SUBMIT-CLI-002"],"review":"contract-verification-review.md"}

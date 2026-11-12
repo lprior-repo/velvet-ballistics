@@ -1,8 +1,0 @@
-{"id":"KANI-PARITY-006","status":"PASS","evidence":"cargo kani -p vb_compile --harness idempotency_gate_parity; all 45 combinations; no exclusions; VERIFICATION SUCCESSFUL"}
-{"id":"KANI-VALIDATE-IDEMPOTENCY","status":"PASS","evidence":"cargo kani -p vb_validate; 5 successfully verified harnesses"}
-{"id":"KANI-RUNTIME-IDEMPOTENCY","status":"PASS","evidence":"cargo kani -p vb_core idempotency harness set; 6 successfully verified harnesses"}
-{"id":"TLA-IDEMPOTENCY-REPLAY","status":"PASS","evidence":"TLC completed with no error; 238912 states generated; depth 7"}
-{"id":"VERUS-IDEMPOTENCY-DECISION","status":"PASS","evidence":"8 verified, 0 errors"}
-{"id":"VERUS-CERTIFICATE-SUMMARY","status":"PASS","evidence":"6 verified, 0 errors"}
-{"id":"VERUS-REPLAY-TRACKER","status":"PASS","evidence":"5 verified, 0 errors"}
-{"id":"FUZZ-ARTIFACT-011","status":"WAIVED","classification":"BLOCKED_TOOLING","evidence":"fuzz target exists but local musl/libfuzzer toolchain prevents execution"}

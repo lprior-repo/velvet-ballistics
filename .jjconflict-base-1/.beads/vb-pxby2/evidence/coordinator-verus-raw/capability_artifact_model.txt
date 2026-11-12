@@ -1,2 +1,0 @@
-[verus] verus --crate-type=lib verification/verus/capability_artifact_model.rs
-verification results:: 18 verified, 0 errors

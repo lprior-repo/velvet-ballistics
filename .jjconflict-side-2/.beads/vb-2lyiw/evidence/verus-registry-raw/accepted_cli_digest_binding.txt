@@ -1,2 +1,0 @@
-[verus] verus --crate-type=lib verification/verus/accepted_cli_digest_binding.rs
-verification results:: 17 verified, 0 errors

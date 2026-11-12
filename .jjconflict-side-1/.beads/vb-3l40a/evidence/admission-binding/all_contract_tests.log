@@ -1,5 +1,0 @@
-error: unexpected argument 'shard_boundary' found
-
-Usage: cargo test [OPTIONS] [TESTNAME] [-- [ARGS]...]
-
-For more information, try '--help'.

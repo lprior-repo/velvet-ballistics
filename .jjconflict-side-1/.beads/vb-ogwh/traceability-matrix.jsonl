@@ -1,2 +1,0 @@
-{"contract_clause":"POST-001","tests":["tick_shard_shutdown_drains_and_reports_dead"],"proofs":["PO-001"],"review":"black-hat-review.md"}
-{"contract_clause":"INV-001","tests":["tick_shard_continue_drives_only_selected_shard","tick_shard_suspend_preserves_pending_work","tick_shard_migrate_rejects_self_and_invalid_target"],"proofs":["PO-001","PO-002"],"review":"black-hat-review.md"}

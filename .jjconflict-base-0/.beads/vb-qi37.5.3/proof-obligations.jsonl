@@ -1,5 +1,0 @@
-{"id":"PO-IDEM-ADMIT-001","requirement":"R2","claim":"Strict/Journaled admission rejects artifacts when idempotency_verified is false.","lane":"unit-test","status":"planned"}
-{"id":"PO-IDEM-ADMIT-002","requirement":"R3","claim":"Strict/Journaled admission rejects keyed actions missing attestation.","lane":"unit-test","status":"planned"}
-{"id":"PO-IDEM-ADMIT-003","requirement":"R4","claim":"Successful admission carries attested action IDs into RunAdmission.","lane":"unit-test","status":"planned"}
-{"id":"PO-IDEM-STORAGE-001","requirement":"R5","claim":"Storage derives keyed/attested idempotency evidence from accepted contracts and rejects invalid contracts.","lane":"unit-test","status":"planned"}
-{"id":"PO-IDEM-PARITY-001","requirement":"R5","claim":"Local storage idempotency acceptance matches the canonical all-45 validated decision table.","lane":"kani-existing-parity","status":"planned"}

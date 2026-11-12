@@ -1,9 +1,0 @@
-{"obligation_id":"PO-001","layer":"unit","tool":"cargo test","target":"test_trim_after_durable_snapshot_preserves_replay_result","clause":"I1","description":"Events before durable snapshot are deleted; replay from snapshot yields same state"}
-{"obligation_id":"PO-002","layer":"unit","tool":"cargo test","target":"test_second_trim_with_same_safe_point_is_idempotent","clause":"I2","description":"Second trim with same cutoff is a no-op"}
-{"obligation_id":"PO-003","layer":"unit","tool":"cargo test","target":"test_trim_without_durable_snapshot_fails_closed","clause":"Po5","description":"Trim without durable snapshot returns error, makes no changes"}
-{"obligation_id":"PO-004","layer":"unit","tool":"cargo test","target":"test_trim_cannot_delete_events_newer_than_safe_replay_point","clause":"I4","description":"Events at or after cutoff are never deleted"}
-{"obligation_id":"PO-005","layer":"unit","tool":"cargo test","target":"test_terminal_retention_policy_blocks_trim","clause":"I3","description":"Terminal runs within retention window are not trimmed"}
-{"obligation_id":"PO-006","layer":"proptest","tool":"cargo test --test proptests","target":"prop_trim_preserves_replay_equivalence","clause":"I1","description":"For arbitrary valid inputs, replay equivalence holds after trim"}
-{"obligation_id":"PO-007","layer":"kani","tool":"cargo kani","target":"verify_trim_boundary","clause":"I4","description":"Formal proof that deletion only affects seq < cutoff"}
-{"obligation_id":"PO-008","layer":"kani","tool":"cargo kani","target":"verify_idempotence","clause":"I2","description":"Formal proof that trim is idempotent"}
-{"obligation_id":"PO-009","layer":"miri","tool":"cargo +nightly miri test -p vb_storage trimming","target":"all trimming tests","clause":"memory safety","description":"Detect UB in key slicing and byte operations"}

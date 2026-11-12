@@ -1,4 +1,0 @@
-{"requirement_id":"REQ-001","contract":"contract.md#REQ-001","implementation":"implementation.md","tests":"moon ci --force --summary normal","proof":"PO-001","evidence":"machine-gate-report.md","status":"PASS"}
-{"requirement_id":"REQ-002","contract":"contract.md#REQ-002","implementation":"rtk cargo fmt --all plus compile-preserving repairs","tests":"moon ci","proof":"PO-001","evidence":"machine-gate-report.md","status":"PASS"}
-{"requirement_id":"REQ-003","contract":"contract.md#REQ-003","implementation":"workspace_tests benches and dev-dependencies","tests":"bench-build/check in moon ci","proof":"PO-001","evidence":"machine-gate-report.md","status":"PASS"}
-{"requirement_id":"REQ-004","contract":"contract.md#REQ-004","implementation":"fuzz/src/lib.rs","tests":"lint-src/fuzz-smoke in moon ci","proof":"PO-001","evidence":"machine-gate-report.md","status":"PASS"}

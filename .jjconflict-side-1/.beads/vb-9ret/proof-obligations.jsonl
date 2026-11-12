@@ -1,5 +1,0 @@
-{"clause_id":"moon-ci","layer":"moon-ci","obligation":"moon ci must pass","status":"waived","waiver_id":"WAIVE-INCLUDE-STR-PATH-ORIGIN-MAIN"}
-{"clause_id":"PRE-001","layer":"unit+integration","obligation":"adapter trait signatures preserved after deduplication","status":"open"}
-{"clause_id":"PRE-002","layer":"unit+integration","obligation":"compile workflow succeeds with preserved adapters","status":"open"}
-{"clause_id":"POST-001","layer":"integration","obligation":"output artifacts match expected structure","status":"open"}
-{"clause_id":"INV-001","layer":"unit+proptest","obligation":"no adapter state corruption during deduplication","status":"open"}
