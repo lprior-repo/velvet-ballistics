@@ -20,6 +20,7 @@ pub use checkpoint::ValueStoreCheckpointV1;
 mod blobs;
 mod deep_size;
 mod insert;
+mod list_ops;
 mod lists;
 mod objects;
 mod resolve;

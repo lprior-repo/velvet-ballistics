@@ -68,9 +68,7 @@ fn together_join_waits_for_all_branches() {
     // Set up accumulator with a list containing one branch result.
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
     // Output slot holds the last branch result (a non-list value).
-    run.write_slot(output, SlotValue::I64(20))
-        .ok()
-        .unwrap_or_else(|| panic!("slot write must succeed"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()));
 
     assert!(run.add_parallel_in_flight(2).is_ok());
     let result = together_join(
@@ -136,7 +134,8 @@ fn together_start_returns_error_when_output_missing() {
             assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
         }
     }
-    assert_eq!(run.parallel_in_flight(), 1);
+    assert_eq!(run.parallel_in_flight(), 0);
+    assert_eq!(store.total_arena_count(), 0);
 }
 
 #[test]
@@ -182,9 +181,7 @@ fn together_branch_appends_previous_result_for_nonzero_branch() {
     let output = SlotIdx::new(1);
     let entry = StepIdx::new(3);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
-    run.write_slot(output, SlotValue::I64(20))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()));
     // When calling together_branch with branch=1 (nonzero)
     let result = together_branch(
         &mut run,
@@ -284,9 +281,7 @@ fn together_join_returns_error_when_next_missing() {
     let accumulator = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
-    run.write_slot(output, SlotValue::I64(10))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(10)), Ok(()));
     // When calling together_join with next=None
     assert!(run.add_parallel_in_flight(1).is_ok());
     let result = together_join(
@@ -318,9 +313,7 @@ fn together_join_invalid_next_does_not_mutate_output_or_parallel_count() {
     let accumulator = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(7)]);
-    run.write_slot(output, SlotValue::I64(8))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(8)), Ok(()));
     assert!(run.add_parallel_in_flight(1).is_ok());
 
     let result = together_join(
@@ -415,9 +408,7 @@ fn together_branch_zero_does_not_append_to_accumulator() {
     let output = SlotIdx::new(1);
     let entry = StepIdx::new(3);
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
-    run.write_slot(output, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(42)), Ok(()));
     // When calling together_branch with branch=0
     let result = together_branch(
         &mut run,
@@ -460,9 +451,7 @@ fn together_branch_nonzero_appends_to_accumulator() {
     let output = SlotIdx::new(1);
     let entry = StepIdx::new(3);
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
-    run.write_slot(output, SlotValue::I64(99))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(99)), Ok(()));
     // When calling together_branch with branch=1
     let result = together_branch(
         &mut run,
@@ -498,12 +487,8 @@ fn together_branch_nonzero_returns_error_when_accumulator_is_not_list() {
     let mut store = ValueStore::new();
     let accumulator = SlotIdx::new(0);
     let output = SlotIdx::new(1);
-    run.write_slot(accumulator, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
-    run.write_slot(output, SlotValue::I64(10))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(accumulator, SlotValue::I64(42)), Ok(()));
+    assert_eq!(run.write_slot(output, SlotValue::I64(10)), Ok(()));
     // When calling together_branch with branch=1
     let result = together_branch(
         &mut run,
@@ -527,47 +512,6 @@ fn together_branch_nonzero_returns_error_when_accumulator_is_not_list() {
 }
 
 #[test]
-fn together_join_with_null_last_result_preserves_accumulator() {
-    // Given a frame with accumulator list and Null in output
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let accumulator = SlotIdx::new(0);
-    let output = SlotIdx::new(1);
-    let next_step = StepIdx::new(5);
-    list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
-    run.write_slot(output, SlotValue::Null)
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
-    // When calling together_join
-    assert!(run.add_parallel_in_flight(1).is_ok());
-    let result = together_join(
-        &mut run,
-        &mut store,
-        1,
-        accumulator,
-        Some(output),
-        Some(next_step),
-        StepIdx::ZERO,
-    );
-    // Then output has the accumulator list (Null last result is not appended)
-    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    match *run
-        .read_slot(output)
-        .ok()
-        .unwrap_or_else(|| panic!("must read"))
-    {
-        SlotValue::List(id) => {
-            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
-            assert_eq!(items.len(), 1);
-            assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
-        }
-        other => {
-            assert_eq!(other, SlotValue::I64(0));
-        }
-    }
-}
-
-#[test]
 fn together_join_appends_non_null_non_list_last_result() {
     // Given a frame with accumulator list and I64(20) in output
     let mut run = fresh_frame();
@@ -576,9 +520,7 @@ fn together_join_appends_non_null_non_list_last_result() {
     let output = SlotIdx::new(1);
     let next_step = StepIdx::new(5);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
-    run.write_slot(output, SlotValue::I64(20))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()));
     // When calling together_join
     assert!(run.add_parallel_in_flight(1).is_ok());
     let result = together_join(
@@ -610,51 +552,6 @@ fn together_join_appends_non_null_non_list_last_result() {
 }
 
 #[test]
-fn together_join_with_list_in_output_does_not_double_append() {
-    // Given a frame where output already contains a list (from a prior branch)
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let accumulator = SlotIdx::new(0);
-    let output = SlotIdx::new(1);
-    let next_step = StepIdx::new(5);
-    list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
-    let list_id = store
-        .insert_list(vec![SlotValue::I64(20)].into_boxed_slice())
-        .ok()
-        .unwrap_or_else(|| panic!("must insert"));
-    run.write_slot(output, SlotValue::List(list_id))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
-    // When calling together_join
-    assert!(run.add_parallel_in_flight(1).is_ok());
-    let result = together_join(
-        &mut run,
-        &mut store,
-        1,
-        accumulator,
-        Some(output),
-        Some(next_step),
-        StepIdx::ZERO,
-    );
-    // Then output has the accumulator list (list in output is not appended)
-    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    match *run
-        .read_slot(output)
-        .ok()
-        .unwrap_or_else(|| panic!("must read"))
-    {
-        SlotValue::List(id) => {
-            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
-            // Should have 1 item from the accumulator, not the output list appended
-            assert_eq!(items.len(), 1);
-        }
-        other => {
-            assert_eq!(other, SlotValue::I64(0));
-        }
-    }
-}
-
-#[test]
 fn together_join_with_non_list_accumulator_uses_accumulator_value() {
     // Given a frame where accumulator is not a list (corruption scenario)
     let mut run = fresh_frame();
@@ -662,12 +559,8 @@ fn together_join_with_non_list_accumulator_uses_accumulator_value() {
     let accumulator = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     let next_step = StepIdx::new(5);
-    run.write_slot(accumulator, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
-    run.write_slot(output, SlotValue::I64(99))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(accumulator, SlotValue::I64(42)), Ok(()));
+    assert_eq!(run.write_slot(output, SlotValue::I64(99)), Ok(()));
     // When calling together_join
     assert!(run.add_parallel_in_flight(1).is_ok());
     let result = together_join(
@@ -687,4 +580,167 @@ fn together_join_with_non_list_accumulator_uses_accumulator_value() {
             .unwrap_or_else(|| panic!("must read")),
         SlotValue::I64(42)
     );
+}
+
+#[test]
+fn together_join_with_distinct_null_result_appends_null() {
+    // Given a frame with accumulator list and Null in output
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let accumulator = SlotIdx::new(0);
+    let output = SlotIdx::new(1);
+    let next_step = StepIdx::new(5);
+    list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
+    assert_eq!(run.write_slot(output, SlotValue::Null), Ok(()));
+    // When calling together_join
+    assert!(run.add_parallel_in_flight(1).is_ok());
+    let result = together_join(
+        &mut run,
+        &mut store,
+        1,
+        accumulator,
+        Some(output),
+        Some(next_step),
+        StepIdx::ZERO,
+    );
+    // The distinct result slot contains a legitimate Null branch value.
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    match *run
+        .read_slot(output)
+        .ok()
+        .unwrap_or_else(|| panic!("must read"))
+    {
+        SlotValue::List(id) => {
+            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+            assert_eq!(items.len(), 2);
+            assert_eq!(items.get(1), Some(&SlotValue::Null));
+            assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
+        }
+        other => {
+            assert_eq!(other, SlotValue::I64(0));
+        }
+    }
+}
+
+#[test]
+fn together_join_with_distinct_list_result_appends_nested_list() {
+    // A distinct result slot holds the final branch list.
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let accumulator = SlotIdx::new(0);
+    let output = SlotIdx::new(1);
+    let next_step = StepIdx::new(5);
+    list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
+    let list_id = store
+        .insert_list(vec![SlotValue::I64(20)].into_boxed_slice())
+        .ok()
+        .unwrap_or_else(|| panic!("must insert"));
+    assert_eq!(run.write_slot(output, SlotValue::List(list_id)), Ok(()));
+    // When calling together_join
+    assert!(run.add_parallel_in_flight(1).is_ok());
+    let result = together_join(
+        &mut run,
+        &mut store,
+        1,
+        accumulator,
+        Some(output),
+        Some(next_step),
+        StepIdx::ZERO,
+    );
+    // The final branch list is appended as a nested value.
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    match *run
+        .read_slot(output)
+        .ok()
+        .unwrap_or_else(|| panic!("must read"))
+    {
+        SlotValue::List(id) => {
+            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+            assert_eq!(items, &[SlotValue::I64(10), SlotValue::List(list_id)]);
+        }
+        other => {
+            assert_eq!(other, SlotValue::I64(0));
+        }
+    }
+}
+
+#[test]
+fn together_join_legacy_aliased_accumulator_does_not_append_itself() -> Result<(), EngineError> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let slot = SlotIdx::new(0);
+    let value = SlotValue::F64(vb_core::FiniteF64::new(2.5)?);
+    let id = store.insert_list_with_taint(
+        Box::from([SlotValue::I64(7), value]),
+        Box::from([Taint::Secret, Taint::DerivedFromSecret]),
+    )?;
+    run.write_slot_with_taint(slot, SlotValue::List(id), Taint::Secret)?;
+    run.add_parallel_in_flight(1)?;
+    together_join(
+        &mut run,
+        &mut store,
+        1,
+        slot,
+        Some(slot),
+        Some(StepIdx::new(5)),
+        StepIdx::ZERO,
+    )?;
+    assert_eq!(*run.read_slot(slot)?, SlotValue::List(id));
+    assert_eq!(store.list(id)?, &[SlotValue::I64(7), value]);
+    assert_eq!(
+        store.list_item_with_taint(id, 0)?,
+        (SlotValue::I64(7), Taint::Secret)
+    );
+    assert_eq!(
+        store.list_item_with_taint(id, 1)?,
+        (value, Taint::DerivedFromSecret)
+    );
+    assert_eq!(run.read_taint(slot)?, Taint::Secret);
+    assert_eq!(run.parallel_in_flight(), 0);
+    Ok(())
+}
+
+#[test]
+fn together_join_distinct_slots_with_same_list_handle_still_append() -> Result<(), EngineError> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let accumulator = SlotIdx::new(0);
+    let output = SlotIdx::new(1);
+    let id = store.insert_list_with_taint(
+        Box::from([SlotValue::I64(7)]),
+        Box::from([Taint::DerivedFromSecret]),
+    )?;
+    run.write_slot_with_taint(accumulator, SlotValue::List(id), Taint::DerivedFromSecret)?;
+    run.write_slot_with_taint(output, SlotValue::List(id), Taint::Secret)?;
+    run.add_parallel_in_flight(1)?;
+    together_join(
+        &mut run,
+        &mut store,
+        1,
+        accumulator,
+        Some(output),
+        Some(StepIdx::new(5)),
+        StepIdx::ZERO,
+    )?;
+    let SlotValue::List(result) = *run.read_slot(output)? else {
+        return Err(EngineError::TypeMismatch {
+            expected: "list",
+            found: "other",
+        });
+    };
+    assert_eq!(
+        store.list(result)?,
+        &[SlotValue::I64(7), SlotValue::List(id)]
+    );
+    assert_eq!(
+        store.list_item_with_taint(result, 0)?,
+        (SlotValue::I64(7), Taint::DerivedFromSecret)
+    );
+    assert_eq!(
+        store.list_item_with_taint(result, 1)?,
+        (SlotValue::List(id), Taint::Secret)
+    );
+    assert_eq!(run.read_taint(output)?, Taint::Secret);
+    assert_eq!(run.parallel_in_flight(), 0);
+    Ok(())
 }

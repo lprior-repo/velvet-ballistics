@@ -29,6 +29,7 @@ use vb_core::{
 fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("engine_vs_reference"),
         digest: WorkflowDigest::from_bytes([0x42; 32]),
@@ -178,7 +179,10 @@ fn assert_terminal_frame_divergence(workflow: &CompiledWorkflow) -> Result<(), S
         }
         match prod {
             Err(EngineError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
+                assert_eq!(
+                    reason,
+                    vb_core::InvariantKind::from("invalid_state_transition")
+                );
             }
             other => {
                 return Err(format!(

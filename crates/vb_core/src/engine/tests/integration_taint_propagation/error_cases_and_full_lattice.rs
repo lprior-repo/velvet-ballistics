@@ -47,6 +47,7 @@ fn eval_expr_returns_expr_out_of_bounds_for_invalid_index() -> Result<(), String
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "expr_oob_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -143,6 +144,7 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
     // Need at least 2 nodes: node 0 is the Choose, node 1 is a valid branch target
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "choose_missing_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),

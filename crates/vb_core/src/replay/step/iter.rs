@@ -1,8 +1,34 @@
 use crate::ids::{ListId, SlotIdx, StepIdx};
 use crate::value::SlotValue;
 use crate::workflow::CompiledNode;
+use crate::{EngineError, RunFrame};
 
 use super::super::ReplayError;
+
+pub(super) fn preflight_writes(
+    run: &RunFrame,
+    slots: &[SlotIdx],
+    target: StepIdx,
+) -> Result<(), ReplayError> {
+    for &slot in slots {
+        if slot.get() >= run.slot_count() {
+            return Err(super::super::engine_to_replay_err(
+                EngineError::SlotOutOfBounds { slot },
+            ));
+        }
+    }
+    if target.get() >= run.step_count() {
+        return Err(super::super::engine_to_replay_err(
+            EngineError::InvalidProgramCounter { step: target },
+        ));
+    }
+    if run.executed() == u64::MAX {
+        return Err(ReplayError::Internal {
+            reason: "executed counter overflow",
+        });
+    }
+    Ok(())
+}
 
 /// Shared deterministic helpers for loop-primitive replay (`for_each`,
 /// `reduce`). Mirrors `vb_runtime::primitives::helpers` without depending on

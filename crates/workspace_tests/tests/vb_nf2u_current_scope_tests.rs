@@ -18,17 +18,24 @@ use std::process::Command;
 const WORKSPACE_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
 
 fn run_cli(args: &[&str]) -> Result<CommandOutput, Box<dyn Error>> {
-    let output = Command::new("cargo")
+    let mut command = match std::env::var_os("CARGO_BIN_EXE_velvet-ballistics") {
+        Some(binary) => Command::new(binary),
+        None => {
+            let mut command = Command::new("cargo");
+            command.args([
+                "run",
+                "--quiet",
+                "--manifest-path",
+                concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"),
+                "-p",
+                "velvet-ballistics",
+                "--",
+            ]);
+            command
+        }
+    };
+    let output = command
         .current_dir(WORKSPACE_ROOT)
-        .args([
-            "run",
-            "--quiet",
-            "--manifest-path",
-            concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"),
-            "-p",
-            "velvet-ballistics",
-            "--",
-        ])
         .args(args)
         .output()
         .map_err(|e| format!("failed to run CLI: {e}"))?;

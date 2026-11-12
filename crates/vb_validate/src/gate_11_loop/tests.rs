@@ -165,6 +165,7 @@ fn accepts_valid_reduce() {
         node(
             StepIdx::new(0),
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),

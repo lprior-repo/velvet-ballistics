@@ -5,7 +5,10 @@ use vb_core::capability::CapabilitySet;
 use vb_core::ids::ActionId;
 use vb_core::ids::{ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{ CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledInputConstraint, CompiledNodeKind, CompiledWorkflow,
+    ResourceContract, WorkflowParts,
+};
 
 use crate::RuntimeError;
 use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
@@ -43,6 +46,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0), }, Some(SlotIdx::ZERO), None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -54,7 +58,11 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -66,6 +74,7 @@ fn zero_retry_policy_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let finish = vb_core::workflow::node(StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("zero_retry_policy"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: Box::from([set_policy, action, retry, finish]),
@@ -77,7 +86,11 @@ fn zero_retry_policy_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -87,6 +100,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let finish = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -110,6 +124,7 @@ fn error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let finish_node = vb_core::workflow::node(StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("error_handler"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([guard, action, handler, finish_node]),
@@ -121,7 +136,11 @@ fn error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -132,6 +151,7 @@ fn wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let finish_node = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("wait_then_finish"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([set_deadline, wait, finish_node]),
@@ -162,6 +182,7 @@ mod vb_3l40a_contract_validation_tests {
         let node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), None);
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("test-do"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([3u8; 32]),
             nodes: Box::from([node]),
@@ -173,7 +194,11 @@ mod vb_3l40a_contract_validation_tests {
             entry: vb_core::ids::StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+            input_slots: Box::from([vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(0),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            }]),
         };
         CompiledWorkflow::try_from_parts(parts).expect("test workflow must compile")
     }

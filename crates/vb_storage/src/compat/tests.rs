@@ -46,8 +46,8 @@ fn journaled_decisions(
 #[test]
 fn artifact_ir_version_inputs_classify_against_current() {
     use crate::compat::CURRENT_IR_VERSION;
-    assert_eq!(CURRENT_IR_VERSION, v(1, 0, 0));
-    let current = super::artifact_ir_version_inputs(v(1, 0, 0));
+    assert_eq!(CURRENT_IR_VERSION, v(2, 0, 0));
+    let current = super::artifact_ir_version_inputs(v(2, 0, 0));
     assert_eq!(current.boundary, CompatBoundary::IrVersion);
     assert_eq!(current.required, CURRENT_IR_VERSION);
     assert!(!current.migration_available);
@@ -57,7 +57,7 @@ fn artifact_ir_version_inputs_classify_against_current() {
         classify(current).class.authorizes_live_effect(),
         "identical IR version authorizes live effects"
     );
-    let newer_minor = super::artifact_ir_version_inputs(v(1, 2, 0));
+    let newer_minor = super::artifact_ir_version_inputs(v(2, 2, 0));
     assert_eq!(
         classify(newer_minor).class,
         CompatibilityClass::ForwardCompatible
@@ -66,7 +66,13 @@ fn artifact_ir_version_inputs_classify_against_current() {
         classify(newer_minor).class.authorizes_live_effect(),
         "same-major newer artifact is forward compatible"
     );
-    let future_major = super::artifact_ir_version_inputs(v(2, 0, 0));
+    let legacy_major = super::artifact_ir_version_inputs(v(1, 0, 0));
+    assert_eq!(classify(legacy_major).class, CompatibilityClass::Rejected);
+    assert!(
+        !classify(legacy_major).class.authorizes_live_effect(),
+        "legacy postcard layout cannot authorize live effects"
+    );
+    let future_major = super::artifact_ir_version_inputs(v(3, 0, 0));
     assert_eq!(classify(future_major).class, CompatibilityClass::Rejected);
     assert!(
         !classify(future_major).class.authorizes_live_effect(),

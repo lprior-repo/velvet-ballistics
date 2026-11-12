@@ -32,10 +32,12 @@ pub(crate) fn workflow_from_parts(
     nodes: Box<[CompiledNode]>,
     constants: Box<[ConstValue]>,
     slot_count: u16,
+    input_slots: Box<[vb_core::workflow::CompiledInputSlot]>,
 ) -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots,
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
         nodes,
@@ -76,6 +78,7 @@ pub(crate) fn finished_workflow(name: &str, digest_byte: u8) -> Result<CompiledW
         ]),
         Box::from([ConstValue::Bool(true)]),
         1,
+        Box::new([]),
     )
 }
 
@@ -109,6 +112,7 @@ pub(crate) fn action_then_finish_workflow(
         ]),
         Box::from([]),
         2,
+        Box::new([required_input(0, vb_core::workflow::InputSlotKind::Any)]),
     )
 }
 
@@ -140,4 +144,15 @@ pub(crate) fn finish_node(id: u16, result: u16) -> CompiledNode {
             result: SlotIdx::new(result),
         },
     )
+}
+
+pub(crate) fn required_input(
+    slot: u16,
+    kind: vb_core::workflow::InputSlotKind,
+) -> vb_core::workflow::CompiledInputSlot {
+    vb_core::workflow::CompiledInputSlot {
+        slot: SlotIdx::new(slot),
+        kind,
+        constraint: vb_core::workflow::CompiledInputConstraint::required(),
+    }
 }

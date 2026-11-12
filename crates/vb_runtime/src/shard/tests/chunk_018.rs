@@ -195,7 +195,8 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
 
     // Submit a suspended run
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: super::RunId::new(901),
             workflow: wf_suspend,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

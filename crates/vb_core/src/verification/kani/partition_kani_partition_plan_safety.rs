@@ -92,8 +92,18 @@ fn partition_plan_from_config_no_panic() {
     let result = fixed_partition(n, kmax);
 
     match result {
-        Ok(_) => {}
-        Err(_) => {}
+        Ok(plan) => kani::assert(plan.len == n, "successful partition retains shard count"),
+        Err(PartitionError::ArithmeticOverflow { shard_index }) => kani::assert(
+            usize::try_from(shard_index).is_ok_and(|index| index < n),
+            "overflow belongs to a requested shard",
+        ),
+        Err(PartitionError::InvalidKeyRange { start, end }) => {
+            kani::assert(start > end, "invalid range error retains reversed bounds")
+        }
+        Err(_) => kani::assert(
+            false,
+            "bounded nonzero shard count excludes configuration errors",
+        ),
     }
 
     kani::cover!(n == 1, "single shard");
@@ -155,7 +165,17 @@ fn partition_plan_post_conditions() {
                 kani::cover!(true, "multi-shard plan");
             }
         }
-        Err(_) => {}
+        Err(PartitionError::ArithmeticOverflow { shard_index }) => kani::assert(
+            usize::try_from(shard_index).is_ok_and(|index| index < n),
+            "overflow belongs to a requested shard",
+        ),
+        Err(PartitionError::InvalidKeyRange { start, end }) => {
+            kani::assert(start > end, "invalid range error retains reversed bounds")
+        }
+        Err(_) => kani::assert(
+            false,
+            "bounded nonzero shard count excludes configuration errors",
+        ),
     }
 
     kani::cover!(kmax == u64::MAX && n == MAX, "full keyspace, max shards");

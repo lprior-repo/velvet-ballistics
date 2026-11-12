@@ -6,8 +6,7 @@ parent: velvet-ballistics-MASTER.md
 
 ## 68. Durable Execution Architecture Contract
 
-
-> **Target contract.** The invariants in this section describe the intended architecture. Current implementation has frame-seed hydration for recovered slot values, taint, and step states, but live pending-action hydration and strict async acknowledgement paths remain gated. Summary-only recovery still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` remains in the code until strict durability acknowledgement evidence is complete.
+> **Target contract.** The invariants in this section describe the intended architecture. Current recovery uses validated frame-seed products, retained input receipts, durable pending-action tickets, and full retry checkpoints. Chronological scalar Repeat/Ask replay has the explicit eligibility boundary in `docs/compiled-ir.md`; missing runtime arena state and summary-only products cannot authorize resumption. `UnsupportedFullRecoveryHydration` and `UnsupportedAsyncStrictAck` remain typed boundaries, and these supported paths do not establish general recovery or strict async acknowledgement acceptance.
 
 `velvet-ballistics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
 
@@ -82,12 +81,12 @@ This is the Holzmann influence: bounded loops, bounded allocation, no hidden gro
 
 ### Taint Propagation
 
-`Taint` is a three-level lattice: `Clean < DerivedFromSecret < Secret`. Propagation rules:
+`Taint` is a single enum marker with join precedence `Clean < DerivedFromSecret < Secret < Random < TimeDependent`; independent confidentiality and nondeterminism flags are not retained. Propagation rules:
 
 1. `EvalExpr` joins taint from all loaded input slots.
 2. `BuildObject`/`BuildList` join taint from all field/item slots.
 3. `Finish` carries taint in the result signal `(SlotValue, Taint)`.
-4. Validation does not reject tainted finish results; `Clean`, `DerivedFromSecret`, and `Secret` finish taints are preserved in the result signal.
+4. Validation does not reject tainted finish results; the result slot's `Taint` marker is preserved in the result signal.
 5. Action output taint must be at least as restrictive as input taint for `DeterministicPure` and `IdempotentExternal` actions.
 6. `AtLeastOnceExternal` actions propagate conservatively as `DerivedFromSecret` when any input is tainted.
 7. Secret-tainted failure details must not enter public diagnostics without redaction.

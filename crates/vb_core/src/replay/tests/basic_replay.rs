@@ -18,9 +18,25 @@ fn make_plan(
     constants: Vec<ConstValue>,
     expressions: Vec<ExprProgram>,
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
-    crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+    crate::workflow::CompiledWorkflow::try_from_parts(make_parts(nodes, constants, expressions))
+        .map_err(|_| CoreError::InvalidCompiledWorkflow {
+            reason: "test workflow validation failed",
+        })
+}
+
+fn make_parts(
+    nodes: Vec<CompiledNode>,
+    constants: Vec<ConstValue>,
+    expressions: Vec<ExprProgram>,
+) -> WorkflowParts {
+    WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
         name: "test_replay".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into(),
@@ -32,10 +48,48 @@ fn make_plan(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+    }
+}
+
+fn make_plan_with_second_input(
+    nodes: Vec<CompiledNode>,
+    constants: Vec<ConstValue>,
+    expressions: Vec<ExprProgram>,
+) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
+    let mut parts = make_parts(nodes, constants, expressions);
+    parts.input_slots = [0, 1]
+        .map(|slot| CompiledInputSlot {
+            slot: SlotIdx::new(slot),
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        })
+        .into();
+    crate::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|_| {
+        CoreError::InvalidCompiledWorkflow {
+            reason: "test workflow validation failed",
+        }
     })
-    .map_err(|_| CoreError::InvalidCompiledWorkflow {
-        reason: "test workflow validation failed",
-    })
+}
+
+fn make_rejected_plan(
+    nodes: Vec<CompiledNode>,
+    constants: Vec<ConstValue>,
+    expressions: Vec<ExprProgram>,
+    expected: crate::workflow::SlotFlowFailure,
+) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
+    let parts = make_parts(nodes, constants, expressions);
+    if !matches!(
+        crate::workflow::CompiledWorkflow::try_from_parts(parts.clone()),
+        Err(crate::WorkflowError::SlotFlow(crate::workflow::SlotFlowError { reason, .. }))
+            if reason == expected
+    ) {
+        return Err(CoreError::InvalidCompiledWorkflow {
+            reason: "invalid fixture must fail compiled slot validation",
+        });
+    }
+    Ok(crate::workflow::CompiledWorkflow::from_parts_unchecked(
+        parts,
+    ))
 }
 
 fn make_expr_program(ops: Vec<ExprOp>) -> Result<ExprProgram, CoreError> {
@@ -458,7 +512,7 @@ fn replay_step_not_found() -> Result<(), CoreError> {
 
 #[test]
 fn replay_copy_missing_source_maps_to_slot_not_available() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_rejected_plan(
         vec![crate::workflow::node(
             StepIdx::new(0),
             CompiledNodeKind::Copy {
@@ -469,6 +523,7 @@ fn replay_copy_missing_source_maps_to_slot_not_available() -> Result<(), CoreErr
         )],
         vec![],
         vec![],
+        crate::workflow::SlotFlowFailure::UninitializedRead,
     )?;
     let mut store = ValueStore::new();
     let engine = ReplayEngine::new(&plan);

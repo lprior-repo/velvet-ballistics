@@ -4,7 +4,7 @@
 
 #[test]
 fn replay_choose_slot_first_true_branch_wins() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -90,7 +90,7 @@ fn replay_choose_slot_first_true_branch_wins() -> Result<(), CoreError> {
 
 #[test]
 fn replay_choose_slot_second_true_first_false() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -176,7 +176,7 @@ fn replay_choose_slot_second_true_first_false() -> Result<(), CoreError> {
 
 #[test]
 fn replay_choose_slot_all_false_with_otherwise_fallback() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),

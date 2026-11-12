@@ -71,8 +71,8 @@ fn map_workflow_budget_error(_error: WorkflowError) -> AggregateBudgetError {
 
 /// Checks a tenant-scoped cost quota: the tenant's already-admitted cost
 /// plus the requested run's cost must not exceed the tenant quota.
-/// This is the explicit-sum path: callers that hold a [`ShardUsageSnapshot`]
-/// should sum from it with [`ShardUsageSnapshot::tenant_cost_usage`]
+/// This is the explicit-sum path: callers that hold a [`crate::budget::ShardUsageSnapshot`]
+/// should sum from it with [`crate::budget::ShardUsageSnapshot::tenant_cost_usage`]
 /// instead of passing a sum computed elsewhere.
 pub fn check_tenant_quota(
     tenant_cost_usage: u64,

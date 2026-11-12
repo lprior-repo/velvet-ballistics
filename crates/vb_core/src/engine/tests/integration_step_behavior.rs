@@ -25,7 +25,8 @@ use crate::workflow::{
 fn tiny_workflow_parts(name: &'static str, value: ConstValue) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: vec![
@@ -66,7 +67,8 @@ fn tiny_workflow_parts(name: &'static str, value: ConstValue) -> WorkflowParts {
 fn nop_advances_pc_to_next_step_with_continue_signal() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("nop_test"),
         digest: WorkflowDigest::from_bytes([0x01; 32]),
         nodes: vec![
@@ -114,6 +116,7 @@ fn nop_advances_pc_to_next_step_with_continue_signal() -> Result<(), String> {
 fn set_const_writes_constant_to_output_slot_and_marks_succeeded() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("set_const_test"),
         digest: WorkflowDigest::from_bytes([0x02; 32]),
@@ -165,7 +168,8 @@ fn set_const_writes_constant_to_output_slot_and_marks_succeeded() -> Result<(), 
 fn copy_duplicates_source_slot_value_and_taint_to_output() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("copy_test"),
         digest: WorkflowDigest::from_bytes([0x03; 32]),
         nodes: vec![
@@ -235,6 +239,7 @@ fn eval_expr_adds_two_constants_and_stores_result_in_output() -> Result<(), Stri
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("eval_test"),
         digest: WorkflowDigest::from_bytes([0x04; 32]),
@@ -285,6 +290,7 @@ fn eval_expr_adds_two_constants_and_stores_result_in_output() -> Result<(), Stri
 fn build_object_creates_handle_with_fields_and_taint() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("build_obj_taint"),
         digest: WorkflowDigest::from_bytes([0x05; 32]),
@@ -345,6 +351,7 @@ fn build_object_creates_handle_with_fields_and_taint() -> Result<(), String> {
 fn build_list_creates_handle_with_elements_and_taint() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("build_list_handle"),
         digest: WorkflowDigest::from_bytes([0x06; 32]),
@@ -405,7 +412,8 @@ fn build_list_creates_handle_with_elements_and_taint() -> Result<(), String> {
 fn do_node_returns_awaiting_action_and_does_not_advance_pc() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("do_no_next"),
         digest: WorkflowDigest::from_bytes([0x07; 32]),
         nodes: vec![node(
@@ -443,20 +451,29 @@ fn do_node_returns_awaiting_action_and_does_not_advance_pc() -> Result<(), Strin
 fn jump_sets_pc_to_target_and_returns_continue() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("jump_test"),
         digest: WorkflowDigest::from_bytes([0x08; 32]),
         nodes: vec![
-            node(
+            crate::workflow::node_with_handler(
                 StepIdx::new(0),
                 CompiledNodeKind::Jump {
-                    target: StepIdx::new(1),
+                    target: StepIdx::new(2),
                 },
                 None,
+                None,
+                StepIdx::new(1),
                 None,
             ),
             node(
                 StepIdx::new(1),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
                 CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -483,7 +500,8 @@ fn jump_sets_pc_to_target_and_returns_continue() -> Result<(), String> {
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(run.pc(), StepIdx::new(1))?;
+    ensure_equal(run.pc(), StepIdx::new(2))?;
+    ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Pending))?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -510,7 +528,8 @@ fn finish_returns_finished_signal_with_result_value_and_taint() -> Result<(), St
 fn wait_until_returns_awaiting_wait_and_step_enters_waiting_state() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("wait_test"),
         digest: WorkflowDigest::from_bytes([0x0A; 32]),
         nodes: vec![node(
@@ -546,7 +565,8 @@ fn wait_until_returns_awaiting_wait_and_step_enters_waiting_state() -> Result<()
 fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("wait_event_test"),
         digest: WorkflowDigest::from_bytes([0x0B; 32]),
         nodes: vec![node(
@@ -583,7 +603,8 @@ fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Res
 fn ask_returns_awaiting_ask_and_step_enters_asking_state() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("ask_test"),
         digest: WorkflowDigest::from_bytes([0x0C; 32]),
         nodes: vec![node(
@@ -620,7 +641,8 @@ fn ask_returns_awaiting_ask_and_step_enters_asking_state() -> Result<(), String>
 fn error_handler_jumps_to_body_and_returns_continue() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("err_handler"),
         digest: WorkflowDigest::from_bytes([0x0D; 32]),
         nodes: vec![
@@ -678,7 +700,8 @@ fn error_handler_jumps_to_body_and_returns_continue() -> Result<(), String> {
 fn choose_slot_true_branch_takes_target_step_and_returns_continue() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("choose_slot_true"),
         digest: WorkflowDigest::from_bytes([0x0E; 32]),
         nodes: vec![
@@ -739,7 +762,8 @@ fn choose_slot_true_branch_takes_target_step_and_returns_continue() -> Result<()
 fn choose_slot_false_takes_otherwise_target() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("choose_slot_false"),
         digest: WorkflowDigest::from_bytes([0x0F; 32]),
         nodes: vec![
@@ -832,6 +856,7 @@ fn step_transitions_pending_to_running_then_succeeded_on_completion() -> Result<
 fn all_steps_in_chain_transition_correctly_through_completion() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("chain_tx"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
@@ -935,7 +960,8 @@ fn signal_finished_maps_step_state_to_succeeded() -> Result<(), String> {
 fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("do_finish"),
         digest: WorkflowDigest::from_bytes([0x1A; 32]),
         nodes: vec![
@@ -1147,7 +1173,8 @@ fn resume_action_completion_journal_has_completed_variant_with_correct_fields() 
 fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("fail_no_handler"),
         digest: WorkflowDigest::from_bytes([0x2B; 32]),
         nodes: vec![node(
@@ -1203,7 +1230,8 @@ fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(),
 fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("fail_journal"),
         digest: WorkflowDigest::from_bytes([0x2C; 32]),
         nodes: vec![node(
@@ -1271,7 +1299,8 @@ fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Resul
 fn resume_action_failure_with_retry_policy_preserves_policy_in_journal() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("fail_retry"),
         digest: WorkflowDigest::from_bytes([0x2D; 32]),
         nodes: vec![node(
@@ -1582,6 +1611,7 @@ fn succeeded_to_running_rejected_in_run_frame() -> Result<(), String> {
 fn empty_workflow_parts_rejected_at_try_from_parts() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
@@ -1633,6 +1663,7 @@ fn run_frame_creation_rejects_zero_step_count() -> Result<(), String> {
 fn workflow_compile_rejects_entry_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("bad_entry"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
@@ -1667,6 +1698,7 @@ fn workflow_compile_rejects_entry_out_of_bounds() -> Result<(), String> {
 fn jump_to_out_of_bounds_target_rejected_at_compilation() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("bad_jump"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
@@ -1738,7 +1770,8 @@ fn resume_action_completion_nonexistent_step_returns_invalid_pc() -> Result<(), 
 fn resume_action_completion_missing_next_returns_error() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("do_no_next"),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
         nodes: vec![node(
@@ -1841,6 +1874,7 @@ mod kani_boundedness {
         let slot_val = kani::any::<i64>();
         let plan = match CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("kani_nop_finish"),
             digest: WorkflowDigest::from_bytes([0x10; 32]),
@@ -1892,6 +1926,7 @@ mod kani_boundedness {
     fn resume_action_completion_panic_freedom_bounded() {
         let plan = match CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("kani_resume"),
             digest: WorkflowDigest::from_bytes([0x20; 32]),

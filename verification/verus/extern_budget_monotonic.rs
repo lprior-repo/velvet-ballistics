@@ -29,11 +29,10 @@
 //   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:100-106
 //   - `BudgetTraversalError`       <- crates/vb_core/src/budget/traversal_error.rs:13-37
-//   - `WorkflowError`              <- crates/vb_core/src/workflow/error.rs:13-227
+//   - `WorkflowError`              <- crates/vb_core/src/workflow/error.rs:13-250
 //   - `ResourceContract`           <- crates/vb_core/src/workflow/resource_contract.rs:8-45
-//   - `CompiledNode`, `CompiledNodeKind`
-//                                   <- crates/vb_core/src/workflow/node.rs:14-23,
-//                                      crates/vb_core/src/workflow/node_kind.rs:14-180
+//   - `CompiledNode`               <- crates/vb_core/src/workflow/node.rs:14-25
+//   - `CompiledNodeKind`           <- crates/vb_core/src/workflow/node_kind.rs:14-181
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -129,7 +128,7 @@ fn prod_methods_drift_check(
     let _err = production_inner::BudgetTraversalError::JumpCycle { step, target: step };
 
     // Reference every CompiledNodeKind variant whose fields this
-    // mirror aligns with production (crates/vb_core/src/workflow/node_kind.rs:14-180).
+    // mirror aligns with production (crates/vb_core/src/workflow/node_kind.rs:14-181).
     // Constructing them with the production fields pins the mirror
     // against field drift even though the spec never constructs them.
     let slot = production_inner::SlotIdx::new(0);
@@ -165,6 +164,7 @@ fn prod_methods_drift_check(
         collector_slot: slot,
     };
     let _kind = production_inner::workflow::CompiledNodeKind::ReduceStart {
+        limit: 65_535,
         input: slot,
         accumulator: slot,
         initial: constant,
@@ -218,11 +218,12 @@ fn prod_methods_drift_check(
     let _ = production_inner::WholeWorkflowBudget::compute(nodes, entry, &contract);
 
     // Reference the workflow::CompiledNode struct shape
-    // (crates/vb_core/src/workflow/node.rs:14-23) so a field drift breaks the build.
+    // (crates/vb_core/src/workflow/node.rs:14-25) so a field drift breaks the build.
     // Constructing both routing shapes pins every variant of the
     // NodeOutput / NodeContinuation / ErrorRouting mirrors.
     let node_slot = production_inner::SlotIdx::new(0);
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: step,
         output: production_inner::workflow::NodeOutput::Slot(node_slot),
         routing: production_inner::workflow::NodeRouting {
@@ -235,6 +236,7 @@ fn prod_methods_drift_check(
         kind: production_inner::workflow::CompiledNodeKind::Nop,
     };
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: step,
         output: production_inner::workflow::NodeOutput::Discard,
         routing: production_inner::workflow::NodeRouting {

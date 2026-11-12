@@ -14,6 +14,7 @@ fn wait_until_wf() -> CompiledWorkflow {
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::ZERO, }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("wait"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: Box::from([node]),
@@ -33,6 +34,7 @@ fn do_wf() -> CompiledWorkflow {
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("do"),
         digest: WorkflowDigest::from_bytes([0xFF; 32]),
         nodes: Box::from([node]),

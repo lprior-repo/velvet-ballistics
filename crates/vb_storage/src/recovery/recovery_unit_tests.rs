@@ -1259,6 +1259,7 @@ mod tests {
                 JournalEvent::StepSucceeded { .. } => Ok(true),
                 JournalEvent::StepFailed { .. } => Ok(true),
                 JournalEvent::SlotWrittenEvent { .. } => Ok(true),
+                JournalEvent::RetryTimerScheduled { .. } => Ok(true),
                 JournalEvent::WaitScheduledEvent { .. } => Ok(true),
                 JournalEvent::AskScheduledEvent { .. } => Ok(true),
                 JournalEvent::AskTimedOutEvent { .. } => Ok(true),

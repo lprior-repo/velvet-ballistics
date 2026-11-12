@@ -215,7 +215,18 @@ fn outer_state_preserved_across_rearm() -> TestResult {
 fn inflight_body_rejects_rearm_source() -> TestResult {
     let wf = compile(&repeat_source(3))?;
     let (control, body, attempt) = control_body(&wf)?;
+    let start = (0..wf.node_count())
+        .map(StepIdx::new)
+        .find(|id| {
+            wf.node(*id).is_some_and(|node| {
+                matches!(node.kind, CompiledNodeKind::RepeatStart { body: start_body, .. } if start_body == body)
+                    && node.output.slot() == Some(attempt)
+            })
+        })
+        .ok_or_else(|| "missing owning RepeatStart".to_owned())?;
     let mut run = frame(&wf)?;
+    aerr(run.mark_running(start))?;
+    aerr(run.mark_succeeded(start))?;
     aerr(run.set_pc(control))?;
     let packed = i64::from(3).checked_shl(32).ok_or("pack overflow")?;
     aerr(run.write_slot_with_taint(attempt, SlotValue::I64(packed), Taint::Clean))?;

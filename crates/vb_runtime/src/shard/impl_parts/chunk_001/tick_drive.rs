@@ -65,7 +65,7 @@ impl Shard {
         guard.tick()
     }
 
-    fn drive_one_due_timer(&mut self) -> RuntimeResult<()> {
+    fn drive_one_ready_run(&mut self) -> RuntimeResult<()> {
         let now = std::time::Instant::now();
         let due = self
             .pending_timer_iter()
@@ -73,7 +73,7 @@ impl Shard {
             .min_by_key(|(run, timer)| (timer.deadline, run.get()))
             .map(|(run, timer)| (*run, *timer));
         let Some((run, timer)) = due else {
-            return Ok(());
+            return self.drive_one_pending_run();
         };
         self.handle_timer(run, timer.generation, timer.deadline, timer.kind)
     }
@@ -84,12 +84,15 @@ impl Shard {
         }
 
         let Some(cmd) = self.command_queue.pop() else {
-            self.drive_one_due_timer()?;
+            self.drive_one_ready_run()?;
             return Ok(true);
         };
 
         match cmd {
-            ShardCommand::ActivateOwnedSubmission { run, expected_source_digest } => {
+            ShardCommand::ActivateOwnedSubmission {
+                run,
+                expected_source_digest,
+            } => {
                 self.handle_owned_activation(run, expected_source_digest)?;
             }
             ShardCommand::Submit {
@@ -128,7 +131,10 @@ impl Shard {
                 &action_contracts,
             )?,
             ShardCommand::Resume { run } => {
-                self.handle_resume(run).map_err(RuntimeError::from)?;
+                let resumed = self.handle_resume(run).map_err(RuntimeError::from)?;
+                if resumed.status == crate::shard::ResumeStatus::AlreadyRunning {
+                    self.drive_one_pending_run()?;
+                }
             }
             ShardCommand::OpenGate {
                 gate,
@@ -143,7 +149,11 @@ impl Shard {
             ShardCommand::EscalateGate { run, gate, now_ms } => {
                 self.escalate_timed_out_gate(run, gate, now_ms)?;
             }
-            ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
+            ShardCommand::RegisteredActionCompleted {
+                ticket,
+                receipt,
+                output,
+            } => {
                 self.handle_registered_action_completion(ticket, receipt, output)?;
             }
             ShardCommand::ActionCompleted { ticket, output } => {

@@ -1,14 +1,12 @@
 #![forbid(unsafe_code)]
 //! Program evaluation over bounded expression bytecode.
 
-use arrayvec::ArrayVec;
-use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 use vb_core::value_store::ValueStore;
 use vb_core::{ConstValue, ExprOp, ExprProgram, SlotValue};
 
-use super::environment::{pop_pair, pop_value, push_value};
 use super::helper_store::eval_helper_op_with_store;
 use super::ops::{eval_binary_op, eval_unary_op};
+use super::vm_stack::{VmStack, pop_pair, pop_value, push_value};
 use crate::lexer::{BinaryOp, UnaryOp};
 use crate::{ExprError, ExprResult};
 use vb_core::limits::MAX_EXPRESSION_STACK;
@@ -30,7 +28,7 @@ pub fn eval_expr_program_with_store(
     constants: &[ConstValue],
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
-    let mut stack: ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE> = ArrayVec::new();
+    let mut stack = VmStack::new();
     let mut index = 0usize;
     while index < program.ops.len() {
         let op = *program
@@ -48,11 +46,9 @@ fn next_index(index: usize) -> ExprResult<usize> {
     index.checked_add(1).ok_or(ExprError::UnexpectedEof)
 }
 
-fn finish_stack(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-) -> ExprResult<SlotValue> {
+fn finish_stack(stack: &mut VmStack) -> ExprResult<SlotValue> {
     if stack.len() == 1 {
-        stack.pop().ok_or(ExprError::StackUnderflow)
+        pop_value(stack)
     } else if stack.is_empty() {
         Err(ExprError::StackUnderflow)
     } else {
@@ -64,7 +60,20 @@ fn finish_stack(
 
 fn eval_expr_op_with_store(
     op: ExprOp,
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    stack: &mut VmStack,
+    slots: &[Option<SlotValue>],
+    constants: &[ConstValue],
+    store: &mut ValueStore,
+) -> ExprResult<()> {
+    stack.reset_operand_taint();
+    let result = eval_expr_op_inner(op, stack, slots, constants, store);
+    stack.reset_operand_taint();
+    result
+}
+
+fn eval_expr_op_inner(
+    op: ExprOp,
+    stack: &mut VmStack,
     slots: &[Option<SlotValue>],
     constants: &[ConstValue],
     store: &mut ValueStore,
@@ -90,7 +99,7 @@ fn eval_expr_op_with_store(
 }
 
 fn eval_load_slot(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    stack: &mut VmStack,
     slots: &[Option<SlotValue>],
     idx: vb_core::SlotIdx,
 ) -> ExprResult<()> {
@@ -102,7 +111,7 @@ fn eval_load_slot(
 }
 
 fn eval_load_const(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    stack: &mut VmStack,
     constants: &[ConstValue],
     idx: vb_core::ConstIdx,
 ) -> ExprResult<()> {
@@ -115,28 +124,23 @@ fn eval_load_const(
     push_value(stack, value)
 }
 
-fn eval_eq(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    positive: bool,
-) -> ExprResult<()> {
+fn eval_eq(stack: &mut VmStack, positive: bool) -> ExprResult<()> {
     let (left, right) = pop_pair(stack)?;
     push_value(stack, SlotValue::Bool((left == right) == positive))
 }
 
-fn eval_binary_stack(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    op: BinaryOp,
-) -> ExprResult<()> {
+fn eval_binary_stack(stack: &mut VmStack, op: BinaryOp) -> ExprResult<()> {
     let (left, right) = pop_pair(stack)?;
     let value = eval_binary_op(op, left, right)?;
     push_value(stack, value)
 }
 
-fn eval_unary_stack(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    op: UnaryOp,
-) -> ExprResult<()> {
+fn eval_unary_stack(stack: &mut VmStack, op: UnaryOp) -> ExprResult<()> {
     let value = pop_value(stack)?;
     let result = eval_unary_op(op, value)?;
     push_value(stack, result)
 }
+
+#[cfg(test)]
+#[path = "taint_error_tests.rs"]
+mod taint_error_tests;

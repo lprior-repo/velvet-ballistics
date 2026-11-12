@@ -48,6 +48,7 @@ pub mod journal;
 #[cfg(all(kani, feature = "legacy-kani"))]
 #[path = "verification/kani/kani_codec.rs"]
 pub mod kani_codec;
+pub mod retry_timer;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
 #[path = "verification/kani/kani_record_magic.rs"]

@@ -1,30 +1,62 @@
 #![forbid(unsafe_code)]
-//! Final workflow assembly for `compile_source` (part_01).
-//!
-//! The top-level compile pipeline ends by encoding the lowered parts,
-//! stamping the artifact digest, and validating the result; this helper
-//! is a verbatim relocation of that final segment. The slot compiler
-//! and step names are moved in by value because the pipeline owns them
-//! through the end of compilation.
+//! Finalize source metadata, encode the artifact digest and validate the lowered workflow.
 
 use super::*;
-use crate::mod_compile_errors::{CompileError, CompileErrors};
+use crate::{CompileError, CompileErrors};
 use vb_core::{CompiledWorkflow, ResourceContract, StepIdx, WorkflowDigest, WorkflowParts};
 
 pub(super) fn finalize_compiled_workflow(
     source: &crate::WorkflowSource,
     semantic_source_identity: WorkflowDigest,
-    builder: SlotCompiler,
-    step_names: Vec<Box<str>>,
+    mut builder: SlotCompiler,
+    mut step_names: Vec<Box<str>>,
     steps: &[crate::StepAst],
     layout: &[CanonicalStepLayout],
 ) -> Result<CompiledWorkflow, CompileErrors> {
+    for (id, display) in &builder.display_names {
+        if let Some(name) = step_names.get_mut(id.as_usize()) {
+            *name = display.clone();
+        }
+    }
+    let symbols = std::mem::take(&mut builder.symbols);
+    builder
+        .secret_requirements
+        .sort_unstable_by_key(|binding| binding.alias());
+    let metadata = if symbols.is_empty() {
+        None
+    } else {
+        let count = symbols.len();
+        let bytes = symbols.symbol_bytes();
+        let symbols =
+            symbols
+                .finish()
+                .map_err(|error| CompileError::ExpressionLoweringUnsupported {
+                    feature: error.to_string().into(),
+                })?;
+        let metadata = vb_core::workflow::source_metadata::WorkflowSourceMetadata::try_new(
+            symbols,
+            std::mem::take(&mut builder.secret_requirements).into_boxed_slice(),
+        )
+        .map_err(|error| CompileError::ExpressionLoweringUnsupported {
+            feature: error.to_string().into(),
+        })?;
+        if usize::try_from(metadata.symbols_count()).ok() != Some(count)
+            || metadata.symbol_bytes() != bytes
+        {
+            return Err(CompileError::ExpressionLoweringUnsupported {
+                feature: "symbol measurements".into(),
+            }
+            .into());
+        }
+        Some(Box::new(metadata))
+    };
     let mut parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         semantic_source_identity: Some(semantic_source_identity),
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
-        symbols_count: 0,
+        symbols_count: metadata.as_ref().map_or(0, |value| value.symbols_count()),
+        source_metadata: metadata,
         nodes: builder.nodes.into_boxed_slice(),
         expressions: builder.expressions.into_boxed_slice(),
         accessors: builder.accessors.into_boxed_slice(),

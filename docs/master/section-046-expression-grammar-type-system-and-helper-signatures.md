@@ -6,7 +6,6 @@ parent: velvet-ballistics-MASTER.md
 
 ## 46. Expression Grammar, Type System, and Helper Signatures
 
-
 ### Precedence Table
 
 Highest to lowest. All binary operators are left-associative.
@@ -27,12 +26,12 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 
 | Operator | Accepted types | Return type | Error on mismatch |
 |----------|---------------|-------------|-------------------|
-| `+`, `-`, `*`, `/` | I64, I64 | I64 | `TypeMismatch { expected: "number" }`. Overflow → `IntegerOverflow`. Div-by-zero → `DivisionByZero`. |
-| `>`, `>=`, `<`, `<=` | I64, I64 | Bool | `TypeMismatch { expected: "number" }` |
+| `+`, `-`, `*`, `/` | I64 or finite F64 operands | I64 for two integers; finite F64 otherwise | Non-numeric operands, checked integer overflow, zero division, and non-finite float results fail explicitly. |
+| `>`, `>=`, `<`, `<=` | I64 or finite F64 operands | Bool | Non-numeric operands fail; mixed numeric operands promote I64 to finite F64. |
 | `==`, `!=` | Any, Any | Bool | Never (accepts any `SlotValue` pair via `PartialEq`) |
 | `and`, `or` | Bool, Bool | Bool | `TypeMismatch { expected: "boolean" }`. **No short-circuit** — both operands evaluated before operator applies. |
 | `not` | Bool | Bool | `TypeMismatch { expected: "boolean" }` |
-| `-` (unary) | I64 | I64 | `TypeMismatch { expected: "number" }`. `i64::MIN` → `IntegerOverflow`. |
+| `-` (unary) | I64 or finite F64 | Same numeric type | Non-numeric operands fail. Negating `i64::MIN` fails checked arithmetic. |
 
 ### Null Comparison Rules
 
@@ -40,21 +39,21 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 
 ### F64 Status
 
-`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Remaining gap: the typechecker still accepts broader numeric coercion than the evaluator. Mixed I64/F64 arithmetic and evaluator/typechecker parity remain current-scope expression evidence gaps. Generated F64 arithmetic semantics and codegen lint parity are removed with `vb_codegen`.
+`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Mixed I64/F64 arithmetic and ordered comparisons promote integers to finite F64; integer/integer arithmetic retains checked integer semantics. Overflow to a non-finite float is rejected. Deterministic replay uses the same production expression evaluator as execution. Generated F64 arithmetic semantics and codegen lint parity are removed with `vb_codegen`.
 
 ### Helper Signatures
 
 | Helper | Arity | Input types | Return | Implementation status |
 |--------|-------|-------------|--------|-----------------------|
 | `exists` | 1 | Any | Bool | Implemented: `!matches!(value, Null)` |
-| `length` | 1 | List or Null | I64 | Implemented store-aware for symbols/lists/objects/null; no-store helper reports context-required for handles. |
+| `length` | 1 | Text, List, Object, or Null | I64 | Implemented store-aware for symbols/lists/objects/null; no-store helper reports context-required for handles. |
 | `count` | 1 | List or Null | I64 | Implemented as count/length over store-aware list values. |
-| `empty` | 1 | List or Null | Bool | Implemented store-aware for symbol/list/object/null emptiness. |
+| `empty` | 1 | Text, List, Object, or Null | Bool | Implemented store-aware for symbol/list/object/null emptiness. |
 | `unique` | 1 | List | List | Implemented store-aware list deduplication preserving first occurrence order. |
-| `contains` | 2 | List, T | Bool | Implemented in current evaluators as store-aware Symbol substring search; list-membership/spec parity evidence remains open. |
+| `contains` | 2 | Text, Text or List, Any | Bool | Store-aware text substring search and list membership. Known invalid argument kinds are rejected during type checking; dynamic kinds retain runtime checks. |
 | `starts_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is removed with `vb_codegen`. |
 | `ends_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is removed with `vb_codegen`. |
-| `has` | 2 | Object, Symbol | Bool | Partially converged: `vb_expr` implements object-field lookup, while the core hot evaluator currently uses list membership semantics; helper parity evidence remains open. |
+| `has` | 2 | Object, Symbol | Bool | Store-aware object-field lookup in expression evaluation and deterministic replay. |
 | `append` | 2 | List, T | List | Implemented store-aware list append. |
 | `append_if` | 3 | List, T, Bool | List | Implemented store-aware conditional append. |
 | `merge` | 2 | Object, Object | Object | Implemented store-aware object merge; typechecker returns `Object`; interpreter/runtime parity evidence remains open. |

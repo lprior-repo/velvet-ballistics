@@ -80,6 +80,12 @@ pub fn recover_runtime_frame_seed_from_events_with_workflow(
     events: &[JournalEvent],
     workflow: &CompiledWorkflow,
 ) -> RecoveryResult<RecoveryFrameSeedProduct> {
+    reject_workflow_digest_mismatch(events, workflow.digest())?;
+    if let Some(replayed) =
+        crate::recovery::complete_scalar::replay_complete_scalar(events, workflow)?
+    {
+        return Ok(replayed.seed().clone());
+    }
     recover_raw_runtime_frame_seed_from_events_with_workflow(events, workflow)
         .map(RecoveryFrameSeedProduct::from_seed)
 }
@@ -210,6 +216,9 @@ fn build_recovery_frame_seed(
         observed_slot_count.max(value.slot_count())
     });
     let first_step = accumulator.first_step();
+    if let (Some(plan), Some(_)) = (workflow, accumulator.last_succeeded_step) {
+        reject_unbound_retry_policy(plan)?;
+    }
     let slots = super::hydrate::recover_slots(&accumulator, workflow)?;
     let unsupported = seed_unsupported_state(&accumulator, &slots);
     let steps = recovered_steps(accumulator.step_states);
@@ -258,4 +267,24 @@ fn seed_unsupported_state(
         UnsupportedRecoveryState::SUPPORTED,
         UnsupportedRecoveryState::union,
     )
+}
+
+fn reject_unbound_retry_policy(plan: &CompiledWorkflow) -> RecoveryResult<()> {
+    // RetryCheck reads an external runtime policy that admission does not retain.
+    // A workflow resource cap cannot substitute for that execution authority.
+    for raw in 0..plan.node_count() {
+        let node = plan
+            .node(StepIdx::new(raw))
+            .ok_or(RecoveryError::ReplayDivergence {
+                step: StepIdx::new(raw),
+                detail: String::from("compiled recovery node missing"),
+            })?;
+        if matches!(node.kind, vb_core::CompiledNodeKind::RetryCheck { .. }) {
+            return Err(RecoveryError::ReplayDivergence {
+                step: node.id,
+                detail: String::from("retry policy unavailable for deterministic recovery"),
+            });
+        }
+    }
+    Ok(())
 }

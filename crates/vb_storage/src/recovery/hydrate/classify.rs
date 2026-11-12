@@ -102,7 +102,8 @@ fn drain_classify_event_to_pending_sets(
     event: &JournalEvent,
 ) {
     match event {
-        JournalEvent::WaitScheduledEvent { step, .. } => {
+        JournalEvent::RetryTimerScheduled { step, .. }
+        | JournalEvent::WaitScheduledEvent { step, .. } => {
             pending_waits.insert(*step);
         }
         JournalEvent::WaitResolvedEvent { step, .. } => {

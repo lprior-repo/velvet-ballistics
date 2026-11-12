@@ -80,7 +80,7 @@ pub fn admission_is_new_bound(event: &JournalEvent) -> bool {
 
 /// Retained inputs restored for cold startup recovery.
 ///
-/// Scalar runs carry plain slot values (taint `Clean`). Owned runs carry the
+/// Scalar roots retain declaration taint. Owned runs carry the
 /// complete validated bundle: canonical roots with their taints plus the full
 /// value-store checkpoint, so recovered `List`/`Object`/`Blob` handles
 /// resolve against a restored arena instead of dangling.
@@ -151,12 +151,7 @@ pub(crate) fn load_retained_inputs_for_recovery(
     // source digest is covered by the tamper-evident input digest the
     // admission event below binds.
     let retained = journal
-        .retained_run_inputs_for_recovery(run, artifact.digest, workflow)
-        .map_err(|error| RuntimeError::Recovery {
-            error: format!(
-                "recovery: retained input record missing for new-bound run {run:?}: {error}"
-            ),
-        })?
+        .admitted_run_inputs(run, artifact.digest, workflow, admission_event)?
         .ok_or(RuntimeError::Recovery {
             error: format!("recovery: retained input record missing for new-bound run {run:?}"),
         })?;
@@ -181,11 +176,7 @@ fn scalar_retained_inputs(
     validate_input_record_binding(record, run, admission_event)?;
     validate_input_record_artifact(record, artifact_digest)?;
     validate_input_record_workflow(record, workflow)?;
-    let initial_inputs = record
-        .inputs()
-        .iter()
-        .map(|(slot, value)| (*slot, *value, Taint::Clean))
-        .collect();
+    let initial_inputs = scalar_roots(record, workflow)?;
     Ok(RecoveredRetainedInputs {
         initial_inputs,
         store: None,
@@ -209,26 +200,54 @@ fn owned_retained_inputs(
     // Binds the record to the durable admission: the admission's input digest
     // covers the record (including its embedded source digest), so the
     // presented arenas are the admitted ones.
-    record
-        .validate_admission(admission_event)
-        .map_err(|error| RuntimeError::Recovery {
-            error: format!("recovery: retained owned input admission binding invalid: {error}"),
-        })?;
-    // Revalidates the complete bundle (projection, roots, arenas, references,
-    // taints, caps, digest) against the independently loaded workflow before
-    // any arena handle is trusted.
-    record
-        .restore(workflow)
-        .map_err(|error| RuntimeError::Recovery {
-            error: format!("recovery: retained owned input validation failed: {error}"),
-        })?;
-    let store = ValueStore::from_checkpoint_v1(record.checkpoint().clone()).map_err(|error| {
-        RuntimeError::Recovery {
-            error: format!("recovery: retained value store restore failed: {error:?}"),
-        }
-    })?;
+    record.validate_admission(admission_event)?;
+    let bundle = record.restore(workflow)?;
+    let store = ValueStore::from_checkpoint_v1(bundle.checkpoint().clone())?;
     Ok(RecoveredRetainedInputs {
         initial_inputs: record.roots().to_vec(),
         store: Some(store),
     })
+}
+
+fn scalar_roots(
+    record: &vb_storage::RunInputsRecord,
+    workflow: &vb_core::CompiledWorkflow,
+) -> RuntimeResult<Vec<(SlotIdx, SlotValue, Taint)>> {
+    let mut taints = Vec::new();
+    let slots = usize::from(workflow.slot_count());
+    taints
+        .try_reserve_exact(slots)
+        .map_err(|_| invalid("retained declaration capacity"))?;
+    taints.resize(slots, None);
+    workflow.input_slots().iter().try_for_each(|input| {
+        let target = taints
+            .get_mut(input.slot.as_usize())
+            .ok_or_else(|| invalid("retained declaration slot"))?;
+        *target = Some(if input.constraint.secretness.is_secret() {
+            Taint::Secret
+        } else {
+            Taint::Clean
+        });
+        Ok::<(), RuntimeError>(())
+    })?;
+    let mut roots = Vec::new();
+    roots
+        .try_reserve_exact(record.inputs().len())
+        .map_err(|_| invalid("retained input capacity"))?;
+    record.inputs().iter().try_for_each(|(slot, value)| {
+        let taint = taints
+            .get(slot.as_usize())
+            .copied()
+            .flatten()
+            .ok_or_else(|| invalid("retained input declaration missing"))?;
+        roots.push((*slot, *value, taint));
+        Ok::<(), RuntimeError>(())
+    })?;
+    Ok(roots)
+}
+
+fn invalid(error: &str) -> RuntimeError {
+    RuntimeError::Recovery {
+        error: error.into(),
+    }
 }

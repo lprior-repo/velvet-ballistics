@@ -26,7 +26,6 @@ pub(super) fn compute_reachable_metrics(
     node_count: usize,
     max_fanout: &mut u16,
     max_action_tickets: &mut u32,
-    max_parallel_in_flight: &mut u16,
     max_gather_pages: &mut u32,
     max_gather_items: &mut u32,
     max_for_each_iterations: &mut u32,
@@ -69,11 +68,15 @@ pub(super) fn compute_reachable_metrics(
                     }
                 }
 
+                if node.retry.is_some_and(|policy| policy.delay_ms > 0) {
+                    *max_timer_entries = max_timer_entries
+                        .checked_add(1)
+                        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+                }
                 update_fanout(&node.kind, max_fanout)?;
                 update_workflow_metrics(
                     &node.kind,
                     max_action_tickets,
-                    max_parallel_in_flight,
                     max_gather_pages,
                     max_gather_items,
                     max_for_each_iterations,
@@ -88,6 +91,10 @@ pub(super) fn compute_reachable_metrics(
                 push_successor_targets(&node.kind, &mut targets);
                 if let Some(next) = node.routing.next.step() {
                     targets.push(next);
+                }
+
+                if let Some(handler) = node.routing.error.handler() {
+                    targets.push(handler);
                 }
 
                 stack.push(ReachableVisit::Exit(step_u16));
@@ -138,7 +145,6 @@ fn update_fanout(
 fn update_workflow_metrics(
     kind: &CompiledNodeKind,
     max_action_tickets: &mut u32,
-    max_parallel_in_flight: &mut u16,
     max_gather_pages: &mut u32,
     max_gather_items: &mut u32,
     max_for_each_iterations: &mut u32,
@@ -156,9 +162,6 @@ fn update_workflow_metrics(
         }
         CompiledNodeKind::TogetherStart { branches, .. } => {
             let branch_count = branch_count_to_u16(branches.len())?;
-            if branch_count > *max_parallel_in_flight {
-                *max_parallel_in_flight = branch_count;
-            }
             if branch_count > *max_together_branches {
                 *max_together_branches = branch_count;
             }

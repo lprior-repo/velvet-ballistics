@@ -52,6 +52,7 @@ pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "ActionFailedEvent",
     "ActionAbandoned",
     "SlotWrittenEvent",
+    "RetryTimerScheduled",
     "WaitScheduledEvent",
     "AskScheduledEvent",
     "AskAnsweredEvent",

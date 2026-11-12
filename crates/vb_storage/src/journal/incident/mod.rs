@@ -230,6 +230,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::ActionAbandoned { .. } => LifecycleState::Cancelled,
         JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
         JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
+        JournalEvent::RetryTimerScheduled { .. } => LifecycleState::WaitingAnswer,
         JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
         JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
         JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,

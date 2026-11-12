@@ -38,6 +38,7 @@ fn service_turn_commits_accepted_journal_work_before_shutdown() -> TestResult {
     );
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
+        available_names: Default::default(),
     };
     assert_eq!(
         service.turn(
@@ -70,6 +71,7 @@ fn service_turn_preserves_and_reports_failed_journal_staging() -> TestResult {
     );
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
+        available_names: Default::default(),
     };
     let result = service.turn(
         &mut server,
@@ -108,6 +110,7 @@ fn shutdown_acknowledgement_follows_all_65_owned_queue_events_before_exit() -> T
     );
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
+        available_names: Default::default(),
     };
     assert!(service.turn(
         &mut server,
@@ -165,6 +168,7 @@ fn failed_owned_shutdown_reports_wire_error_and_typed_storage_failure() -> TestR
     );
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
+        available_names: Default::default(),
     };
     assert!(service.turn(
         &mut server,

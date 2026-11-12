@@ -98,6 +98,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("recovery-test"),
         digest: workflow_digest,
         nodes: Box::from([do_node, finish_node]),
@@ -109,7 +110,11 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
 
     let workflow_ir = postcard::to_allocvec(&parts)?;
@@ -633,8 +638,8 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
 
     assert_eq!(
         restored.registered_execution,
-        crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
-        "positive control: execution must be ReconcileOnly for recovered run"
+        crate::shard::types::RegisteredExecutionMode::Live,
+        "positive control: failed-step retry recovery must restore Live execution"
     );
 
     // Verify the Do action was rescheduled after positive control recovery.
@@ -804,6 +809,7 @@ fn recovery_gate_shard() -> Result<
     let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("recovery-test"),
         digest: workflow_digest,
         nodes: Box::from([do_node, finish_node]),
@@ -815,7 +821,11 @@ fn recovery_gate_shard() -> Result<
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let workflow_ir = postcard::to_allocvec(&parts)?;
     let contract = action_recovery_test_contract()?;

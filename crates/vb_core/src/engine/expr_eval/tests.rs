@@ -28,6 +28,7 @@ fn empty_plan_with_expr(
     })?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -1261,6 +1262,7 @@ mod proptests {
         })?;
         let plan = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: "proptest".into(),
             digest: WorkflowDigest::from_bytes([0; 32]),

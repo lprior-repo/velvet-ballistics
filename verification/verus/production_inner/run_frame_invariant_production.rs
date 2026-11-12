@@ -128,7 +128,7 @@ impl SlotIdx {
 // ============================================================================
 // Slot value types — mirrors of `crates/vb_core/src/value.rs`
 // ============================================================================
-/// Mirror of the `Taint` discriminant set at `crates/vb_core/src/value.rs:14-25`.
+/// Mirror of the `Taint` discriminant set at `crates/vb_core/src/value/taint.rs:10-21`.
 /// Discriminant order mirrors the production `#[repr(u8)]` ordering
 /// (Clean=0, DerivedFromSecret=1, Secret=2, Random=3, TimeDependent=4).
 ///
@@ -145,7 +145,7 @@ pub enum Taint {
     TimeDependent = 4,
 }
 
-/// Mirror of `SlotValue` at `crates/vb_core/src/value.rs:125-142`. The
+/// Mirror of `SlotValue` at `crates/vb_core/src/value/slot.rs:14-31`. The
 /// runtime arena handles (Symbol/List/Object/Blob) are mirrored as their
 /// underlying integer ids because the spec never inspects their payload.
 ///

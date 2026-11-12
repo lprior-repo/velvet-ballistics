@@ -357,6 +357,7 @@ fn deterministic_finish_workflow(digest_byte: u8) -> Result<CompiledWorkflow, St
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("vb-kyyf-deterministic-finish"),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
@@ -713,19 +714,24 @@ fn run_velvet_ballistics_cli(
     run_arg: &str,
     db_path: &std::path::Path,
 ) -> Result<CliReport, VbKyyfScenarioDiagnostic> {
-    let output = Command::new(env!("CARGO"))
-        .args([
-            "run",
-            "--quiet",
-            "-p",
-            "velvet-ballistics",
-            "--bin",
-            "velvet-ballistics",
-            "--",
-            command_name,
-            run_arg,
-            "--db",
-        ])
+    let mut command = match std::env::var_os("CARGO_BIN_EXE_velvet-ballistics") {
+        Some(binary) => Command::new(binary),
+        None => {
+            let mut command = Command::new(env!("CARGO"));
+            command.args([
+                "run",
+                "--quiet",
+                "-p",
+                "velvet-ballistics",
+                "--bin",
+                "velvet-ballistics",
+                "--",
+            ]);
+            command
+        }
+    };
+    let output = command
+        .args([command_name, run_arg, "--db"])
         .arg(db_path)
         .output()
         .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {

@@ -88,11 +88,12 @@ mod tests {
         let wf = mkwf(
             vec![
                 tog(0, 0, Box::from([1u16, 2]), 3),
-                fin(1, 1),
-                fin(2, 1),
-                fin(3, 1),
+                fin(1, 0),
+                fin(2, 0),
+                fin(3, 0),
             ],
             2,
+            &[],
         )?;
         let result = compute_max_parallel_in_flight(&wf).map_err(|e| format!("{e}"))?;
         assert_eq!(
@@ -128,6 +129,7 @@ mod tests {
 
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: "bh_branch_limit".into(),
             digest: WorkflowDigest::from_bytes([0; 32]),
             nodes: Box::from([node]),
@@ -170,6 +172,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             1,
             vec![ConstValue::I64(-10)],
+            &[],
         )?;
         let mut r = mkr(2, 1)?;
         let mut b = StepBudget::new(10);

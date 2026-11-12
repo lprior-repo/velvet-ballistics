@@ -61,9 +61,20 @@ pub(crate) struct CrashFixture {
 
 impl CrashFixture {
     pub(crate) fn new() -> TestResult<Self> {
-        let root = tempfile::Builder::new()
-            .prefix("vb-pcr-")
-            .tempdir_in("/tmp")?;
+        let mut root = tempfile::Builder::new().prefix("vb-pcr-").tempdir()?;
+        // start_server permits socket leaves of at most 20 bytes, plus NUL.
+        if root
+            .path()
+            .join("xxxxxxxxxxxxxxxxxxxx")
+            .as_os_str()
+            .as_encoded_bytes()
+            .len()
+            >= 108
+        {
+            root = tempfile::Builder::new()
+                .prefix("vb-pcr-")
+                .tempdir_in("/tmp")?;
+        }
         let deadline = Instant::now()
             .checked_add(Duration::from_secs(30))
             .ok_or(Refusal::Limit("scenario deadline"))?;

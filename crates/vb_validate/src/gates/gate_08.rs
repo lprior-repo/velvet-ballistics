@@ -15,33 +15,7 @@ const MAX_ACCESSOR_PATH_DEPTH: usize = 16;
 /// Gate 8 (budgets): Field segments must use valid symbol IDs (within the
 /// interned symbol table range), and index segments must be finite.
 pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> ValidationResult<()> {
-    for (acc_index, accessor) in parts.accessors.iter().enumerate() {
-        validate_accessor_root(acc_index, accessor, parts.slot_count)?;
-        if accessor.path.len() > MAX_ACCESSOR_PATH_DEPTH {
-            return Err(ValidationError::AccessorPathTooDeep {
-                accessor_index: acc_index,
-                depth: accessor.path.len(),
-                max: MAX_ACCESSOR_PATH_DEPTH,
-            });
-        }
-        for (seg_index, segment) in accessor.path.iter().enumerate() {
-            match segment {
-                PathSegment::Field(sym_id) => {
-                    validate_field_symbol(acc_index, seg_index, *sym_id, parts.symbols_count)?;
-                }
-                PathSegment::Index(idx) => validate_index_segment(acc_index, seg_index, *idx)?,
-                // `PathSegment` is `#[non_exhaustive]`; unknown variants
-                // are a structural error — fail closed rather than silently ignore.
-                _ => {
-                    return Err(ValidationError::AccessorPathInvalid {
-                        accessor_index: acc_index,
-                        segment_index: seg_index,
-                    });
-                }
-            }
-        }
-    }
-    Ok(())
+    validate_accessor_paths(&parts.accessors, parts.slot_count, parts.symbols_count)
 }
 
 fn validate_field_symbol(
@@ -84,6 +58,40 @@ fn validate_accessor_root(
             slot: accessor.root.as_usize(),
             slot_count: usize::from(slot_count),
         });
+    }
+    Ok(())
+}
+
+pub(super) fn validate_accessor_paths(
+    accessors: &[AccessorProgram],
+    slot_count: u16,
+    symbols_count: u32,
+) -> ValidationResult<()> {
+    for (acc_index, accessor) in accessors.iter().enumerate() {
+        validate_accessor_root(acc_index, accessor, slot_count)?;
+        if accessor.path.len() > MAX_ACCESSOR_PATH_DEPTH {
+            return Err(ValidationError::AccessorPathTooDeep {
+                accessor_index: acc_index,
+                depth: accessor.path.len(),
+                max: MAX_ACCESSOR_PATH_DEPTH,
+            });
+        }
+        for (seg_index, segment) in accessor.path.iter().enumerate() {
+            match segment {
+                PathSegment::Field(sym_id) => {
+                    validate_field_symbol(acc_index, seg_index, *sym_id, symbols_count)?;
+                }
+                PathSegment::Index(idx) => validate_index_segment(acc_index, seg_index, *idx)?,
+                // `PathSegment` is `#[non_exhaustive]`; unknown variants
+                // are a structural error — fail closed rather than silently ignore.
+                _ => {
+                    return Err(ValidationError::AccessorPathInvalid {
+                        accessor_index: acc_index,
+                        segment_index: seg_index,
+                    });
+                }
+            }
+        }
     }
     Ok(())
 }

@@ -18,6 +18,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test"),
         input_slots: Box::from([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -312,6 +313,7 @@ fn core_to_runtime_simple_set_workflow_runs_deterministic() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("set_finish"),
         input_slots: Box::from([]),
         digest: WorkflowDigest::from_bytes([1u8; 32]),
@@ -425,6 +427,7 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("budget_test"),
         input_slots: Box::from([]),
         digest: WorkflowDigest::from_bytes([2u8; 32]),
@@ -1389,6 +1392,7 @@ fn runtime_submit_and_tick_simple_workflow() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("rt_test"),
         input_slots: Box::from([]),
         digest: WorkflowDigest::from_bytes([3u8; 32]),

@@ -129,6 +129,21 @@ pub fn validate_workflow_action_binding(
                     error: "contract ID mismatch for workflow Do action".to_string(),
                 });
             }
+            if node.retry.is_some_and(|policy| policy.max_attempts > 1)
+                && (!matches!(
+                    contract.retry_safety,
+                    vb_core::action::RetrySafety::Safe | vb_core::action::RetrySafety::KeyRequired
+                ) || !matches!(
+                    contract.idempotency,
+                    vb_core::action::Idempotency::DeterministicPure
+                        | vb_core::action::Idempotency::IdempotentExternal
+                ))
+            {
+                return Err(RuntimeError::ContractValidationError {
+                    action,
+                    error: "retry requires an idempotent retry-safe action contract".into(),
+                });
+            }
         }
     }
     Ok(())

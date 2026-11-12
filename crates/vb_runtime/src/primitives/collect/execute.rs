@@ -25,8 +25,15 @@ pub fn collect_start(
         );
     }
     let page = core::mem::take(&mut plan.page);
-    let current_page =
-        write_collected_page_with_taint(run, store, plan.collector, page, plan.source_taint)?;
+    let current_page = write_collected_page_with_taint(
+        run,
+        store,
+        plan.collector,
+        page,
+        plan.source_taint,
+        plan.list_id,
+        0,
+    )?;
     finish_collect_start_page(run, states, plan, current_page, time_limit_ms, body, done)
 }
 
@@ -153,7 +160,15 @@ pub(crate) fn collect_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     let Some((state, page, page_len)) = plan else {
         return finish_collect_terminal(run, states, collector_slot, done);
     };
-    let current_page = write_collected_page(run, store, collector_slot, page)?;
+    let current_page = write_collected_page_with_taint(
+        run,
+        store,
+        collector_slot,
+        page,
+        run.read_taint(collector_slot)?,
+        state.source,
+        state.cursor,
+    )?;
     let cursor = checked_add_usize(state.cursor, page_len, "collect cursor overflow")?;
     states.upsert(CollectPaginationState {
         current_page,

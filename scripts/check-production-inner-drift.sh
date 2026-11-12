@@ -35,6 +35,11 @@
 #      drift: a production variant, field, function, or constant was
 #      added or renamed in a way the mirror has not been regenerated
 #      to reflect.
+#   Native constructor reexports use a distinct structural check: exact facade
+#   code, real-crate Cargo receipts and stable source hashes, native type/function
+#   identity, and complete current constructor/parts/error definition ranges.
+#   This supplies no mathematical contracts or proof of those native bodies.
+#
 #   6. Per-struct field check: for every struct in a claimed
 #      production slice that is also declared in the mirror, verifies
 #      that every production field appears in the same-named mirror
@@ -437,6 +442,9 @@ extract_struct_fields() {
 # ---------------------------------------------------------------------------
 # Per-mirror drift check
 # ---------------------------------------------------------------------------
+source "$REPO_ROOT/scripts/verus-native-bindings.sh"
+native_ready=0
+
 for mirror in "$MIRROR_DIR"/*.rs; do
   [ -e "$mirror" ] || continue
   mirror_count=$((mirror_count + 1))
@@ -450,6 +458,25 @@ for mirror in "$MIRROR_DIR"/*.rs; do
     } | tee -a "$LOG"
     drift_count=$((drift_count + 1))
     continue
+  fi
+
+  native_facade=0
+  declare -A native_claims=()
+  if [ "$mirror_rel" = "verification/verus/production_inner/try_from_parts_production.rs" ]; then
+    native_facade=1
+    if [ "$native_ready" -eq 0 ]; then
+      if ! verus_native_build "$REPO_ROOT" "$LOG_DIR/native" >> "$LOG" 2>&1; then
+        printf 'DRIFT: native production build failed; see %s\n' "$LOG" >&2
+        drift_count=$((drift_count + 1))
+        continue
+      fi
+      native_ready=1
+    fi
+    if ! verus_native_check_facade "$REPO_ROOT" "$REPO_ROOT/$mirror" >> "$LOG" 2>&1; then
+      printf 'DRIFT: native constructor identity failed; see %s\n' "$LOG" >&2
+      drift_count=$((drift_count + 1))
+      continue
+    fi
   fi
 
   # Extract the master DRIFT POLICY path (first master-class claim).
@@ -519,6 +546,30 @@ for mirror in "$MIRROR_DIR"/*.rs; do
         ;;
     esac
 
+    # Native imports bind real definitions, not copied text. Every original
+    # claim must identify one complete current definition; duplicate or missing
+    # constructor/parts/error claims fail. The strict facade and real-crate
+    # type/function identity probe above prevent replacement implementations.
+    if [ "$native_facade" -eq 1 ]; then
+      if [ "$abs_path" != "$REPO_ROOT/crates/vb_core/src/workflow/mod.rs" ]; then
+        printf 'DRIFT: unexpected native source claim %s\n' "$range" | tee -a "$LOG"
+        claim_drift=1
+        continue
+      fi
+      if ! native_name=$(verus_native_claim "$abs_path" "$start" "$end" 2>> "$LOG"); then
+        printf 'DRIFT: incomplete/stale native definition claim %s\n' "$range" | tee -a "$LOG"
+        claim_drift=1
+        continue
+      fi
+      if [ -n "${native_claims[$native_name]:-}" ]; then
+        printf 'DRIFT: duplicate native definition claim %s\n' "$native_name" | tee -a "$LOG"
+        claim_drift=1
+      fi
+      native_claims[$native_name]=1
+      printf 'NATIVE_DEFINITION_BOUND %s %s\n' "$native_name" "$range" >> "$LOG"
+      continue
+    fi
+
     prod_ids=$(sed -n "${start},${end}p" "$abs_path" \
       | extract_identifiers \
       | filter_noise_words)
@@ -569,6 +620,14 @@ for mirror in "$MIRROR_DIR"/*.rs; do
     fi
   done <<< "$claims"
 
+  if [ "$native_facade" -eq 1 ]; then
+    for native_name in try_from_parts WorkflowParts WorkflowError; do
+      if [ -z "${native_claims[$native_name]:-}" ]; then
+        printf 'DRIFT: missing native definition claim %s\n' "$native_name" | tee -a "$LOG"
+        claim_drift=1
+      fi
+    done
+  fi
   drift_count=$((drift_count + claim_drift))
 done
 

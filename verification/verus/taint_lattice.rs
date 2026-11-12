@@ -5,8 +5,8 @@
 // ============================================================================
 // This spec file is BOUND to the in-tree production mirror at
 // `verification/verus/production_inner/taint_lattice_production.rs`,
-// which itself mirrors `crates/vb_core/src/value.rs:14-25` (the
-// production `Taint` enum) and `crates/vb_core/src/value.rs:29-45`
+// which itself mirrors `crates/vb_core/src/value/taint.rs:10-21` (the
+// production `Taint` enum) and `crates/vb_core/src/value/taint.rs:84-100`
 // (the production `join_taint` free fn). The binding is the combined
 // effect of:
 //
@@ -81,7 +81,7 @@
 // reported as binding-debt outside Verus.
 //
 // Source model: `verification/verus/production_inner/taint_lattice_production.rs`
-//   (mirrors `crates/vb_core/src/value.rs:14-25` and `:29-45`).
+//   (mirrors `crates/vb_core/src/value/taint.rs:10-21` and `:29-45`).
 // Registry obligations: VB-CORE-TAINT-001 through VB-CORE-TAINT-005.
 // Exact verifier command: `verus --crate-type=lib
 //   verification/verus/taint_lattice.rs`.
@@ -98,7 +98,7 @@ mod production;
 //
 // `production::Taint` is the in-tree mirror's enum from
 // `production_inner/taint_lattice_production.rs` (which itself is a
-// verbatim copy of `crates/vb_core/src/value.rs:14-25`). The mirror
+// verbatim copy of `crates/vb_core/src/value/taint.rs:10-21`). The mirror
 // module is plain Rust under `verus!`, so its types are usable in
 // spec context once we attach an external type spec. This is the
 // bridge: it tells Verus "this spec-mode name refers to the mirror
@@ -116,7 +116,7 @@ pub struct ExTaint(production::Taint);
 // predicts. Proof fns reason about spec fns; exec fn wrappers invoke
 // production exec fns and assert the spec contract.
 //
-// The rank ordering mirrors production `crates/vb_core/src/value.rs:14-25`:
+// The rank ordering mirrors production `crates/vb_core/src/value/taint.rs:10-21`:
 //   Clean=0 < DerivedFromSecret=1 < Secret=2 < Random=3 < TimeDependent=4.
 // `TimeDependent` is the lattice top.
 pub open spec fn spec_rank(t: production::Taint) -> nat {
@@ -262,7 +262,7 @@ pub assume_specification[ production::all_lattice_laws ](
 // Each wrapper below actually calls the mirror exec fn (the body
 // at `production::join_taint`, etc., in
 // `verification/verus/production_inner/taint_lattice_production.rs`,
-// which mirrors `crates/vb_core/src/value.rs:29-45`)
+// which mirrors `crates/vb_core/src/value/taint.rs:84-100`)
 // and asserts the spec contract from the corresponding
 // `assume_specification` above. The wrapper proves that the bound
 // contract IS used (not just declared) and that calling the mirror
@@ -589,7 +589,7 @@ pub proof fn lemma_all_lattice_laws(
 // `wrapper_*` exec fns above: each one actually invokes the mirror
 // exec fn (e.g., `production::join_taint` in
 // `verification/verus/production_inner/taint_lattice_production.rs`,
-// mirroring `crates/vb_core/src/value.rs:29-45`) and asserts the spec
+// mirroring `crates/vb_core/src/value/taint.rs:84-100`) and asserts the spec
 // contract from the corresponding `assume_specification`. If the
 // mirror signature drifts, the wrapper fails to compile; if the
 // mirror body drifts from its contract, the wrapper's `assert`

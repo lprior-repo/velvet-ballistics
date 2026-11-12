@@ -7,18 +7,49 @@ use std::str;
 
 pub(crate) const WORKFLOW_VERSION: &str = "velvet-ballistics/v1";
 
-pub(crate) fn reject_known_canonical_text_gaps(text: &str) -> Result<(), CompileError> {
-    if text.contains("event: \"\"") {
-        Err(CompileError::CanonicalYaml {
-            category: "field_shape",
-            message: Box::from("wait.event must be non-empty"),
-        })
-    } else {
-        Ok(())
-    }
-}
-
 pub(crate) fn canonical_yaml_error(error: crate::YamlError) -> CompileError {
+    match error {
+        crate::YamlError::FieldShape {
+            field: "wait.event",
+            expected: "non-empty string",
+        } => {
+            return CompileError::CanonicalYaml {
+                category: "field_shape",
+                message: Box::from("wait.event must be non-empty"),
+            };
+        }
+        crate::YamlError::SourceTooLarge { size, max } => {
+            return CompileError::SourceTooLarge {
+                actual: size,
+                limit: max,
+            };
+        }
+        crate::YamlError::NestingTooDeep { depth, max } => {
+            return CompileError::DepthLimit { depth, limit: max };
+        }
+        crate::YamlError::NodeLimitExceeded { max, .. } => {
+            return CompileError::NodeLimit { limit: max };
+        }
+        crate::YamlError::ScalarTooLong { len, max } => {
+            return CompileError::ScalarLimit {
+                actual: len,
+                limit: max,
+            };
+        }
+        crate::YamlError::SequenceTooLong { len, max } => {
+            return CompileError::SequenceLimit {
+                actual: len,
+                limit: max,
+            };
+        }
+        crate::YamlError::MappingTooLarge { count, max } => {
+            return CompileError::MappingLimit {
+                actual: count,
+                limit: max,
+            };
+        }
+        _ => {}
+    }
     CompileError::CanonicalYaml {
         category: yaml_error_category(&error),
         message: error.to_string().into_boxed_str(),
@@ -68,15 +99,37 @@ pub(crate) fn validate_canonical_compile_scope(
             });
         }
     }
-    if !source.secrets().is_empty() {
-        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "secrets" });
+    let mut secret_keys = HashSet::new();
+    for secret in source.secrets() {
+        if !secret_keys.insert(secret.key.as_str()) {
+            errors.push(CompileError::DuplicateInputName {
+                name: secret.key.clone().into(),
+            });
+        }
+        if let Err(error) = crate::validate_public_name("secrets", &secret.key) {
+            errors.push(error);
+        }
+        if secret.value.is_empty() {
+            errors.push(CompileError::FieldShape {
+                field: "secrets",
+                expected: "non-empty host requirement names",
+            });
+        }
     }
-    if !source.examples().is_empty() {
-        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "examples" });
+    for example in source.examples() {
+        if example.expected.is_none()
+            || example
+                .input
+                .as_ref()
+                .is_some_and(|input| !matches!(input, crate::AuthorValue::Mapping(_)))
+        {
+            errors.push(CompileError::FieldShape {
+                field: "examples",
+                expected: "an optional input mapping and a required expected value",
+            });
+        }
     }
-    if source.result().is_some() {
-        errors.push(CompileError::UnsupportedTopLevelResult);
-    }
+
     let mut step_ids = HashSet::with_capacity(source.steps().len());
     for (index, step) in source.steps().iter().enumerate() {
         if !step_ids.insert(step.id.as_str()) {
@@ -84,45 +137,10 @@ pub(crate) fn validate_canonical_compile_scope(
                 id: Box::from(step.id.as_str()),
             });
         }
-        if step.name.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("name"),
-            });
-        }
-        if step.condition.is_some() {
-            match &step.primitive {
-                crate::StepPrimitive::Do { .. } => {}
-                _ => {
-                    errors.push(CompileError::UnsupportedStepControlField {
-                        step: index,
-                        field: Box::from("if"),
-                    });
-                }
-            }
-        }
-        if step.with.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("with"),
-            });
-        }
-        if step.retry.is_some() {
+        if step.retry.is_some() && !matches!(step.primitive, crate::StepPrimitive::Do { .. }) {
             errors.push(CompileError::UnsupportedStepControlField {
                 step: index,
                 field: Box::from("try_again"),
-            });
-        }
-        if step.on_error.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("on_error"),
-            });
-        }
-        if step.then.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("then"),
             });
         }
     }

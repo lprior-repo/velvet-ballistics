@@ -31,3 +31,7 @@ mod primitive_tests;
 #[cfg(test)]
 #[path = "step/primitive_control_tests.rs"]
 mod primitive_control_tests;
+
+#[cfg(test)]
+#[path = "step/compound_parity_tests.rs"]
+mod compound_parity_tests;

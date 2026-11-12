@@ -45,6 +45,10 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
         root.join("scripts/check-workspace-assertions.rs"),
     )?;
     fs::copy(
+        source_root.join("scripts/check_workspace_assertions_driver.rs"),
+        root.join("scripts/check_workspace_assertions_driver.rs"),
+    )?;
+    fs::copy(
         source_root.join("scripts/check-workspace-assertions.sh"),
         root.join("scripts/check-workspace-assertions.sh"),
     )?;

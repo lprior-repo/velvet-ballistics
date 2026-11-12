@@ -32,6 +32,23 @@ pub fn eval_replay_op(
     stack: &mut ReplayExprStack,
     taint_accum: &mut Taint,
 ) -> Result<(), ReplayError> {
+    stack.reset_operand_taint();
+    let result = eval_replay_op_inner(plan, run, store, op, stack, taint_accum).and_then(|()| {
+        *taint_accum = join_taint(*taint_accum, stack.result_taint()?);
+        Ok(())
+    });
+    stack.reset_operand_taint();
+    result
+}
+
+fn eval_replay_op_inner(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    store: &mut ValueStore,
+    op: ExprOp,
+    stack: &mut ReplayExprStack,
+    taint_accum: &mut Taint,
+) -> Result<(), ReplayError> {
     match op {
         ExprOp::LoadSlot(slot) => eval_load_slot(run, slot, stack, taint_accum),
         ExprOp::LoadConst(constant) => eval_load_const(plan, constant, stack),
@@ -72,7 +89,7 @@ fn eval_load_slot(
         reason: "read_taint failed",
     })?;
     *taint_accum = join_taint(*taint_accum, slot_taint);
-    stack.push(value)
+    stack.push_tainted(value, slot_taint)
 }
 
 fn eval_load_const(
@@ -105,7 +122,7 @@ fn eval_load_accessor(
     })?;
     let (value, accessor_taint) = eval_accessor_for_replay(run, store, accessor_program)?;
     *taint_accum = join_taint(*taint_accum, accessor_taint);
-    stack.push(value)
+    stack.push_tainted(value, accessor_taint)
 }
 
 fn eval_eq(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {

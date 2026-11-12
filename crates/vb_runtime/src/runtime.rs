@@ -47,6 +47,7 @@ struct RecoveredSeedProductContext {
     /// `RecoveryFrameSeed` DTO no longer leaks into the runtime flow.
     seed: vb_storage::recovery::RecoveryFrameSeedProduct,
     boundary: crate::recovery::RecoveredRunBoundary,
+    complete_frame: Option<vb_core::RunFrame>,
 }
 
 /// Lossless conversion of a `u32` integer to its exact `f32` representation.
@@ -229,3 +230,6 @@ pub use registered_executor::RegisteredExecutionError;
 #[cfg(test)]
 #[path = "runtime/shutdown_tests.rs"]
 mod shutdown_tests;
+
+#[path = "runtime/retry_recovery.rs"]
+mod retry_recovery;

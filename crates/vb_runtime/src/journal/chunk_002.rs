@@ -142,7 +142,11 @@ impl StorageRuntimeJournal {
                 attempt,
             })),
             RuntimeJournalEvent::CompatibilityDecision { run, decision } => {
-                Ok(Some(JournalEvent::CompatibilityDecisionEvent { run, seq, decision }))
+                Ok(Some(JournalEvent::CompatibilityDecisionEvent {
+                    run,
+                    seq,
+                    decision,
+                }))
             }
             RuntimeJournalEvent::TenantAdmission {
                 run,
@@ -181,6 +185,14 @@ impl StorageRuntimeJournal {
                     attempt,
                 }))
             }
+            RuntimeJournalEvent::StepFailed { run, step, attempt } => {
+                Ok(Some(JournalEvent::StepFailed {
+                    run,
+                    seq,
+                    step,
+                    attempt,
+                }))
+            }
             RuntimeJournalEvent::StepSucceeded {
                 run, step, output, ..
             } => Ok(Some(JournalEvent::StepSucceeded {
@@ -195,6 +207,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::ActionAbandoned { .. }
+            | RuntimeJournalEvent::RetryTimerScheduled { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }

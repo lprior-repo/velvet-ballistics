@@ -179,9 +179,7 @@ fn for_each_start_returns_error_when_input_is_not_list() {
     let input = SlotIdx::new(0);
     let item_slot = SlotIdx::new(1);
     let output_slot = SlotIdx::new(2);
-    run.write_slot(input, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    assert_eq!(run.write_slot(input, SlotValue::I64(42)), Ok(()));
     // When calling for_each_start
     let result = for_each_start(
         &mut run,
@@ -387,9 +385,10 @@ fn for_each_next_returns_error_when_output_missing() {
         )
         .ok()
         .unwrap_or_else(|| panic!("insert state"));
-    run.write_slot(iterator_slot, SlotValue::List(state_id))
-        .ok()
-        .unwrap_or_else(|| panic!("write state"));
+    assert_eq!(
+        run.write_slot(iterator_slot, SlotValue::List(state_id)),
+        Ok(())
+    );
     // When calling for_each_next with output=None
     let result = for_each_next(
         &mut run,
@@ -417,9 +416,7 @@ fn for_each_next_returns_error_when_iterator_is_not_list() {
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
     let output_slot = SlotIdx::new(1);
-    run.write_slot(iterator_slot, SlotValue::Bool(true))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    assert_eq!(run.write_slot(iterator_slot, SlotValue::Bool(true)), Ok(()));
     // When calling for_each_next
     let result = for_each_next(
         &mut run,
@@ -817,9 +814,7 @@ fn for_each_start_item_slot_corruption_after_bind() {
         SlotValue::I64(10)
     );
     // When the item_slot is externally corrupted
-    run.write_slot(item_slot, SlotValue::I64(999))
-        .ok()
-        .unwrap_or_else(|| panic!("must write"));
+    assert_eq!(run.write_slot(item_slot, SlotValue::I64(999)), Ok(()));
     // Then the corruption persists (item_slot no longer has original value)
     assert_eq!(
         *run.read_slot(item_slot)
@@ -838,9 +833,7 @@ fn for_each_start_empty_list_does_not_modify_item_slot() {
     let item_slot = SlotIdx::new(1);
     let output_slot = SlotIdx::new(2);
     let done = StepIdx::new(3);
-    run.write_slot(item_slot, SlotValue::I64(999))
-        .ok()
-        .unwrap_or_else(|| panic!("must write"));
+    assert_eq!(run.write_slot(item_slot, SlotValue::I64(999)), Ok(()));
     list_in_slot(&mut run, &mut store, input, vec![]);
     // When calling for_each_start
     let result = for_each_start(
@@ -870,9 +863,7 @@ fn for_each_start_null_input_returns_type_mismatch() {
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let input = SlotIdx::new(0);
-    run.write_slot(input, SlotValue::Null)
-        .ok()
-        .unwrap_or_else(|| panic!("must write"));
+    assert_eq!(run.write_slot(input, SlotValue::Null), Ok(()));
     // When calling for_each_start
     let result = for_each_start(
         &mut run,
@@ -1082,4 +1073,3 @@ fn for_each_next_on_two_item_list_exhausts_after_one_call() {
     assert_eq!(result3, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), done);
 }
-

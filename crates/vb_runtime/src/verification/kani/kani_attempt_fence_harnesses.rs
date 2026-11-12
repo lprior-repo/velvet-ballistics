@@ -70,6 +70,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         None,
     );
     let parts = WorkflowParts {
+        source_metadata: None,
         semantic_source_identity: kani::any(),
         name: Box::from("kani_do_wf"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0xAA; 32]),

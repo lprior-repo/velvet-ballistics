@@ -224,7 +224,8 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 JournalEvent::ActionFailedEvent { .. } => {
                     summary.action_failed = summary.action_failed.saturating_add(1);
                 }
-                JournalEvent::WaitScheduledEvent { .. } => {
+                JournalEvent::RetryTimerScheduled { .. }
+                | JournalEvent::WaitScheduledEvent { .. } => {
                     summary.wait_scheduled = summary.wait_scheduled.saturating_add(1);
                 }
                 JournalEvent::AskScheduledEvent { .. } => {

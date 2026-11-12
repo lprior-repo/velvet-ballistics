@@ -205,7 +205,7 @@ fn nested_collect_in_repeat_preserves_continuation() -> Result<(), String> {
         "{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: seed, value: '1'}}\n  - id: outer\n    repeat:\n      max_attempts: 2\n      steps:\n        - id: inner\n          collect:\n            variable: batch2\n            source: '$input.items'\n            pages: 1\n            items: 2\n            steps:\n              - id: use_page\n                set: {{output: out_val, value: '$batch2'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
     let workflow = compile(&text)?;
-    assert_eq!(workflow.to_parts().nodes.len(), 9);
+    assert_eq!(workflow.to_parts().nodes.len(), 10);
     let collector = output(&workflow, 2)?;
     let finish = output(&workflow, 5)?;
     assert_ne!(collector, finish);
@@ -230,6 +230,19 @@ fn nested_collect_in_repeat_preserves_continuation() -> Result<(), String> {
             body: StepIdx::new(3),
             done: StepIdx::new(5)
         }
+    );
+    assert_eq!(
+        node(&workflow, 5)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(6))
+    );
+    assert_eq!(
+        node(&workflow, 6)?.kind,
+        CompiledNodeKind::Copy { source: finish }
+    );
+    assert_ne!(output(&workflow, 6)?, finish);
+    assert_eq!(
+        node(&workflow, 6)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(7))
     );
     Ok(())
 }

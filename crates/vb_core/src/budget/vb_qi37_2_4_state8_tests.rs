@@ -785,7 +785,7 @@ proptest! {
         use crate::limits::MAX_LIST_ITEMS_PER_VALUE;
 
         let nodes = vec![
-            node(StepIdx::new(0), CompiledNodeKind::ReduceStart { input: SlotIdx::new(0), accumulator: SlotIdx::new(1), initial: crate::ids::ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2), }, None, None),
+            node(StepIdx::new(0), CompiledNodeKind::ReduceStart { limit: 65_535, input: SlotIdx::new(0), accumulator: SlotIdx::new(1), initial: crate::ids::ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2), }, None, None),
             node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
             node(StepIdx::new(2), CompiledNodeKind::ReduceFinish { accumulator: SlotIdx::new(1), }, None, None),
         ];

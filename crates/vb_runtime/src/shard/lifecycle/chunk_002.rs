@@ -72,26 +72,29 @@ impl Shard {
     fn append_ask_answer_events(&mut self, run: RunId, answer: AskAnswer) -> RuntimeResult<bool> {
         let encoded_answer_value =
             postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
-        self.append_command_journal_events(run, [
-            RuntimeJournalEvent::SlotWritten {
-                run,
-                slot: answer.answer_slot,
-                value: encoded_answer_value,
-                taint: answer.taint,
-                extra: None,
-            },
-            RuntimeJournalEvent::AskAnswered {
-                run,
-                step: answer.ticket.ask_step,
-                slot: answer.answer_slot,
-            },
-            RuntimeJournalEvent::StepSucceeded {
-                run,
-                step: answer.ticket.ask_step,
-                output: answer.answer_slot,
-                attempt: 1,
-            },
-        ])
+        self.append_command_journal_events(
+            run,
+            [
+                RuntimeJournalEvent::SlotWritten {
+                    run,
+                    slot: answer.answer_slot,
+                    value: encoded_answer_value,
+                    taint: answer.taint,
+                    extra: None,
+                },
+                RuntimeJournalEvent::AskAnswered {
+                    run,
+                    step: answer.ticket.ask_step,
+                    slot: answer.answer_slot,
+                },
+                RuntimeJournalEvent::StepSucceeded {
+                    run,
+                    step: answer.ticket.ask_step,
+                    output: answer.answer_slot,
+                    attempt: 1,
+                },
+            ],
+        )
     }
 
     fn apply_ask_answer_to_run(&mut self, run: RunId, answer: AskAnswer) -> RuntimeResult<()> {
@@ -102,6 +105,8 @@ impl Shard {
             .frame
             .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
             .map_err(|_| RuntimeError::RunNotFound)?;
+        state.frame.mark_running(answer.ticket.ask_step)?;
+        state.frame.mark_succeeded(answer.ticket.ask_step)?;
         state
             .frame
             .set_pc(answer.ticket.resume_step)
@@ -123,17 +128,10 @@ impl Shard {
         deadline: std::time::Instant,
         kind: PendingTimerKind,
     ) -> RuntimeResult<()> {
-        let Some(current_timer) = self.pending_timer_get(run) else {
-            return Err(RuntimeError::InvalidTimerFire);
-        };
-        if !current_timer.matches_authority(generation, deadline, kind) {
-            return Err(RuntimeError::InvalidTimerFire);
+        let current_timer = self.validate_timer_authority(run, generation, deadline, kind)?;
+        if self.pending_retry_timer(run, current_timer.step) {
+            return self.handle_retry_timer(run, current_timer);
         }
-        if current_timer.deadline > std::time::Instant::now() {
-            return Err(RuntimeError::InvalidTimerFire);
-        }
-        let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-        crate::shard::helpers::validate_timer_fire(state_ref, current_timer)?;
         let budget_exceeded = self.append_timer_resolution_event(run, current_timer)?;
         if kind == PendingTimerKind::Ask {
             self.clear_pending_ask_authority(run);
@@ -160,24 +158,6 @@ impl Shard {
             }
             Err(DriveApplyFailure::AfterCommit(error)) => Err(error),
         }
-    }
-
-    fn append_timer_resolution_event(
-        &mut self,
-        run: RunId,
-        timer: PendingTimer,
-    ) -> RuntimeResult<bool> {
-        let event = match timer.kind {
-            PendingTimerKind::Wait => RuntimeJournalEvent::WaitResolved {
-                run,
-                step: timer.step,
-            },
-            PendingTimerKind::Ask => RuntimeJournalEvent::AskTimedOut {
-                run,
-                step: timer.step,
-            },
-        };
-        self.append_command_journal_events(run, [event])
     }
 
     pub(crate) fn handle_cancel(

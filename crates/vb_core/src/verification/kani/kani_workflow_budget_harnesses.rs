@@ -12,8 +12,6 @@ use crate::engine::signals::StepBudget;
 #[path = "kani_workflow_budget_generators.rs"]
 mod budget_generators;
 
-use budget_generators::budget_workflow_inputs;
-
 /// Safe Arbitrary for AggregateResourceUsage using field-wise kani::any().
 impl kani::Arbitrary for AggregateResourceUsage {
     fn any() -> Self {
@@ -123,35 +121,8 @@ impl kani::Arbitrary for StepBudget {
     }
 }
 
-/// KANI-BUDGET-001: prove WholeWorkflowBudget::compute never panics on
-/// bounded symbolic nodes and resource contracts.
-#[kani::proof]
-#[kani::unwind(6)]
-fn kani_harness_whole_workflow_budget_compute() {
-    let inputs = budget_workflow_inputs();
-    let node_count = inputs.node_count();
-    let nodes = inputs.nodes();
-    kani::assume(inputs.is_focused_domain());
-    kani::cover!(node_count == 0, "budget generator covers empty workflow");
-    kani::cover!(node_count == 1, "budget generator covers one-node workflow");
-    kani::cover!(node_count == 2, "budget generator covers two-node workflow");
-    kani::cover!(inputs.covers_nop(), "budget generator covers Nop nodes");
-    kani::cover!(inputs.covers_do(), "budget generator covers Do nodes");
-    kani::cover!(
-        inputs.covers_wait_until(),
-        "budget generator covers WaitUntil nodes"
-    );
-    kani::cover!(
-        inputs.covers_finish(),
-        "budget generator covers Finish nodes"
-    );
-    let result =
-        WholeWorkflowBudget::compute_budget_local(nodes, inputs.entry(), inputs.contract());
-    let returned_ok = result.is_ok();
-    let returned_err = result.is_err();
-    kani::cover!(returned_ok, "compute returns Ok for this input");
-    kani::cover!(returned_err, "compute returns Err for this input");
-}
+// KANI-BUDGET-001 is exhaustively decomposed into 43 length/kind cases and
+// a constructor-preservation bridge in budget_generators::compute_partition.
 
 /// KANI-BUDGET-002: prove BoundednessPolicy::validate returns the correct
 /// BudgetError variant for each exceeded bound.

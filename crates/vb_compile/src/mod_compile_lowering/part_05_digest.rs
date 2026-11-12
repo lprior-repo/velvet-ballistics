@@ -23,6 +23,10 @@ use part_05_digest_sections::{
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use vb_core::WorkflowDigest;
 
+#[path = "digest_scalar.rs"]
+mod digest_scalar;
+use digest_scalar::digest_scalar_value;
+
 // Bead-linked justification for cold-path function length (master §125):
 // This module implements the canonical source digest at the compile boundary.
 // `canonical_digest` and `digest_step_primitive` are cold, compile-time-only
@@ -186,27 +190,6 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
 /// `MAX_BODY_NESTING_DEPTH` budget. Top-level steps enter at depth 0.
 fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
     part_05_digest_step::digest_step_at(hasher, step, 0)
-}
-
-/// Hash a `ScalarValue`, failing closed on future unknown variants.
-fn digest_scalar_value(
-    hasher: &mut blake3::Hasher,
-    value: &crate::ScalarValue,
-) -> Result<(), CompileErrors> {
-    match value {
-        crate::ScalarValue::String(s) => {
-            hasher.update(&[0x01]);
-            digest_string(hasher, s)
-        }
-        crate::ScalarValue::Integer(n) => {
-            hasher.update(&[0x02]);
-            digest_i64(hasher, *n);
-            Ok(())
-        }
-        _ => Err(digest_error(
-            "unknown scalar value variant cannot be canonicalized",
-        )),
-    }
 }
 
 /// Hash the body steps of a container primitive.

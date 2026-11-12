@@ -2,8 +2,7 @@
 
 use super::*;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
-use std::collections::HashMap;
-use vb_core::{SlotIdx, StepIdx};
+use vb_core::StepIdx;
 
 pub(in crate::mod_compile_lowering) fn extend_step_names_for_generated(
     names: &mut Vec<Box<str>>,
@@ -15,13 +14,12 @@ pub(in crate::mod_compile_lowering) fn extend_step_names_for_generated(
     }
 }
 
-pub(in crate::mod_compile_lowering) fn lower_canonical_finish(
+pub(in crate::mod_compile_lowering) fn lower_canonical_finish_scoped(
     index: usize,
     last: usize,
     id: StepIdx,
     result: &crate::ScalarValue,
-    outputs: &HashMap<String, SlotIdx>,
-    step_outputs: &HashMap<String, SlotIdx>,
+    scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     if index != last {
@@ -31,7 +29,21 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_finish(
             expected: "the last step",
         }]));
     }
-    let slot = super::canonical_finish_slot_with_step_outputs(result, outputs, step_outputs)?;
+    let slot = match result {
+        crate::ScalarValue::String(name) if name.starts_with('$') => {
+            resolve_slot_reference_scoped(name, scope).map_err(|e| CompileErrors(vec![e]))?
+        }
+        crate::ScalarValue::String(name) => scope.get_output(name).ok_or_else(|| {
+            CompileErrors(vec![CompileError::UnknownOutputName {
+                name: name.clone().into_boxed_str(),
+            }])
+        })?,
+        _ => super::canonical_finish_slot_with_step_outputs(
+            result,
+            scope.outputs,
+            scope.step_outputs,
+        )?,
+    };
     let node = lower_finish(id, slot, builder);
     builder.push_node(node);
     Ok(())

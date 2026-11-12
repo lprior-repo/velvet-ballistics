@@ -474,7 +474,12 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
         });
         let shared: SharedRuntimeJournal = journal.clone();
         let mut shard = Shard::new_with_journal(small_config(), shared);
-        submit_run(&mut shard, run, require_workflow("ask", ask_workflow())?);
+        submit_run(
+            &mut shard,
+            run,
+            require_workflow("ask", ask_workflow())?,
+            &[],
+        );
         let ticket = shard
             .lookup_pending_ask_ticket(run, StepIdx::new(2))
             .ok_or("suspended ask must issue a ticket")?;
@@ -941,7 +946,12 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
     });
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(50_050);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
     let frame_before = shard
         .run_state_get(run)
@@ -1046,6 +1056,7 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
         &mut shard,
         run,
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
 
     let target_pending = QUEUE_CAPACITY
@@ -1329,6 +1340,22 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(50_100);
     let workflow = require_workflow("suspended", suspended_workflow())?;
+    let filler_run = RunId::new(50_101);
+    queue
+        .enqueue_journaled(vb_storage::JournalEvent::RunCancelled {
+            run: filler_run,
+            seq: vb_storage::EventSeq::ZERO,
+            attempt: 1,
+            reason: None,
+        })
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        queue
+            .pending_profile_counts()
+            .map_err(|error| error.to_string())?
+            .journaled,
+        1
+    );
 
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
@@ -1383,15 +1410,21 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
             .pending_profile_counts()
             .map_err(|error| error.to_string())?
             .journaled,
-        2
+        3
     );
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
 
     let header_flush = adapter
         .flush_batch()
         .map_err(|error| format!("{error:?}"))?;
-    assert_eq!(header_flush.drained, 2);
-    assert_eq!(header_flush.written, 2);
+    assert_eq!(header_flush.drained, 3);
+    assert_eq!(header_flush.written, 3);
+    let durable_filler = journal
+        .events_for_run(filler_run)
+        .map_err(|error| error.to_string())?;
+    assert!(
+        matches!(durable_filler.as_slice(), [vb_storage::JournalEvent::RunCancelled { run: actual, seq, attempt: 1, reason: None }] if *actual == filler_run && *seq == vb_storage::EventSeq::ZERO)
+    );
     let durable_header = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
@@ -1438,17 +1471,37 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     );
     assert_eq!(
         shard.journal_sequences.get(&run).copied(),
-        Some(vb_storage::EventSeq::new(6))
+        Some(vb_storage::EventSeq::new(5))
     );
 
     let resume_flush = adapter
         .flush_batch()
         .map_err(|error| format!("{error:?}"))?;
-    assert_eq!(resume_flush.drained, 4);
-    assert_eq!(resume_flush.written, 4);
+    assert_eq!(resume_flush.drained, 3);
+    assert_eq!(resume_flush.written, 3);
     let durable_after_resume = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
+    assert_eq!(
+        durable_after_resume
+            .iter()
+            .map(vb_storage::JournalEvent::record_kind)
+            .collect::<Vec<_>>(),
+        vec![
+            vb_storage::RecordKind::RunAccepted,
+            vb_storage::RecordKind::RunAdmissionBudget,
+            vb_storage::RecordKind::RunResumed,
+            vb_storage::RecordKind::StepStarted,
+            vb_storage::RecordKind::ActionScheduledTicket,
+        ]
+    );
+    assert_eq!(
+        durable_after_resume
+            .iter()
+            .map(vb_storage::JournalEvent::seq)
+            .collect::<Vec<_>>(),
+        (0..5).map(vb_storage::EventSeq::new).collect::<Vec<_>>()
+    );
     assert_eq!(
         durable_after_resume
             .iter()
@@ -1487,7 +1540,12 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
     )?;
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(50_070);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     // Watermark contract: the retry gate flushes an undrained own-prefix, so
     // drain the run's submit prefix first. The queue is then refilled with
     // other runs' events and the retry drive still meets a full journal,
@@ -1634,6 +1692,7 @@ fn drive_handler_action_failure_queue_full_preserves_post_failure_state() -> Res
         &mut shard,
         run,
         require_workflow("error_handler", error_handler_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     let filled_counts = fill_queue_to_one_free_slot(&queue, QUEUE_CAPACITY, 50_081)?;
     assert_eq!(filled_counts, QUEUE_CAPACITY - 1);
@@ -1827,7 +1886,7 @@ fn handle_action_completion_returns_run_not_found_when_run_cancelled() {
         return;
     };
     let run = RunId::new(421);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     // Cancel the run
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
@@ -1911,7 +1970,7 @@ fn handle_action_failure_returns_stale_attempt_when_attempt_mismatch() {
         return;
     };
     let run = RunId::new(431);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     // Set current attempt to 3
     let Some(state) = shard.run_state_get_mut(run) else {
         return;

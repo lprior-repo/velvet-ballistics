@@ -10,8 +10,8 @@ use crate::ids::{
 use crate::value::{SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    AccessorProgram, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, PathSegment,
-    WorkflowParts, node,
+    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind,
+    CompiledWorkflow, ExprOp, ExprProgram, InputSlotKind, PathSegment, WorkflowParts, node,
 };
 
 use super::{ensure_equal, test_frame, test_store};
@@ -259,7 +259,12 @@ fn accessor_workflow_with_opts(
     .map_err(crate::WorkflowError::Expression)?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([CompiledInputSlot {
+            slot: root,
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
         name: Box::<str>::from("accessor"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: vec![

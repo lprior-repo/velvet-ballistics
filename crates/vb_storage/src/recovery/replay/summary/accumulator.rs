@@ -106,7 +106,7 @@ impl FrameSeedAccumulator {
         self.apply_frame_event(event)
     }
 
-    fn apply_frame_event(self, event: &JournalEvent) -> RecoveryResult<Self> {
+    fn apply_frame_event(mut self, event: &JournalEvent) -> RecoveryResult<Self> {
         match event {
             JournalEvent::StepStarted { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Running))
@@ -162,6 +162,10 @@ impl FrameSeedAccumulator {
                 value_digest: *value_digest,
                 action_abi_digest: *action_abi_digest,
             }),
+            JournalEvent::RetryTimerScheduled { step, timer, .. } => {
+                self.action_tracker.authorize_retry(timer)?;
+                Ok(self.record_step(*step, RecoveredStepState::Waiting))
+            }
             JournalEvent::WaitScheduledEvent { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Waiting))
             }

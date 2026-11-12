@@ -1,20 +1,15 @@
 #![forbid(unsafe_code)]
-//! Retained per-slot input schema constraints as bounded numerics.
+//! Retained per-slot numeric constraints and owned cold schema payloads.
 
 use super::{Bound, ExtraFields, InputSlotKind, Nullability, Presence, Secretness};
 use crate::value::SlotValue;
 use serde::{Deserialize, Serialize};
 
-/// Retained per-slot input schema constraints as bounded numerics.
+/// Retained per-slot input schema constraints.
 ///
-/// Every field is `Copy` with no heap allocation so input-slot tables stay
-/// numeric end to end. `unconstrained()` reproduces exact legacy behavior
-/// (kind-only check, no presence requirement) for hand-built or
-/// pre-constraint artifacts; only compiler-emitted slots carry strict
-/// constraints. Nested object `fields` sub-schemas and non-scalar defaults
-/// are not representable here; their full-fidelity identity is carried by
-/// `WorkflowParts::semantic_source_identity` instead.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Scalar fields remain numeric. Nested fields and composite defaults retain
+/// owned cold payloads; `unconstrained()` preserves legacy kind-only behavior.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CompiledInputConstraint {
     /// Presence requirement for this slot.
     pub presence: Presence,
@@ -39,6 +34,12 @@ pub struct CompiledInputConstraint {
     pub extra: ExtraFields,
     /// Secrecy classification for this slot.
     pub secretness: Secretness,
+    /// Nested object field schemas (`fields`). `None` for non-object kinds.
+    #[serde(default)]
+    pub fields: Option<Box<[super::CompiledInputField]>>,
+    /// Non-scalar default representation for text/list/object kinds.
+    #[serde(default)]
+    pub default_cold: Option<super::InputDefaultValue>,
 }
 
 impl CompiledInputConstraint {
@@ -48,10 +49,9 @@ impl CompiledInputConstraint {
     /// `count: number`: the value must be supplied, with kind-only checking.
     #[must_use]
     pub const fn required() -> Self {
-        Self {
-            presence: Presence::Required,
-            ..Self::unconstrained()
-        }
+        let mut constraint = Self::unconstrained();
+        constraint.presence = Presence::Required;
+        constraint
     }
 
     /// Legacy-compatible constraint: kind-only check, nothing required.
@@ -68,16 +68,18 @@ impl CompiledInputConstraint {
             element: None,
             extra: ExtraFields::Unspecified,
             secretness: Secretness::NonSecret,
+            fields: None,
+            default_cold: None,
         }
     }
 
     /// Whether submission must supply a value for this slot.
     ///
-    /// A declared scalar default satisfies a missing input, so only slots
+    /// A declared scalar or composite default satisfies a missing input, so only slots
     /// that are neither optional nor defaulted require a value.
     #[must_use]
     pub const fn requires_value(&self) -> bool {
-        self.presence.is_required() && self.default_value.is_none()
+        self.presence.is_required() && self.default_value.is_none() && self.default_cold.is_none()
     }
 
     /// Value bound over `min` / `max`.
@@ -113,4 +115,14 @@ pub enum InputConstraintIssue {
     MinLengthExceedsMaxLength,
     /// A length bound is negative.
     NegativeLengthBound,
+    /// Cold schema or default traversal exceeded its bounded capacity.
+    SchemaCapacity,
+    /// Object field declarations are duplicate, empty, or attached to another kind.
+    InvalidFieldSchema,
+    /// Scalar and owned defaults cannot both be declared.
+    ConflictingDefaults,
+    /// A retained default fails its declared schema.
+    InvalidDefault,
+    /// A retained schema keyword is incompatible with its declared kind.
+    KeywordKindMismatch,
 }

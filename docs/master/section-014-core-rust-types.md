@@ -6,7 +6,6 @@ parent: velvet-ballistics-MASTER.md
 
 ## 14. Core Rust Types
 
-
 **Source of truth:** `crates/vb_core/src/`. The authoritative type layout is the code. This section states behavioral contracts that the code must satisfy. If code and doc disagree on field layout, the code wins. If code and doc disagree on behavior, the doc wins.
 
 ### `ids.rs` — Numeric ID Types
@@ -41,7 +40,7 @@ Required types:
 
 | Type | Contract |
 |------|----------|
-| `Taint` | Three-level lattice: `Clean < DerivedFromSecret < Secret`. `#[repr(u8)]` with explicit discriminants. Propagation rules in Section 47. |
+| `Taint` | Single marker with join precedence `Clean < DerivedFromSecret < Secret < Random < TimeDependent`. `#[repr(u8)]` with explicit discriminants. Propagation rules in Section 47. |
 | `FiniteF64` | Newtype over `f64`. Rejects NaN, +inf, -inf in both debug and release builds. Manual `Serialize`/`Deserialize` (not derive) to enforce rejection on decode. |
 | `SlotValue` | Handle-only `Copy` enum: `Null`, `Bool(bool)`, `I64(i64)`, `F64(FiniteF64)`, `Symbol(SymbolId)`, `List(ListId)`, `Object(ObjectId)`, `Blob(BlobId)`. Must provide `type_name()` and `is_true()`. |
 | `ConstValue` | Compile-time constant: `Null`, `Bool(bool)`, `I64(i64)`, `F64(FiniteF64)`, `Symbol(SymbolId)`. Must convert to `SlotValue` via `to_slot_value()` with no silent `Null` fallback. |
@@ -91,7 +90,7 @@ Required types (authoritative layout in code):
 | `ExprOp` | 30 opcodes: `LoadSlot`, `LoadConst`, `LoadAccessor`, comparison, logical, arithmetic, and helper ops (Section 46). |
 | `AccessorProgram` | Path traversal: `root: SlotIdx`, `path: Box<[PathSegment]>` where `PathSegment = Field(SymbolId) \| Index(u32)`. |
 | `ConstValue` | See `value.rs` above. |
-| `ResourceContract` | 16 fields controlling hard limits (Section 13). |
+| `ResourceContract` | Explicit resource bounds and secret-result policy (Section 13). |
 
 Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only in the current milestone. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
 

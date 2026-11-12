@@ -20,7 +20,9 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
         name: Box::<str>::from("fuzz_accessor"),
         digest: vb_core::WorkflowDigest::from_bytes([0xE0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![vb_core::CompiledNode {
+            retry: None,
             id: vb_core::StepIdx::new(0),
             output: vb_core::workflow::NodeOutput::Discard,
             routing: vb_core::workflow::NodeRouting {

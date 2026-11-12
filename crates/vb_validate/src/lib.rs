@@ -93,7 +93,6 @@ mod gate_11_loop;
 #[cfg(test)]
 mod gate_12_14_15;
 
-#[cfg(test)]
 mod gate_13_cycles;
 
 #[cfg(test)]

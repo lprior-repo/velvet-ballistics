@@ -107,6 +107,7 @@ pub enum CompiledNodeKind {
     CollectFinish { collector_slot: SlotIdx },
     /// Start bounded reduction.
     ReduceStart {
+        limit: u32,
         input: SlotIdx,
         accumulator: SlotIdx,
         initial: ConstIdx,

@@ -134,6 +134,7 @@ pub fn replay_step_with_collect(
             input,
             accumulator,
             initial,
+            limit,
             body,
             done,
         } => replay_reduce_start(
@@ -144,6 +145,7 @@ pub fn replay_step_with_collect(
             *input,
             *accumulator,
             *initial,
+            *limit,
             *body,
             *done,
         ),

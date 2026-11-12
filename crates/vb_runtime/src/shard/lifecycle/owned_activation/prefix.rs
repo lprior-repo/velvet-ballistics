@@ -45,6 +45,7 @@ pub(super) fn load(
     if workflow.digest() != workflow_digest || artifact.source_digest != workflow_digest {
         return Err(identity::mismatch());
     }
+    shard.validate_secret_presence(&workflow)?;
     super::super::execution_binding::validate(
         shard.artifact_store.as_ref(),
         RuntimePolicy::Strict,

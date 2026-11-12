@@ -141,6 +141,12 @@ pub fn lower_reduce(
     done: StepIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Vec<CompiledNode>, CompileError> {
+    let limit = u32::try_from(vb_core::limits::MAX_LIST_ITEMS_PER_VALUE).map_err(|_| {
+        CompileError::InvalidInputSchema {
+            field: "inputs.max",
+            expected: "list maximum representable as u32",
+        }
+    })?;
     builder.record_slot(input);
     builder.record_slot(accumulator);
     let iterator_slot = accumulator;
@@ -148,6 +154,7 @@ pub fn lower_reduce(
         node(
             id,
             CompiledNodeKind::ReduceStart {
+                limit,
                 input,
                 accumulator,
                 initial,

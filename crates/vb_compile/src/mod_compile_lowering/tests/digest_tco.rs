@@ -122,7 +122,16 @@ fn base_step(hasher: &mut Hasher, step: &StepAst) {
     base_optional_string(hasher, b"step_condition:", step.condition.as_deref());
     hasher.update(b"step_primitive:");
     base_primitive(hasher, &step.primitive);
-    base_optional_string(hasher, b"step_with:", step.with.as_deref());
+    hasher.update(b"step_with:");
+    match &step.with {
+        Some(value) => {
+            hasher.update(&[1]);
+            base_author_value(hasher, value);
+        }
+        None => {
+            hasher.update(&[0]);
+        }
+    }
     hasher.update(b"step_retry:");
     if let Some(retry) = &step.retry {
         hasher.update(&[TAG_SOME]);
@@ -599,4 +608,25 @@ fn validate_branch_counts_65_deep_fails_closed() {
         ),
         Ok(()) => panic!("validate must fail closed at 65-deep, not succeed"),
     }
+}
+
+#[test]
+fn digest_nested_with_payload_matches_recursive_baseline() {
+    let mut step = set_leaf("payload");
+    step.with = Some(AuthorValue::Mapping(vec![AuthorEntry {
+        key: "args".into(),
+        value: AuthorValue::Sequence(vec![
+            AuthorValue::Bool(true),
+            AuthorValue::I64(7),
+            AuthorValue::Text("$vars.seed".into()),
+        ]),
+    }]));
+    let primitive = StepPrimitive::Repeat {
+        max_attempts: 2,
+        body: vec![step],
+    };
+    assert_eq!(
+        prod_primitive_bytes(&primitive),
+        base_primitive_bytes(&primitive)
+    );
 }

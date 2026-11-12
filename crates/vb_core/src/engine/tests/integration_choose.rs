@@ -4,8 +4,8 @@
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram, SlotBranch,
-    WorkflowParts, node,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ExprBranch, ExprOp, ExprProgram, InputSlotKind, SlotBranch, WorkflowParts, node,
 };
 
 use super::{ensure_equal, test_frame, test_store};
@@ -172,20 +172,16 @@ fn choose_expr_takes_otherwise_when_all_false() -> Result<(), String> {
 
 #[test]
 fn choose_expr_rejects_non_bool_condition() -> Result<(), String> {
-    let workflow = choose_expr_workflow_with(
+    match choose_expr_workflow_with(
         ConstValue::I64(1),
         ConstValue::Bool(true),
         Some(StepIdx::new(3)),
-    )
-    .map_err(|error| error.to_string())?;
-    let mut run = test_frame(RunId::new(22), &workflow)?;
-    let mut store = test_store();
-
-    match run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store) {
-        Err(crate::errors::EngineError::TypeMismatch {
-            expected: "boolean",
-            found: "number",
-        }) => Ok(()),
+    ) {
+        Err(crate::WorkflowError::SlotFlow(error))
+            if error.reason == crate::workflow::SlotFlowFailure::IncompatibleType =>
+        {
+            Ok(())
+        }
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -258,7 +254,19 @@ fn choose_slot_workflow_with_otherwise(
     ];
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([
+            CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::Bool,
+                constraint: CompiledInputConstraint::required(),
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(1),
+                kind: InputSlotKind::Bool,
+                constraint: CompiledInputConstraint::required(),
+            },
+        ]),
         name: Box::<str>::from("choose_slot"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -331,6 +339,7 @@ fn choose_expr_workflow_with(
     ];
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("choose_expr"),
         digest: WorkflowDigest::from_bytes([6; 32]),

@@ -38,8 +38,8 @@ fn nop_forward(id: u16, next_id: u16) -> CompiledNode {
 
 /// Build a workflow from nodes. Panics on validation failure so tests
 /// fail loudly instead of silently skipping.
-fn make_workflow(nodes: Vec<CompiledNode>, slot_count: u16) -> CompiledWorkflow {
-    make_workflow_with_constants(nodes, slot_count, Box::from([]))
+fn make_workflow(nodes: Vec<CompiledNode>, slot_count: u16, inputs: &[u16]) -> CompiledWorkflow {
+    make_workflow_with_constants(nodes, slot_count, Box::from([]), inputs)
 }
 
 /// Build a workflow with a non-empty constants pool.
@@ -47,9 +47,11 @@ fn make_workflow_with_constants(
     nodes: Vec<CompiledNode>,
     slot_count: u16,
     constants: Box<[vb_core::value::ConstValue]>,
+    inputs: &[u16],
 ) -> CompiledWorkflow {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test_exec"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -60,7 +62,14 @@ fn make_workflow_with_constants(
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: inputs
+            .iter()
+            .map(|slot| vb_core::CompiledInputSlot {
+                slot: SlotIdx::new(*slot),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            })
+            .collect(),
         step_names: Box::from([]),
     };
     match CompiledWorkflow::try_from_parts(parts) {

@@ -17,6 +17,7 @@ impl Shard {
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
         Self {
+            secret_availability: std::sync::Arc::from([]),
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             run_aggregate: RunAggregate::new(),
@@ -55,7 +56,10 @@ impl Shard {
                 // Storage-backed journal: use StorageArtifactStore for strict/journaled
                 // artifact validation. This ensures the shard can load and validate
                 // accepted artifacts from durable storage before admission.
-                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(fjall_journal, journal.executor_catalog()))
+                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(
+                    fjall_journal,
+                    journal.executor_catalog(),
+                ))
             } else {
                 match config.policy {
                     vb_core::policy::RuntimePolicy::Relaxed => {

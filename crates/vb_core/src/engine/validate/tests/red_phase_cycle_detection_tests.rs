@@ -8,7 +8,7 @@ use crate::engine::validate::validate_compiled_workflow;
 use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx};
 use crate::value::ConstValue;
 use crate::workflow::{
-    CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, WorkflowError, WorkflowParts, node,
+    CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, WorkflowError, WorkflowParts,
 };
 
 mod cycle_detection_and_backward_edges {
@@ -101,6 +101,7 @@ mod cycle_detection_and_backward_edges {
         ]);
         let p = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             expressions: vec![ExprProgram {
                 ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
                 max_stack: 1,

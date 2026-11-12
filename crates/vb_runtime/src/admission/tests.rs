@@ -20,13 +20,18 @@ fn build_workflow_with_single_action() -> Result<vb_core::workflow::CompiledWork
         name: Box::from("admission-test"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([node]),
         expressions: Box::from([]),
         accessors: Box::from([]),
         constants: Box::from([]),
         slot_count: 1,
         entry: vb_core::ids::StepIdx::ZERO,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::from([Box::from("step-0")]),
         symbols_count: 0,
@@ -658,7 +663,7 @@ fn admission_admit_run_strict_with_present_artifact() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_rejects_future_major_ir_version() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(3, 0, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;
@@ -684,7 +689,7 @@ fn admit_artifact_run_rejects_future_major_ir_version() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_accepts_same_major_newer_minor_ir_version() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(1, 2, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 2, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;
@@ -725,7 +730,7 @@ fn check_artifact_ir_version_allows_only_live_effect_classes() -> Result<(), Str
         decision.new_schema_digest,
         vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION)
     );
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(3, 0, 0);
     assert!(
         matches!(
             check_artifact_ir_version(&artifact),
@@ -766,7 +771,7 @@ fn admit_artifact_run_carries_ir_compat_decision() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_carries_forward_compat_decision() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(1, 2, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 2, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;

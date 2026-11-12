@@ -121,7 +121,7 @@ fn future_major_ir_version_is_rejected_before_any_write() -> TestResult {
         let directory = tempfile::tempdir()?;
         let journal = FjallJournal::open(directory.path(), None)?;
         let submission =
-            submission_with_version(policy, 5, crate::compat::SchemaVersion::new(2, 0, 0))?;
+            submission_with_version(policy, 5, crate::compat::SchemaVersion::new(3, 0, 0))?;
         assert!(matches!(
             journal.commit_run_submission(&submission, policy),
             Err(JournalError::ArtifactVersionIncompatible { .. })
@@ -133,7 +133,7 @@ fn future_major_ir_version_is_rejected_before_any_write() -> TestResult {
     let submission = submission_with_version(
         RuntimePolicy::Relaxed,
         5,
-        crate::compat::SchemaVersion::new(2, 0, 0),
+        crate::compat::SchemaVersion::new(3, 0, 0),
     )?;
     journal.commit_run_submission(&submission, RuntimePolicy::Relaxed)?;
     assert_eq!(journal.events_for_run(RunId::new(7))?.len(), 0);

@@ -14,9 +14,25 @@ fn make_plan(
     nodes: Vec<CompiledNode>,
     constants: Vec<ConstValue>,
 ) -> Result<CompiledWorkflow, CoreError> {
+    make_plan_with_inputs(&[], nodes, constants)
+}
+
+fn make_plan_with_inputs(
+    inputs: &[u16],
+    nodes: Vec<CompiledNode>,
+    constants: Vec<ConstValue>,
+) -> Result<CompiledWorkflow, CoreError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: inputs
+            .iter()
+            .map(|&slot| crate::workflow::CompiledInputSlot {
+                slot: SlotIdx::new(slot),
+                kind: crate::workflow::InputSlotKind::Any,
+                constraint: crate::workflow::CompiledInputConstraint::required(),
+            })
+            .collect(),
         name: "test_primitive_replay".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into(),
@@ -60,16 +76,6 @@ fn replay_err_to_core(error: ReplayError) -> CoreError {
             reason: reason.into(),
         },
     }
-}
-
-fn write_list(
-    store: &mut ValueStore,
-    run: &mut RunFrame,
-    slot: SlotIdx,
-    values: &[SlotValue],
-) -> Result<(), CoreError> {
-    let id = store.insert_list(values.to_vec().into_boxed_slice())?;
-    run.write_slot(slot, SlotValue::List(id))
 }
 
 fn finish_node(step: u16) -> CompiledNode {
@@ -170,7 +176,8 @@ fn replay_repeat_attempt_validates_packed_state() -> Result<(), CoreError> {
 
 #[test]
 fn replay_repeat_attempt_corrupt_state_errors() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -268,7 +275,8 @@ fn replay_repeat_check_counts_attempts_then_routes_done() -> Result<(), CoreErro
 
 #[test]
 fn replay_repeat_finish_writes_result() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0, 3],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -442,7 +450,8 @@ fn replay_retry_check_overflow_errors() -> Result<(), CoreError> {
 
 #[test]
 fn replay_error_handler_routes_body() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -481,7 +490,8 @@ fn replay_error_handler_routes_body() -> Result<(), CoreError> {
 
 #[test]
 fn replay_ask_resume_forwards_answer() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -525,7 +535,8 @@ fn replay_ask_resume_forwards_answer() -> Result<(), CoreError> {
 
 #[test]
 fn replay_ask_resume_missing_answer_errors() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -553,7 +564,8 @@ fn replay_ask_resume_missing_answer_errors() -> Result<(), CoreError> {
 
 #[test]
 fn replay_ask_resume_missing_next_errors() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node_with_handler(
                 StepIdx::new(0),
@@ -588,7 +600,8 @@ fn replay_ask_resume_missing_next_errors() -> Result<(), CoreError> {
 
 #[test]
 fn replay_ask_resume_without_output_continues() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -735,7 +748,8 @@ fn replay_engine_repeat_loop_terminates_at_done() -> Result<(), CoreError> {
 
 #[test]
 fn replay_engine_for_each_loop_replays_to_join() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0, 4],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -790,6 +804,8 @@ fn replay_engine_for_each_loop_replays_to_join() -> Result<(), CoreError> {
     let source = store.insert_list(Box::from([SlotValue::I64(10), SlotValue::I64(20)]))?;
     let mut run = new_run(&plan)?;
     run.write_slot(SlotIdx::new(0), SlotValue::List(source))?;
+    let initial_result = store.insert_list(Box::from([]))?;
+    run.write_slot(SlotIdx::new(4), SlotValue::List(initial_result))?;
 
     let mut current = plan.entry();
     let mut guard: u32 = 0;

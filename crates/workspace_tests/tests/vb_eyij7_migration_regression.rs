@@ -1,13 +1,13 @@
 //! vb-eyij7: Migration regression tests for canonical workspace structure.
 //!
 //! Verifies:
-//! 1. Exact workspace member equality (11 members) via toml parsing
+//! 1. Exact workspace member equality (12 members) via toml parsing
 //! 2. YAML/expression API identity and behavior parity
 //! 3. ExprError conversion from CoreError preserves specific variants
 //! 4. No duplicate old implementation modules
 //! 5. Canonical product naming (parsed from manifests)
 //! 6. Fuzz targets reachable
-//! 7. cargo metadata resolves exactly 11 packages with correct names
+//! 7. cargo metadata resolves exactly 12 packages with correct names
 
 #![forbid(unsafe_code)]
 
@@ -54,7 +54,7 @@ fn workspace_members() -> Result<Vec<String>, Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn workspace_has_exactly_11_members() -> Result<(), Box<dyn std::error::Error>> {
+fn workspace_has_exactly_12_members() -> Result<(), Box<dyn std::error::Error>> {
     let actual = workspace_members()?;
 
     let expected: BTreeSet<String> = BTreeSet::from([
@@ -69,12 +69,13 @@ fn workspace_has_exactly_11_members() -> Result<(), Box<dyn std::error::Error>> 
         "crates/velvet_ballistics".to_string(),
         "crates/workspace_tests".to_string(),
         "fuzz".to_string(),
+        "reference".to_string(),
     ]);
 
     // Check length
-    if actual.len() != 11 {
+    if actual.len() != 12 {
         return Err(format!(
-            "Expected 11 workspace members, got {}: {:?}",
+            "Expected 12 workspace members, got {}: {:?}",
             actual.len(),
             actual
         )
@@ -121,6 +122,7 @@ fn workspace_members_are_in_canonical_order() -> Result<(), Box<dyn std::error::
         "crates/velvet_ballistics",
         "crates/workspace_tests",
         "fuzz",
+        "reference",
     ];
 
     for (i, (actual_m, canonical_m)) in actual.iter().zip(canonical.iter()).enumerate() {
@@ -155,11 +157,11 @@ fn workspace_no_old_member_names() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Section 2: cargo metadata resolves exactly 11 packages with correct names
+// Section 2: cargo metadata resolves exactly 12 packages with correct names
 // ──────────────────────────────────────────────────────────────────────────────
 
 #[test]
-fn cargo_metadata_resolves_exactly_11_packages() -> Result<(), Box<dyn std::error::Error>> {
+fn cargo_metadata_resolves_exactly_12_packages() -> Result<(), Box<dyn std::error::Error>> {
     let root = workspace_root()?;
     let output = std::process::Command::new("cargo")
         .args(["metadata", "--no-deps", "--format-version", "1"])
@@ -181,9 +183,9 @@ fn cargo_metadata_resolves_exactly_11_packages() -> Result<(), Box<dyn std::erro
         .ok_or_else(|| "packages array not found in cargo metadata")?;
 
     // Check count
-    if packages.len() != 11 {
+    if packages.len() != 12 {
         return Err(format!(
-            "Expected 11 packages, got {}: {:?}",
+            "Expected 12 packages, got {}: {:?}",
             packages.len(),
             packages
                 .iter()
@@ -209,6 +211,7 @@ fn cargo_metadata_resolves_exactly_11_packages() -> Result<(), Box<dyn std::erro
             "crates/workspace_tests",
         ),
         ("velvet-ballistics-fuzz", "fuzz"),
+        ("reference", "reference"),
     ]);
 
     for pkg in packages {

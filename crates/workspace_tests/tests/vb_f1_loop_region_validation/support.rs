@@ -40,6 +40,7 @@ pub(crate) fn linear_parts(count: u16) -> TestResult<WorkflowParts> {
         name: "loop-region-validation".into(),
         digest: WorkflowDigest::from_bytes([0x37; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: linear_nodes(count)?.into_boxed_slice(),
         expressions: vec![true_expression()?].into_boxed_slice(),
         accessors: Box::new([]),
@@ -49,7 +50,11 @@ pub(crate) fn linear_parts(count: u16) -> TestResult<WorkflowParts> {
         entry: step(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-        input_slots: Box::new([]),
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
     })
 }
 

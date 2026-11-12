@@ -9,6 +9,18 @@ where
     A: VariantAccess<'de>,
 {
     match kind {
+        RecordKind::RetryTimerScheduled => {
+            let (run, seq, step, attempt, timer): (_, _, _, _, crate::retry_timer::RetryTimerV1) =
+                variant.newtype_variant()?;
+            timer.validate().map_err(de::Error::custom)?;
+            Ok(JournalEvent::RetryTimerScheduled {
+                run,
+                seq,
+                step,
+                attempt,
+                timer,
+            })
+        }
         RecordKind::WaitScheduled => deserialize_wait_scheduled(variant),
         RecordKind::AskScheduled => deserialize_ask_scheduled(variant),
         RecordKind::AskAnswered => deserialize_ask_answered(variant),

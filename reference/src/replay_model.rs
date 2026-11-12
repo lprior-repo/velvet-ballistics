@@ -29,13 +29,9 @@ impl ReplayState {
     }
 
     pub fn replay_next(&mut self) -> Option<JournalEvent> {
-        if self.last_applied_event_index < self.events.len() {
-            let event = self.events[self.last_applied_event_index].clone();
-            self.last_applied_event_index += 1;
-            Some(event)
-        } else {
-            None
-        }
+        let event = self.events.get(self.last_applied_event_index)?.clone();
+        self.last_applied_event_index = self.last_applied_event_index.checked_add(1)?;
+        Some(event)
     }
 
     pub fn is_replay_complete(&self) -> bool {
@@ -132,24 +128,9 @@ impl ReplayModel {
         tail_events: &[JournalEvent],
         full_journal: &[JournalEvent],
     ) -> bool {
-        if snapshot_events.len() + tail_events.len() != full_journal.len() {
-            return false;
-        }
-
-        for (i, event) in snapshot_events.iter().enumerate() {
-            if &full_journal[i] != event {
-                return false;
-            }
-        }
-
-        let tail_start = snapshot_events.len();
-        for (i, event) in tail_events.iter().enumerate() {
-            if &full_journal[tail_start + i] != event {
-                return false;
-            }
-        }
-
-        true
+        full_journal
+            .split_at_checked(snapshot_events.len())
+            .is_some_and(|(prefix, tail)| prefix == snapshot_events && tail == tail_events)
     }
 }
 
@@ -177,6 +158,87 @@ mod tests {
     use super::*;
     use vb_core::WorkflowDigest;
     use vb_storage::EventSeq;
+
+    fn accepted_event(run: u64) -> JournalEvent {
+        JournalEvent::RunAccepted {
+            run: RunId::new(run),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0; 32]),
+        }
+    }
+
+    #[test]
+    fn replay_cursor_preserves_order_and_remains_exhausted() {
+        let events = vec![accepted_event(1), accepted_event(2)];
+        for _ in 0..2 {
+            let mut state = ReplayState::new(events.clone());
+            for expected in &events {
+                assert_eq!(state.replay_next(), Some(expected.clone()));
+            }
+            for _ in 0..3 {
+                assert_eq!(state.replay_next(), None);
+                assert_eq!(state.last_applied_event_index, events.len());
+                assert!(state.is_replay_complete());
+                assert_eq!(state.events, events);
+                assert_eq!(state.phase, ReplayPhase::Replay);
+            }
+            state.transition_to_live();
+            assert_eq!(state.replay_next(), None);
+            assert_eq!(state.last_applied_event_index, events.len());
+            assert_eq!(state.phase, ReplayPhase::Live);
+        }
+    }
+
+    #[test]
+    fn replay_empty_and_out_of_bounds_cursors_leave_state_unchanged() {
+        for events in [Vec::new(), vec![accepted_event(1)]] {
+            for index in [events.len(), events.len().saturating_add(1), usize::MAX] {
+                let mut state = ReplayState::new(events.clone());
+                state.last_applied_event_index = index;
+                for _ in 0..2 {
+                    assert_eq!(state.replay_next(), None);
+                    assert_eq!(state.last_applied_event_index, index);
+                    assert_eq!(state.events, events);
+                    assert_eq!(state.phase, ReplayPhase::Replay);
+                    assert!(state.is_replay_complete());
+                }
+            }
+        }
+        let events = vec![accepted_event(1), accepted_event(2)];
+        let mut resumed = ReplayState::new(events.clone());
+        resumed.last_applied_event_index = 1;
+        assert_eq!(resumed.replay_next(), Some(accepted_event(2)));
+        assert_eq!(resumed.replay_next(), None);
+        assert_eq!(resumed.last_applied_event_index, events.len());
+        assert_eq!(resumed.events, events);
+    }
+
+    #[test]
+    fn snapshot_tail_requires_exact_length_order_and_prefix() {
+        let empty: &[JournalEvent] = &[];
+        let first = [accepted_event(1)];
+        let second = [accepted_event(2)];
+        let full = [accepted_event(1), accepted_event(2)];
+        let cases = [
+            (empty, empty, empty, true),
+            (empty, full.as_slice(), full.as_slice(), true),
+            (first.as_slice(), second.as_slice(), full.as_slice(), true),
+            (full.as_slice(), empty, full.as_slice(), true),
+            (second.as_slice(), second.as_slice(), full.as_slice(), false),
+            (first.as_slice(), first.as_slice(), full.as_slice(), false),
+            (full.as_slice(), second.as_slice(), full.as_slice(), false),
+            (full.as_slice(), empty, first.as_slice(), false),
+            (first.as_slice(), empty, full.as_slice(), false),
+            (empty, first.as_slice(), full.as_slice(), false),
+            (first.as_slice(), second.as_slice(), empty, false),
+        ];
+        for (prefix, tail, journal, expected) in cases {
+            assert_eq!(
+                ReplayModel::snapshot_plus_tail_equals_full(prefix, tail, journal),
+                expected
+            );
+        }
+    }
 
     #[test]
     fn test_replay_state_transitions() {

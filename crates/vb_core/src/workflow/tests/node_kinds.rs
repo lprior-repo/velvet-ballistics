@@ -172,6 +172,7 @@ fn compiled_node_kind_collect_finish_constructs() {
 #[test]
 fn compiled_node_kind_reduce_start_constructs() {
     let kind = CompiledNodeKind::ReduceStart {
+        limit: 65_535,
         input: SlotIdx::new(0),
         accumulator: SlotIdx::new(1),
         initial: ConstIdx::new(0),

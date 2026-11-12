@@ -7,7 +7,7 @@ fn execute_nop_returns_continue_or_budget_exhausted() {
     // Nop at 0 needs next pointing forward. Use Finish at 1 as sink.
     let node0 = nop_forward(0, 1);
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 4);
+    let wf = make_workflow(vec![node0, node1], 4, &[0]);
     let mut run = make_run(4, 2);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -51,7 +51,7 @@ fn execute_jump_falls_through_to_step_once() {
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 4);
+    let wf = make_workflow(vec![node0, node1], 4, &[0]);
     let mut run = make_run(4, 2);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -96,7 +96,7 @@ fn execute_do_without_contract_rejects_without_ticket() {
         None,
         None,
     );
-    let wf = make_workflow(vec![node], 4);
+    let wf = make_workflow(vec![node], 4, &[0]);
     let mut run = make_run(4, 2);
     // Input slot must be initialized with clean taint for the no-contract path.
     assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(0)), Ok(()));
@@ -145,7 +145,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
         None,
         None,
     );
-    let wf = make_workflow(vec![node], 4);
+    let wf = make_workflow(vec![node], 4, &[0]);
     let mut run = make_run(4, 2);
     assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(10)), Ok(()));
     let mut store = ValueStore::new();
@@ -220,7 +220,7 @@ fn execute_do_with_unknown_contract_returns_error() {
         None,
         None,
     );
-    let wf = make_workflow(vec![node], 4);
+    let wf = make_workflow(vec![node], 4, &[0]);
     let mut run = make_run(4, 2);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -278,7 +278,7 @@ fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
         None,
         None,
     );
-    let wf = make_workflow(vec![node], 4);
+    let wf = make_workflow(vec![node], 4, &[0]);
     let mut run = make_run(4, 2);
     assert_eq!(
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret),
@@ -344,7 +344,7 @@ fn execute_retry_check_never_policy_uninitialized_routes_to_body() {
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 4);
+    let wf = make_workflow(vec![node0, node1], 4, &[]);
     let mut run = make_run(4, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -386,7 +386,7 @@ fn execute_retry_check_never_policy_attempt_one_routes_to_exhausted() {
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 4);
+    let wf = make_workflow(vec![node0, node1], 4, &[]);
     let mut run = make_run(4, 4);
     // Write attempt=1 into the policy slot
     assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(1)), Ok(()));
@@ -434,7 +434,7 @@ fn execute_retry_check_default_policy_routes_to_body() {
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 4);
+    let wf = make_workflow(vec![node0, node1], 4, &[]);
     let mut run = make_run(4, 4);
     assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(1)), Ok(()));
     let mut store = ValueStore::new();
@@ -477,7 +477,7 @@ fn execute_retry_check_default_policy_attempt_three_routes_to_exhausted() {
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 4);
+    let wf = make_workflow(vec![node0, node1], 4, &[]);
     let mut run = make_run(4, 4);
     assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(3)), Ok(()));
     let mut store = ValueStore::new();
@@ -525,7 +525,7 @@ fn execute_error_handler_routes_to_body_step() {
     );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
-    let wf = make_workflow(vec![node0, node1, node2], 4);
+    let wf = make_workflow(vec![node0, node1, node2], 4, &[0]);
     let mut run = make_run(4, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -565,7 +565,7 @@ fn execute_error_handler_with_error_slot_routes_to_body_step() {
     );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
-    let wf = make_workflow(vec![node0, node1, node2], 8);
+    let wf = make_workflow(vec![node0, node1, node2], 8, &[0]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -605,12 +605,12 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-        None,
+        Some(SlotIdx::new(7)),
         None,
     );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
-    let wf = make_workflow(vec![node0, node1, node2], 8);
+    let wf = make_workflow(vec![node0, node1, node2], 8, &[0, 5]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -654,7 +654,7 @@ fn execute_for_each_join_errors_on_missing_next_step() {
         Some(SlotIdx::new(0)),
         None,
     );
-    let wf = make_workflow(vec![node0], 4);
+    let wf = make_workflow(vec![node0], 4, &[0]);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
     let list_id = match store.insert_list(Vec::<SlotValue>::new().into_boxed_slice()) {
@@ -708,12 +708,12 @@ fn execute_for_each_next_errors_on_uninitialized_iterator() {
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-        None,
+        Some(SlotIdx::new(3)),
         None,
     );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
-    let wf = make_workflow(vec![node0, node1, node2], 4);
+    let wf = make_workflow(vec![node0, node1, node2], 4, &[0]);
     let mut run = make_run(4, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -748,7 +748,7 @@ fn execute_for_each_next_errors_on_uninitialized_iterator() {
 // =====================================================================
 
 #[test]
-fn execute_together_start_empty_branches_no_panic() {
+fn execute_together_start_empty_branches_rejected_at_construction() {
     // join=1 must be forward
     let node0 = vb_core::workflow::node(
         StepIdx::new(0),
@@ -756,37 +756,33 @@ fn execute_together_start_empty_branches_no_panic() {
             branches: Box::from([]),
             join: StepIdx::new(1),
         },
-        None,
+        Some(SlotIdx::new(2)),
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 4);
-    let mut run = make_run(4, 2);
-    let mut store = ValueStore::new();
-    let mut cs = CollectStates::new();
-    let n = match wf.node(StepIdx::ZERO) {
-        Some(n) => n,
-        None => return,
-    };
-    // This catch_unwind match is a panic-safety guard, not a fallible-result
-    // assertion. It verifies that execute_node_full itself does not panic;
-    // the inner RuntimeEngineResult is intentionally not asserted here.
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let _ = execute_node_full(
-            &wf,
-            &mut run,
-            &mut store,
-            n,
-            &[],
-            RetryPolicy::NEVER,
-            &mut cs,
-            &CapabilitySet::empty(),
-            1,
-        );
-    }));
-    if let Err(payload) = result {
-        std::panic::resume_unwind(payload);
+    let valid_start = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::TogetherStart {
+            branches: Box::from([StepIdx::new(1)]),
+            join: StepIdx::new(1),
+        },
+        Some(SlotIdx::new(2)),
+        None,
+    );
+    let mut parts = make_workflow(vec![valid_start, node1], 4, &[0]).to_parts();
+    if let Some(first) = parts.nodes.first_mut() {
+        *first = node0;
     }
+    assert_eq!(
+        CompiledWorkflow::try_from_parts(parts),
+        Err(vb_core::WorkflowError::SlotFlow(
+            vb_core::workflow::SlotFlowError {
+                step: StepIdx::ZERO,
+                slot: None,
+                reason: vb_core::workflow::SlotFlowFailure::InvalidReference
+            }
+        ))
+    );
 }
 
 // =====================================================================
@@ -804,7 +800,7 @@ fn execute_together_join_errors_on_missing_next_step() {
         Some(SlotIdx::new(0)),
         None,
     );
-    let wf = make_workflow(vec![node0], 4);
+    let wf = make_workflow(vec![node0], 4, &[0, 1]);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
     let list_id = match store.insert_list(Vec::<SlotValue>::new().into_boxed_slice()) {
@@ -868,12 +864,12 @@ fn execute_collect_start_errors_on_uninitialized_source() {
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-        None,
+        Some(SlotIdx::new(7)),
         None,
     );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
-    let wf = make_workflow(vec![node0, node1, node2], 8);
+    let wf = make_workflow(vec![node0, node1, node2], 8, &[0, 5]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -921,7 +917,7 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
     );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
-    let wf = make_workflow(vec![node0, node1, node2], 8);
+    let wf = make_workflow(vec![node0, node1, node2], 8, &[0]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -950,4 +946,3 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
         "expected error for uninitialized collector, got {result:?}"
     );
 }
-

@@ -2,6 +2,7 @@
 fn workflow_input_slots_out_of_bounds_before_duplicate() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([
             CompiledInputSlot {
                 slot: SlotIdx::new(5),
@@ -73,7 +74,8 @@ fn branch_parts(
     let validated_slot_count = slot_count.max(1);
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Bool),
         name: Box::<str>::from("branch_case"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: vec![
@@ -98,7 +100,7 @@ fn branch_parts(
         .into_boxed_slice(),
         expressions,
         accessors: Box::new([]),
-        constants: vec![ConstValue::Null].into_boxed_slice(),
+        constants: vec![ConstValue::Bool(true)].into_boxed_slice(),
         slot_count: validated_slot_count,
         symbols_count: 0,
         entry: StepIdx::new(0),
@@ -142,6 +144,7 @@ const fn resource_contract(
 fn workflow_error_empty_nodes_exact_variant() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty"),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -166,6 +169,7 @@ fn workflow_error_empty_nodes_exact_variant() -> Result<(), String> {
 fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("entry_oob"),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -196,6 +200,7 @@ fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
 fn workflow_error_step_out_of_bounds_exact_variant() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("step_oob"),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -327,6 +332,7 @@ fn workflow_error_empty_branch_table_exact_variant() -> Result<(), String> {
 fn workflow_empty_nodes_rejected_with_empty_nodes_error() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty"),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -353,6 +359,7 @@ fn workflow_empty_nodes_rejected_with_empty_nodes_error() -> Result<(), String> 
 fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("entry_at_boundary"),
         digest: WorkflowDigest::from_bytes([1; 32]),
@@ -540,6 +547,7 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() ->
 {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("zero_max_steps"),
         digest: WorkflowDigest::from_bytes([2; 32]),

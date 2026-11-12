@@ -6,6 +6,16 @@ pub(crate) use crate::errors::CoreError;
 
 mod compiled;
 pub use compiled::CompiledWorkflow;
+pub(crate) use compiled::resolved_error_slot;
+
+mod cursor_ownership;
+mod input_constraints;
+mod retry_policy;
+pub use retry_policy::CompiledRetryPolicy;
+mod slot_flow;
+pub use slot_flow::{SlotFlowError, SlotFlowFailure, validate_slot_flow};
+pub mod source_metadata;
+pub use crate::input_schema::{CompiledInputField, InputDefaultValue};
 
 mod constraints;
 pub use constraints::{Bound, ExtraFields, Secretness};
@@ -59,6 +69,7 @@ mod traversal;
 mod validate;
 #[cfg(test)]
 pub(crate) use validate::validate_budget_result;
+use validate::validate_input_constraint;
 mod validate_node_kind;
 mod validate_refs;
 

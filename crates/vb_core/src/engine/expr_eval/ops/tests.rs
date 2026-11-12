@@ -44,16 +44,11 @@ fn eval_ops_with_slots(
     };
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("ops_test"),
         digest: WorkflowDigest::from_bytes([0xFA; 32]),
-        nodes: vec![node(
-            StepIdx::new(0),
-            CompiledNodeKind::Nop,
-            Some(SlotIdx::new(0)),
-            None,
-        )]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: vec![expr].into_boxed_slice(),
         accessors: Box::new([]),
         constants: constants.into_boxed_slice(),
@@ -485,7 +480,7 @@ fn exists_non_empty_object_produces_true() -> Result<(), String> {
 }
 
 #[test]
-fn exists_empty_object_produces_false() -> Result<(), String> {
+fn exists_empty_object_produces_true() -> Result<(), String> {
     let mut store = ValueStore::new();
     let obj = store
         .insert_object(Vec::<crate::value_store::ObjectField>::new().into_boxed_slice())
@@ -496,7 +491,7 @@ fn exists_empty_object_produces_false() -> Result<(), String> {
         vec![],
         &mut store,
     )?;
-    ensure_equal(result, SlotValue::Bool(false))
+    ensure_equal(result, SlotValue::Bool(true))
 }
 
 // ===== Merge =====

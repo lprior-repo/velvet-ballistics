@@ -21,6 +21,7 @@ pub(crate) fn start_kind(family: Family, body: u16, done: u16) -> CompiledNodeKi
             done: step(done),
         },
         Family::Reduce => CompiledNodeKind::ReduceStart {
+            limit: 65_535,
             input: slot(0),
             accumulator: slot(2),
             initial: ConstIdx::new(0),
@@ -75,6 +76,11 @@ pub(crate) fn install_pair(
     owner.routing.next = NodeContinuation::End;
     let latch = edit(parts, control)?;
     latch.kind = control_kind(family, state, body, done);
+    latch.output = match family {
+        Family::ForEach => NodeOutput::Slot(slot(3)),
+        Family::Reduce => NodeOutput::Slot(slot(0)),
+        Family::Collect | Family::Repeat => NodeOutput::Discard,
+    };
     latch.routing.next = if matches!(family, Family::Repeat) {
         NodeContinuation::Step(step(body))
     } else {

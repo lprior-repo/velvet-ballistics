@@ -268,6 +268,7 @@ fn minimal_nop_workflow() -> Option<CompiledWorkflow> {
         Box::new([node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("minimal_nop"),
         digest,
         slot_count: 0,

@@ -13,7 +13,7 @@ pub(super) fn lower_expr(
     resolver: &mut impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
     match expression {
-        ParsedExpression::Literal(literal) => lower_literal(literal, constants, ops),
+        ParsedExpression::Literal(literal) => lower_literal(literal, constants, ops, resolver),
         ParsedExpression::Unary { op, expr } => lower_unary(*op, expr, constants, ops, resolver),
         ParsedExpression::Binary { op, left, right } => {
             lower_binary(*op, left, right, constants, ops, resolver)
@@ -38,17 +38,14 @@ fn lower_literal(
     literal: &ExpressionLiteral,
     constants: &mut Vec<ConstValue>,
     ops: &mut Vec<ExprOp>,
+    resolver: &mut impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
     let value = match literal {
         ExpressionLiteral::Null => ConstValue::Null,
         ExpressionLiteral::Bool(value) => ConstValue::Bool(*value),
         ExpressionLiteral::I64(value) => ConstValue::I64(*value),
         ExpressionLiteral::F64(value) => ConstValue::F64(*value),
-        ExpressionLiteral::Text(_) => {
-            return Err(CompileError::ExpressionLoweringUnsupported {
-                feature: "text constants".into(),
-            });
-        }
+        ExpressionLiteral::Text(text) => ConstValue::Symbol(resolver.resolve_text(text)?),
     };
     let constant = push_expression_constant(value, constants)?;
     ops.push(ExprOp::LoadConst(constant));

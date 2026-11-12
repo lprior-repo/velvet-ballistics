@@ -49,7 +49,8 @@ fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() -> Resu
     let mut shard = Shard::new(config);
     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: super::RunId::new(1),
             workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()

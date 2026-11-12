@@ -149,7 +149,16 @@ pub(super) fn digest_step_post(
     hasher: &mut blake3::Hasher,
     step: &crate::StepAst,
 ) -> Result<(), CompileErrors> {
-    super::digest_optional_string(hasher, b"step_with:", step.with.as_deref())?;
+    hasher.update(b"step_with:");
+    match &step.with {
+        Some(value) => {
+            hasher.update(&[1]);
+            super::digest_author_value(hasher, value)?;
+        }
+        None => {
+            hasher.update(&[0]);
+        }
+    }
     hasher.update(b"step_retry:");
     if let Some(retry) = &step.retry {
         hasher.update(&[super::TAG_SOME]);

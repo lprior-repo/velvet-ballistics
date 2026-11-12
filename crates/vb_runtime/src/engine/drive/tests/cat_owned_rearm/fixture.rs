@@ -64,6 +64,7 @@ pub(super) fn build(family: Family, productive: bool) -> Result<CompiledWorkflow
             Some(3),
             None,
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
@@ -162,5 +163,13 @@ pub(super) fn build(family: Family, productive: bool) -> Result<CompiledWorkflow
     let nodes = vec![owner, body, otherwise, latch, done];
     let constants = vec![ConstValue::I64(42)];
 
-    mkwfc(nodes, 6, constants)
+    mkwfc(
+        nodes,
+        6,
+        constants,
+        match family {
+            Family::Repeat => &[5],
+            _ => &[0, 5],
+        },
+    )
 }

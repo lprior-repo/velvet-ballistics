@@ -52,6 +52,7 @@ fn step_once_bounds_harness() {
     // Build CompiledWorkflow (may fail validation; accept either path)
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: parts.semantic_source_identity,
+        source_metadata: parts.source_metadata,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -159,6 +160,7 @@ fn step_once_state_mapping_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: parts.semantic_source_identity,
+        source_metadata: parts.source_metadata,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -233,6 +235,7 @@ fn step_once_slot_init_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: parts.semantic_source_identity,
+        source_metadata: parts.source_metadata,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -296,6 +299,7 @@ fn step_once_pc_bounds_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: parts.semantic_source_identity,
+        source_metadata: parts.source_metadata,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -443,6 +447,7 @@ fn step_once_error_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: parts.semantic_source_identity,
+        source_metadata: parts.source_metadata,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,

@@ -32,12 +32,9 @@ use vb_core::{RunId, WorkflowDigest};
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 fn temp_socket_path(name: &str) -> PathBuf {
-    // Linux `unix(7)` `sun_path` is bounded by `SUN_LEN` (108) bytes. We
-    // bypass `std::env::temp_dir()` because cargo and CI frequently set
-    // `TMPDIR` to deep worktree paths (e.g. `$PWD/target/tmp`), which pushes
-    // the concatenated socket path past the limit and makes `bind(2)` fail
-    // with `EINVAL: path must be shorter than SUN_LEN`. Using a fixed short
-    // parent (`/tmp`) keeps every per-test path well below 108 bytes.
+    // Honor the supplied scratch directory when the full pathname fits Linux's
+    // 108-byte sun_path, including its terminating NUL. Deep TMPDIR paths keep
+    // the existing short /tmp fallback.
     //
     // Per-test uniqueness is guaranteed by the process id (parallel cargo
     // test workers) and a static monotonic counter (successive invocations
@@ -46,8 +43,13 @@ fn temp_socket_path(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let pid = std::process::id();
     let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-    std::path::PathBuf::from("/tmp")
-        .join(format!("vb_ipc_impl_test_{name}_{pid}_{counter:04x}.sock"))
+    let filename = format!("vb_ipc_impl_test_{name}_{pid}_{counter:04x}.sock");
+    let path = std::env::temp_dir().join(&filename);
+    if path.as_os_str().as_encoded_bytes().len() < 108 {
+        path
+    } else {
+        PathBuf::from("/tmp").join(filename)
+    }
 }
 
 fn make_runtime() -> Runtime {

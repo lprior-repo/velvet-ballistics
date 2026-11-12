@@ -71,13 +71,17 @@ pub(super) fn validate_input_slots(parts: &WorkflowParts) -> Result<(), Workflow
                 });
             }
         }
-        validate_input_constraint(current, &input_slot.constraint)?;
+        super::input_constraints::validate(parts, current, input_slot.kind, &input_slot.constraint)
+            .map_err(|issue| WorkflowError::InconsistentInputConstraint {
+                slot: current,
+                issue,
+            })?;
         prev_slot = Some(current);
     }
     Ok(())
 }
 
-fn validate_input_constraint(
+pub(super) fn validate_input_constraint(
     slot: SlotIdx,
     constraint: &CompiledInputConstraint,
 ) -> Result<(), WorkflowError> {
