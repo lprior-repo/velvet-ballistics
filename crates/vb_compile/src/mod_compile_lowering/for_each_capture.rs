@@ -20,8 +20,10 @@ pub(in crate::mod_compile_lowering) fn validate_capture(
     variable: &str,
     body: &[StepAst],
 ) -> Result<(), CompileErrors> {
-    let enclosing = vec![variable.to_owned()];
-    walk_body(body, &enclosing)
+    // Borrowed lexical scope: single-element stack slice referencing the
+    // caller variable, zero heap allocation for the root.
+    let enclosing: &[&str] = &[variable];
+    walk_body(body, enclosing)
 }
 
 fn duplicate(name: &str) -> CompileErrors {
@@ -39,31 +41,33 @@ fn duplicate(name: &str) -> CompileErrors {
 /// Termination: every iteration advances one frame's cursor over a distinct
 /// step or branch (never revisited) or pops a finished frame, so iterations
 /// are bounded by the number of AST nodes; stack depth never exceeds AST
-/// nesting depth and lives on the heap. `enclosing` is cloned per descended
-/// frame, matching the old `descend` allocation shape while keeping the
-/// traversal off the call stack.
-fn walk_body(body: &[StepAst], enclosing: &[String]) -> Result<(), CompileErrors> {
+/// nesting depth and lives on the heap. `enclosing` is a borrowed `&str`
+/// chain cloned per descended frame (pointer copies only, no `String`
+/// allocations), matching the old `descend` traversal shape while keeping
+/// the traversal off the call stack. This preserves the heap-stack
+/// termination proof while eliminating the per-level `String` clone cost.
+fn walk_body<'a>(body: &'a [StepAst], enclosing: &[&'a str]) -> Result<(), CompileErrors> {
     enum Frame<'a> {
         Body {
             steps: &'a [StepAst],
             index: usize,
-            enclosing: Vec<String>,
+            enclosing: Vec<&'a str>,
         },
         Choose {
             branches: &'a [crate::ChooseBranch],
             index: usize,
-            enclosing: Vec<String>,
+            enclosing: Vec<&'a str>,
         },
         Together {
             branches: &'a [crate::TogetherBranch],
             index: usize,
-            enclosing: Vec<String>,
+            enclosing: Vec<&'a str>,
         },
     }
     enum Op<'a> {
         Pop,
         Push(Frame<'a>),
-        LeafCheck { name: String },
+        LeafCheck { name: &'a str },
         Nothing,
     }
     let mut stack = vec![Frame::Body {
@@ -86,19 +90,20 @@ fn walk_body(body: &[StepAst], enclosing: &[String]) -> Result<(), CompileErrors
                     *index = index.checked_add(1).ok_or_else(|| {
                         CompileErrors(vec![CompileError::StepIndexOutOfRange { value: *index }])
                     })?;
-                    if enclosing.iter().any(|item| item == &step.id) {
+                    // Borrowed slice contains: no String allocation, pointer compare only.
+                    if enclosing.contains(&step.id.as_str()) {
                         return Err(duplicate(&step.id));
                     }
                     match &step.primitive {
                         StepPrimitive::Set { output, .. } => Op::LeafCheck {
-                            name: output.clone(),
+                            name: output.as_str(),
                         },
                         StepPrimitive::ForEach { variable, body, .. }
                         | StepPrimitive::Collect { variable, body, .. }
                         | StepPrimitive::Aggregate { variable, body, .. } => {
                             check_binding(variable, enclosing)?;
                             let mut nested = enclosing.clone();
-                            nested.push(variable.to_owned());
+                            nested.push(variable.as_str());
                             Op::Push(Frame::Body {
                                 steps: body,
                                 index: 0,
@@ -165,21 +170,21 @@ fn walk_body(body: &[StepAst], enclosing: &[String]) -> Result<(), CompileErrors
             }
             Op::Push(frame) => stack.push(frame),
             Op::LeafCheck { name } => {
-                let enclosing: &[String] = match stack.last() {
+                let enclosing: &[&str] = match stack.last() {
                     Some(Frame::Body { enclosing, .. })
                     | Some(Frame::Choose { enclosing, .. })
                     | Some(Frame::Together { enclosing, .. }) => enclosing,
                     None => &[],
                 };
-                check_binding(&name, enclosing)?;
+                check_binding(name, enclosing)?;
             }
             Op::Nothing => {}
         }
     }
 }
 
-fn check_binding(name: &str, enclosing: &[String]) -> Result<(), CompileErrors> {
-    if enclosing.iter().any(|item| item == name) {
+fn check_binding(name: &str, enclosing: &[&str]) -> Result<(), CompileErrors> {
+    if enclosing.contains(&name) {
         Err(duplicate(name))
     } else {
         Ok(())

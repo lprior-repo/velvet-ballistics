@@ -137,6 +137,7 @@ proptest! {
                 outputs: &outputs,
                 step_outputs: &step_outputs,
                 slot_types: &slot_types,
+                parent: None,
             },
             nested: BodyCtx {
                 inputs: &inputs,
@@ -182,6 +183,7 @@ proptest! {
                 outputs: &outputs,
                 step_outputs: &step_outputs,
                 slot_types: &slot_types,
+                parent: None,
             },
             nested: BodyCtx {
                 inputs: &inputs,

@@ -1,14 +1,15 @@
 #![forbid(unsafe_code)]
 
-use crate::mod_compile_lowering::part_02::for_each_capture;
 use super::canonical_reduce_initial::parse_typed_initial;
 use super::emit_single_body_set;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
+use crate::mod_compile_lowering::part_02::for_each_capture;
 use crate::mod_compile_lowering::part_14::{BodyCtx, emit_scoped_flat_body};
 use crate::mod_compile_lowering::{
     CanonicalScope, SlotCompiler, body_width, checked_step_offset,
     lower_canonical_set_expression_with_binding, slot_from_text,
 };
+use std::collections::HashMap;
 use vb_core::workflow::node;
 use vb_core::{CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
@@ -40,12 +41,18 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     validate_body(index, &config)?;
     let (initial_value, initial_type) = parse_typed_initial(config.initial, index)?;
     let edges = plan_edges(id, config.body)?;
-    emit_reduce(index, id, &config, &edges, initial_value, initial_type, builder)
+    emit_reduce(
+        index,
+        id,
+        &config,
+        &edges,
+        initial_value,
+        initial_type,
+        builder,
+    )
 }
 
-pub(in crate::mod_compile_lowering) fn checked_width_n(
-    width: usize,
-) -> Result<u16, CompileErrors> {
+pub(in crate::mod_compile_lowering) fn checked_width_n(width: usize) -> Result<u16, CompileErrors> {
     u16::try_from(width)
         .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: width }]))
 }
@@ -55,8 +62,8 @@ fn plan_edges(id: StepIdx, body: &[crate::StepAst]) -> Result<ReduceEdges, Compi
         checked_step_offset(id, 2, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
     let width = body_width(body, 0).map_err(|e| CompileErrors(vec![e]))?;
     let width_n = checked_width_n(width)?;
-    let next =
-        checked_step_offset(body_edge, width_n, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
+    let next = checked_step_offset(body_edge, width_n, "aggregate", "next")
+        .map_err(|e| CompileErrors(vec![e]))?;
     let done =
         checked_step_offset(next, 1, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
     Ok(ReduceEdges {
@@ -116,9 +123,24 @@ fn emit_reduce(
     let inferred = if config.body.len() >= 2 {
         lower_multi_body(config, index, edges, accumulator, initial_type, builder)?
     } else {
-        lower_body(config, index, edges.body, accumulator, edges.next, initial_type, builder)?
+        lower_body(
+            config,
+            index,
+            edges.body,
+            accumulator,
+            edges.next,
+            initial_type,
+            builder,
+        )?
     };
-    emit_reduce_tail(config, edges, iterator_slot, accumulator, next_item, builder);
+    emit_reduce_tail(
+        config,
+        edges,
+        iterator_slot,
+        accumulator,
+        next_item,
+        builder,
+    );
     Ok((accumulator, inferred))
 }
 
@@ -165,19 +187,23 @@ fn lower_multi_body(
         last.primitive,
         crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. }
     ) {
-        return Err(CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
-            step: index,
-            primitive: super::super::canonical_primitive_name(&last.primitive),
-        }]));
+        return Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: super::super::canonical_primitive_name(&last.primitive),
+            },
+        ]));
     }
-    let mut local_outputs = config.scope.outputs.clone();
-    let mut local_types = config.scope.slot_types.clone();
-    local_outputs.insert(config.variable.to_owned(), accumulator);
-    local_types.insert(accumulator, initial_type);
+    // Borrowed overlay: tiny maps + parent chain (no whole-map clone).
+    let mut overlay_outputs = HashMap::with_capacity(1);
+    overlay_outputs.insert(config.variable.to_owned(), accumulator);
+    let mut overlay_types = HashMap::with_capacity(1);
+    overlay_types.insert(accumulator, initial_type);
     let scope = CanonicalScope {
-        outputs: &local_outputs,
+        outputs: &overlay_outputs,
         step_outputs: config.scope.step_outputs,
-        slot_types: &local_types,
+        slot_types: &overlay_types,
+        parent: Some(&config.scope),
     };
     let (_, final_type) = emit_scoped_flat_body(
         config.body,
@@ -240,8 +266,9 @@ fn lower_body(
         )?;
         return Ok(ExprType::Unknown);
     };
-    let mut types = config.scope.slot_types.clone();
-    types.insert(accumulator, initial_type);
+    // Single-binding overlay for type only; outputs reused via parent chain.
+    let mut overlay_types = HashMap::with_capacity(1);
+    overlay_types.insert(accumulator, initial_type);
     let inferred = lower_canonical_set_expression_with_binding(
         id,
         accumulator,
@@ -250,7 +277,8 @@ fn lower_body(
         CanonicalScope {
             outputs: config.scope.outputs,
             step_outputs: config.scope.step_outputs,
-            slot_types: &types,
+            slot_types: &overlay_types,
+            parent: Some(&config.scope),
         },
         config.variable,
         builder,

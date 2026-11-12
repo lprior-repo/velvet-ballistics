@@ -55,6 +55,7 @@ pub(crate) fn lower_canonical_choose(
                 outputs: &outputs,
                 step_outputs: &steps,
                 slot_types: &types,
+                parent: None,
             },
             inputs: &inputs,
             depth: 0,
@@ -244,6 +245,7 @@ pub(crate) fn emit_choose_branch_body(
             outputs: &outputs,
             step_outputs: &steps,
             slot_types: &types,
+            parent: None,
         },
         BodyCtx {
             inputs: &inputs,

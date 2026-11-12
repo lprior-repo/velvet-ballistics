@@ -13,10 +13,12 @@ use vb_expr::expr_parser::types::{ExprAst, ExprHelper, ExprLiteral};
 use vb_expr::expr_typecheck::{ExprType, TypeContext, typecheck_expr};
 
 use super::canonical_references::StepReferenceResolver;
+use super::canonical_scope::CanonicalScope;
 
 /// Type-checks a canonical expression and returns its inferred type.
 /// Known static type errors (e.g., bool + number) are rejected. Dynamic
 /// action outputs remain Unknown.
+#[allow(dead_code)]
 pub(super) fn infer_canonical_expr_type(
     expr: &ParsedExpression,
     slot_types: &HashMap<SlotIdx, ExprType>,
@@ -27,13 +29,33 @@ pub(super) fn infer_canonical_expr_type(
     typecheck_expr(&ast, &context).map_err(vb_expr_error_to_compile)
 }
 
+/// Scoped variant using borrowed `CanonicalScope` chain for type look-ups.
+pub(super) fn infer_canonical_expr_type_scoped(
+    expr: &ParsedExpression,
+    scope: CanonicalScope<'_>,
+    resolver: &StepReferenceResolver<'_>,
+) -> Result<ExprType, CompileError> {
+    let ast = to_vb_expr_ast(expr)?;
+    let context = build_type_context_scoped(expr, scope, resolver)?;
+    typecheck_expr(&ast, &context).map_err(vb_expr_error_to_compile)
+}
+
 /// Validates that all references resolve to known slots.
+#[allow(dead_code)]
 pub(super) fn validate_canonical_references(
     expr: &ParsedExpression,
     outputs: &HashMap<String, SlotIdx>,
     step_outputs: &HashMap<String, SlotIdx>,
 ) -> Result<(), CompileError> {
-    let resolver = StepReferenceResolver::new(outputs, step_outputs);
+    let resolver = StepReferenceResolver::from_maps(outputs, step_outputs);
+    validate_canonical_references_with_resolver(expr, &resolver)
+}
+
+pub(super) fn validate_canonical_references_scoped(
+    expr: &ParsedExpression,
+    scope: CanonicalScope<'_>,
+) -> Result<(), CompileError> {
+    let resolver = StepReferenceResolver::new(scope);
     validate_canonical_references_with_resolver(expr, &resolver)
 }
 
@@ -76,6 +98,7 @@ fn collect_refs_inner(expr: &ParsedExpression, refs: &mut Vec<(String, bool)>) {
 
 /// Builds a TypeContext by resolving each reference in the expression
 /// through the canonical resolver and mapping to slot types.
+#[allow(dead_code)]
 fn build_type_context(
     expr: &ParsedExpression,
     slot_types: &HashMap<SlotIdx, ExprType>,
@@ -85,6 +108,20 @@ fn build_type_context(
     for (reference, _) in collect_references(expr) {
         let slot = resolver.resolve_slot(&reference)?;
         let ty = slot_types.get(&slot).copied().unwrap_or(ExprType::Unknown);
+        context.add_variable(reference.clone().into(), ty);
+    }
+    Ok(context)
+}
+
+fn build_type_context_scoped(
+    expr: &ParsedExpression,
+    scope: CanonicalScope<'_>,
+    resolver: &StepReferenceResolver<'_>,
+) -> Result<TypeContext, CompileError> {
+    let mut context = TypeContext::new();
+    for (reference, _) in collect_references(expr) {
+        let slot = resolver.resolve_slot(&reference)?;
+        let ty = scope.get_type(slot).unwrap_or(ExprType::Unknown);
         context.add_variable(reference.clone().into(), ty);
     }
     Ok(context)

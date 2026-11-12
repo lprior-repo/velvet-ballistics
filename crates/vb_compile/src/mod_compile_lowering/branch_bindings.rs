@@ -1,8 +1,11 @@
 //! Per-body lexical bindings with recursive container dispatch.
 //!
-//! `BranchBindings` owns one body level's scope maps. Leaves bind here;
-//! containers recurse through their top-level lowering entry points and
-//! thread their inner body's result slot back as the step value.
+//! `BranchBindings` owns one body level's overlay maps only — the parent
+//! `CanonicalScope` is held by reference and never cloned wholesale. Inserts
+//! go into small per-level HashMaps (typically 0–4 entries) and lookups walk
+//! overlay → parent chain via borrowed scopes. This kills the three
+//! `HashMap::clone()`s per body level that were previously waivered for
+//! performance.
 
 use super::super::part_02::{
     CollectLowering, CollectOutput, ForEachLowering, lower_bounded_collect, lower_bounded_for_each,
@@ -23,9 +26,15 @@ struct BodyTarget {
 }
 
 pub(super) struct BranchBindings<'a> {
+    /// Overlay for outputs bound inside this body. Parent outputs are *not*
+    /// copied; lookups fall through to `parent_scope`.
     outputs: HashMap<String, SlotIdx>,
+    /// Overlay for step-id → slot bindings inside this body.
     steps: HashMap<String, SlotIdx>,
+    /// Overlay for slot → type bindings inside this body.
     types: HashMap<SlotIdx, ExprType>,
+    /// Borrowed parent lexical environment (never cloned).
+    parent_scope: CanonicalScope<'a>,
     local_outputs: HashSet<String>,
     local_steps: HashSet<String>,
     strict_unknown: bool,
@@ -33,11 +42,12 @@ pub(super) struct BranchBindings<'a> {
 }
 
 impl<'a> BranchBindings<'a> {
-    pub(super) fn new(scope: CanonicalScope<'_>, strict_unknown: bool, ctx: BodyCtx<'a>) -> Self {
+    pub(super) fn new(scope: CanonicalScope<'a>, strict_unknown: bool, ctx: BodyCtx<'a>) -> Self {
         Self {
-            outputs: scope.outputs.clone(),
-            steps: scope.step_outputs.clone(),
-            types: scope.slot_types.clone(),
+            outputs: HashMap::new(),
+            steps: HashMap::new(),
+            types: HashMap::new(),
+            parent_scope: scope,
             local_outputs: HashSet::new(),
             local_steps: HashSet::new(),
             strict_unknown,
@@ -46,11 +56,35 @@ impl<'a> BranchBindings<'a> {
     }
 
     fn view(&self) -> CanonicalScope<'_> {
+        // Borrowed chained view: local overlay points to our tiny maps,
+        // parent points to the borrowed outer scope. No whole-map clone.
+        // We leak a reference chain via `parent: Some(&self.parent_scope)`
+        // where `parent_scope` is stored by value; the returned scope's
+        // lifetime is tied to `&self`.
         CanonicalScope {
             outputs: &self.outputs,
             step_outputs: &self.steps,
             slot_types: &self.types,
+            parent: Some(&self.parent_scope),
         }
+    }
+
+    #[inline]
+    #[allow(dead_code)]
+    pub(super) fn get_output(&self, name: &str) -> Option<SlotIdx> {
+        self.outputs
+            .get(name)
+            .copied()
+            .or_else(|| self.parent_scope.get_output(name))
+    }
+
+    #[inline]
+    #[allow(dead_code)]
+    pub(super) fn get_step(&self, name: &str) -> Option<SlotIdx> {
+        self.steps
+            .get(name)
+            .copied()
+            .or_else(|| self.parent_scope.get_step(name))
     }
 
     pub(super) fn lower(

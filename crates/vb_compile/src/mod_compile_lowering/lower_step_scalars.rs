@@ -33,6 +33,7 @@ pub(super) fn lower_step_set(
             outputs: ctx.outputs,
             step_outputs: ctx.step_outputs,
             slot_types: ctx.slot_types,
+            parent: None,
         },
         builder,
     )?;
@@ -60,6 +61,7 @@ pub(super) fn lower_step_do(
             outputs: ctx.outputs,
             step_outputs: ctx.step_outputs,
             slot_types: ctx.slot_types,
+            parent: None,
         },
         builder,
     )?;
@@ -107,6 +109,7 @@ pub(super) fn lower_step_wait(
             outputs: ctx.outputs,
             step_outputs: ctx.step_outputs,
             slot_types: ctx.slot_types,
+            parent: None,
         },
         builder,
     )
@@ -130,6 +133,7 @@ pub(super) fn lower_step_ask(
             outputs: ctx.outputs,
             step_outputs: ctx.step_outputs,
             slot_types: ctx.slot_types,
+            parent: None,
         },
         builder,
     )

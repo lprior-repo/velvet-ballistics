@@ -37,6 +37,7 @@ pub(super) fn lower_step_for_each(
                 outputs: ctx.outputs,
                 step_outputs: ctx.step_outputs,
                 slot_types: ctx.slot_types,
+                parent: None,
             },
             inputs: ctx.for_each_inputs,
             nested: BodyCtx {
@@ -82,6 +83,7 @@ pub(super) fn lower_step_collect(
                 outputs: ctx.outputs,
                 step_outputs: ctx.step_outputs,
                 slot_types: ctx.slot_types,
+                parent: None,
             },
             nested: BodyCtx {
                 inputs: ctx.for_each_inputs,
@@ -125,6 +127,7 @@ pub(super) fn lower_step_aggregate(
                 outputs: ctx.outputs,
                 step_outputs: ctx.step_outputs,
                 slot_types: ctx.slot_types,
+                parent: None,
             },
             nested: BodyCtx {
                 inputs: ctx.for_each_inputs,
@@ -163,6 +166,7 @@ pub(super) fn lower_step_repeat(
                 outputs: ctx.outputs,
                 step_outputs: ctx.step_outputs,
                 slot_types: ctx.slot_types,
+                parent: None,
             },
             inputs: ctx.for_each_inputs,
             step_names,
@@ -198,6 +202,7 @@ pub(super) fn lower_step_choose(
                 outputs: ctx.outputs,
                 step_outputs: ctx.step_outputs,
                 slot_types: ctx.slot_types,
+                parent: None,
             },
             inputs: ctx.for_each_inputs,
             depth: 0,

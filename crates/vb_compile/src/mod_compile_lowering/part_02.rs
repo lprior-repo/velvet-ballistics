@@ -14,7 +14,7 @@ pub(super) use canonical_scope::{CanonicalScope, validate_output_alias};
 
 #[path = "canonical_references.rs"]
 mod canonical_references;
-pub(super) use canonical_references::resolve_slot_reference;
+pub(super) use canonical_references::{resolve_slot_reference, resolve_slot_reference_scoped};
 
 #[path = "canonical_types.rs"]
 mod canonical_types;
