@@ -64,7 +64,7 @@
 //   - Mirror `taint_rank(self_) -> u8`
 //                              <- production_inner/taint_lattice_production.rs
 //                                 (spec-side observational helper,
-//                                 modeled on value.rs:30-35 / 37-43)
+//                                 modeled on crates/vb_core/src/value/taint.rs:85-91, 92-98)
 //   - Mirror `join_many(taints: &[Taint]) -> Taint`
 //                              <- production_inner/taint_lattice_production.rs
 //                                 (spec-side observational helper)
