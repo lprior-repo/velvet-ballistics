@@ -213,6 +213,7 @@ tasks:
     inputs:
       - 'Cargo.toml'
       - 'scripts/check-workspace-assertions.rs'
+      - 'scripts/check_workspace_assertions_driver.rs'
       - 'scripts/check-workspace-assertions.sh'
       - '.moon/tasks/all.yml'
       - 'crates/*/Cargo.toml'
