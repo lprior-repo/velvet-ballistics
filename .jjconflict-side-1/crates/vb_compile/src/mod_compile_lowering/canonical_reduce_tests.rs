@@ -529,42 +529,67 @@ fn deep_together_in_repeat_alias_rejected() -> Result<(), String> {
     )
 }
 
+fn assert_cross_lane_node_ids(nodes: &[CompiledNode]) {
+    for (index, node) in nodes.iter().enumerate() {
+        assert_eq!(node.id.as_usize(), index);
+    }
+}
+
+fn cross_lane_accumulator_output(workflow: &CompiledWorkflow) -> Result<SlotIdx, String> {
+    output(
+        workflow,
+        workflow
+            .node_count()
+            .checked_sub(2)
+            .ok_or_else(|| "reduce workflow too small".to_owned())?,
+    )
+}
+
+fn cross_lane_final_do(workflow: &CompiledWorkflow) -> Result<u16, String> {
+    let parts = workflow.to_parts();
+    let do_ids: Vec<u16> = parts
+        .nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::Do { .. }))
+        .map(|n| n.id.get())
+        .collect();
+    assert_eq!(do_ids.len(), 2);
+    do_ids
+        .get(1)
+        .copied()
+        .ok_or_else(|| "missing second Do node".to_owned())
+}
+
+fn assert_cross_lane_copy(
+    workflow: &CompiledWorkflow,
+    final_do: u16,
+    accumulator: SlotIdx,
+) -> Result<(), String> {
+    let copy = final_do.checked_add(1).ok_or("copy index overflow")?;
+    assert_ne!(output(workflow, final_do)?, accumulator);
+    assert_eq!(
+        node(workflow, copy)?.kind,
+        CompiledNodeKind::Copy {
+            source: output(workflow, final_do)?
+        }
+    );
+    assert_eq!(output(workflow, copy)?, accumulator);
+    assert_eq!(
+        node(workflow, final_do)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(copy))
+    );
+    Ok(())
+}
+
 #[test]
 fn reduce_do_repeat_cross_lane_layout() -> Result<(), String> {
     let body = "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: tmp_value, value: '6'}\n              - id: act\n                do:\n                  action: '0'\n                  input: '1'\n        - id: update\n          do:\n            action: '0'\n            input: '1'\n";
     let workflow = compile(&source("10", body))?;
     let parts = workflow.to_parts();
-    for (index, node) in parts.nodes.iter().enumerate() {
-        assert_eq!(node.id.as_usize(), index);
-    }
-    let do_ids: Vec<u16> = parts
-        .nodes
-        .iter()
-        .filter(|n| matches!(n.kind, CompiledNodeKind::Do { .. }))
-        .map(|n| n.id.as_usize() as u16)
-        .collect();
-    assert_eq!(do_ids.len(), 2);
-    let final_do = do_ids[1];
-    let accumulator = output(
-        &workflow,
-        workflow
-            .node_count()
-            .checked_sub(2)
-            .ok_or_else(|| "reduce workflow too small".to_owned())?,
-    )?;
-    let copy = final_do.checked_add(1).ok_or("copy index overflow")?;
-    assert_ne!(output(&workflow, final_do)?, accumulator);
-    assert_eq!(
-        node(&workflow, copy)?.kind,
-        CompiledNodeKind::Copy {
-            source: output(&workflow, final_do)?
-        }
-    );
-    assert_eq!(output(&workflow, copy)?, accumulator);
-    assert_eq!(
-        node(&workflow, final_do)?.routing.next,
-        NodeContinuation::Step(StepIdx::new(copy))
-    );
+    assert_cross_lane_node_ids(&parts.nodes);
+    let final_do = cross_lane_final_do(&workflow)?;
+    let accumulator = cross_lane_accumulator_output(&workflow)?;
+    assert_cross_lane_copy(&workflow, final_do, accumulator)?;
     Ok(())
 }
 

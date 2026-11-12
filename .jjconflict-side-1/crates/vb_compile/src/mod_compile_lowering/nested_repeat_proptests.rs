@@ -39,12 +39,44 @@ fn at_once_rejection(errors: &crate::CompileErrors) -> bool {
     })
 }
 
+fn require_compile_rejection(
+    result: Result<vb_core::CompiledWorkflow, crate::CompileErrors>,
+    message: &'static str,
+) -> Result<crate::CompileErrors, proptest::test_runner::TestCaseError> {
+    match result {
+        Err(errors) => Ok(errors),
+        Ok(_) => Err(proptest::test_runner::TestCaseError::fail(message)),
+    }
+}
+
+fn check_for_each_concurrency(at_once: Option<u32>) -> proptest::test_runner::TestCaseResult {
+    let result = compile_workflow(for_each_source(at_once).as_bytes());
+    match at_once {
+        Some(0) => {
+            let errors = require_compile_rejection(result, "zero at_once must fail")?;
+            prop_assert!(
+                at_once_rejection(&errors),
+                "at_once {at_once:?} wrong diagnostic: {errors:?}"
+            );
+        }
+        _ => match result {
+            Ok(workflow) => prop_assert!(workflow.node_count() > 0),
+            Err(errors) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "at_once {at_once:?} must compile: {errors:?}"
+                )));
+            }
+        },
+    }
+    Ok(())
+}
+
 proptest! {
     #[test]
     fn repeat_max_attempts_prop(attempts in 0..=3u16) {
         let result = compile_workflow(repeat_source(attempts).as_bytes());
         if attempts == 0 {
-            let errors = result.expect_err("max_attempts 0 must fail");
+            let errors = require_compile_rejection(result, "max_attempts 0 must fail")?;
             prop_assert!(
                 errors.0.iter().any(|e| matches!(
                     e,
@@ -75,21 +107,6 @@ proptest! {
         Just(Some(u32::MAX)),
         any::<u32>().prop_map(Some),
     ]) {
-        let result = compile_workflow(for_each_source(at_once).as_bytes());
-        match at_once {
-            value if value != Some(0) => match result {
-                Ok(workflow) => prop_assert!(workflow.node_count() > 0),
-                Err(errors) => return Err(proptest::test_runner::TestCaseError::fail(format!(
-                    "at_once {at_once:?} must compile: {errors:?}"
-                ))),
-            },
-            _ => {
-                let errors = result.expect_err("zero at_once must fail");
-                prop_assert!(
-                    at_once_rejection(&errors),
-                    "at_once {at_once:?} wrong diagnostic: {errors:?}"
-                );
-            }
-        }
+        check_for_each_concurrency(at_once)?;
     }
 }

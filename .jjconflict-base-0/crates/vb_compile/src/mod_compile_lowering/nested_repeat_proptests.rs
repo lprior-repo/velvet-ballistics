@@ -4,8 +4,8 @@
 //!
 //! - `repeat_max_attempts_prop`: `max_attempts == 0` fails with the exact
 //!   `repeat.max_attempts` shape; any positive value compiles with nodes.
-//! - `for_each_concurrency_prop`: `at_once` is accepted only when omitted
-//!   or `1`; any other `u32` fails with the exact `for_each.at_once` shape.
+//! - `for_each_concurrency_prop`: `at_once` is a positive upper bound,
+//!   defaulting to 1; zero fails with the exact `for_each.at_once` shape.
 
 use crate::{CompileError, compile_workflow};
 use proptest::prelude::*;
@@ -32,11 +32,43 @@ fn at_once_rejection(errors: &crate::CompileErrors) -> bool {
             e,
             CompileError::StepFieldShape {
                 field: "for_each.at_once",
-                expected: "omitted or 1 until concurrent for_each lowering is implemented",
+                expected: "a positive concurrency upper bound",
                 ..
             }
         )
     })
+}
+
+fn require_compile_rejection(
+    result: Result<vb_core::CompiledWorkflow, crate::CompileErrors>,
+    message: &'static str,
+) -> Result<crate::CompileErrors, proptest::test_runner::TestCaseError> {
+    match result {
+        Err(errors) => Ok(errors),
+        Ok(_) => Err(proptest::test_runner::TestCaseError::fail(message)),
+    }
+}
+
+fn check_for_each_concurrency(at_once: Option<u32>) -> proptest::test_runner::TestCaseResult {
+    let result = compile_workflow(for_each_source(at_once).as_bytes());
+    match at_once {
+        Some(0) => {
+            let errors = require_compile_rejection(result, "zero at_once must fail")?;
+            prop_assert!(
+                at_once_rejection(&errors),
+                "at_once {at_once:?} wrong diagnostic: {errors:?}"
+            );
+        }
+        _ => match result {
+            Ok(workflow) => prop_assert!(workflow.node_count() > 0),
+            Err(errors) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "at_once {at_once:?} must compile: {errors:?}"
+                )));
+            }
+        },
+    }
+    Ok(())
 }
 
 proptest! {
@@ -44,7 +76,7 @@ proptest! {
     fn repeat_max_attempts_prop(attempts in 0..=3u16) {
         let result = compile_workflow(repeat_source(attempts).as_bytes());
         if attempts == 0 {
-            let errors = result.expect_err("max_attempts 0 must fail");
+            let errors = require_compile_rejection(result, "max_attempts 0 must fail")?;
             prop_assert!(
                 errors.0.iter().any(|e| matches!(
                     e,
@@ -75,21 +107,6 @@ proptest! {
         Just(Some(u32::MAX)),
         any::<u32>().prop_map(Some),
     ]) {
-        let result = compile_workflow(for_each_source(at_once).as_bytes());
-        match at_once {
-            None | Some(1) => match result {
-                Ok(workflow) => prop_assert!(workflow.node_count() > 0),
-                Err(errors) => return Err(proptest::test_runner::TestCaseError::fail(format!(
-                    "at_once {at_once:?} must compile: {errors:?}"
-                ))),
-            },
-            _ => {
-                let errors = result.expect_err("at_once outside omitted/1 must fail");
-                prop_assert!(
-                    at_once_rejection(&errors),
-                    "at_once {at_once:?} wrong diagnostic: {errors:?}"
-                );
-            }
-        }
+        check_for_each_concurrency(at_once)?;
     }
 }
