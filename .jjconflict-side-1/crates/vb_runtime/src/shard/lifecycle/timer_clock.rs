@@ -49,6 +49,9 @@ impl Shard {
     fn execute_timer_fire(&mut self, run: RunId, timer: PendingTimer) -> RuntimeResult<()> {
         let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         crate::shard::helpers::validate_timer_fire(state_ref, timer)?;
+        if self.pending_retry_timer(run, timer.step) {
+            return self.handle_retry_timer(run, timer);
+        }
         let budget_exceeded = self.append_timer_resolution_event(run, timer)?;
         if timer.kind == PendingTimerKind::Ask {
             self.clear_pending_ask_authority(run);
@@ -79,23 +82,5 @@ impl Shard {
             }
             Err(DriveApplyFailure::AfterCommit(error)) => Err(error),
         }
-    }
-
-    fn append_timer_resolution_event(
-        &mut self,
-        run: RunId,
-        timer: PendingTimer,
-    ) -> RuntimeResult<bool> {
-        let event = match timer.kind {
-            PendingTimerKind::Wait => RuntimeJournalEvent::WaitResolved {
-                run,
-                step: timer.step,
-            },
-            PendingTimerKind::Ask => RuntimeJournalEvent::AskTimedOut {
-                run,
-                step: timer.step,
-            },
-        };
-        self.append_command_journal_events(run, [event])
     }
 }

@@ -15,6 +15,8 @@ pub(crate) mod owned_activation;
 mod recovered_admission;
 #[path = "lifecycle/recovered_store.rs"]
 mod recovered_store;
+#[path = "lifecycle/recovery_store.rs"]
+mod recovery_store;
 #[path = "lifecycle/registered_completion.rs"]
 mod registered_completion;
 #[path = "lifecycle/registered_completion_context.rs"]
@@ -24,9 +26,20 @@ mod registered_context_helpers;
 pub(crate) use registered_completion::RegisteredActionContext;
 
 include!("lifecycle/chunk_003.rs");
+include!("lifecycle/retry_delay_checkpoint.rs");
+include!("lifecycle/retry_delay.rs");
+include!("lifecycle/retry_delay_recovery.rs");
 include!("lifecycle/chunk_001.rs");
+include!("lifecycle/chunk_001/submit.rs");
+include!("lifecycle/chunk_001/admission.rs");
+include!("lifecycle/chunk_001/resume.rs");
+include!("lifecycle/chunk_001/recover.rs");
+include!("lifecycle/chunk_001/resume_helpers.rs");
+include!("lifecycle/chunk_001/completion.rs");
+include!("lifecycle/chunk_001/ticket.rs");
 include!("lifecycle/chunk_002.rs");
 include!("lifecycle/timer_clock.rs");
+include!("lifecycle/timer_resolution.rs");
 include!("lifecycle/chunk_006.rs");
 include!("lifecycle/chunk_005_prepare.rs");
 include!("lifecycle/chunk_005_drive_apply.rs");
@@ -55,6 +68,7 @@ mod tests {
     include!("lifecycle_tests/recovery_context_tests.rs");
     include!("lifecycle_tests/contract_validation_tests.rs");
     include!("lifecycle_tests/action_recovery_tests.rs");
+    include!("lifecycle_tests/secret_recovery_tests.rs");
     include!("lifecycle_tests/timer_due_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
     include!("lifecycle_tests/chunk_014.rs");

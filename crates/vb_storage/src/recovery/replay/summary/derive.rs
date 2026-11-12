@@ -81,6 +81,12 @@ pub fn recover_runtime_frame_seed_from_events_with_workflow(
     events: &[JournalEvent],
     workflow: &CompiledWorkflow,
 ) -> RecoveryResult<RecoveryFrameSeedProduct> {
+    reject_workflow_digest_mismatch(events, workflow.digest())?;
+    if let Some(replayed) =
+        crate::recovery::complete_scalar::replay_complete_scalar(events, workflow)?
+    {
+        return Ok(replayed.seed().clone());
+    }
     recover_raw_runtime_frame_seed_from_events_with_workflow(events, workflow)
         .map(RecoveryFrameSeedProduct::from_seed)
 }
@@ -206,32 +212,9 @@ fn recover_frame_seed_accumulator(
     )
 }
 
-fn build_recovery_frame_seed(
-    accumulator: FrameSeedAccumulator,
-    workflow: Option<&CompiledWorkflow>,
-    inputs: Option<ReplayInputContext<'_>>,
-) -> RecoveryResult<(RecoveryFrameSeed, Option<(StepIdx, u64)>)> {
-    let (step_count, slot_count) = recovery_dimensions(&accumulator, workflow)?;
-    let first_step = accumulator.first_step();
-    let (slots, cursor) = super::hydrate::recover_slots(&accumulator, workflow, inputs)?;
-    let cursor = recovered_cursor(&accumulator, cursor);
-    let unsupported = seed_unsupported_state(&accumulator, &slots);
-    let steps = recovered_steps(accumulator.step_states);
-    let pending_actions = recovered_pending_actions(accumulator.pending_actions);
-
-    let seed = RecoveryFrameSeed {
-        summary: accumulator.summary,
-        first_step,
-        step_count,
-        slot_count,
-        pc: cursor.map_or(accumulator.pc, |(pc, _)| pc),
-        steps,
-        slots: slots.entries,
-        pending_actions,
-        unsupported,
-    };
-    Ok((seed, cursor))
-}
+#[path = "derive/seed_build.rs"]
+mod seed_build;
+use seed_build::build_recovery_frame_seed;
 
 fn recovered_cursor(
     accumulator: &FrameSeedAccumulator,
@@ -291,4 +274,24 @@ fn seed_unsupported_state(
         UnsupportedRecoveryState::SUPPORTED,
         UnsupportedRecoveryState::union,
     )
+}
+
+fn reject_unbound_retry_policy(plan: &CompiledWorkflow) -> RecoveryResult<()> {
+    // RetryCheck reads an external runtime policy that admission does not retain.
+    // A workflow resource cap cannot substitute for that execution authority.
+    for raw in 0..plan.node_count() {
+        let node = plan
+            .node(StepIdx::new(raw))
+            .ok_or(RecoveryError::ReplayDivergence {
+                step: StepIdx::new(raw),
+                detail: String::from("compiled recovery node missing"),
+            })?;
+        if matches!(node.kind, vb_core::CompiledNodeKind::RetryCheck { .. }) {
+            return Err(RecoveryError::ReplayDivergence {
+                step: node.id,
+                detail: String::from("retry policy unavailable for deterministic recovery"),
+            });
+        }
+    }
+    Ok(())
 }

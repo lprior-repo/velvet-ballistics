@@ -105,6 +105,8 @@ impl Shard {
             .frame
             .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
             .map_err(|_| RuntimeError::RunNotFound)?;
+        state.frame.mark_running(answer.ticket.ask_step)?;
+        state.frame.mark_succeeded(answer.ticket.ask_step)?;
         state
             .frame
             .set_pc(answer.ticket.resume_step)

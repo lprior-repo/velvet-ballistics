@@ -19,7 +19,8 @@ impl Runtime {
             &recovered.artifact,
             &recovered.workflow,
             run,
-        )?;
+        )?
+        .with_secret_inputs(self.shard_for(run)?, &recovered.workflow)?;
         self.build_runtime_recovery_product(run, prefix, recovered, retained_inputs)
     }
 
@@ -130,37 +131,14 @@ impl Runtime {
         run: RunId,
         prefix: RecoveryPrefixEvidence,
         recovered: RecoveryArtifactWorkflow,
-        retained_inputs: crate::recovery::RecoveredRetainedInputs,
+        mut retained_inputs: crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         if let Some(product) = self.retry_timer_recovery_product(run, &prefix, &recovered)? {
             return Ok(product);
         }
-        let expected = crate::recovery::action_abi_digests_from_contracts(
-            &recovered.artifact.action_contracts,
-        )?;
-        let seed = Self::recover_seed_for_loaded_workflow(
-            &prefix.events,
-            &recovered.workflow,
-            &retained_inputs,
-        )?;
-        let boundary = Self::recovered_boundary_from_events(
-            &seed.seed,
-            &prefix.events,
-            &recovered.workflow,
-            &expected,
-        )?;
-        // Enforce receipt-only reconciliation for recovered registered actions:
-        // a pending registered action must be reconciliable from the durable
-        // receipt before the run is allowed to resume (no live re-execution).
-        self.validate_registered_recovery(&recovered.artifact, boundary)?;
-        let complete_frame = vb_storage::recovery::complete_scalar::replay_complete_scalar(
-            &prefix.events,
-            &recovered.workflow,
-        )
-        .map_err(|error| RuntimeError::Recovery {
-            error: error.to_string(),
-        })?
-        .map(|replayed| replayed.into_frame());
+        let (seed, boundary) =
+            self.recover_seed_and_boundary(&prefix, &recovered, &mut retained_inputs)?;
+        let complete_frame = Self::recover_complete_frame(&prefix.events, &recovered.workflow)?;
         Self::product_from_recovered_seed(
             run,
             prefix,

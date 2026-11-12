@@ -32,38 +32,6 @@ impl
 }
 
 impl Runtime {
-    /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
-    /// for a workflow-aware replay path.
-    ///
-    /// **FINDING-002 typestate closure.** Uses the typed entry point
-    /// `recover_runtime_frame_seed_from_events_with_replay_inputs` so the
-    /// storage-classified cannot-resume/resumable product is the source
-    /// of truth; the runtime never sees the raw DTO.
-    fn recover_seed_for_loaded_workflow(
-        events: &[vb_storage::JournalEvent],
-        workflow: &CompiledWorkflow,
-        inputs: &crate::recovery::RecoveredRetainedInputs,
-    ) -> RuntimeResult<RecoveredWorkflowSeed> {
-        let recovered = if inputs.initial_inputs().is_empty() && inputs.store().is_none() {
-            vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(
-                events, workflow,
-            )
-            .map(|seed| (seed, None))
-        } else {
-            vb_storage::recovery::recover_runtime_frame_seed_from_events_with_replay_inputs(
-                events,
-                workflow,
-                inputs.initial_inputs(),
-                inputs.store(),
-            )
-        };
-        recovered
-            .map(RecoveredWorkflowSeed::from)
-            .map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })
-    }
-
     /// Builds the recovered live-run boundary from the typed seed product.
     ///
     /// Takes the typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]

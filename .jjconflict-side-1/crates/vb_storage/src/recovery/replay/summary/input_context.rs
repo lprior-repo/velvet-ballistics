@@ -1,5 +1,7 @@
 //! Borrowed, already-prepared input context for deterministic cold replay.
 
+use std::cell::Cell;
+
 use super::derive::{recover_runtime_frame_seed_with_context, reject_workflow_digest_mismatch};
 use super::hydrate::{RecoveredSlots, initialized_recovered_slots, replay_error_to_recovery};
 use crate::JournalEvent;
@@ -11,22 +13,46 @@ use vb_core::{
     CompiledWorkflow, CoreError, RunFrame, SlotIdx, SlotValue, StepIdx, Taint, ValueStore,
 };
 
+#[path = "input_context/owned.rs"]
+mod owned;
+pub use owned::{
+    RecoveredReplayOutcome, recover_runtime_frame_seed_from_events_with_replay_outcome,
+};
+
+#[derive(Clone, Copy)]
+enum ReplayStoreMode<'a> {
+    RetainedOnly,
+    OwnReplay(&'a Cell<Option<ValueStore>>),
+}
+
 enum ReplayFrameOutcome {
-    ThroughTarget(RunFrame),
-    BeforeTargetFallback(RunFrame),
+    ThroughTarget(RunFrame, ValueStore),
+    BeforeTargetFallback(RunFrame, ValueStore),
 }
 
 impl ReplayFrameOutcome {
     fn frame(&self) -> &RunFrame {
         match self {
-            Self::ThroughTarget(frame) | Self::BeforeTargetFallback(frame) => frame,
+            Self::ThroughTarget(frame, _) | Self::BeforeTargetFallback(frame, _) => frame,
+        }
+    }
+
+    fn store_ref(&self) -> &ValueStore {
+        match self {
+            Self::ThroughTarget(_, store) | Self::BeforeTargetFallback(_, store) => store,
+        }
+    }
+
+    fn into_store(self) -> ValueStore {
+        match self {
+            Self::ThroughTarget(_, store) | Self::BeforeTargetFallback(_, store) => store,
         }
     }
 
     fn successor_cursor(&self) -> Option<(StepIdx, u64)> {
         match self {
-            Self::ThroughTarget(frame) => Some((frame.pc(), frame.executed())),
-            Self::BeforeTargetFallback(_) => None,
+            Self::ThroughTarget(frame, _) => Some((frame.pc(), frame.executed())),
+            Self::BeforeTargetFallback(_, _) => None,
         }
     }
 }
@@ -35,6 +61,7 @@ impl ReplayFrameOutcome {
 pub(super) struct ReplayInputContext<'a> {
     inputs: &'a [(SlotIdx, SlotValue, Taint)],
     store: Option<&'a ValueStore>,
+    mode: ReplayStoreMode<'a>,
 }
 
 /// Replays using retained roots and an already-prepared store, without remapping.
@@ -46,12 +73,13 @@ pub fn recover_runtime_frame_seed_from_events_with_replay_inputs(
     store: Option<&ValueStore>,
 ) -> RecoveryResult<(RecoveryFrameSeedProduct, Option<(StepIdx, u64)>)> {
     reject_workflow_digest_mismatch(events, workflow.digest())?;
-    recover_runtime_frame_seed_with_context(
-        events,
-        Some(workflow),
-        Some(ReplayInputContext { inputs, store }),
-    )
-    .map(|(seed, cursor)| (RecoveryFrameSeedProduct::from_seed(seed), cursor))
+    let context = ReplayInputContext {
+        inputs,
+        store,
+        mode: ReplayStoreMode::RetainedOnly,
+    };
+    recover_runtime_frame_seed_with_context(events, Some(workflow), Some(context))
+        .map(|(seed, cursor)| (RecoveryFrameSeedProduct::from_seed(seed), cursor))
 }
 
 pub(super) fn recover_slots_through_step(
@@ -62,7 +90,7 @@ pub(super) fn recover_slots_through_step(
     let outcome = replay_frame(plan, target, context)?;
     let entries = initialized_recovered_slots(outcome.frame(), target)?;
     let slots = match context {
-        Some(context) => context.classify_slots(entries),
+        Some(context) => classify_slots_for_context(entries, context, &outcome),
         None => RecoveredSlots::from_replayed(entries),
     };
     let cursor = if context.is_some() && slots.fully_supported {
@@ -70,7 +98,44 @@ pub(super) fn recover_slots_through_step(
     } else {
         None
     };
+    deposit_outcome_store(outcome, context);
     Ok((slots, cursor))
+}
+
+fn classify_slots_for_context(
+    entries: Vec<RecoveredSlotEntry>,
+    context: ReplayInputContext<'_>,
+    outcome: &ReplayFrameOutcome,
+) -> RecoveredSlots {
+    match context.mode {
+        ReplayStoreMode::RetainedOnly => context.classify_retained_only(entries),
+        ReplayStoreMode::OwnReplay(_) => validate_against_outcome_store(entries, outcome),
+    }
+}
+
+fn validate_against_outcome_store(
+    entries: Vec<RecoveredSlotEntry>,
+    outcome: &ReplayFrameOutcome,
+) -> RecoveredSlots {
+    let store = outcome.store_ref();
+    let all_valid = entries
+        .iter()
+        .all(|entry| validate_reference(store, entry.value).is_ok());
+    if all_valid {
+        RecoveredSlots::supported(entries)
+    } else {
+        let mut slots = RecoveredSlots::unsupported();
+        slots.entries = entries;
+        slots
+    }
+}
+
+fn deposit_outcome_store(outcome: ReplayFrameOutcome, context: Option<ReplayInputContext<'_>>) {
+    if let Some(ctx) = context {
+        if let ReplayStoreMode::OwnReplay(sink) = ctx.mode {
+            sink.set(Some(outcome.into_store()));
+        }
+    }
 }
 
 fn replay_frame(
@@ -78,22 +143,29 @@ fn replay_frame(
     target: StepIdx,
     context: Option<ReplayInputContext<'_>>,
 ) -> RecoveryResult<ReplayFrameOutcome> {
-    let engine = ReplayEngine::new(plan);
-    let engine = match context {
-        Some(context) => engine.with_initial_inputs(context.inputs),
-        None => engine,
-    };
+    let engine = build_engine(plan, context);
     let mut store = scratch_store(plan, context)?;
     match engine.replay_frame_through(target, &mut store) {
-        Ok(frame) => Ok(ReplayFrameOutcome::ThroughTarget(frame)),
+        Ok(frame) => Ok(ReplayFrameOutcome::ThroughTarget(frame, store)),
         Err(ReplayError::NonDeterministicStep { step, .. }) if step == target => {
             let mut store = scratch_store(plan, context)?;
             engine
                 .replay_frame_up_to(target, &mut store)
-                .map(ReplayFrameOutcome::BeforeTargetFallback)
+                .map(|frame| ReplayFrameOutcome::BeforeTargetFallback(frame, store))
                 .map_err(replay_error_to_recovery)
         }
         Err(error) => Err(replay_error_to_recovery(error)),
+    }
+}
+
+fn build_engine<'a>(
+    plan: &'a CompiledWorkflow,
+    context: Option<ReplayInputContext<'a>>,
+) -> ReplayEngine<'a> {
+    let engine = ReplayEngine::new(plan);
+    match context {
+        Some(context) => engine.with_initial_inputs(context.inputs),
+        None => engine,
     }
 }
 
@@ -101,30 +173,45 @@ fn scratch_store(
     plan: &CompiledWorkflow,
     context: Option<ReplayInputContext<'_>>,
 ) -> RecoveryResult<ValueStore> {
-    let store = match context.and_then(|context| context.store) {
-        Some(store) => {
-            ValueStore::from_checkpoint_v1(store.checkpoint_v1()).map_err(context_error)?
-        }
-        None => ValueStore::new(),
-    };
+    let store = make_scratch_store(plan, context)?;
     if let Some(context) = context {
-        context.inputs.iter().try_for_each(|(slot, value, _)| {
-            if slot.get() >= plan.slot_count() {
-                return Err(replay_error_to_recovery(ReplayError::SlotNotAvailable {
-                    slot: *slot,
-                }));
-            }
-            validate_reference(&store, *value).map_err(context_error)
-        })?;
+        validate_input_references(plan, context.inputs, &store)?;
     }
     Ok(store)
 }
 
+fn make_scratch_store(
+    plan: &CompiledWorkflow,
+    context: Option<ReplayInputContext<'_>>,
+) -> RecoveryResult<ValueStore> {
+    match context.and_then(|context| context.store) {
+        Some(store) => ValueStore::from_checkpoint_v1(store.checkpoint_v1()).map_err(context_error),
+        None => match context.map(|context| context.mode) {
+            Some(ReplayStoreMode::OwnReplay(_)) => owned::fresh_store(plan),
+            _ => Ok(ValueStore::new()),
+        },
+    }
+}
+
+fn validate_input_references(
+    plan: &CompiledWorkflow,
+    inputs: &[(SlotIdx, SlotValue, Taint)],
+    store: &ValueStore,
+) -> RecoveryResult<()> {
+    for (slot, value, _taint) in inputs {
+        if slot.get() >= plan.slot_count() {
+            return Err(replay_error_to_recovery(ReplayError::SlotNotAvailable {
+                slot: *slot,
+            }));
+        }
+        validate_reference(store, *value).map_err(context_error)?;
+    }
+    Ok(())
+}
+
 impl ReplayInputContext<'_> {
-    fn classify_slots(self, entries: Vec<RecoveredSlotEntry>) -> RecoveredSlots {
+    fn classify_retained_only(self, entries: Vec<RecoveredSlotEntry>) -> RecoveredSlots {
         match self.store {
-            // Resolve against the retained store, never a scratch arena extended
-            // by replay: those new IDs are not retained runtime authority.
             Some(store)
                 if entries
                     .iter()

@@ -21,6 +21,8 @@ use crate::{RuntimeError, RuntimeResult};
 
 pub mod completion_observation;
 mod owned_activation;
+#[path = "runtime/recovery_seed/arena.rs"]
+mod recovered_replay_arena;
 mod shutdown;
 pub use shutdown::{ShutdownFailure, ShutdownPhase, ShutdownReport};
 
