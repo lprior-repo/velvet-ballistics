@@ -597,5 +597,7 @@
             input_slots: Box::from([]),
             symbols_count: 0,
         };
-        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
+        assert!(workflow.is_ok(), "workflow fixture rejected: {workflow:?}");
+        workflow.ok()
     }

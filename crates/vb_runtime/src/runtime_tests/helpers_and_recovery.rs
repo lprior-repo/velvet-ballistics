@@ -83,7 +83,9 @@
                 constraint: CompiledInputConstraint::required(),
             }]),
         };
-        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
+        assert!(workflow.is_ok(), "workflow fixture rejected: {workflow:?}");
+        workflow.ok()
     }
 
     fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -124,7 +126,9 @@
                 constraint: CompiledInputConstraint::required(),
             }]),
         };
-        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
+        assert!(workflow.is_ok(), "workflow fixture rejected: {workflow:?}");
+        workflow.ok()
     }
 
     fn runtime_config() -> ShardConfig {
@@ -316,7 +320,9 @@
             resource_contract: ResourceContract::DEFAULT,
             input_slots: Box::from([]),
         };
-        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
+        assert!(workflow.is_ok(), "workflow fixture rejected: {workflow:?}");
+        workflow.ok()
     }
 
     fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -369,7 +375,9 @@
             resource_contract: ResourceContract::DEFAULT,
             input_slots: Box::from([]),
         };
-        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
+        assert!(workflow.is_ok(), "workflow fixture rejected: {workflow:?}");
+        workflow.ok()
     }
 
     fn asking_recovery_summary(

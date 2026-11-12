@@ -238,7 +238,9 @@
             resource_contract: ResourceContract::DEFAULT,
             input_slots: Box::from([]),
         };
-        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
+        assert!(workflow.is_ok(), "workflow fixture rejected: {workflow:?}");
+        workflow.ok()
     }
 
     fn running_runtime_with_open_gate(
