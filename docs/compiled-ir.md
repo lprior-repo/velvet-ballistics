@@ -12,6 +12,8 @@ Construction checks that the actual source prefix fits the arena contract. Owned
 
 ## YAML lowering
 
+For `vb-8eocj` F1-F5, `lower_canonical_step`, `BranchBindings::lower`, `lower_single_step_body`, and `body_width` are complex cold lowering phases under the master document's short-function provision. They run during YAML-to-IR preparation; runtime execution consumes validated numeric IR. Keeping primitive dispatch, borrowed lexical bindings, the typed Reduce join, and the iterative width worklist together preserves their checked slot and edge ordering. Caller-enforced AST limits bound their inputs; checked arithmetic and fallible primitive-name lookup reject overflow and unsupported variants. Hot runtime functions retain the 25-logical-line limit.
+
 The canonical compile path accepts nested multi-step `choose`, `together`, `for_each`, `collect`, `reduce`, and `repeat` bodies. Named outputs and temporary slots remain lexically scoped. Every emitted node and private temporary contributes to checked layout allocation. Loop source values and taints remain available across iterations and scheduler slices.
 
 A Repeat body or Together branch selects its last value-producing authored step in that same lexical scope. Wait and Choose do not replace an earlier result, and branch-local values do not escape Choose. The selected value must remain definitely assigned on every successful exit; a skipped conditional writer cannot manufacture a result. These bodies materialize Null only when they have no lexical value-producing step; the loop attempt counter is never a result. Reduce retains its numeric-result requirement. Body exit materialization is included in checked IR layout and loop budgets.
