@@ -56,6 +56,5 @@ verification/verus/v1_primitive_lowering.rs|lewis|vb-srclen|split-after-ledger-l
 verification/verus/vb_runtime_execute_do_spec.rs|lewis|vb-srclen|split-after-ledger-landing|verus 1222 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 xtask/src/evidence_gate.rs|lewis|vb-srclen|split-after-ledger-landing|production 545 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 xtask/src/main.rs|lewis|vb-srclen|split-after-ledger-landing|production 547 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-xtask/tests/bundle_tests.rs|lewis|vb-srclen|split-after-ledger-landing|production 527 lines (limit 300) on main c17b60e36; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 verification/verus/try_from_parts.rs|lewis|vb-srclen|split-after-ledger-landing|verus 801 lines (limit 800) on main 4e48039b0; crossed the limit in the Verus parity merge batch, split follow-up tracked under vb-srclen
 verification/verus/admission_artifact_model.rs|lewis|vb-srclen|split-after-ledger-landing|verus 1373 lines (limit 800) on branch vb/admission-verification-proof-parity; VerificationProof 12-field parity pushed the file over, split follow-up tracked under vb-srclen
