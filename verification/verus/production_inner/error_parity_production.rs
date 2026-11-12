@@ -461,7 +461,7 @@ pub struct CompiledRetryPolicy {
 }
 
 /// Mirror of production `CompiledNode` at
-/// `crates/vb_core/src/workflow/mod.rs:1070-1081`. Every field name,
+/// `crates/vb_core/src/workflow/node.rs:14-25`. Every field name,
 /// type, and visibility matches production exactly. Drift in any
 /// field breaks the mirror.
 pub struct CompiledNode {
@@ -473,7 +473,7 @@ pub struct CompiledNode {
 }
 
 /// Mirror of production `NodeOutput` at
-/// `crates/vb_core/src/workflow/mod.rs:1088-1093`.
+/// `crates/vb_core/src/workflow/node.rs:29-34`.
 #[derive(Clone, Copy)]
 pub enum NodeOutput {
     Discard,
@@ -490,7 +490,7 @@ impl NodeOutput {
 }
 
 /// Mirror of production `NodeRouting` at
-/// `crates/vb_core/src/workflow/mod.rs:1108-1113`.
+/// `crates/vb_core/src/workflow/node.rs:49-54`.
 #[derive(Clone, Copy)]
 pub struct NodeRouting {
     pub next: NodeContinuation,
@@ -498,7 +498,7 @@ pub struct NodeRouting {
 }
 
 /// Mirror of production `NodeContinuation` at
-/// `crates/vb_core/src/workflow/mod.rs:1117-1122`.
+/// `crates/vb_core/src/workflow/node.rs:58-63`.
 #[derive(Clone, Copy)]
 pub enum NodeContinuation {
     End,
@@ -515,7 +515,7 @@ impl NodeContinuation {
 }
 
 /// Mirror of production `ErrorRouting` at
-/// `crates/vb_core/src/workflow/mod.rs:1163-1173`.
+/// `crates/vb_core/src/workflow/node.rs:104-114`.
 #[derive(Clone, Copy)]
 pub enum ErrorRouting {
     None,
@@ -535,7 +535,7 @@ impl ErrorRouting {
 }
 
 /// Mirror of production `CompiledNodeKind` at
-/// `crates/vb_core/src/workflow/mod.rs:1271-1438`. Restricted to the
+/// `crates/vb_core/src/workflow/node_kind.rs:14-181`. Restricted to the
 /// `SetConst` and `Do` arms `emit_single_body_set` constructs.
 pub enum CompiledNodeKind {
     SetConst {
