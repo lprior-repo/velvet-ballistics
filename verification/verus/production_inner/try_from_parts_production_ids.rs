@@ -171,7 +171,7 @@ impl Eq for FiniteF64 {}
 // Local stub: `vb_core::value::ConstValue`
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_core/src/value.rs:169-180` declares `ConstValue`
+// Production `crates/vb_core/src/value/slot.rs:54-65` declares `ConstValue`
 // with five scalar variants. The mirror carries all five in production
 // order, plus a mirror-only `String` variant retained from the earlier
 // subset (production has no `String` variant).
