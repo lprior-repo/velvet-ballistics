@@ -2,7 +2,7 @@ use crate::{RuntimeError, RuntimeResult};
 use vb_core::value_store::ValueStoreCheckpointV1;
 use vb_core::{CompiledWorkflow, RunFrame, ValueStore};
 
-use super::recovered_store::{RecoveredStateSource, prepare};
+use super::recovered_store::validate_full_store;
 
 pub(super) fn restore(
     checkpoint: Option<ValueStoreCheckpointV1>,
@@ -18,10 +18,7 @@ pub(super) fn restore(
     }
     vb_core::root_bundle::validate_runtime_store(frame, &checkpoint, workflow)
         .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
-    match prepare(None, Some(checkpoint), workflow)? {
-        RecoveredStateSource::Store(store) => Ok(Some(store)),
-        RecoveredStateSource::Retry(_) => Err(RuntimeError::InvalidRecoveryHydration),
-    }
+    validate_full_store(checkpoint, workflow).map(Some)
 }
 
 #[cfg(test)]

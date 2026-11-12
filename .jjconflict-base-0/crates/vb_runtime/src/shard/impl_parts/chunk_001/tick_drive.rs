@@ -77,18 +77,6 @@ impl Shard {
         self.handle_timer_at(entry.run, entry.generation, entry.deadline, entry.kind, now)
     }
 
-    fn drive_one_ready_run(&mut self) -> RuntimeResult<()> {
-        let now = std::time::Instant::now();
-        let due = self
-            .pending_timer_iter()
-            .filter(|(_, timer)| timer.deadline <= now)
-            .min_by_key(|(run, timer)| (timer.deadline, run.get()));
-        let Some((run, timer)) = due else {
-            return self.drive_one_pending_run();
-        };
-        self.handle_timer(run, timer.generation, timer.deadline, timer.kind)
-    }
-
     fn tick_inner(&mut self) -> RuntimeResult<bool> {
         if self.shutting_down {
             return Ok(false);
