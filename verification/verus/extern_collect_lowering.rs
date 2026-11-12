@@ -13,7 +13,7 @@
 // The production fn was split out of `mod_compile_lowering/part_03.rs`
 // (the pre-split `lower_canonical_collect` at part_03.rs no
 // longer exists) and reshaped: edges are now body-length dependent
-// (`plan_compute_edges`, bounded_collect.rs:117-127), the second fixed
+// (`plan_compute_edges`, bounded_collect.rs:98-108), the second fixed
 // node is `CollectNext` (not `CollectPage`), the fn returns the finish
 // `SlotIdx` (not `()`), and the slot effect is one `record_slot` plus
 // two `allocate_slot` calls (not one `record_slot`).
@@ -90,7 +90,7 @@
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
-//                                                  (used at bounded_collect.rs:117-127
+//                                                  (used at bounded_collect.rs:98-108
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
 //   - `CompileError::PrimitiveLoweringLimitExceeded`
@@ -107,8 +107,8 @@
 //   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:241-261
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
-//                                                  bounded_collect.rs:117-127)
-//   - `lower_bounded_collect_offsets`           <- bounded_collect.rs:117-127 (inlined)
+//                                                  bounded_collect.rs:98-108)
+//   - `lower_bounded_collect_offsets`           <- bounded_collect.rs:98-108 (inlined)
 //                                                  (mirror of `plan_compute_edges`:
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
@@ -126,10 +126,10 @@
 //
 // The projection models the scalar-determined sub-decision only:
 // body emptiness, edge arithmetic, and the slot budget. Variable-name
-// and capture validation (bounded_collect.rs:53-77), source
-// resolution (bounded_collect.rs:40-51), bounds validation
-// (pages/items, bounded_collect.rs:129-145), and body emission
-// errors (bounded_collect.rs:196-220) are not scalar-determined and
+// and capture validation (bounded_collect.rs:51-73), source
+// resolution (bounded_collect.rs:42-49), bounds validation
+// (pages/items, bounded_collect.rs:110-126), and body emission
+// errors (bounded_collect.rs:177-204) are not scalar-determined and
 // stay outside the projection: `ok == true` here means the
 // edge/slot/body-emptiness sub-decision succeeds, not that the full
 // production fn returns `Ok`.
@@ -337,7 +337,7 @@ pub const SPEC_ERR_SLOT_RANGE: u8 = 4;
 //     order, then the slot budget).
 //   - `pre_slot_count` / `post_slot_count` mirror the slot counter
 //     delta introduced by `builder.record_slot(source)` plus the two
-//     `allocate_slot` calls at bounded_collect.rs:147-155 (a +3 delta
+//     `allocate_slot` calls at bounded_collect.rs:129-134 (a +3 delta
 //     under the fresh-source assumption).
 //   - `emitted_node_count` mirrors the total number of `push_node`
 //     calls (3 fixed + `body_node_count` from `emit_body`). It is
@@ -365,17 +365,17 @@ pub struct SpecCollectOutcome {
     /// Total number of `CompiledNode`s the production body constructs
     /// on success. Equals `3 + body_node_count` (the three fixed nodes
     /// `CollectStart` / `CollectNext` / `CollectFinish` at
-    /// bounded_collect.rs:181-194, 222-233, 235-244 plus the nodes
+    /// bounded_collect.rs:163-174, 207-216, 220-227 plus the nodes
     /// emitted by `emit_body` for the body sequence).
     pub emitted_node_count: u32,
-    /// Value of `id + 1` (the `body` offset, bounded_collect.rs:121).
+    /// Value of `id + 1` (the `body` offset, bounded_collect.rs:102).
     /// `0` when `ok == false`.
     pub body_offset: u16,
     /// Value of `id + body_len + 1` (the `advance` offset,
-    /// bounded_collect.rs:122-123). `0` when `ok == false`.
+    /// bounded_collect.rs:103-104). `0` when `ok == false`.
     pub advance_offset: u16,
     /// Value of `id + body_len + 2` (the `done` offset,
-    /// bounded_collect.rs:124-125). `0` when `ok == false`.
+    /// bounded_collect.rs:105-106). `0` when `ok == false`.
     pub done_offset: u16,
 }
 
@@ -405,9 +405,9 @@ pub struct SpecCollectOutcome {
 // }
 // ```
 //
-// with `plan_build` (bounded_collect.rs:157-179) resolving the source,
+// with `plan_build` (bounded_collect.rs:138-160) resolving the source,
 // recording its slot, computing edges via `plan_compute_edges`
-// (bounded_collect.rs:117-127), validating bounds, and allocating
+// (bounded_collect.rs:98-108), validating bounds, and allocating
 // the collector and finish slots.
 //
 // The production arguments `index: usize` and `config:
@@ -441,10 +441,10 @@ pub fn lower_bounded_collect_projection(
     pre_slot_count: u16,
 ) -> SpecCollectOutcome {
     // Mirror production decision shape in production order:
-    // validate_body (bounded_collect.rs:79-103) rejects an empty body,
-    // then plan_compute_edges (bounded_collect.rs:117-127) computes
+    // validate_body (bounded_collect.rs:75-84) rejects an empty body,
+    // then plan_compute_edges (bounded_collect.rs:98-108) computes
     // body, advance, done in order, then allocate_collect_slots
-    // (bounded_collect.rs:147-155) spends the slot budget.
+    // (bounded_collect.rs:129-134) spends the slot budget.
     if body_len == 0 {
         return SpecCollectOutcome {
             ok: false,
@@ -557,7 +557,7 @@ pub fn lower_bounded_collect_projection(
 }
 
 /// Mirror of `plan_compute_edges` at
-/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:117-127`.
+/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:98-108`.
 ///
 /// Returns `(body_offset, advance_offset, done_offset)` on success or
 /// the production error variant on overflow. Used as the spec-side
