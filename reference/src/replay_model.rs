@@ -29,13 +29,10 @@ impl ReplayState {
     }
 
     pub fn replay_next(&mut self) -> Option<JournalEvent> {
-        if self.last_applied_event_index < self.events.len() {
-            let event = self.events[self.last_applied_event_index].clone();
-            self.last_applied_event_index += 1;
-            Some(event)
-        } else {
-            None
-        }
+        let event = self.events.get(self.last_applied_event_index)?.clone();
+        let next_index = self.last_applied_event_index.checked_add(1)?;
+        self.last_applied_event_index = next_index;
+        Some(event)
     }
 
     pub fn is_replay_complete(&self) -> bool {
@@ -132,26 +129,16 @@ impl ReplayModel {
         tail_events: &[JournalEvent],
         full_journal: &[JournalEvent],
     ) -> bool {
-        if snapshot_events.len() + tail_events.len() != full_journal.len() {
-            return false;
-        }
-
-        for (i, event) in snapshot_events.iter().enumerate() {
-            if &full_journal[i] != event {
-                return false;
-            }
-        }
-
-        let tail_start = snapshot_events.len();
-        for (i, event) in tail_events.iter().enumerate() {
-            if &full_journal[tail_start + i] != event {
-                return false;
-            }
-        }
-
-        true
+        snapshot_events
+            .iter()
+            .chain(tail_events)
+            .eq(full_journal.iter())
     }
 }
+
+#[cfg(test)]
+#[path = "replay_model_lint_tests.rs"]
+mod lint_tests;
 
 #[derive(Debug, Clone)]
 pub enum ReplayError {
