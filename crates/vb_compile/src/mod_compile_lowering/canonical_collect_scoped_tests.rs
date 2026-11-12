@@ -41,7 +41,9 @@ fn rejects(text: &str, predicate: impl Fn(&CompileError) -> bool) -> Result<(), 
 }
 
 fn top_collect(pages: &str, items: &str, body: &str) -> String {
-    format!("{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: seed, value: '1'}}\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      {pages}\n      {items}\n      steps:\n{body}  - id: done\n    finish: {{result: '$seed'}}\n")
+    format!(
+        "{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: seed, value: '1'}}\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      {pages}\n      {items}\n      steps:\n{body}  - id: done\n    finish: {{result: '$seed'}}\n"
+    )
 }
 
 fn collect_body(output: &str, value: &str) -> String {
@@ -60,7 +62,14 @@ fn top_level_collect_layout_caps_and_continuation() -> Result<(), String> {
     let collector = output(&workflow, 1)?;
     let finish_slot = output(&workflow, 4)?;
     assert_ne!(collector, finish_slot);
-    let CompiledNodeKind::CollectStart { source, limit, page_size, body, done } = &node(&workflow, 1)?.kind else {
+    let CompiledNodeKind::CollectStart {
+        source,
+        limit,
+        page_size,
+        body,
+        done,
+    } = &node(&workflow, 1)?.kind
+    else {
         return Err("node 1 is not CollectStart".to_owned());
     };
     assert_eq!(*limit, FanoutLimit::new(6));
@@ -69,11 +78,17 @@ fn top_level_collect_layout_caps_and_continuation() -> Result<(), String> {
     assert_eq!(*done, StepIdx::new(4));
     assert_eq!(
         node(&workflow, 3)?.kind,
-        CompiledNodeKind::CollectNext { collector_slot: collector, body: StepIdx::new(2), done: StepIdx::new(4) }
+        CompiledNodeKind::CollectNext {
+            collector_slot: collector,
+            body: StepIdx::new(2),
+            done: StepIdx::new(4)
+        }
     );
     assert_eq!(
         node(&workflow, 4)?.kind,
-        CompiledNodeKind::CollectFinish { collector_slot: collector }
+        CompiledNodeKind::CollectFinish {
+            collector_slot: collector
+        }
     );
     let _ = source;
     assert_eq!(
@@ -86,72 +101,144 @@ fn top_level_collect_layout_caps_and_continuation() -> Result<(), String> {
 #[test]
 fn collect_missing_and_zero_bounds_are_rejected() -> Result<(), String> {
     let body = collect_body("x_val", "$batch");
-    let missing = format!("{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      steps:\n{body}  - id: done\n    finish: {{result: '$batch'}}\n");
-    rejects(&missing, |e| matches!(e, CompileError::StepFieldShape { field: "collect", .. }))?;
+    let missing = format!(
+        "{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      steps:\n{body}  - id: done\n    finish: {{result: '$batch'}}\n"
+    );
+    rejects(&missing, |e| {
+        matches!(
+            e,
+            CompileError::StepFieldShape {
+                field: "collect",
+                ..
+            }
+        )
+    })?;
     let zero = top_collect("pages: 0", "items: 1", &body);
-    rejects(&zero, |e| matches!(e, CompileError::StepFieldShape { field: "collect", .. }))?;
+    rejects(&zero, |e| {
+        matches!(
+            e,
+            CompileError::StepFieldShape {
+                field: "collect",
+                ..
+            }
+        )
+    })?;
     Ok(())
 }
 
 #[test]
 fn collect_empty_body_is_rejected() -> Result<(), String> {
-    let text = format!("{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps: []\n  - id: done\n    finish: {{result: '$batch'}}\n");
-    rejects(&text, |e| matches!(e, CompileError::StepFieldShape { field: "collect.body", .. }))
+    let text = format!(
+        "{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps: []\n  - id: done\n    finish: {{result: '$batch'}}\n"
+    );
+    rejects(&text, |e| {
+        matches!(
+            e,
+            CompileError::StepFieldShape {
+                field: "collect.body",
+                ..
+            }
+        )
+    })
 }
 
 #[test]
 fn collect_reserved_and_step_variables_are_rejected() -> Result<(), String> {
     for variable in ["page", "step", "input", "collect"] {
-        let text = format!("{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: {variable}\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: consume\n          set: {{output: x_val, value: '$batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n");
-        rejects(&text, |e| matches!(e, CompileError::InvalidName { field: "collect.variable", .. }))?;
+        let text = format!(
+            "{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: {variable}\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: consume\n          set: {{output: x_val, value: '$batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
+        );
+        rejects(&text, |e| {
+            matches!(
+                e,
+                CompileError::InvalidName {
+                    field: "collect.variable",
+                    ..
+                }
+            )
+        })?;
     }
     Ok(())
 }
 
 #[test]
 fn collect_variable_does_not_escape_to_next_step() -> Result<(), String> {
-    let text = format!("{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: consume\n          set: {{output: x_val, value: '$batch'}}\n  - id: after\n    set: {{output: after_val, value: '$batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n");
-    rejects(&text, |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "batch"))
+    let text = format!(
+        "{HEADER}{INPUTS}steps:\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: consume\n          set: {{output: x_val, value: '$batch'}}\n  - id: after\n    set: {{output: after_val, value: '$batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
+    );
+    rejects(
+        &text,
+        |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "batch"),
+    )
 }
 
 #[test]
 fn collect_outer_capture_is_rejected() -> Result<(), String> {
-    let text = format!("{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: batch, value: '1'}}\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: consume\n          set: {{output: x_val, value: '$batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n");
-    rejects(&text, |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "batch"))
+    let text = format!(
+        "{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: batch, value: '1'}}\n  - id: gather\n    collect:\n      variable: batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: consume\n          set: {{output: x_val, value: '$batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
+    );
+    rejects(
+        &text,
+        |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "batch"),
+    )
 }
 
 #[test]
 fn collect_body_alias_is_rejected_shallow_and_deep() -> Result<(), String> {
     let shallow = top_collect("pages: 1", "items: 1", &collect_body("batch", "1"));
-    rejects(&shallow, |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "batch"))?;
+    rejects(
+        &shallow,
+        |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "batch"),
+    )?;
     let deep_body = "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: batch, value: '6'}\n";
     let deep = top_collect("pages: 1", "items: 1", deep_body);
-    rejects(&deep, |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "batch"))?;
+    rejects(
+        &deep,
+        |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "batch"),
+    )?;
     Ok(())
 }
 
 #[test]
 fn nested_collect_in_repeat_preserves_continuation() -> Result<(), String> {
-    let text = format!("{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: seed, value: '1'}}\n  - id: outer\n    repeat:\n      max_attempts: 2\n      steps:\n        - id: inner\n          collect:\n            variable: batch2\n            source: '$input.items'\n            pages: 1\n            items: 2\n            steps:\n              - id: use_page\n                set: {{output: out_val, value: '$batch2'}}\n  - id: done\n    finish: {{result: '$seed'}}\n");
+    let text = format!(
+        "{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: seed, value: '1'}}\n  - id: outer\n    repeat:\n      max_attempts: 2\n      steps:\n        - id: inner\n          collect:\n            variable: batch2\n            source: '$input.items'\n            pages: 1\n            items: 2\n            steps:\n              - id: use_page\n                set: {{output: out_val, value: '$batch2'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
+    );
     let workflow = compile(&text)?;
     assert_eq!(workflow.to_parts().nodes.len(), 9);
     let collector = output(&workflow, 2)?;
     let finish = output(&workflow, 5)?;
     assert_ne!(collector, finish);
-    let CompiledNodeKind::CollectStart { body, done, limit, page_size, .. } = &node(&workflow, 2)?.kind else {
+    let CompiledNodeKind::CollectStart {
+        body,
+        done,
+        limit,
+        page_size,
+        ..
+    } = &node(&workflow, 2)?.kind
+    else {
         return Err("node 2 is not CollectStart".to_owned());
     };
-    assert_eq!((body.get(), done.get(), *limit, *page_size), (3, 5, FanoutLimit::new(2), 2));
+    assert_eq!(
+        (body.get(), done.get(), *limit, *page_size),
+        (3, 5, FanoutLimit::new(2), 2)
+    );
     assert_eq!(
         node(&workflow, 4)?.kind,
-        CompiledNodeKind::CollectNext { collector_slot: collector, body: StepIdx::new(3), done: StepIdx::new(5) }
+        CompiledNodeKind::CollectNext {
+            collector_slot: collector,
+            body: StepIdx::new(3),
+            done: StepIdx::new(5)
+        }
     );
     Ok(())
 }
 
 #[test]
 fn nested_collect_in_collection_keeps_two_distinct_collectors() -> Result<(), String> {
-    let text = format!("{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: seed, value: '1'}}\n  - id: outer_c\n    collect:\n      variable: outer_batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: inner_c\n          collect:\n            variable: inner_batch\n            source: '$input.items'\n            pages: 1\n            items: 1\n            steps:\n              - id: leaf\n                set: {{output: out_v, value: '$inner_batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n");
+    let text = format!(
+        "{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: seed, value: '1'}}\n  - id: outer_c\n    collect:\n      variable: outer_batch\n      source: '$input.items'\n      pages: 1\n      items: 1\n      steps:\n        - id: inner_c\n          collect:\n            variable: inner_batch\n            source: '$input.items'\n            pages: 1\n            items: 1\n            steps:\n              - id: leaf\n                set: {{output: out_v, value: '$inner_batch'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
+    );
     let workflow = compile(&text)?;
     assert_eq!(workflow.to_parts().nodes.len(), 9);
     let outer_collector = output(&workflow, 1)?;

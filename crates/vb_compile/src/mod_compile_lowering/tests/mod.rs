@@ -35,6 +35,7 @@ mod choose_slots;
 mod choose_validate;
 mod collect;
 mod digest_body;
+mod digest_tco;
 mod direct_collect;
 mod direct_reduce;
 mod slot;

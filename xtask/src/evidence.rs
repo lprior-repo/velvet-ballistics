@@ -128,7 +128,9 @@ fn checked_mul(left: u32, right: u32) -> LayoutKernelResult<u32> {
 
 include!("evidence/release_validation.rs");
 include!("evidence/tooling_and_gate_types.rs");
-include!("evidence/bundle.rs");
+include!("evidence/bundle/types.rs");
+include!("evidence/bundle/api.rs");
+include!("evidence/bundle/postcard.rs");
 include!("evidence/error_profile_domain.rs");
 include!("evidence/parsed_documents.rs");
 include!("evidence/raw_documents.rs");
