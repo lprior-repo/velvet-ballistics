@@ -405,11 +405,18 @@ fn do_in_multi_body_layout() -> Result<(), String> {
 }
 
 #[test]
-fn do_last_reduce_result_is_unknown_for_bool_operation() -> Result<(), String> {
+fn dynamic_reduce_result_preserves_zero_iteration_type_join() -> Result<(), String> {
     let text = format!(
         "{HEADER}steps:\n  - id: folded\n    reduce:\n      variable: total\n      input: '8'\n      initial: '10'\n      steps:\n        - id: tmp_step\n          set: {{output: tmp_value, value: '2'}}\n        - id: update\n          do:\n            action: '0'\n            input: '8'\n  - id: probed\n    set: {{output: probed_value, value: 'not $steps.folded'}}\n  - id: done\n    finish: {{result: '$steps.probed'}}\n"
     );
-    let workflow = compile(&text)?;
+    rejects(&text, |error| {
+        matches!(error,
+            CompileError::Validation(vb_validate::ValidationError::TypeMismatch { found, .. })
+                if found.contains("IncompatibleType")
+        )
+    })?;
+    let safe = text.replace("not $steps.folded", "not exists($steps.folded)");
+    let workflow = compile(&safe)?;
     let CompiledNodeKind::ReduceStart { initial, .. } = node(&workflow, 1)?.kind else {
         return Err("missing ReduceStart".to_owned());
     };

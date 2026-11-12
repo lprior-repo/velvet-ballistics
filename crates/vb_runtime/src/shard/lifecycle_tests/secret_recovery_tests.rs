@@ -172,7 +172,7 @@ mod secret_authority {
                     target.tick(),
                     Err(RuntimeError::Core {
                         source: Box::new(vb_core::CoreError::InternalInvariantViolation {
-                            reason: "secret_input_binding"
+                            reason: vb_core::InvariantKind::Unknown("secret_input_binding")
                         })
                     })
                 );

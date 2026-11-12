@@ -88,7 +88,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     builder.push_node(node(
         start,
         CompiledNodeKind::ReduceStart {
-            limit: limit.into(),
+            limit,
             input: initial_input,
             accumulator,
             initial,

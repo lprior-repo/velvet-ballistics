@@ -8,7 +8,9 @@ mod ir;
 mod utility;
 
 pub use digest::canonical_digest;
-pub(crate) use digest::{canonical_primitive_name, digest_step_primitive, validate_branch_counts};
+pub(crate) use digest::{
+    canonical_primitive_name, digest_author_value, digest_step_primitive, validate_branch_counts,
+};
 pub use ir::{lower_do, lower_set, lower_steps_to_ir};
 #[cfg(test)]
 pub(super) use utility::parse_i64_field;

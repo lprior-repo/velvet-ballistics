@@ -1,6 +1,7 @@
 //! Scoped lexical bodies. Bindings never escape their branch or loop body.
 
 use super::*;
+pub(in crate::mod_compile_lowering) const MAX_BODY_NESTING_DEPTH: u16 = 64;
 #[cfg(test)]
 use std::collections::HashMap;
 use vb_core::SlotIdx;
@@ -67,13 +68,13 @@ pub(super) fn emit_typed_body(
     let prospective = depth
         .checked_add(1)
         .ok_or_else(|| index_error(usize::from(depth)))?;
-    if prospective > 64 {
+    if prospective > MAX_BODY_NESTING_DEPTH {
         return Err(CompileErrors(vec![
             CompileError::PrimitiveLoweringLimitExceeded {
                 primitive,
                 field: "body nesting depth",
                 value: usize::from(prospective),
-                limit: 64,
+                limit: usize::from(MAX_BODY_NESTING_DEPTH),
             },
         ]));
     }

@@ -22,7 +22,7 @@ fn fixture(
             K::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(2),
-                limit: 2,
+                limit: 2.into(),
                 body: BODY,
                 done: StepIdx::new(5),
             },
@@ -108,7 +108,7 @@ fn general_failed_to_pending_transition_stays_forbidden() -> TestResult {
     assert_eq!(
         frame.mark_pending(BODY),
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition",
+            reason: vb_core::InvariantKind::InvalidStateTransition,
         })
     );
     assert_eq!(frame, before);
@@ -209,7 +209,7 @@ fn nested_fixture(handler: u16) -> TestResult<CompiledWorkflow> {
                 Some(4),
                 None,
                 K::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: BODY,
                     done: StepIdx::new(8),
                 },
@@ -221,7 +221,7 @@ fn nested_fixture(handler: u16) -> TestResult<CompiledWorkflow> {
                 K::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(2),
-                    limit: 2,
+                    limit: 2.into(),
                     body: StepIdx::new(2),
                     done: StepIdx::new(5),
                 },

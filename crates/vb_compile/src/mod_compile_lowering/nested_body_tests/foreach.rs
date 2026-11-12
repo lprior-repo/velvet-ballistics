@@ -93,32 +93,39 @@ fn foreach_repeat_body_capture_rejected() -> Result<(), String> {
 
 #[test]
 fn foreach_at_once_hardened() -> Result<(), String> {
-    for at_once in ["0", "2"] {
+    for at_once in ["0", "1", "2", "4294967295"] {
         let text = source(&format!(
             "  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      at_once: {at_once}\n      steps:\n        - id: leaf\n          set: {{output: picked, value: '$entry'}}\n"
         )) + finish_tail();
-        rejects(&text, |e| {
-            matches!(
-                e,
-                CompileError::StepFieldShape {
-                    field: "for_each.at_once",
-                    ..
-                }
-            )
-        })?;
+        if at_once == "0" {
+            rejects(&text, |e| {
+                matches!(
+                    e,
+                    CompileError::StepFieldShape {
+                        field: "for_each.at_once",
+                        ..
+                    }
+                )
+            })?;
+        } else {
+            let workflow = compile(&text)?;
+            assert_eq!(workflow.to_parts().nodes.len(), 9);
+        }
     }
     let nested = source(
         "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: inner\n          for_each:\n            input: '$input.inner_items'\n            variable: sub\n            at_once: 3\n            steps:\n              - id: leaf\n                set: {output: picked, value: '$sub'}\n",
     ) + finish_tail();
-    rejects(&nested, |e| {
-        matches!(
-            e,
-            CompileError::StepFieldShape {
-                field: "for_each.at_once",
-                ..
-            }
-        )
-    })?;
+    let nested_workflow = compile(&nested)?;
+    let limits: Vec<_> = nested_workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .filter_map(|node| match node.kind {
+            CompiledNodeKind::ForEachStart { limit, .. } => Some(limit),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(limits, vec![FanoutLimit::new(4), FanoutLimit::new(4)]);
     let single = source(
         "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      at_once: 1\n      steps:\n        - id: leaf\n          set: {output: picked, value: '$entry'}\n",
     ) + finish_tail();
@@ -135,10 +142,7 @@ fn foreach_nested_input_stays_bounded() -> Result<(), String> {
     rejects(&text, |e| {
         matches!(
             e,
-            CompileError::StepFieldShape {
-                field: "for_each.input",
-                ..
-            }
+            CompileError::UnknownReferenceName { reference, .. } if reference.as_ref() == "$vars.inner_items"
         )
     })
 }

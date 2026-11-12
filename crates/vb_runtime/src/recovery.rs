@@ -12,8 +12,6 @@ use vb_storage::recovery::{
     RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
 
-#[cfg(test)]
-pub(crate) use full::RecoveredPendingActionTicket;
 pub use full::{
     NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
     RecoveredTimerSuspension, ResumableRecoveryProduct, RuntimeRecoveryProduct,

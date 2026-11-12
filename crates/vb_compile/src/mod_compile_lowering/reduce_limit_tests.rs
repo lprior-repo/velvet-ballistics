@@ -64,7 +64,7 @@ fn canonical_reduce_emits_declared_bound_and_unknown_fallback() -> TestResult {
         ),
     ] {
         let source = format!(
-            "version: velvet-ballistics/v1\nname: reduce_limit\nwhen: {{manual: {{}}}}\ninputs: {{items: {{{schema}}}}}\nsteps:\n  - id: sum\n    reduce:\n      variable: accumulator\n      input: $input.items\n      initial: '0'\n      steps:\n        - id: increment\n          set: {{output: accumulator, value: '$accumulator + 1'}}\n  - id: done\n    finish: {{result: '$sum'}}\n"
+            "version: velvet-ballistics/v1\nname: reduce_limit\nwhen: {{manual: {{}}}}\ninputs: {{items: {{{schema}}}}}\nsteps:\n  - id: sum\n    reduce:\n      variable: accumulator\n      input: $input.items\n      initial: '0'\n      steps:\n        - id: increment\n          set: {{output: local_accumulator, value: '$accumulator + 1'}}\n  - id: done\n    finish: {{result: '$sum'}}\n"
         );
         let workflow = crate::compile_workflow(source.as_bytes())?;
         let limits: Vec<_> = workflow
