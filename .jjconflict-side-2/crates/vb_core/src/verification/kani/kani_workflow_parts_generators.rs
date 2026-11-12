@@ -37,34 +37,11 @@ fn arbitrary_input_slot(index: u8) -> CompiledInputSlot {
 }
 
 fn arbitrary_input_kind() -> InputSlotKind {
-    match kani::any::<u8>() {
-        0 => InputSlotKind::Null,
-        1 => InputSlotKind::Bool,
-        2 => InputSlotKind::I64,
-        3 => InputSlotKind::F64,
-        4 => InputSlotKind::Symbol,
-        5 => InputSlotKind::List,
-        6 => InputSlotKind::Object,
-        7 => InputSlotKind::Blob,
-        _ => InputSlotKind::Any,
-    }
+    input_schema::kind()
 }
 
 fn arbitrary_input_constraint() -> CompiledInputConstraint {
-    let (min, max) = ordered_optional_bounds();
-    let (min_length, max_length) = ordered_optional_length_bounds();
-    CompiledInputConstraint {
-        presence: Presence::from_bool(kani::any::<bool>()),
-        nullability: Nullability::from_bool(kani::any::<bool>()),
-        default_value: None,
-        min,
-        max,
-        min_length,
-        max_length,
-        element: None,
-        extra: ExtraFields::Unspecified,
-        secretness: Secretness::from_bool(kani::any::<bool>()),
-    }
+    input_schema::constraint(2)
 }
 
 fn bounded_workflow_entry(node_count: u8) -> StepIdx {

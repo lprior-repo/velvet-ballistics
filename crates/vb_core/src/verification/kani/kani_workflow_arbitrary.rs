@@ -17,9 +17,12 @@ use crate::ids::{
 use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::workflow::{
     AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
-    ExprBranch, ExprOp, ExprProgram, ExtraFields, InputSlotKind, Nullability, PathSegment,
-    Presence, ResourceContract, Secretness, SlotBranch, WorkflowParts,
+    CompiledRetryPolicy, ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment,
+    ResourceContract, SlotBranch, WorkflowParts,
 };
+
+#[path = "kani_input_schema_arbitrary.rs"]
+mod input_schema;
 
 /// Ordered optional i64 bounds with `min <= max` whenever both are present.
 fn ordered_optional_bounds() -> (Option<i64>, Option<i64>) {
@@ -170,6 +173,14 @@ impl kani::Arbitrary for CompiledNode {
             output: kani::any(),
             routing: kani::any(),
             kind: kani::any::<CompiledNodeKind>(),
+            retry: if kani::any::<bool>() {
+                Some(CompiledRetryPolicy {
+                    max_attempts: kani::any(),
+                    delay_ms: kani::any(),
+                })
+            } else {
+                None
+            },
         }
     }
 }
@@ -216,32 +227,12 @@ impl kani::Arbitrary for WorkflowParts {
             resource_contract: kani::any::<ResourceContract>(),
             step_names: bounded_workflow_step_names(),
             input_slots: bounded_workflow_input_slots(),
+            source_metadata: input_schema::metadata(),
         }
     }
 }
 
-impl kani::Arbitrary for RunFrame {
-    fn any() -> Self {
-        let step_count: u16 = kani::any();
-        kani::assume(step_count > 0);
-        kani::assume(step_count <= 8);
-        let slot_count: u16 = kani::any();
-        kani::assume(slot_count <= 8);
-        let first_step: u16 = kani::any();
-        kani::assume(first_step < step_count);
-        let run_id = crate::ids::RunId::new(kani::any::<u64>());
-        let first_step_idx = StepIdx::new(first_step);
-        // With valid assumes, RunFrame::new always succeeds (step_count > 0, first_step < step_count).
-        // The Ok variant is guaranteed; Err is unreachable under these assumes.
-        match RunFrame::new(run_id, first_step_idx, step_count, slot_count) {
-            Ok(frame) => frame,
-            Err(_) => {
-                kani::assert(false, "valid symbolic frame construction must succeed");
-                std::process::abort()
-            }
-        }
-    }
-}
+include!("kani_workflow_frame_arbitrary.rs");
 
 include!("kani_workflow_collections.rs");
 

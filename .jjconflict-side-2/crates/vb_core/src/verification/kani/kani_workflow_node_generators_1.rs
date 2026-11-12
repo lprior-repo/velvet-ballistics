@@ -19,6 +19,7 @@ fn arbitrary_node_variant_19() -> CompiledNodeKind {
         initial: ConstIdx::new(kani::any()),
         body: StepIdx::new(kani::any()),
         done: StepIdx::new(kani::any()),
+        limit: kani::any::<u32>(),
     }
 }
 
