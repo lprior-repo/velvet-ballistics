@@ -8,8 +8,9 @@
 // Sibling of `try_from_parts_production.rs`: the `StepIdx` / `SlotIdx` /
 // `ConstIdx` / `ActionId` / `ExprIdx` / `AccessorIdx` / `SymbolId` /
 // `WorkflowDigest` / `FiniteF64` / `ConstValue` mirrors, verbatim copies
-// of the production declarations in `crates/vb_core/src/ids/mod.rs` and
-// `crates/vb_core/src/value.rs`, with minimal substitutions required to
+// of the production declarations in `crates/vb_core/src/ids/mod.rs`,
+// `crates/vb_core/src/value/finite.rs`, and
+// `crates/vb_core/src/value/slot.rs`, with minimal substitutions required to
 // compile under `verus --crate-type=lib` without proc-macro crate
 // registration:
 //
@@ -31,7 +32,8 @@
 // drift-detection mechanism for the try_from_parts binding.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/value.rs:72-180` and `crates/vb_core/src/ids/mod.rs`
+// `crates/vb_core/src/value/finite.rs:29-31`,
+// `crates/vb_core/src/value/slot.rs:54-65`, and `crates/vb_core/src/ids/mod.rs`
 // whenever production changes. The mirror is annotated at the top of
 // every section with the originating production line range so
 // regeneration is mechanical.
@@ -156,7 +158,7 @@ impl WorkflowDigest {
 // Local stub: `vb_core::value::FiniteF64`
 // ---------------------------------------------------------------------------
 //
-// Production `FiniteF64` at `crates/vb_core/src/value.rs:72-104` is a
+// Production `FiniteF64` at `crates/vb_core/src/value/finite.rs:29-31` is a
 // `#[repr(transparent)]` newtype over `f64` that rejects NaN and
 // infinities at construction. The mirror carries the same payload type
 // and the manual `Eq` impl; the construction-time finiteness invariant
