@@ -1,0 +1,10 @@
+reading file "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/session02/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack.data.zst" - please wait, this might take some time...
+Debuggee command was: /home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 bench_engine_step_once_save_const_single_transition; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1
+finished reading file, now analyzing data:
+
+total runtime: 3.881000s.
+calls to allocation functions: 11325495 (2918189/s)
+temporary memory allocations: 126507 (32596/s)
+peak heap memory consumption: 4.98M
+peak RSS (including heaptrack overhead): 15.32M
+total memory leaked: 18.32K

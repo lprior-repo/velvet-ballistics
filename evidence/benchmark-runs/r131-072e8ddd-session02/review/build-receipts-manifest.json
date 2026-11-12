@@ -1,0 +1,204 @@
+{
+  "files": [
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/IDLE-AND-FROZEN.txt",
+      "bytes": 85,
+      "sha256": "b66d23f7928632ef3a93b254bd7906804ece91a54669a181a2d4be60847e20fc"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/IPC_FRAME.bin",
+      "bytes": 63,
+      "sha256": "286dbb280df79e3f3e74a66ed62273098cb227c7b3b54de1e0889091b9b900df"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/SMALL_WORKFLOW.yaml",
+      "bytes": 187,
+      "sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/binary-path.txt",
+      "bytes": 115,
+      "sha256": "9235944f91f566e28c11cf9c7d8e915b647f4827fe4d00b999ab70b4c1e8a7f8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/build-command.txt",
+      "bytes": 170,
+      "sha256": "06084baddd0bdcd46d37b1eb8ef30f2ef132941c2e2c491e319cde165dc59adb"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/build-host.txt",
+      "bytes": 4569,
+      "sha256": "b5dbf53264134dafca67efe6495c15dce91f86676d54280269fd70ef5e84dfc7"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/build.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/build.jsonl",
+      "bytes": 202267,
+      "sha256": "1db901f8b709f51b186e835dd2fdc5184e7a00a99e03a93a77cf029dc5d70300"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/build.sha256",
+      "bytes": 463,
+      "sha256": "aaebde8a7906d4db05dd82331b406974b4530911cdb419bd95775f0d42cb543a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/build.stderr",
+      "bytes": 7300,
+      "sha256": "766268c347529b7766e54ba114611fbd0ba20fb20092c05907c950f78d03df9c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/preflight-build-command.txt",
+      "bytes": 811,
+      "sha256": "8260050a3117776e753805055be2ca019a6ded822fe2c39b53746ac71b7dd9cc"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/preflight-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/preflight.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/preflight.log",
+      "bytes": 121,
+      "sha256": "b58106171887f1fc003f180ceb222fd9dc994298bd8392007ccbc413401823a7"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/preflight.sha256",
+      "bytes": 280,
+      "sha256": "70a25a4c2bcab4ee55be8ada8906c72a270e086c6674f2703e419e04faa1f5cb"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/recipe-build.sha256",
+      "bytes": 582,
+      "sha256": "5aff0c46f5e83c7fc6f6c19a0e7f50705b2e904f48acc860ef3948fccd5bc227"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/source-after-build.json",
+      "bytes": 1312,
+      "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/source-after-preflight.json",
+      "bytes": 1312,
+      "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/source-build.json",
+      "bytes": 1312,
+      "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-baseline/source-now.json",
+      "bytes": 1312,
+      "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/IDLE-AND-FROZEN.txt",
+      "bytes": 85,
+      "sha256": "3b1521f62626b3f82906466f5da8d36560039da99d8221f991fb7080f885d964"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/IPC_FRAME.bin",
+      "bytes": 63,
+      "sha256": "286dbb280df79e3f3e74a66ed62273098cb227c7b3b54de1e0889091b9b900df"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/SMALL_WORKFLOW.yaml",
+      "bytes": 187,
+      "sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/binary-path.txt",
+      "bytes": 116,
+      "sha256": "92f07aa18a7728ee7283e66e947ba188b733441f518289bfb2affccc63740247"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/build-command.txt",
+      "bytes": 170,
+      "sha256": "06084baddd0bdcd46d37b1eb8ef30f2ef132941c2e2c491e319cde165dc59adb"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/build-host.txt",
+      "bytes": 4569,
+      "sha256": "bb8dd3fcb79752b616e528a994d4c76b306a56c4d33ed08ae1e66d5b0a7657f0"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/build.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/build.jsonl",
+      "bytes": 202350,
+      "sha256": "5b34a603691683fd6268ec9857f097c9d2c11c43f2a60da4ce7f1ae38a096ced"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/build.sha256",
+      "bytes": 466,
+      "sha256": "58f68e32dfd69a8ed1cd602af001a324f54055c43aa1cbc52ec155fe848a6c11"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/build.stderr",
+      "bytes": 7190,
+      "sha256": "efce6ef034d950d8a3e4dcf7cab2d4a769f523ef2037c6e0b01fd97d3ef31dc9"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/preflight-build-command.txt",
+      "bytes": 817,
+      "sha256": "be4ea36d0006516dce33c85e886b6ee6e9d31eb25a2aa1b1bd9c80035a574320"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/preflight-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/preflight.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/preflight.log",
+      "bytes": 121,
+      "sha256": "b58106171887f1fc003f180ceb222fd9dc994298bd8392007ccbc413401823a7"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/preflight.sha256",
+      "bytes": 282,
+      "sha256": "5063269d8c114e72c7ead525adbe94f765d59a2f4480bf0e19542e6a9e8b449b"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/recipe-build.sha256",
+      "bytes": 582,
+      "sha256": "5aff0c46f5e83c7fc6f6c19a0e7f50705b2e904f48acc860ef3948fccd5bc227"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/source-after-build.json",
+      "bytes": 1241,
+      "sha256": "beb7f07689ca159faf56f32e366b496668a30bf6a49609088a7221f843053821"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/source-after-preflight.json",
+      "bytes": 1241,
+      "sha256": "beb7f07689ca159faf56f32e366b496668a30bf6a49609088a7221f843053821"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/source-build.json",
+      "bytes": 1241,
+      "sha256": "beb7f07689ca159faf56f32e366b496668a30bf6a49609088a7221f843053821"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r131/build-candidate/source-now.json",
+      "bytes": 1241,
+      "sha256": "beb7f07689ca159faf56f32e366b496668a30bf6a49609088a7221f843053821"
+    }
+  ]
+}
