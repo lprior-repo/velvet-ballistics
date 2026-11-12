@@ -244,3 +244,7 @@ fn context_error(error: CoreError) -> RecoveryError {
         detail: format!("invalid replay input context: {error}"),
     }
 }
+
+#[cfg(test)]
+#[path = "input_context/integrity_tests.rs"]
+mod integrity_tests;
