@@ -11,7 +11,7 @@
 //     crates/vb_runtime/src/engine/action/mod.rs:20-74.
 //   - The `Taint` discriminant (0=Clean, 1=DerivedFromSecret, 2=Secret,
 //     3=Random, 4=TimeDependent) mirrors `vb_core::value::Taint` at
-//     crates/vb_core/src/value.rs:14-25.
+//     crates/vb_core/src/value/taint.rs:10-21.
 //   - The `Idempotency` discriminant (0=DeterministicPure,
 //     1=IdempotentExternal, 2=AtLeastOnceExternal) mirrors
 //     `vb_core::action::contract::Idempotency` at
@@ -33,7 +33,7 @@
 //   - `execute_do` decision branches  <- vb_runtime::engine::action::execute_do
 //                                          at crates/vb_runtime/src/engine/action/mod.rs:20-74
 //   - `Taint` discriminant             <- vb_core::value::Taint
-//                                          at crates/vb_core/src/value.rs:14-25
+//                                          at crates/vb_core/src/value/taint.rs:10-21
 //   - `Idempotency` discriminant       <- vb_core::action::contract::Idempotency
 //                                          at crates/vb_core/src/action/contract.rs:7-17
 //   - `ActionOutcome` discriminant set <- vb_core::action::payload::ActionOutcome
