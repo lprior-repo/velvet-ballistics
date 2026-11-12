@@ -128,7 +128,10 @@ fn matching_results(
     b: Result<ReplayAction, ReplayError>,
 ) -> bool {
     match (a, b) {
-        (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => a == b,
+        (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
+            assert_eq!(a, b);
+            true
+        }
         (Err(_), Err(_)) => true,
         _ => false,
     }
