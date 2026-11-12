@@ -13,6 +13,7 @@ use super::part_04::parse_typed_initial;
 use crate::{CompileError, CompileErrors};
 use proptest::prelude::*;
 use vb_core::ConstValue;
+use vb_expr::expr_typecheck::ExprType;
 
 fn initial_shape_rejection(errors: &CompileErrors) -> bool {
     errors.0.iter().any(|e| {
@@ -25,6 +26,37 @@ fn initial_shape_rejection(errors: &CompileErrors) -> bool {
             }
         )
     })
+}
+
+fn require_initial_rejection(
+    result: Result<(ConstValue, ExprType), CompileErrors>,
+) -> Result<CompileErrors, proptest::test_runner::TestCaseError> {
+    match result {
+        Err(errors) => Ok(errors),
+        Ok(_) => Err(proptest::test_runner::TestCaseError::fail(
+            "overflow, non-finite, and non-literal initials must fail",
+        )),
+    }
+}
+
+fn assert_initial_boundary(text: &str) -> proptest::test_runner::TestCaseResult {
+    let parsed = parse_typed_initial(text, 0);
+    match text {
+        "9223372036854775807" => {
+            prop_assert_eq!(parsed, Ok((ConstValue::I64(i64::MAX), ExprType::I64)));
+        }
+        "-9223372036854775808" => {
+            prop_assert_eq!(parsed, Ok((ConstValue::I64(i64::MIN), ExprType::I64)));
+        }
+        _ => {
+            let errors = require_initial_rejection(parsed)?;
+            prop_assert!(
+                initial_shape_rejection(&errors),
+                "initial {text} wrong diagnostic: {errors:?}"
+            );
+        }
+    }
+    Ok(())
 }
 
 proptest! {
@@ -51,21 +83,7 @@ proptest! {
             Just("sum($total)".to_owned()),
         ]
     ) {
-        let parsed = parse_typed_initial(&text, 0);
-        match text.as_str() {
-            "9223372036854775807" => prop_assert_eq!(
-                parsed,
-                Ok((ConstValue::I64(i64::MAX), vb_expr::expr_typecheck::ExprType::I64))
-            ),
-            "-9223372036854775808" => prop_assert_eq!(
-                parsed,
-                Ok((ConstValue::I64(i64::MIN), vb_expr::expr_typecheck::ExprType::I64))
-            ),
-            _ => {
-                let errors = parsed.expect_err("overflow, non-finite, and non-literal initials must fail");
-                prop_assert!(initial_shape_rejection(&errors), "initial {text} wrong diagnostic: {errors:?}");
-            }
-        }
+        assert_initial_boundary(&text)?;
     }
 
     #[test]
@@ -77,7 +95,7 @@ proptest! {
 
     #[test]
     fn checked_width_n_shrinks_at_u16_boundary(offset in 0..=4usize) {
-        let Some(width) = (u16::MAX as usize).checked_add(offset) else {
+        let Some(width) = usize::from(u16::MAX).checked_add(offset) else {
             return Err(proptest::test_runner::TestCaseError::reject("width overflow"));
         };
         let result = checked_width_n(width);

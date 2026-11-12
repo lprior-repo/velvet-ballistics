@@ -39,12 +39,22 @@ fn at_once_rejection(errors: &crate::CompileErrors) -> bool {
     })
 }
 
+fn require_compile_rejection(
+    result: Result<vb_core::CompiledWorkflow, crate::CompileErrors>,
+    message: &'static str,
+) -> Result<crate::CompileErrors, proptest::test_runner::TestCaseError> {
+    match result {
+        Err(errors) => Ok(errors),
+        Ok(_) => Err(proptest::test_runner::TestCaseError::fail(message)),
+    }
+}
+
 proptest! {
     #[test]
     fn repeat_max_attempts_prop(attempts in 0..=3u16) {
         let result = compile_workflow(repeat_source(attempts).as_bytes());
         if attempts == 0 {
-            let errors = result.expect_err("max_attempts 0 must fail");
+            let errors = require_compile_rejection(result, "max_attempts 0 must fail")?;
             prop_assert!(
                 errors.0.iter().any(|e| matches!(
                     e,
@@ -84,7 +94,7 @@ proptest! {
                 ))),
             },
             _ => {
-                let errors = result.expect_err("at_once outside omitted/1 must fail");
+                let errors = require_compile_rejection(result, "at_once outside omitted/1 must fail")?;
                 prop_assert!(
                     at_once_rejection(&errors),
                     "at_once {at_once:?} wrong diagnostic: {errors:?}"

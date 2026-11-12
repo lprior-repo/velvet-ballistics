@@ -464,33 +464,44 @@ fn deep_together_in_repeat_alias_rejected() -> Result<(), String> {
     )
 }
 
+fn assert_cross_lane_node_ids(nodes: &[CompiledNode]) {
+    for (index, node) in nodes.iter().enumerate() {
+        assert_eq!(node.id.as_usize(), index);
+    }
+}
+
+fn cross_lane_accumulator_output(workflow: &CompiledWorkflow) -> Result<SlotIdx, String> {
+    output(
+        workflow,
+        workflow
+            .node_count()
+            .checked_sub(2)
+            .ok_or_else(|| "reduce workflow too small".to_owned())?,
+    )
+}
+
 #[test]
 fn reduce_do_repeat_cross_lane_layout() -> Result<(), String> {
     let body = "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: tmp_value, value: '6'}\n              - id: act\n                do:\n                  action: '0'\n                  input: '1'\n        - id: update\n          do:\n            action: '0'\n            input: '1'\n";
     let workflow = compile(&source("10", body))?;
     let parts = workflow.to_parts();
-    for (index, node) in parts.nodes.iter().enumerate() {
-        assert_eq!(node.id.as_usize(), index);
-    }
+    assert_cross_lane_node_ids(&parts.nodes);
     let do_ids: Vec<u16> = parts
         .nodes
         .iter()
         .filter(|n| matches!(n.kind, CompiledNodeKind::Do { .. }))
-        .map(|n| n.id.as_usize() as u16)
+        .map(|n| n.id.get())
         .collect();
     assert_eq!(do_ids.len(), 2);
-    let final_do = do_ids[1];
-    let accumulator = output(
-        &workflow,
-        workflow
-            .node_count()
-            .checked_sub(2)
-            .ok_or_else(|| "reduce workflow too small".to_owned())?,
-    )?;
+    let final_do = *do_ids
+        .get(1)
+        .ok_or_else(|| "missing second Do node".to_owned())?;
+    let accumulator = cross_lane_accumulator_output(&workflow)?;
     assert_eq!(output(&workflow, final_do)?, accumulator);
+    let next_do = final_do.checked_add(1).ok_or("Do successor overflow")?;
     assert_eq!(
         node(&workflow, final_do)?.routing.next,
-        NodeContinuation::Step(StepIdx::new(do_ids[1] + 1))
+        NodeContinuation::Step(StepIdx::new(next_do))
     );
     Ok(())
 }
