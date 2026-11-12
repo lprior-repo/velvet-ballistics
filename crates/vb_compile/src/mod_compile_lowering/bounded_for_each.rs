@@ -1,7 +1,11 @@
+#![forbid(unsafe_code)]
+
 use super::super::part_01::ForEachInputs;
 use super::super::part_14::BodyCtx;
-use super::{CanonicalScope, resolve_slot_reference};
+use super::canonical_references::resolve_slot_reference_scoped;
+use super::{CanonicalScope, validate_output_alias};
 use crate::{CompileError, CompileErrors};
+use std::collections::HashMap;
 use vb_core::{SlotIdx, StepIdx};
 
 pub(in crate::mod_compile_lowering) struct ForEachLowering<'a> {
@@ -31,12 +35,8 @@ fn resolve_input(
         .input
         .strip_prefix("$input.")
         .ok_or_else(|| domain_error(index))?;
-    let slot = resolve_slot_reference(
-        config.input,
-        config.scope.outputs,
-        config.scope.step_outputs,
-    )
-    .map_err(|e| CompileErrors(vec![e]))?;
+    let slot = resolve_slot_reference_scoped(config.input, config.scope)
+        .map_err(|e| CompileErrors(vec![e]))?;
     let max = config
         .inputs
         .resolve(slot, name, index)
@@ -58,6 +58,7 @@ fn validate_concurrency(index: usize, at_once: Option<u32>) -> Result<(), Compil
 fn validate_variable_name(variable: &str) -> Result<(), CompileErrors> {
     crate::mod_compile_validation::validate_public_name("for_each.variable", variable)
         .map_err(|e| CompileErrors(vec![e]))?;
+    validate_output_alias(variable).map_err(|e| CompileErrors(vec![e]))?;
     if variable == "step" {
         return Err(CompileErrors(vec![CompileError::InvalidName {
             field: "for_each.variable",
@@ -71,9 +72,7 @@ fn validate_variable_capture(
     variable: &str,
     config: &ForEachLowering<'_>,
 ) -> Result<(), CompileErrors> {
-    if config.scope.outputs.contains_key(variable)
-        || config.scope.step_outputs.contains_key(variable)
-    {
+    if config.scope.contains_output(variable) || config.scope.contains_step(variable) {
         return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
             name: variable.into(),
         }]));
@@ -134,28 +133,19 @@ pub(super) fn body_edges(
     })
 }
 
+fn empty_error(index: usize) -> CompileErrors {
+    CompileErrors(vec![CompileError::StepFieldShape {
+        step: index,
+        field: "for_each.body",
+        expected: "non-empty body",
+    }])
+}
+
 fn validate_body(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
     if config.body.is_empty() {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "for_each.body",
-            expected: "non-empty body",
-        }]));
+        return Err(empty_error(index));
     }
-    for step in config.body {
-        if step.id == config.variable {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-        if matches!(&step.primitive, crate::StepPrimitive::Set { output, .. } if output == config.variable)
-        {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-    }
-    Ok(())
+    super::for_each_capture::validate_for_each_capture(config.variable, config.body)
 }
 
 use super::super::SlotCompiler;
@@ -176,7 +166,7 @@ fn emit_start(
         CompiledNodeKind::ForEachStart {
             input,
             item_slot: item,
-            limit,
+            limit: limit.into(),
             body: edges.body,
             done: edges.done,
         },
@@ -198,37 +188,28 @@ fn emit_next(iterator: SlotIdx, item: SlotIdx, edges: &ForEachEdges, builder: &m
     ));
 }
 
-fn validate_body_shape(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
-    if config.body.is_empty() {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "for_each.body",
-            expected: "non-empty body",
-        }]));
-    }
-    Ok(())
-}
-
 fn emit_body(
     config: &ForEachLowering<'_>,
     edges: &ForEachEdges,
     item: SlotIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    let mut local_outputs = config.scope.outputs.clone();
-    let local_step_outputs = config.scope.step_outputs.clone();
-    let mut local_types = config.scope.slot_types.clone();
+    // Borrowed overlay: tiny HashMaps for the single variable binding plus
+    // parent chain. Avoids cloning the whole lexical maps (perf waiver fix).
+    let mut overlay_outputs = HashMap::with_capacity(1);
+    overlay_outputs.insert(config.variable.to_owned(), item);
+    let mut overlay_types = HashMap::with_capacity(1);
+    overlay_types.insert(item, vb_expr::expr_typecheck::ExprType::Unknown);
 
-    local_outputs.insert(config.variable.to_owned(), item);
-    local_types.insert(item, vb_expr::expr_typecheck::ExprType::Unknown);
-
+    // Reuse parent step_outputs directly (no clone needed — not modified).
     let local_scope = CanonicalScope {
-        outputs: &local_outputs,
-        step_outputs: &local_step_outputs,
-        slot_types: &local_types,
+        outputs: &overlay_outputs,
+        step_outputs: config.scope.step_outputs,
+        slot_types: &overlay_types,
+        parent: Some(&config.scope),
     };
 
-    let body_output = super::super::part_14::emit_scoped_flat_body(
+    let (body_output, _) = super::super::part_14::emit_scoped_flat_body(
         config.body,
         edges.body,
         edges.advance,
@@ -236,6 +217,7 @@ fn emit_body(
         config.nested,
         builder,
         "for_each",
+        None,
     )?;
 
     Ok(body_output)
@@ -247,15 +229,13 @@ pub(in crate::mod_compile_lowering) fn lower_bounded_for_each(
     config: ForEachLowering<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    validate_body_shape(index, &config)?;
+    validate_body(index, &config)?;
+    validate_parameters(index, &config)?;
 
     let width = super::super::body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
     let edges = body_edges(id, width, config.next)?;
 
     let (input, limit) = resolve_input(index, &config)?;
-
-    validate_parameters(index, &config)?;
-    validate_body(index, &config)?;
 
     let iterator = builder
         .allocate_slot()

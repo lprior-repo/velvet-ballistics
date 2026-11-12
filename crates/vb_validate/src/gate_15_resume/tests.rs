@@ -2,7 +2,7 @@ use crate::gate_12_14_15::validate_gate_15_determinism_proof;
 use crate::gates::validate_gate_15_determinism_proof as public_validate;
 use crate::test_helpers::{copy_node, finish_node, make_parts, nop_node};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, Deadline, WorkflowParts};
 
 fn node(index: u16, next: Option<u16>, ask: bool) -> CompiledNode {
     vb_core::workflow::node(
@@ -10,7 +10,7 @@ fn node(index: u16, next: Option<u16>, ask: bool) -> CompiledNode {
         if ask {
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: Deadline::Unset.into(),
             }
         } else {
             CompiledNodeKind::Do {

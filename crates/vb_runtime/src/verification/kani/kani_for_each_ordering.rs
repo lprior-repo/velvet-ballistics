@@ -26,7 +26,7 @@ fn insert_test_list(store: &mut ValueStore, items: &[SlotValue]) -> Result<SlotV
     let list_id = store
         .insert_list(items.to_vec().into_boxed_slice())
         .map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "list insert failed",
+            reason: "list insert failed".into(),
         })?;
     Ok(SlotValue::List(list_id))
 }

@@ -90,7 +90,7 @@ fn phase3_checkpoint(checkpoint: &ValueStoreCheckpointV1) -> Result<(), OwnedRoo
 fn convert_blob_len(len: usize) -> Result<u64, OwnedRootBundleError> {
     u64::try_from(len).map_err(|_| {
         OwnedRootBundleError::Checkpoint(CoreError::InternalInvariantViolation {
-            reason: "blob length exceeds u64",
+            reason: "blob length exceeds u64".into(),
         })
     })
 }
@@ -98,7 +98,7 @@ fn convert_blob_len(len: usize) -> Result<u64, OwnedRootBundleError> {
 fn convert_blob_index(index: usize) -> Result<BlobId, OwnedRootBundleError> {
     Ok(BlobId::new(u64::try_from(index).map_err(|_| {
         OwnedRootBundleError::Checkpoint(CoreError::InternalInvariantViolation {
-            reason: "blob index exceeds u64",
+            reason: "blob index exceeds u64".into(),
         })
     })?))
 }
@@ -106,7 +106,7 @@ fn convert_blob_index(index: usize) -> Result<BlobId, OwnedRootBundleError> {
 fn compute_blob_limit(workflow_cap: u64) -> Result<u64, OwnedRootBundleError> {
     let max = u64::try_from(MAX_BLOB_BYTES_PER_VALUE).map_err(|_| {
         OwnedRootBundleError::Checkpoint(CoreError::InternalInvariantViolation {
-            reason: "MAX_BLOB_BYTES_PER_VALUE exceeds u64",
+            reason: "MAX_BLOB_BYTES_PER_VALUE exceeds u64".into(),
         })
     })?;
     Ok(if workflow_cap < max {

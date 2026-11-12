@@ -265,7 +265,7 @@ fn check_repeat_start(
             body,
             done,
         } => {
-            assert_eq!(*max_attempts, 3);
+            assert_eq!(max_attempts.get(), 3);
             assert_eq!(*body, StepIdx::new(1));
             assert_eq!(*done, StepIdx::new(5));
         }

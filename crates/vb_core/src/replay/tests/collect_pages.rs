@@ -7,7 +7,7 @@ fn collect_source_frame(
                 StepIdx::new(0),
                 CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
-                    limit: 4,
+                    limit: 4.into(),
                     page_size: 1,
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
@@ -56,7 +56,7 @@ fn collect_source_frame(
             vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
         )
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test source list insert failed",
+            reason: "test source list insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(88),
@@ -73,7 +73,7 @@ fn current_page_values(run: &RunFrame, store: &ValueStore) -> Result<Box<[SlotVa
         SlotValue::List(list) => list,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "collector slot not list",
+                reason: "collector slot not list".into(),
             });
         }
     };
@@ -81,7 +81,7 @@ fn current_page_values(run: &RunFrame, store: &ValueStore) -> Result<Box<[SlotVa
         .list(list)
         .map(|items| items.to_vec().into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "collector list missing",
+            reason: "collector list missing".into(),
         })
 }
 
@@ -212,7 +212,7 @@ fn replay_collect_start_page_bound() -> Result<Result<(), ReplayError>, CoreErro
                 StepIdx::new(0),
                 CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
-                    limit: 1,
+                    limit: 1.into(),
                     page_size: 2,
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
@@ -244,7 +244,7 @@ fn replay_collect_start_page_bound() -> Result<Result<(), ReplayError>, CoreErro
     let source = store
         .insert_list(vec![SlotValue::I64(10)].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test source list insert failed",
+            reason: "test source list insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(89),
@@ -345,7 +345,7 @@ fn replay_collect_page_finish_and_empty_next_paths() -> Result<(), CoreError> {
             vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
         )
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test source list insert failed",
+            reason: "test source list insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(90),
@@ -400,7 +400,7 @@ fn collect_page_finish_plan() -> Result<crate::workflow::CompiledWorkflow, CoreE
                 StepIdx::new(0),
                 CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
-                    limit: 4,
+                    limit: 4.into(),
                     page_size: 2,
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
@@ -487,7 +487,7 @@ fn collect_empty_source_frame(
                 StepIdx::new(0),
                 CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
-                    limit: 4,
+                    limit: 4.into(),
                     page_size: 1,
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
@@ -516,7 +516,7 @@ fn collect_empty_source_frame(
     let source = store
         .insert_list(Vec::new().into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test empty list insert failed",
+            reason: "test empty list insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(91),
@@ -537,7 +537,7 @@ fn replay_collect_start_rejects_zero_page_size() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(()) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected zero page size replay error",
+            reason: "expected zero page size replay error".into(),
         }),
     }
 }
@@ -548,7 +548,7 @@ fn replay_collect_start_zero_page_size() -> Result<Result<(), ReplayError>, Core
     let source = store
         .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test source list insert failed",
+            reason: "test source list insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(92),
@@ -578,7 +578,7 @@ fn replay_collect_start_rejects_source_over_limit() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(()) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected source over limit replay error",
+            reason: "expected source over limit replay error".into(),
         }),
     }
 }
@@ -589,7 +589,7 @@ fn replay_collect_start_source_over_limit() -> Result<Result<(), ReplayError>, C
     let source = store
         .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test source list insert failed",
+            reason: "test source list insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(93),
@@ -620,7 +620,7 @@ fn collect_invalid_start_plan(
                 StepIdx::new(0),
                 CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
-                    limit,
+                    limit: limit.into(),
                     page_size,
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
@@ -657,7 +657,7 @@ fn replay_error_handler_node_routes_to_body() -> Result<(), CoreError> {
                 CompiledNodeKind::ErrorHandler {
                     body: StepIdx::new(1),
                     handler: StepIdx::new(2),
-                    error_slot: Some(SlotIdx::new(0)),
+                    error_slot: Some(SlotIdx::new(0)).into(),
                 },
                 None,
                 None,
@@ -710,7 +710,7 @@ fn replay_error_handler_node_routes_to_body() -> Result<(), CoreError> {
             Ok(())
         }
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected ErrorHandler replay to continue to body",
+            reason: "expected ErrorHandler replay to continue to body".into(),
         }),
         Err(other) => Err(replay_err_to_core(other)),
     }

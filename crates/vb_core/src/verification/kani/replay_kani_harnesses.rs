@@ -70,7 +70,7 @@ mod verification {
                             },
                         ]
                         .into_boxed_slice(),
-                        otherwise: if has_otherwise {
+                        otherwise: if has_otherwise {.into()
                             Some(StepIdx::new(3))
                         } else {
                             None
@@ -131,7 +131,7 @@ mod verification {
                             },
                         ]
                         .into_boxed_slice(),
-                        otherwise: Some(StepIdx::new(3)),
+                        otherwise: Some(StepIdx::new(3)).into(),
                     },
                     None,
                     None,
@@ -189,7 +189,7 @@ mod verification {
                             target: StepIdx::new(1),
                         }]
                         .into_boxed_slice(),
-                        otherwise: Some(StepIdx::new(2)),
+                        otherwise: Some(StepIdx::new(2)).into(),
                     },
                     None,
                     None,

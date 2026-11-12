@@ -461,7 +461,7 @@ fn gate_10_policy_rule_rejects_choose_expr_out_of_range() {
                 target: StepIdx::new(1),
             }]
             .into_boxed_slice(),
-            otherwise: None,
+            otherwise: None.into(),
         },
         None,
         None,
@@ -504,7 +504,7 @@ fn gate_11_policy_rule_rejects_for_each_body_out_of_range() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(99),
             done: StepIdx::new(1),
         },
@@ -544,7 +544,7 @@ fn gate_11_policy_rule_rejects_for_each_done_out_of_range() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(1),
             done: StepIdx::new(99),
         },
@@ -584,7 +584,7 @@ fn gate_11_policy_rule_rejects_loop_body_before_start() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::ZERO,
             done: StepIdx::new(1),
         },
@@ -624,7 +624,7 @@ fn gate_11_policy_rule_rejects_for_each_done_before_body() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(2),
             done: StepIdx::new(1),
         },
@@ -986,7 +986,7 @@ fn gate_15_policy_rule_accepts_consecutive_ask_nodes() {
             StepIdx::ZERO,
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             Some(SlotIdx::ZERO),
             Some(StepIdx::new(1)),
@@ -995,7 +995,7 @@ fn gate_15_policy_rule_accepts_consecutive_ask_nodes() {
             StepIdx::new(1),
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             Some(SlotIdx::ZERO),
             None,
@@ -1377,7 +1377,7 @@ fn gate_15_suspension_resume_targets_rejected() {
                         let kind = if ask {
                             CompiledNodeKind::Ask {
                                 prompt: SlotIdx::new(0),
-                                timeout_slot: None,
+                                timeout_slot: None.into(),
                             }
                         } else {
                             CompiledNodeKind::Do {

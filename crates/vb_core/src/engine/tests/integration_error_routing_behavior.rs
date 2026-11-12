@@ -369,7 +369,7 @@ test_error_variant_propagation!(
 test_error_variant_propagation!(
     unsupported_primitive_propagates,
     EngineError::UnsupportedPrimitive {
-        primitive: "fancy_op"
+        primitive: "fancy_op".into()
     },
     "UNSUPPORTED_PRIMITIVE"
 );
@@ -394,7 +394,7 @@ test_error_variant_propagation!(
 test_error_variant_propagation!(
     internal_invariant_violation_propagates,
     EngineError::InternalInvariantViolation {
-        reason: "impossible"
+        reason: "impossible".into()
     },
     "INTERNAL_INVARIANT_VIOLATION"
 );
@@ -968,7 +968,7 @@ fn error_display_all_variants_produce_non_empty_string() {
         EngineError::BlobOutOfBounds {
             blob: crate::ids::BlobId::new(0),
         },
-        EngineError::UnsupportedPrimitive { primitive: "test" },
+        EngineError::UnsupportedPrimitive { primitive: "test".into() },
         EngineError::UnsupportedAccessorTraversal {
             segment: "idx",
             found: "obj",
@@ -976,7 +976,7 @@ fn error_display_all_variants_produce_non_empty_string() {
         EngineError::ObjectFieldNotFound {
             field: crate::ids::SymbolId::new(0),
         },
-        EngineError::InternalInvariantViolation { reason: "test" },
+        EngineError::InternalInvariantViolation { reason: "test".into() },
         EngineError::InvalidCompiledWorkflow { reason: "test" },
         EngineError::ExpressionStackOverflow { max: 1 },
         EngineError::IterationLimitExceeded { resource: "test" },
@@ -1056,7 +1056,7 @@ fn error_debug_all_variants_produce_non_empty_string() {
         EngineError::BlobOutOfBounds {
             blob: crate::ids::BlobId::new(0),
         },
-        EngineError::UnsupportedPrimitive { primitive: "test" },
+        EngineError::UnsupportedPrimitive { primitive: "test".into() },
         EngineError::UnsupportedAccessorTraversal {
             segment: "idx",
             found: "obj",
@@ -1064,7 +1064,7 @@ fn error_debug_all_variants_produce_non_empty_string() {
         EngineError::ObjectFieldNotFound {
             field: crate::ids::SymbolId::new(0),
         },
-        EngineError::InternalInvariantViolation { reason: "test" },
+        EngineError::InternalInvariantViolation { reason: "test".into() },
         EngineError::InvalidCompiledWorkflow { reason: "test" },
         EngineError::ExpressionStackOverflow { max: 1 },
         EngineError::IterationLimitExceeded { resource: "test" },

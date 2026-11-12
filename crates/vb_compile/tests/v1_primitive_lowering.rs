@@ -309,9 +309,8 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
 
 #[test]
 fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String> {
-    // Repeat and ForEach now accept two Set steps in their bodies; Collect
-    // and Reduce retain their exact single-body restriction in this
-    // compiler increment.
+    // Repeat, ForEach, and Reduce now accept two Set steps in their bodies;
+    // Reduce lowers the final Set into the accumulator slot directly.
     let cases = [
         (
             "repeat with two steps in body",
@@ -331,8 +330,6 @@ fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String>
         ),
     ];
 
-    let mut neg_count: u32 = 0;
-
     for case in cases {
         let case_name = case.0;
         let yaml_steps = case.1;
@@ -348,30 +345,9 @@ fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String>
             let workflow = compile_yaml(&yaml)?;
             assert_two_set_collect_contract(&workflow)?;
         } else {
-            let errors = compile_yaml_error(&yaml)?;
-            let err = first_compile_error(&errors)?;
-            match err {
-                CompileError::StepFieldShape {
-                    step,
-                    field,
-                    expected,
-                    ..
-                } => {
-                    assert_eq!(
-                        (*step, *field, *expected),
-                        (0, "steps", "exactly one set step")
-                    );
-                }
-                other => {
-                    return Err(format!("unexpected error for {}: {:?}", case_name, other));
-                }
-            }
-            neg_count = neg_count.checked_add(1).ok_or("neg_count overflow")?;
+            let workflow = compile_yaml(&yaml)?;
+            assert_two_set_reduce_contract(&workflow)?;
         }
-    }
-
-    if neg_count != 1 {
-        return Err(format!("expected 1 negative case, got {}", neg_count));
     }
 
     Ok(())
@@ -420,7 +396,7 @@ fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
         (
             0u16,
             CompiledNodeKind::RepeatStart {
-                max_attempts: 3,
+                max_attempts: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -478,7 +454,7 @@ fn compile_workflow_accepts_nested_collect_body() -> Result<(), String> {
             0u16,
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 1,
+                limit: 1.into(),
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(6),
@@ -490,7 +466,7 @@ fn compile_workflow_accepts_nested_collect_body() -> Result<(), String> {
             1u16,
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(1),
-                limit: 1,
+                limit: 1.into(),
                 page_size: 1,
                 body: StepIdx::new(2),
                 done: StepIdx::new(4),
@@ -779,7 +755,7 @@ fn assert_repeat_raw_allocation_contract() -> Result<(), String> {
         assert_eq!(
             start.kind,
             CompiledNodeKind::RepeatStart {
-                max_attempts: 1,
+                max_attempts: 1.into(),
                 body: StepIdx::MAX,
                 done: StepIdx::MAX,
             }
@@ -1055,7 +1031,7 @@ fn lower_choose_accepts_valid_otherwise_target() -> Result<(), String> {
             otherwise,
         } => {
             assert_eq!(branches.len(), 1);
-            assert_eq!(otherwise, Some(StepIdx::new(2)));
+            assert_eq!(otherwise.step(), Some(StepIdx::new(2)));
         }
         other => {
             return Err(format!("expected ChooseSlot node, got {other:?}"));
@@ -1086,7 +1062,7 @@ fn lower_choose_accepts_empty_branches_with_otherwise() -> Result<(), String> {
             otherwise,
         } => {
             assert_eq!(branches.len(), 0);
-            assert_eq!(otherwise, Some(StepIdx::new(2)));
+            assert_eq!(otherwise.step(), Some(StepIdx::new(2)));
         }
         other => {
             return Err(format!("expected ChooseSlot node, got {other:?}"));
@@ -2059,7 +2035,7 @@ fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             done,
         } => {
             assert_eq!(
-                (input.get(), item_slot.get(), *limit, body.get(), done.get()),
+                (input.get(), item_slot.get(), limit.get(), body.get(), done.get()),
                 (0, 2, 2, 1, 3)
             );
         }
@@ -2107,7 +2083,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             branch_count,
             accumulator,
         } => {
-            assert_eq!((*branch_count, accumulator.get()), (2, 1));
+            assert_eq!((branch_count.get(), accumulator.get()), (2, 1));
         }
         other => return Err(format!("expected TogetherJoin, got {other:?}")),
     }
@@ -2124,7 +2100,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             accumulator,
         } => {
             assert_eq!(
-                (*branch, entry.get(), join.get(), accumulator.get()),
+                (branch.get(), entry.get(), join.get(), accumulator.get()),
                 (0, 2, 5, 1)
             );
         }
@@ -2141,7 +2117,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             accumulator,
         } => {
             assert_eq!(
-                (*branch, entry.get(), join.get(), accumulator.get()),
+                (branch.get(), entry.get(), join.get(), accumulator.get()),
                 (1, 4, 5, 1)
             );
         }
@@ -2165,7 +2141,7 @@ fn assert_exact_collect(nodes: &[CompiledNode], constants: &[ConstValue]) -> Res
             done,
         } => {
             assert_eq!(
-                (source.get(), *limit, *page_size, body.get(), done.get()),
+                (source.get(), limit.get(), *page_size, body.get(), done.get()),
                 (0, 15, 5, 1, 3)
             );
         }
@@ -2284,7 +2260,7 @@ fn assert_exact_repeat(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
             body,
             done,
         } => {
-            assert_eq!((*max_attempts, body.get(), done.get()), (3, 1, 3));
+            assert_eq!((max_attempts.get(), body.get(), done.get()), (3, 1, 3));
         }
         other => return Err(format!("expected RepeatStart, got {other:?}")),
     }
@@ -2321,7 +2297,7 @@ fn assert_exact_wait_event(nodes: &[CompiledNode]) -> Result<(), String> {
             event,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.ok_or_else(|| String::from("missing wait timeout slot"))?;
+            let timeout = timeout_slot.slot().ok_or_else(|| String::from("missing wait timeout slot"))?;
             assert_eq!((event.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected WaitEvent, got {other:?}")),
@@ -2336,7 +2312,7 @@ fn assert_exact_ask(nodes: &[CompiledNode]) -> Result<(), String> {
             prompt,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.ok_or_else(|| String::from("missing ask timeout slot"))?;
+            let timeout = timeout_slot.slot().ok_or_else(|| String::from("missing ask timeout slot"))?;
             assert_eq!((prompt.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected Ask, got {other:?}")),
@@ -2487,7 +2463,7 @@ fn assert_kind_targets_in_range(
             for branch in branches.as_ref() {
                 assert_target(branch.target, node_count, case_name, "choose.branch.target")?;
             }
-            assert_optional_target(*otherwise, node_count, case_name, "choose.otherwise")?;
+            assert_optional_target(otherwise.step(), node_count, case_name, "choose.otherwise")?;
         }
         CompiledNodeKind::ChooseSlot {
             branches,
@@ -2501,7 +2477,7 @@ fn assert_kind_targets_in_range(
                     "choose_slot.branch.target",
                 )?;
             }
-            assert_optional_target(*otherwise, node_count, case_name, "choose_slot.otherwise")?;
+            assert_optional_target(otherwise.step(), node_count, case_name, "choose_slot.otherwise")?;
         }
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
@@ -2581,8 +2557,7 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
         let expected = match case_name {
             "for_each with empty body" => (0, "for_each.body", "non-empty body"),
             "collect with empty body" => (0, "collect.body", "non-empty body"),
-            "repeat with empty body" => (0, "steps", "at least one set or do step"),
-            _ => (0, "steps", "exactly one set step"),
+            _ => (0, "steps", "at least one set or do step"),
         };
         match first {
             CompileError::StepFieldShape {
@@ -2840,7 +2815,7 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
             done,
         } => {
             if source.get() != 0
-                || *limit != 2
+                || limit.get() != 2
                 || *page_size != 1
                 || body.get() != 1
                 || done.get() != 4
@@ -2890,6 +2865,114 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
     Ok(())
 }
 
+fn assert_two_set_reduce_contract(workflow: &CompiledWorkflow) -> Result<(), String> {
+    let parts = workflow.to_parts();
+    let nodes = &parts.nodes;
+    let constants = &parts.constants;
+
+    if parts.slot_count != 6 {
+        return Err(format!("expected slot_count 6, got {}", parts.slot_count));
+    }
+    if nodes.len() != 7 {
+        return Err(format!("expected 7 nodes, got {}", nodes.len()));
+    }
+    if constants.len() != 3 {
+        return Err(format!(
+            "expected 3 constants, got {}",
+            constants.len()
+        ));
+    }
+    if parts.entry != StepIdx::new(0) {
+        return Err(format!("expected entry_step 0, got {:?}", parts.entry));
+    }
+    assert_dense_node_ids(workflow, "two_set_reduce")?;
+    assert_all_targets_in_range(workflow, "two_set_reduce")?;
+
+    assert_eq!(
+        constants.get(0),
+        Some(&ConstValue::I64(10)),
+        "initial constant"
+    );
+    assert_set_const_node(&nodes, &constants, 2, Some(5), Some(3), 1, 1)?;
+    assert_set_const_node(&nodes, &constants, 3, Some(4), Some(4), 2, 2)?;
+    assert_finish_node(&nodes, 6, 0)?;
+
+    let node0 = node_at(&nodes, 0)?;
+    match &node0.kind {
+        CompiledNodeKind::Copy { source } => {
+            if source.get() != 0 {
+                return Err("Copy source mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected Copy, got {other:?}")),
+    }
+    if node0.output != NodeOutput::Slot(SlotIdx::new(1)) {
+        return Err("node0.output mismatch".to_string());
+    }
+    if node0.routing.next != NodeContinuation::Step(StepIdx::new(1)) {
+        return Err("node0.next mismatch".to_string());
+    }
+
+    let node1 = node_at(&nodes, 1)?;
+    match &node1.kind {
+        CompiledNodeKind::ReduceStart {
+            input,
+            accumulator,
+            initial,
+            body,
+            done,
+        } => {
+            if (input.get(), accumulator.get(), initial.get(), body.get(), done.get())
+                != (1, 4, 0, 2, 5)
+            {
+                return Err("ReduceStart fields mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected ReduceStart, got {other:?}")),
+    }
+    if node1.output != NodeOutput::Slot(SlotIdx::new(3)) {
+        return Err("node1.output mismatch".to_string());
+    }
+
+    let node4 = node_at(&nodes, 4)?;
+    match &node4.kind {
+        CompiledNodeKind::ReduceNext {
+            iterator_slot,
+            accumulator,
+            body,
+            done,
+        } => {
+            if (iterator_slot.get(), accumulator.get(), body.get(), done.get())
+                != (3, 4, 2, 5)
+            {
+                return Err("ReduceNext fields mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected ReduceNext, got {other:?}")),
+    }
+    if node4.output != NodeOutput::Slot(SlotIdx::new(2)) {
+        return Err("node4.output mismatch".to_string());
+    }
+
+    let node5 = node_at(&nodes, 5)?;
+    match &node5.kind {
+        CompiledNodeKind::ReduceFinish { accumulator } => {
+            if accumulator.get() != 4 {
+                return Err("ReduceFinish accumulator mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected ReduceFinish, got {other:?}")),
+    }
+    if node5.output != NodeOutput::Slot(SlotIdx::new(4)) {
+        return Err("node5.output mismatch".to_string());
+    }
+    if node5.routing.next != NodeContinuation::Step(StepIdx::new(6)) {
+        return Err("node5.next mismatch".to_string());
+    }
+
+    Ok(())
+}
+
 fn assert_two_set_for_each_contract(
     workflow: &CompiledWorkflow,
     preamble: bool,
@@ -2931,7 +3014,7 @@ fn assert_two_set_for_each_contract(
             } => {
                 assert_eq!(input.get(), 1, "Start input slot");
                 assert_eq!(item_slot.get(), 3, "Start item slot");
-                assert_eq!(*limit, 2, "Start limit slot");
+                assert_eq!(limit.get(), 2, "Start limit slot");
                 assert_eq!(body.get(), 2, "Start body target");
                 assert_eq!(done.get(), 5, "Start done target");
             }
@@ -2996,7 +3079,7 @@ fn assert_two_set_for_each_contract(
             } => {
                 assert_eq!(input.get(), 0, "Start input slot");
                 assert_eq!(item_slot.get(), 2, "Start item slot");
-                assert_eq!(*limit, 2, "Start limit slot");
+                assert_eq!(limit.get(), 2, "Start limit slot");
                 assert_eq!(body.get(), 1, "Start body target");
                 assert_eq!(done.get(), 4, "Start done target");
             }

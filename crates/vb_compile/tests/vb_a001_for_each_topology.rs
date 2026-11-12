@@ -165,7 +165,7 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 2,
+            limit: 2.into(),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
@@ -230,7 +230,7 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 2,
+            limit: 2.into(),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
@@ -366,7 +366,7 @@ fn vb_a001_foreachstart_fields_valid() -> Result<(), Box<dyn std::error::Error>>
             body,
             done,
         } => {
-            assert!(*limit > 0, "limit must be positive");
+            assert!(limit.get() > 0, "limit must be positive");
             assert!(body.as_usize() < parts.nodes.len(), "body in-range");
             assert!(done.as_usize() < parts.nodes.len(), "done in-range");
             assert!(

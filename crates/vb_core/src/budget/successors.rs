@@ -16,11 +16,11 @@ pub(super) fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<St
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
-        } => push_slot_choose_successors(branches, *otherwise, stack),
+        } => push_slot_choose_successors(branches, otherwise.step(), stack),
         CompiledNodeKind::Choose {
             branches,
             otherwise,
-        } => push_expr_choose_successors(branches, *otherwise, stack),
+        } => push_expr_choose_successors(branches, otherwise.step(), stack),
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
         | CompiledNodeKind::CollectStart { body, done, .. }

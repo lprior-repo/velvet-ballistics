@@ -4,7 +4,7 @@ fn nested_workflow_nodes(collect_limit: u32, max_attempts: u16) -> [CompiledNode
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: collect_limit,
+                limit: collect_limit.into(),
                 page_size: 2,
                 body: StepIdx::new(1),
                 done: StepIdx::new(6),
@@ -24,7 +24,7 @@ fn nested_workflow_nodes(collect_limit: u32, max_attempts: u16) -> [CompiledNode
         node(
             StepIdx::new(2),
             CompiledNodeKind::RepeatStart {
-                max_attempts,
+                max_attempts: max_attempts.into(),
                 body: StepIdx::new(3),
                 done: StepIdx::new(5),
             },

@@ -82,7 +82,7 @@ pub(super) fn describe_node_for_simulate(
             format!("ChooseSlot ({count} branches)")
         }
         CompiledNodeKind::ForEachStart { limit, .. } => {
-            format!("ForEach (limit {limit})")
+            format!("ForEach (limit {})", limit.get())
         }
         CompiledNodeKind::ForEachNext { .. } => "ForEach advance".to_string(),
         CompiledNodeKind::ForEachJoin { .. } => "ForEach join".to_string(),
@@ -90,11 +90,11 @@ pub(super) fn describe_node_for_simulate(
             format!("Together ({} branches)", branches.len())
         }
         CompiledNodeKind::TogetherBranch { branch, .. } => {
-            format!("Together branch {branch}")
+            format!("Together branch {}", branch.get())
         }
         CompiledNodeKind::TogetherJoin { .. } => "Together join".to_string(),
         CompiledNodeKind::CollectStart { limit, .. } => {
-            format!("Collect (limit {limit})")
+            format!("Collect (limit {})", limit.get())
         }
         CompiledNodeKind::CollectPage { .. } => "Collect page".to_string(),
         CompiledNodeKind::CollectNext { .. } => "Collect next".to_string(),
@@ -103,7 +103,7 @@ pub(super) fn describe_node_for_simulate(
         CompiledNodeKind::ReduceNext { .. } => "Reduce advance".to_string(),
         CompiledNodeKind::ReduceFinish { .. } => "Reduce finish".to_string(),
         CompiledNodeKind::RepeatStart { max_attempts, .. } => {
-            format!("Repeat (max {max_attempts} attempts)")
+            format!("Repeat (max {} attempts)", max_attempts.get())
         }
         CompiledNodeKind::RepeatAttempt { .. } => "Repeat attempt".to_string(),
         CompiledNodeKind::RepeatCheck { .. } => "Repeat check".to_string(),

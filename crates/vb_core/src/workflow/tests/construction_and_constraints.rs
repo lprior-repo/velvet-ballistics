@@ -421,7 +421,7 @@ fn constraint_default_is_legacy_permissive() {
     );
     let required = CompiledInputConstraint::required();
     assert!(required.requires_value());
-    assert!(!required.optional);
+    assert!(!required.presence.is_optional());
 }
 
 #[test]

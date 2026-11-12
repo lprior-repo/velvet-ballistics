@@ -308,7 +308,7 @@ fn total_steps_budget_parts() -> WorkflowParts {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(0),
-                    limit: 1_000_001,
+                    limit: 1_000_001.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
                 },
@@ -328,7 +328,7 @@ fn fanout_budget_parts() -> WorkflowParts {
                 0,
                 CompiledNodeKind::ChooseSlot {
                     branches: fanout_branches(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
             ),
             budget_node(1, CompiledNodeKind::Nop),
@@ -376,7 +376,7 @@ fn nesting_nodes() -> Vec<CompiledNode> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(0),
-                    limit: 1,
+                    limit: 1.into(),
                     body: StepIdx::new(
                         u16::try_from(index.saturating_add(1)).map_or(u16::MAX, |v| v),
                     ),

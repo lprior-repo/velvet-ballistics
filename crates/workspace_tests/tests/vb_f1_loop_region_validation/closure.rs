@@ -72,14 +72,14 @@ fn auxiliary_kind_successors_cannot_enter_a_region() -> TestResult {
         CompiledNodeKind::ErrorHandler {
             body: step(1),
             handler: step(4),
-            error_slot: None,
+            error_slot: None.into(),
         },
         CompiledNodeKind::TogetherStart {
             branches: vec![step(1), step(4)].into_boxed_slice(),
             join: step(5),
         },
         CompiledNodeKind::TogetherBranch {
-            branch: 0,
+            branch: 0.into(),
             entry: step(1),
             join: step(4),
             accumulator: slot(2),
@@ -136,7 +136,7 @@ fn internal_auxiliary_backedges_are_not_nested_owned_latches() -> TestResult {
         CompiledNodeKind::ErrorHandler {
             body: step(2),
             handler: step(5),
-            error_slot: None,
+            error_slot: None.into(),
         },
     ];
     for kind in kinds {

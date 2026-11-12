@@ -88,7 +88,7 @@ fn recoverable_ask_schedule(
     let CompiledNodeKind::Ask { timeout_slot, .. } = node.kind else {
         return None;
     };
-    if timed != timeout_slot.is_some() {
+    if timed != timeout_slot.slot().is_some() {
         return None;
     }
     let resume_step = node.routing.next.step()?;
@@ -137,7 +137,7 @@ fn recoverable_waiting_timer(
     let node = workflow.node(step)?;
     match node.kind {
         CompiledNodeKind::WaitUntil { .. } => {}
-        CompiledNodeKind::WaitEvent { timeout_slot, .. } if timeout_slot.is_some() => {}
+        CompiledNodeKind::WaitEvent { timeout_slot, .. } if timeout_slot.slot().is_some() => {}
         _ => return None,
     }
     node.routing.next.step()?;

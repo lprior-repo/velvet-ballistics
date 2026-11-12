@@ -71,7 +71,7 @@ fn bh_shd_03_action_failure_trace_events_count() {
 #[test]
 fn bh_shd_04_find_error_handler_linear_scan_fallback() {
     let handler_idx = 20u16;
-    let first_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::ErrorHandler { body: vb_core::ids::StepIdx::new(1), handler: vb_core::ids::StepIdx::new(handler_idx), error_slot: None, }, None, None);
+    let first_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::ErrorHandler { body: vb_core::ids::StepIdx::new(1), handler: vb_core::ids::StepIdx::new(handler_idx), error_slot: None.into(), }, None, None);
     let middle_nodes = (1u16..handler_idx).map(|i| vb_core::workflow::node(vb_core::ids::StepIdx::new(i), CompiledNodeKind::Nop, None, Some(vb_core::ids::StepIdx::new(i + 1))));
     let last_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(handler_idx), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), None);
     let nodes = std::iter::once(first_node)

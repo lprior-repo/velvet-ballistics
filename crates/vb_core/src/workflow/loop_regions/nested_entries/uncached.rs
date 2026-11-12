@@ -42,13 +42,13 @@ fn nested_together_flags_start_only_not_branch_body_or_join() -> TestResult {
         join: step(6),
     };
     edit(&mut parts, 3)?.kind = CompiledNodeKind::TogetherBranch {
-        branch: 0,
+        branch: 0.into(),
         entry: step(4),
         join: step(6),
         accumulator: slot(2),
     };
     edit(&mut parts, 6)?.kind = CompiledNodeKind::TogetherJoin {
-        branch_count: 1,
+        branch_count: 1.into(),
         accumulator: slot(2),
     };
     check_flags(parts, &[2])

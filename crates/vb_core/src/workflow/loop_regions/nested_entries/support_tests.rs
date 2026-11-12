@@ -79,7 +79,12 @@ pub(super) fn edit(parts: &mut WorkflowParts, id: u16) -> TestResult<&mut Compil
 pub(super) fn check_flags(parts: WorkflowParts, expected: &[u16]) -> TestResult {
     let plan = CompiledWorkflow::try_from_parts(parts.clone())
         .map_err(|error| format!("invalid test fixture: {error:?}"))?;
-    let flags = super::super::derive(&parts, &plan.loop_regions)
+    let mut regions = Vec::new();
+    for index in 0..parts.nodes.len() {
+        let raw = u16::try_from(index).map_err(|error| format!("test index: {error}"))?;
+        regions.push(plan.loop_region(StepIdx::new(raw)).copied());
+    }
+    let flags = super::super::derive(&parts, regions.as_slice())
         .map_err(|error| format!("derive flags: {error:?}"))?;
     assert_eq!(flags.len(), parts.nodes.len());
     for (index, actual) in flags.iter().copied().enumerate() {

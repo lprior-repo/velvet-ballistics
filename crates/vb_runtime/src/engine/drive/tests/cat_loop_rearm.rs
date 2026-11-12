@@ -18,7 +18,7 @@ fn fixture() -> Result<CompiledWorkflow, String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(2),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },

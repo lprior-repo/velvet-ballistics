@@ -46,7 +46,7 @@ fn error_handler_on_node(
             body,
             handler,
             error_slot,
-        } if candidate == failed || body == failed => Some((handler, error_slot)),
+        } if candidate == failed || body == failed => Some((handler, error_slot.slot())),
         _ => None,
     }
 }

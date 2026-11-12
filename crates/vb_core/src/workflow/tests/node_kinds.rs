@@ -15,24 +15,24 @@ fn compiled_node_kind_do_constructs() {
 fn compiled_node_kind_choose_constructs() {
     let kind = CompiledNodeKind::Choose {
         branches: Box::new([]),
-        otherwise: Some(StepIdx::new(1)),
+        otherwise: Some(StepIdx::new(1)).into(),
     };
     let CompiledNodeKind::Choose { otherwise, .. } = kind else {
         panic!("expected Choose");
     };
-    assert_eq!(otherwise, Some(StepIdx::new(1)));
+    assert_eq!(otherwise.step(), Some(StepIdx::new(1)));
 }
 
 #[test]
 fn compiled_node_kind_choose_slot_constructs() {
     let kind = CompiledNodeKind::ChooseSlot {
         branches: Box::new([]),
-        otherwise: Some(StepIdx::new(1)),
+        otherwise: Some(StepIdx::new(1)).into(),
     };
     let CompiledNodeKind::ChooseSlot { otherwise, .. } = kind else {
         panic!("expected ChooseSlot");
     };
-    assert_eq!(otherwise, Some(StepIdx::new(1)));
+    assert_eq!(otherwise.step(), Some(StepIdx::new(1)));
 }
 
 #[test]
@@ -40,14 +40,14 @@ fn compiled_node_kind_for_each_start_constructs() {
     let kind = CompiledNodeKind::ForEachStart {
         input: SlotIdx::new(0),
         item_slot: SlotIdx::new(1),
-        limit: 100,
+        limit: 100.into(),
         body: StepIdx::new(1),
         done: StepIdx::new(2),
     };
     let CompiledNodeKind::ForEachStart { limit, .. } = kind else {
         panic!("expected ForEachStart");
     };
-    assert_eq!(limit, 100);
+    assert_eq!(limit.get(), 100);
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn compiled_node_kind_together_start_constructs() {
 #[test]
 fn compiled_node_kind_together_branch_constructs() {
     let kind = CompiledNodeKind::TogetherBranch {
-        branch: 0,
+        branch: 0.into(),
         entry: StepIdx::new(1),
         join: StepIdx::new(3),
         accumulator: SlotIdx::new(0),
@@ -98,26 +98,26 @@ fn compiled_node_kind_together_branch_constructs() {
     let CompiledNodeKind::TogetherBranch { branch, .. } = kind else {
         panic!("expected TogetherBranch");
     };
-    assert_eq!(branch, 0);
+    assert_eq!(branch.get(), 0);
 }
 
 #[test]
 fn compiled_node_kind_together_join_constructs() {
     let kind = CompiledNodeKind::TogetherJoin {
-        branch_count: 2,
+        branch_count: 2.into(),
         accumulator: SlotIdx::new(0),
     };
     let CompiledNodeKind::TogetherJoin { branch_count, .. } = kind else {
         panic!("expected TogetherJoin");
     };
-    assert_eq!(branch_count, 2);
+    assert_eq!(branch_count.get(), 2);
 }
 
 #[test]
 fn compiled_node_kind_collect_start_constructs() {
     let kind = CompiledNodeKind::CollectStart {
         source: SlotIdx::new(0),
-        limit: 50,
+        limit: 50.into(),
         page_size: 10,
         body: StepIdx::new(1),
         done: StepIdx::new(2),
@@ -128,7 +128,7 @@ fn compiled_node_kind_collect_start_constructs() {
     else {
         panic!("expected CollectStart");
     };
-    assert_eq!(limit, 50);
+    assert_eq!(limit.get(), 50);
     assert_eq!(page_size, 10);
 }
 
@@ -212,14 +212,14 @@ fn compiled_node_kind_reduce_finish_constructs() {
 #[test]
 fn compiled_node_kind_repeat_start_constructs() {
     let kind = CompiledNodeKind::RepeatStart {
-        max_attempts: 5,
+        max_attempts: 5.into(),
         body: StepIdx::new(1),
         done: StepIdx::new(2),
     };
     let CompiledNodeKind::RepeatStart { max_attempts, .. } = kind else {
         panic!("expected RepeatStart");
     };
-    assert_eq!(max_attempts, 5);
+    assert_eq!(max_attempts.get(), 5);
 }
 
 #[test]
@@ -273,7 +273,7 @@ fn compiled_node_kind_wait_until_constructs() {
 fn compiled_node_kind_wait_event_constructs() {
     let kind = CompiledNodeKind::WaitEvent {
         event: SlotIdx::new(5),
-        timeout_slot: Some(SlotIdx::new(6)),
+        timeout_slot: Some(SlotIdx::new(6)).into(),
     };
     let CompiledNodeKind::WaitEvent {
         event,
@@ -283,26 +283,26 @@ fn compiled_node_kind_wait_event_constructs() {
         panic!("expected WaitEvent");
     };
     assert_eq!(event, SlotIdx::new(5));
-    assert_eq!(timeout_slot, Some(SlotIdx::new(6)));
+    assert_eq!(timeout_slot.slot(), Some(SlotIdx::new(6)));
 }
 
 #[test]
 fn compiled_node_kind_wait_event_without_timeout_constructs() {
     let kind = CompiledNodeKind::WaitEvent {
         event: SlotIdx::new(5),
-        timeout_slot: None,
+        timeout_slot: None.into(),
     };
     let CompiledNodeKind::WaitEvent { timeout_slot, .. } = kind else {
         panic!("expected WaitEvent");
     };
-    assert!(timeout_slot.is_none());
+    assert!(timeout_slot.slot().is_none());
 }
 
 #[test]
 fn compiled_node_kind_ask_constructs() {
     let kind = CompiledNodeKind::Ask {
         prompt: SlotIdx::new(7),
-        timeout_slot: Some(SlotIdx::new(8)),
+        timeout_slot: Some(SlotIdx::new(8)).into(),
     };
     let CompiledNodeKind::Ask { prompt, .. } = kind else {
         panic!("expected Ask");
@@ -339,7 +339,7 @@ fn compiled_node_kind_error_handler_constructs() {
     let kind = CompiledNodeKind::ErrorHandler {
         body: StepIdx::new(1),
         handler: StepIdx::new(2),
-        error_slot: None,
+        error_slot: None.into(),
     };
     let CompiledNodeKind::ErrorHandler {
         body,
@@ -349,7 +349,7 @@ fn compiled_node_kind_error_handler_constructs() {
     else {
         panic!("expected ErrorHandler");
     };
-    assert_eq!(error_slot, None);
+    assert_eq!(error_slot.slot(), None);
     assert_eq!(body, StepIdx::new(1));
     assert_eq!(handler, StepIdx::new(2));
 }

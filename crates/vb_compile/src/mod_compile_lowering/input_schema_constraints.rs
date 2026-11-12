@@ -18,16 +18,16 @@ pub(super) fn constraint_from_entries(
     reject_misplaced_fields(entries, kind)?;
     reject_out_of_range_default(default_value, min, max)?;
     Ok(CompiledInputConstraint {
-        optional,
-        nullable,
+        presence: optional.into(),
+        nullability: nullable.into(),
         default_value,
         min,
         max,
         min_length,
         max_length,
         element,
-        allow_extra,
-        secret,
+        extra: allow_extra.into(),
+        secretness: secret.into(),
     })
 }
 

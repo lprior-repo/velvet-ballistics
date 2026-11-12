@@ -208,7 +208,7 @@ fn arb_runtime_error() -> impl Strategy<Value = RuntimeError> {
         // EngineDriveFailed compared via Box<CoreError> diagnostic_code().
         Just(RuntimeError::EngineDriveFailed {
             run: RunId::new(1),
-            source: Box::new(CoreError::InternalInvariantViolation { reason: "p" }),
+            source: Box::new(CoreError::InternalInvariantViolation { reason: "p".into() }),
         }),
         // ---- runtime_error_admission_digest_eq ----
         (any::<[u8; 32]>()).prop_map(|bytes| RuntimeError::AdmissionArtifactNotFound {

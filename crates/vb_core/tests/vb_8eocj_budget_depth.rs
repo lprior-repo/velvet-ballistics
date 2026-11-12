@@ -71,7 +71,7 @@ fn append_together(nodes: &mut Vec<CompiledNode>, count: u16) -> TestResult {
         nodes.push(node(
             header,
             CompiledNodeKind::TogetherBranch {
-                branch,
+                branch: branch.into(),
                 entry,
                 join,
                 accumulator: SlotIdx::new(0),
@@ -84,7 +84,7 @@ fn append_together(nodes: &mut Vec<CompiledNode>, count: u16) -> TestResult {
     nodes.push(node(
         join,
         CompiledNodeKind::TogetherJoin {
-            branch_count: count,
+            branch_count: count.into(),
             accumulator: SlotIdx::new(0),
         },
         Some(next),
@@ -113,7 +113,7 @@ fn loop_nodes(
             CompiledNodeKind::ForEachStart {
                 input: slot,
                 item_slot: SlotIdx::new(1),
-                limit: 1,
+                limit: 1.into(),
                 body,
                 done,
             },
@@ -126,7 +126,7 @@ fn loop_nodes(
         LoopKind::CollectPage | LoopKind::CollectNext => (
             CompiledNodeKind::CollectStart {
                 source: slot,
-                limit: 1,
+                limit: 1.into(),
                 page_size: 1,
                 body,
                 done,
@@ -161,7 +161,7 @@ fn loop_nodes(
         ),
         LoopKind::RepeatAttempt | LoopKind::RepeatCheck => (
             CompiledNodeKind::RepeatStart {
-                max_attempts: 1,
+                max_attempts: 1.into(),
                 body,
                 done,
             },
@@ -277,7 +277,7 @@ fn loops_nested_inside_together_remain_two_scopes() -> TestResult {
         nodes.push(node(
             StepIdx::new(5),
             CompiledNodeKind::TogetherJoin {
-                branch_count: 1,
+                branch_count: 1.into(),
                 accumulator: SlotIdx::new(0),
             },
             Some(StepIdx::new(6)),
@@ -324,7 +324,7 @@ fn deeper_revisit_preserves_nesting_without_double_counting_timers() -> TestResu
                         target: StepIdx::new(first),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(second)),
+                    otherwise: Some(StepIdx::new(second)).into(),
                 },
                 None,
             ),
@@ -361,7 +361,7 @@ fn deeper_revisit_preserves_nesting_without_double_counting_timers() -> TestResu
             node(
                 StepIdx::new(7),
                 CompiledNodeKind::TogetherJoin {
-                    branch_count: 1,
+                    branch_count: 1.into(),
                     accumulator: slot,
                 },
                 Some(StepIdx::new(8)),
@@ -369,7 +369,7 @@ fn deeper_revisit_preserves_nesting_without_double_counting_timers() -> TestResu
             node(
                 StepIdx::new(8),
                 CompiledNodeKind::TogetherJoin {
-                    branch_count: 1,
+                    branch_count: 1.into(),
                     accumulator: slot,
                 },
                 Some(StepIdx::new(9)),
@@ -409,7 +409,7 @@ fn nested_together_nodes(depth: u16) -> TestResult<Vec<CompiledNode>> {
         nodes.push(node(
             id,
             CompiledNodeKind::TogetherJoin {
-                branch_count: 1,
+                branch_count: 1.into(),
                 accumulator: SlotIdx::new(0),
             },
             Some(offset(nodes.len(), 1)?),
@@ -456,7 +456,7 @@ fn joining_first_sibling_does_not_erase_later_nested_scope() -> TestResult {
         node(
             StepIdx::new(1),
             CompiledNodeKind::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: StepIdx::new(2),
                 join: StepIdx::new(8),
                 accumulator: slot,
@@ -471,7 +471,7 @@ fn joining_first_sibling_does_not_erase_later_nested_scope() -> TestResult {
         node(
             StepIdx::new(3),
             CompiledNodeKind::TogetherBranch {
-                branch: 1,
+                branch: 1.into(),
                 entry: StepIdx::new(4),
                 join: StepIdx::new(8),
                 accumulator: slot,
@@ -489,7 +489,7 @@ fn joining_first_sibling_does_not_erase_later_nested_scope() -> TestResult {
         node(
             StepIdx::new(5),
             CompiledNodeKind::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: StepIdx::new(6),
                 join: StepIdx::new(7),
                 accumulator: slot,
@@ -504,7 +504,7 @@ fn joining_first_sibling_does_not_erase_later_nested_scope() -> TestResult {
         node(
             StepIdx::new(7),
             CompiledNodeKind::TogetherJoin {
-                branch_count: 1,
+                branch_count: 1.into(),
                 accumulator: slot,
             },
             Some(StepIdx::new(8)),
@@ -512,7 +512,7 @@ fn joining_first_sibling_does_not_erase_later_nested_scope() -> TestResult {
         node(
             StepIdx::new(8),
             CompiledNodeKind::TogetherJoin {
-                branch_count: 2,
+                branch_count: 2.into(),
                 accumulator: slot,
             },
             Some(StepIdx::new(9)),
@@ -550,7 +550,7 @@ fn nested_owners_with_shared_exit_restore_outermost_parent() -> TestResult {
         node(
             StepIdx::new(3),
             CompiledNodeKind::TogetherJoin {
-                branch_count: 1,
+                branch_count: 1.into(),
                 accumulator: SlotIdx::new(0),
             },
             Some(StepIdx::new(4)),
@@ -625,7 +625,7 @@ fn excessive_loop_steps_preserve_typed_overflow() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: u32::MAX,
+                limit: u32::MAX.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
@@ -687,7 +687,7 @@ fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
                     target: StepIdx::new(first),
                 }]
                 .into_boxed_slice(),
-                otherwise: Some(StepIdx::new(second)),
+                otherwise: Some(StepIdx::new(second)).into(),
             },
             None,
         ),
@@ -696,7 +696,7 @@ fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(1),
                 item_slot: SlotIdx::new(2),
-                limit: 1,
+                limit: 1.into(),
                 body: StepIdx::new(3),
                 done: StepIdx::new(12),
             },
@@ -707,7 +707,7 @@ fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(3),
                 item_slot: SlotIdx::new(4),
-                limit: 1,
+                limit: 1.into(),
                 body: StepIdx::new(3),
                 done: StepIdx::new(6),
             },
@@ -744,7 +744,7 @@ fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
         node(
             StepIdx::new(8),
             CompiledNodeKind::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: StepIdx::new(9),
                 join: StepIdx::new(11),
                 accumulator: SlotIdx::new(5),
@@ -766,7 +766,7 @@ fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
         node(
             StepIdx::new(11),
             CompiledNodeKind::TogetherJoin {
-                branch_count: 1,
+                branch_count: 1.into(),
                 accumulator: SlotIdx::new(5),
             },
             Some(StepIdx::new(12)),
@@ -806,7 +806,7 @@ fn genuinely_nested_loop_constructor_preserves_depth_policy() -> TestResult {
                     CompiledNodeKind::ForEachStart {
                         input: SlotIdx::new(0),
                         item_slot: SlotIdx::new(1),
-                        limit: 1,
+                        limit: 1.into(),
                         body: *branches.first().ok_or("missing nested body")?,
                         done: *join,
                     }

@@ -14,7 +14,7 @@ pub(super) use canonical_scope::{CanonicalScope, validate_output_alias};
 
 #[path = "canonical_references.rs"]
 mod canonical_references;
-pub(super) use canonical_references::resolve_slot_reference;
+pub(super) use canonical_references::{resolve_slot_reference, resolve_slot_reference_scoped};
 
 #[path = "canonical_types.rs"]
 mod canonical_types;
@@ -37,6 +37,9 @@ use canonical_guarded_do::lower_top_level_do;
 mod bounded_for_each;
 pub(super) use bounded_for_each::{ForEachLowering, lower_bounded_for_each};
 
+#[path = "for_each_capture.rs"]
+pub(super) mod for_each_capture;
+
 #[path = "bounded_collect.rs"]
 pub(super) mod bounded_collect;
 pub(super) use bounded_collect::{CollectLowering, CollectOutput, lower_bounded_collect};
@@ -44,6 +47,34 @@ pub(super) use bounded_collect::{CollectLowering, CollectOutput, lower_bounded_c
 #[path = "for_each_strict.rs"]
 mod for_each_strict;
 pub(super) use for_each_strict::validate_for_each_expression;
+
+#[path = "lower_step_scalars.rs"]
+mod lower_step_scalars;
+use lower_step_scalars::{
+    lower_step_ask, lower_step_do, lower_step_finish, lower_step_set, lower_step_together,
+    lower_step_wait,
+};
+
+#[path = "lower_step_containers.rs"]
+mod lower_step_containers;
+use lower_step_containers::{
+    lower_step_aggregate, lower_step_choose, lower_step_collect, lower_step_for_each,
+    lower_step_repeat,
+};
+
+/// Borrowed lowering context threaded through one top-level step dispatch.
+/// The builder and step names stay with the caller: the dispatcher pads
+/// names after the arm's nodes are emitted, so it must still own them.
+pub(super) struct StepLowerCtx<'a> {
+    pub index: usize,
+    pub last: usize,
+    pub id: StepIdx,
+    pub next: Option<StepIdx>,
+    pub outputs: &'a mut HashMap<String, SlotIdx>,
+    pub step_outputs: &'a mut HashMap<String, SlotIdx>,
+    pub slot_types: &'a mut HashMap<SlotIdx, ExprType>,
+    pub for_each_inputs: &'a ForEachInputs,
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn lower_canonical_step(
@@ -59,224 +90,51 @@ pub(super) fn lower_canonical_step(
     for_each_inputs: &ForEachInputs,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let result = match &step.primitive {
-        crate::StepPrimitive::Set { output, value } => {
-            validate_output_alias(output).map_err(|e| CompileErrors(vec![e]))?;
-            let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
-            if outputs.contains_key(output) {
-                return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                    name: Box::from(output.as_str()),
-                }]));
-            }
-            let inferred = lower_canonical_set_expression(
-                id,
-                slot,
-                value,
-                next,
-                CanonicalScope {
-                    outputs,
-                    step_outputs,
-                    slot_types,
-                },
-                builder,
-            )?;
-            outputs.insert(output.to_owned(), slot);
-            step_outputs.insert(step.id.to_string(), slot);
-            builder.record_slot(slot);
-            slot_types.insert(slot, inferred);
-            Ok(())
-        }
-        crate::StepPrimitive::Do { .. } => {
-            let output_slot = lower_top_level_do(
-                step,
-                index,
-                id,
-                next,
-                CanonicalScope {
-                    outputs,
-                    step_outputs,
-                    slot_types,
-                },
-                builder,
-            )?;
-            if let Some(slot) = output_slot {
-                step_outputs.insert(step.id.to_string(), slot);
-                // Do action outputs are dynamic; no static type inference
-            }
-            Ok(())
-        }
-        crate::StepPrimitive::Finish { result } => {
-            lower_canonical_finish(index, last, id, result, outputs, step_outputs, builder)
-        }
-        crate::StepPrimitive::ForEach {
-            input,
-            variable,
-            at_once,
-            body,
-        } => lower_bounded_for_each(
-            index,
-            id,
-            ForEachLowering {
-                input,
-                variable,
-                at_once: *at_once,
-                body,
-                next,
-                scope: CanonicalScope {
-                    outputs,
-                    step_outputs,
-                    slot_types,
-                },
-                inputs: for_each_inputs,
-                nested: BodyCtx {
-                    inputs: for_each_inputs,
-                    step_names: step_names.as_slice(),
-                    index,
-                },
-            },
-            builder,
-        )
-        .map(|_| ()),
-        crate::StepPrimitive::Together { branches } => {
-            lower_canonical_parallel(index, id, branches, next, builder)
-        }
-        crate::StepPrimitive::Collect {
-            source,
-            variable,
-            pages,
-            items,
-            body,
-            ..
-        } => {
-            let output = lower_bounded_collect(
-                index,
-                id,
-                CollectLowering {
-                    source,
-                    variable,
-                    pages: *pages,
-                    items: *items,
-                    body,
-                    next,
-                    scope: CanonicalScope {
-                        outputs,
-                        step_outputs,
-                        slot_types,
-                    },
-                    nested: BodyCtx {
-                        inputs: for_each_inputs,
-                        step_names: step_names.as_slice(),
-                        index,
-                    },
-                },
-                builder,
-            )?;
-            step_outputs.insert(step.id.to_string(), output.finish);
-            slot_types.insert(output.finish, ExprType::List);
-            Ok(())
-        }
-        crate::StepPrimitive::Aggregate {
-            input,
-            variable,
-            initial,
-            body,
-        } => {
-            let (slot, inferred) = lower_canonical_aggregate(
-                index,
-                id,
-                ReduceLowering {
-                    input,
-                    variable,
-                    initial,
-                    body,
-                    next,
-                    scope: CanonicalScope {
-                        outputs,
-                        step_outputs,
-                        slot_types,
-                    },
-                },
-                builder,
-            )?;
-            step_outputs.insert(step.id.to_string(), slot);
-            slot_types.insert(slot, inferred);
-            Ok(())
-        }
-        crate::StepPrimitive::Repeat { max_attempts, body } => lower_canonical_repeat(
-            index,
-            id,
-            RepeatLowering {
-                max_attempts: *max_attempts,
-                body,
-                next,
-                scope: CanonicalScope {
-                    outputs,
-                    step_outputs,
-                    slot_types,
-                },
-                inputs: for_each_inputs,
-                step_names: step_names.as_slice(),
-            },
-            builder,
-        )
-        .map(|_| ()),
-        crate::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
-            index,
-            id,
-            event.as_deref(),
-            timeout.as_deref(),
-            next,
-            CanonicalScope {
-                outputs,
-                step_outputs,
-                slot_types,
-            },
-            builder,
-        ),
-        crate::StepPrimitive::Ask { prompt, timeout } => lower_canonical_ask(
-            index,
-            id,
-            prompt,
-            timeout.as_deref(),
-            next,
-            CanonicalScope {
-                outputs,
-                step_outputs,
-                slot_types,
-            },
-            builder,
-        ),
-        crate::StepPrimitive::Choose {
-            branches,
-            otherwise,
-        } => super::part_14::lower_canonical_choose_in_scope(
-            id,
-            branches,
-            otherwise.as_deref(),
-            next,
-            super::part_14::ChooseScope {
-                index,
-                names: step_names.as_ref(),
-                bindings: CanonicalScope {
-                    outputs,
-                    step_outputs,
-                    slot_types,
-                },
-                inputs: for_each_inputs,
-            },
-            builder,
-        ),
-        other => Err(CompileErrors(vec![
-            CompileError::UnsupportedStepPrimitive {
-                step: index,
-                primitive: canonical_primitive_name(other),
-            },
-        ])),
+    let mut ctx = StepLowerCtx {
+        index,
+        last,
+        id,
+        next,
+        outputs,
+        step_outputs,
+        slot_types,
+        for_each_inputs,
     };
-
+    let result = dispatch_step(&mut ctx, step, step_names, builder);
     result?;
     extend_step_names_for_generated(step_names, step.id.as_str(), builder.nodes.len());
     Ok(())
+}
+
+fn dispatch_step(
+    ctx: &mut StepLowerCtx<'_>,
+    step: &crate::StepAst,
+    step_names: &mut [Box<str>],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    match &step.primitive {
+        crate::StepPrimitive::Set { .. } => lower_step_set(ctx, step, builder),
+        crate::StepPrimitive::Do { .. } => lower_step_do(ctx, step, builder),
+        crate::StepPrimitive::Finish { .. } => lower_step_finish(ctx, step, builder),
+        crate::StepPrimitive::ForEach { .. } => lower_step_for_each(ctx, step, step_names, builder),
+        crate::StepPrimitive::Together { .. } => lower_step_together(ctx, step, builder),
+        crate::StepPrimitive::Collect { .. } => lower_step_collect(ctx, step, step_names, builder),
+        crate::StepPrimitive::Aggregate { .. } => {
+            lower_step_aggregate(ctx, step, step_names, builder)
+        }
+        crate::StepPrimitive::Repeat { .. } => lower_step_repeat(ctx, step, step_names, builder),
+        crate::StepPrimitive::Wait { .. } => lower_step_wait(ctx, step, builder),
+        crate::StepPrimitive::Ask { .. } => lower_step_ask(ctx, step, builder),
+        crate::StepPrimitive::Choose { .. } => lower_step_choose(ctx, step, step_names, builder),
+        other => Err(unsupported_primitive(ctx.index, other)),
+    }
+}
+
+fn unsupported_primitive(step: usize, primitive: &crate::StepPrimitive) -> CompileErrors {
+    CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
+        step,
+        primitive: canonical_primitive_name(primitive),
+    }])
 }
 
 #[path = "canonical_finish.rs"]

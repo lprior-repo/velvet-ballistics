@@ -53,7 +53,7 @@ pub(super) fn visit_node_for_total_steps(
                 nodes,
                 *body,
                 *done,
-                u64::from(*limit),
+                u64::from(limit.get()),
                 visited,
                 node_count,
                 total,
@@ -68,7 +68,7 @@ pub(super) fn visit_node_for_total_steps(
                 nodes,
                 *body,
                 *done,
-                u64::from(*limit),
+                u64::from(limit.get()),
                 visited,
                 node_count,
                 total,
@@ -95,7 +95,7 @@ pub(super) fn visit_node_for_total_steps(
                 nodes,
                 *body,
                 *done,
-                u64::from(*max_attempts),
+                u64::from(max_attempts.get()),
                 visited,
                 node_count,
                 total,
@@ -125,13 +125,13 @@ pub(super) fn visit_node_for_total_steps(
             branches,
             otherwise,
         } => {
-            total = add_conditional_max_steps(branches, *otherwise, total, cache)?;
+            total = add_conditional_max_steps(branches, otherwise.step(), total, cache)?;
         }
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
         } => {
-            total = add_conditional_slot_max_steps(branches, *otherwise, total, cache)?;
+            total = add_conditional_slot_max_steps(branches, otherwise.step(), total, cache)?;
         }
         _ => {
             push_successor_targets(&node.kind, stack);

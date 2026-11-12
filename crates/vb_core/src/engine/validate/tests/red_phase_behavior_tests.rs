@@ -118,7 +118,7 @@ mod valid_workflow_graph_acceptance {
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -466,7 +466,7 @@ mod per_node_kind_invalid_configurations {
                 StepIdx::new(0),
                 CompiledNodeKind::ChooseSlot {
                     branches: vec![].into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,
@@ -486,7 +486,7 @@ mod per_node_kind_invalid_configurations {
                 StepIdx::new(0),
                 CompiledNodeKind::Choose {
                     branches: vec![].into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,
@@ -507,7 +507,7 @@ mod per_node_kind_invalid_configurations {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(99),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(0),
                     done: StepIdx::new(0),
                 },
@@ -560,7 +560,7 @@ mod per_node_kind_invalid_configurations {
             nodes: vec![node(
                 StepIdx::new(0),
                 CompiledNodeKind::TogetherJoin {
-                    branch_count: 0,
+                    branch_count: 0.into(),
                     accumulator: SlotIdx::new(0),
                 },
                 None,
@@ -585,7 +585,7 @@ mod per_node_kind_invalid_configurations {
             nodes: vec![node(
                 StepIdx::new(0),
                 CompiledNodeKind::RepeatStart {
-                    max_attempts: 0,
+                    max_attempts: 0.into(),
                     body: StepIdx::new(0),
                     done: StepIdx::new(0),
                 },
@@ -841,7 +841,7 @@ mod target_out_of_bounds {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(0),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(0),
                 done: StepIdx::new(99),
             },
@@ -1149,7 +1149,7 @@ mod complex_nested_workflow_validation {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(0),
-                limit,
+                limit: limit.into(),
                 body: StepIdx::new(body),
                 done: StepIdx::new(done),
             },
@@ -1168,7 +1168,7 @@ mod complex_nested_workflow_validation {
                     CompiledNodeKind::ForEachStart {
                         input: SlotIdx::new(0),
                         item_slot: SlotIdx::new(1),
-                        limit: 10,
+                        limit: 10.into(),
                         body: StepIdx::new(1),
                         done: StepIdx::new(3),
                     },
@@ -1213,7 +1213,7 @@ mod complex_nested_workflow_validation {
                 node(
                     StepIdx::new(1),
                     CompiledNodeKind::TogetherBranch {
-                        branch: 0,
+                        branch: 0.into(),
                         entry: StepIdx::new(3),
                         join: StepIdx::new(3),
                         accumulator: SlotIdx::new(0),
@@ -1224,7 +1224,7 @@ mod complex_nested_workflow_validation {
                 node(
                     StepIdx::new(2),
                     CompiledNodeKind::TogetherBranch {
-                        branch: 1,
+                        branch: 1.into(),
                         entry: StepIdx::new(3),
                         join: StepIdx::new(3),
                         accumulator: SlotIdx::new(1),
@@ -1235,7 +1235,7 @@ mod complex_nested_workflow_validation {
                 node(
                     StepIdx::new(3),
                     CompiledNodeKind::TogetherJoin {
-                        branch_count: 2,
+                        branch_count: 2.into(),
                         accumulator: SlotIdx::new(0),
                     },
                     None,
@@ -1265,7 +1265,7 @@ mod complex_nested_workflow_validation {
                             target: StepIdx::new(1),
                         }]
                         .into_boxed_slice(),
-                        otherwise: Some(StepIdx::new(2)),
+                        otherwise: Some(StepIdx::new(2)).into(),
                     },
                     None,
                     None,

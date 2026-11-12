@@ -31,7 +31,7 @@ pub(super) fn handle_retry_check(
         .checked_add(1)
         .ok_or(RuntimeEngineError::Core(
             EngineError::InternalInvariantViolation {
-                reason: "retry_attempt_overflow",
+                reason: "retry_attempt_overflow".into(),
             },
         ))?;
     run.write_slot(policy_slot, SlotValue::I64(i64::from(next_attempt)))

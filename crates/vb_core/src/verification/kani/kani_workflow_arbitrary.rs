@@ -17,8 +17,8 @@ use crate::ids::{
 use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::workflow::{
     AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
-    ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch,
-    WorkflowParts,
+    ExprBranch, ExprOp, ExprProgram, ExtraFields, InputSlotKind, Nullability, PathSegment,
+    Presence, ResourceContract, Secretness, SlotBranch, WorkflowParts,
 };
 
 /// Ordered optional i64 bounds with `min <= max` whenever both are present.
@@ -179,7 +179,7 @@ impl kani::Arbitrary for CompiledNodeKind {
             },
             7 => Self::Choose {
                 branches: bounded_expr_branches(),
-                otherwise: if kani::any::<bool>() {
+                otherwise: if kani::any::<bool>() {.into()
                     Some(StepIdx::new(kani::any()))
                 } else {
                     None
@@ -187,7 +187,7 @@ impl kani::Arbitrary for CompiledNodeKind {
             },
             8 => Self::ChooseSlot {
                 branches: bounded_slot_branches(),
-                otherwise: if kani::any::<bool>() {
+                otherwise: if kani::any::<bool>() {.into()
                     Some(StepIdx::new(kani::any()))
                 } else {
                     None
@@ -196,7 +196,7 @@ impl kani::Arbitrary for CompiledNodeKind {
             9 => Self::ForEachStart {
                 input: SlotIdx::new(kani::any()),
                 item_slot: SlotIdx::new(kani::any()),
-                limit: kani::any(),
+                limit: kani::any().into(),
                 body: StepIdx::new(kani::any()),
                 done: StepIdx::new(kani::any()),
             },
@@ -213,18 +213,18 @@ impl kani::Arbitrary for CompiledNodeKind {
                 join: StepIdx::new(kani::any()),
             },
             13 => Self::TogetherBranch {
-                branch: kani::any(),
+                branch: kani::any().into(),
                 entry: StepIdx::new(kani::any()),
                 join: StepIdx::new(kani::any()),
                 accumulator: SlotIdx::new(kani::any()),
             },
             14 => Self::TogetherJoin {
-                branch_count: kani::any(),
+                branch_count: kani::any().into(),
                 accumulator: SlotIdx::new(kani::any()),
             },
             15 => Self::CollectStart {
                 source: SlotIdx::new(kani::any()),
-                limit: kani::any(),
+                limit: kani::any().into(),
                 page_size: kani::any(),
                 body: StepIdx::new(kani::any()),
                 done: StepIdx::new(kani::any()),
@@ -259,7 +259,7 @@ impl kani::Arbitrary for CompiledNodeKind {
                 accumulator: SlotIdx::new(kani::any()),
             },
             22 => Self::RepeatStart {
-                max_attempts: kani::any(),
+                max_attempts: kani::any().into(),
                 body: StepIdx::new(kani::any()),
                 done: StepIdx::new(kani::any()),
             },
@@ -280,7 +280,7 @@ impl kani::Arbitrary for CompiledNodeKind {
             },
             27 => Self::WaitEvent {
                 event: SlotIdx::new(kani::any()),
-                timeout_slot: if kani::any::<bool>() {
+                timeout_slot: if kani::any::<bool>() {.into()
                     Some(SlotIdx::new(kani::any()))
                 } else {
                     None
@@ -288,7 +288,7 @@ impl kani::Arbitrary for CompiledNodeKind {
             },
             28 => Self::Ask {
                 prompt: SlotIdx::new(kani::any()),
-                timeout_slot: if kani::any::<bool>() {
+                timeout_slot: if kani::any::<bool>() {.into()
                     Some(SlotIdx::new(kani::any()))
                 } else {
                     None
@@ -305,7 +305,7 @@ impl kani::Arbitrary for CompiledNodeKind {
             31 => Self::ErrorHandler {
                 body: StepIdx::new(kani::any()),
                 handler: StepIdx::new(kani::any()),
-                error_slot: if kani::any::<bool>() {
+                error_slot: if kani::any::<bool>() {.into()
                     Some(SlotIdx::new(kani::any()))
                 } else {
                     None
@@ -396,16 +396,16 @@ impl kani::Arbitrary for WorkflowParts {
                     _ => InputSlotKind::Any,
                 },
                 constraint: CompiledInputConstraint {
-                    optional: kani::any(),
-                    nullable: kani::any(),
+                    presence: Presence::from_bool(kani::any::<bool>()),
+                    nullability: Nullability::from_bool(kani::any::<bool>()),
                     default_value: None,
                     min,
                     max,
                     min_length,
                     max_length,
                     element: None,
-                    allow_extra: None,
-                    secret: kani::any(),
+                    extra: ExtraFields::Unspecified,
+                    secretness: Secretness::from_bool(kani::any::<bool>()),
                 },
             }
         }));

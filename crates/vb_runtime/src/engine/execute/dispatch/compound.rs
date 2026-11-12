@@ -40,7 +40,7 @@ pub(super) fn dispatch_collect<P: BodyEntryPolicy>(
             store,
             collect_states,
             *source,
-            *limit,
+            limit.get(),
             *page_size,
             *body,
             *done,
@@ -126,7 +126,7 @@ pub(super) fn dispatch_repeat<P: BodyEntryPolicy>(
             max_attempts,
             body,
             done,
-        } => handle_repeat_start(run, *max_attempts, *body, *done, node.output.slot()),
+        } => handle_repeat_start(run, max_attempts.get(), *body, *done, node.output.slot()),
         CompiledNodeKind::RepeatAttempt {
             attempt_slot,
             body,

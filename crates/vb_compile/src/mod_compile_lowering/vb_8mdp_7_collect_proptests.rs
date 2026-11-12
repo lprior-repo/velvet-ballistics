@@ -5,6 +5,7 @@
 //! strategies and scope plumbing live there.
 
 use proptest::prelude::*;
+use vb_core::ids::FanoutLimit;
 use vb_core::workflow::CompiledNodeKind;
 
 use super::super::SlotCompiler;
@@ -131,7 +132,7 @@ proptest! {
                 CompiledNodeKind::CollectStart { limit, page_size, .. } => {
                     match input.pages.unwrap_or(1).checked_mul(input.items.unwrap_or(1)) {
                         Some(expected) => {
-                            prop_assert_eq!(*limit, expected,
+                            prop_assert_eq!(*limit, FanoutLimit::new(expected),
                                 "CollectStart.limit must equal pages.unwrap_or(1) * items.unwrap_or(1)");
                             prop_assert_eq!(*page_size, input.items.unwrap_or(1),
                                 "CollectStart.page_size must equal items.unwrap_or(1)");

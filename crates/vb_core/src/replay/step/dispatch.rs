@@ -58,11 +58,11 @@ pub fn replay_step_with_collect(
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
-        } => super::super::choose::replay_choose_slot(run, branches, *otherwise),
+        } => super::super::choose::replay_choose_slot(run, branches, otherwise.step()),
         CompiledNodeKind::Choose {
             branches,
             otherwise,
-        } => super::super::choose::replay_choose_expr(plan, run, store, branches, *otherwise),
+        } => super::super::choose::replay_choose_expr(plan, run, store, branches, otherwise.step()),
         CompiledNodeKind::CollectStart {
             source,
             limit,
@@ -76,7 +76,7 @@ pub fn replay_step_with_collect(
             node,
             ReplayCollectStartArgs {
                 source: *source,
-                limit: *limit,
+                limit: limit.get(),
                 page_size: *page_size,
                 body: *body,
                 done: *done,
@@ -101,7 +101,7 @@ pub fn replay_step_with_collect(
             limit,
             body,
             done,
-        } => replay_for_each_start(run, store, node, *input, *item_slot, *limit, *body, *done),
+        } => replay_for_each_start(run, store, node, *input, *item_slot, limit.get(), *body, *done),
         CompiledNodeKind::ForEachNext {
             iterator_slot,
             body,
@@ -116,11 +116,11 @@ pub fn replay_step_with_collect(
             entry,
             accumulator,
             ..
-        } => replay_together_branch(run, store, node, *branch, *entry, *accumulator),
+        } => replay_together_branch(run, store, node, branch.get(), *entry, *accumulator),
         CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
-        } => replay_together_join(run, store, node, *branch_count, *accumulator),
+        } => replay_together_join(run, store, node, branch_count.get(), *accumulator),
         CompiledNodeKind::ReduceStart {
             input,
             accumulator,
@@ -149,7 +149,7 @@ pub fn replay_step_with_collect(
         }
         CompiledNodeKind::RepeatStart {
             max_attempts, body, ..
-        } => replay_repeat_start(run, node, *max_attempts, *body),
+        } => replay_repeat_start(run, node, max_attempts.get(), *body),
         CompiledNodeKind::RepeatAttempt {
             attempt_slot, body, ..
         } => replay_repeat_attempt(run, *attempt_slot, *body),

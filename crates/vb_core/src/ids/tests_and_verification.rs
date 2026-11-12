@@ -475,7 +475,8 @@ fn max_attempts_zero_returns_invalid_repeat_state() {
     match err {
         super::super::errors::EngineError::InvalidRepeatState { reason } => {
             assert_eq!(
-                reason, "max_attempts_cannot_be_zero",
+                reason.as_str(),
+                "max_attempts_cannot_be_zero",
                 "reason must be stable for downstream matching",
             );
         }

@@ -235,7 +235,7 @@ fn given_action_wait_or_ask_suspension_when_drive_returns_then_signal_is_not_ste
             one_step_workflow(
                 CompiledNodeKind::WaitEvent {
                     event: SlotIdx::new(0),
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
                 1,
             )?,
@@ -248,7 +248,7 @@ fn given_action_wait_or_ask_suspension_when_drive_returns_then_signal_is_not_ste
             one_step_workflow(
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
                 1,
             )?,

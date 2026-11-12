@@ -50,13 +50,13 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
                 branches,
                 otherwise,
             } => {
-                validate_branch_targets(branches, *otherwise, node_count)?;
+                validate_branch_targets(branches, otherwise.step(), node_count)?;
             }
             CompiledNodeKind::ChooseSlot {
                 branches,
                 otherwise,
             } => {
-                validate_slot_branch_targets(branches, *otherwise, node_count)?;
+                validate_slot_branch_targets(branches, otherwise.step(), node_count)?;
             }
             CompiledNodeKind::ForEachStart { body, done, .. }
             | CompiledNodeKind::ForEachNext { body, done, .. }

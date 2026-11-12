@@ -475,7 +475,7 @@ mod trigger_condition_evaluation {
                 StepIdx::new(0),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
                 None,
                 None,
@@ -831,7 +831,7 @@ mod state_transitions {
         assert!(result.is_err());
         match result {
             Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
+                assert_eq!(reason.as_str(), "invalid_state_transition");
             }
             Err(other) => {
                 return Err(format!(
@@ -859,7 +859,7 @@ mod state_transitions {
         assert!(result.is_err());
         match result {
             Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
+                assert_eq!(reason.as_str(), "invalid_state_transition");
             }
             Err(other) => {
                 return Err(format!(
@@ -887,7 +887,7 @@ mod state_transitions {
         assert!(result.is_err());
         match result {
             Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
+                assert_eq!(reason.as_str(), "invalid_state_transition");
             }
             Err(other) => {
                 return Err(format!(
@@ -915,7 +915,7 @@ mod state_transitions {
         assert!(result.is_err());
         match result {
             Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
+                assert_eq!(reason.as_str(), "invalid_state_transition");
             }
             Err(other) => {
                 return Err(format!(

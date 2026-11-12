@@ -167,23 +167,23 @@ fn update_workflow_metrics(
             limit, page_size, ..
         } => {
             let per_page = u64::from(*page_size).max(1);
-            let pages = u64::from(*limit).div_ceil(per_page);
+            let pages = u64::from(limit.get()).div_ceil(per_page);
             let pages = u32::try_from(pages)
                 .map_err(|_| BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
             *max_gather_pages = max_gather_pages
                 .checked_add(pages)
                 .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
             *max_gather_items = max_gather_items
-                .checked_add(*limit)
+                .checked_add(limit.get())
                 .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::ForEachStart { limit, .. } => {
             *max_for_each_iterations = max_for_each_iterations
-                .checked_add(*limit)
+                .checked_add(limit.get())
                 .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::RepeatStart { max_attempts, .. } => {
-            *max_repeat_attempts = (*max_repeat_attempts).max(*max_attempts);
+            *max_repeat_attempts = (*max_repeat_attempts).max(max_attempts.get());
         }
         CompiledNodeKind::WaitUntil { .. }
         | CompiledNodeKind::WaitEvent { .. }

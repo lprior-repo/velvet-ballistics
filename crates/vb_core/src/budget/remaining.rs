@@ -1,5 +1,9 @@
 #![forbid(unsafe_code)]
 //! Remaining-budget counters for one admitted run.
+//!
+//! `ReleaseAboveLimit` carries its resource as `&'static str` by decision
+//! (policy-driven dimension keys; see the open-registry rationale in
+//! `crate::errors`).
 
 use super::AggregateResourceBudget;
 use thiserror::Error;

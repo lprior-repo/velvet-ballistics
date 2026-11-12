@@ -39,7 +39,7 @@
 
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{RunId, SlotIdx, StepIdx};
-use crate::value::{SlotValue, Taint};
+use crate::value::{SlotCell, SlotValue, Taint};
 
 mod checkpoint;
 pub use checkpoint::{CheckpointStepState, RunFrameCheckpointV1, RunFrameCheckpointV1Error};
@@ -111,8 +111,7 @@ pub struct RunFrame {
     max_parallel_in_flight: u16,
     parallel_in_flight: u16,
     states: Box<[StepState]>,
-    slots: Box<[Option<SlotValue>]>,
-    taint: Box<[Taint]>,
+    cells: Box<[SlotCell]>,
 }
 
 include!("frame/parts/impl_001_construct.rs");

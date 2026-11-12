@@ -61,10 +61,10 @@ proptest! {
                 if let Some(node) = workflow.node(StepIdx::new(i)) {
                     if let CompiledNodeKind::ChooseSlot { otherwise, .. } = &node.kind {
                         found_choose = true;
-                        prop_assert!(otherwise.is_some(), "otherwise must be set");
-                        if let Some(target) = otherwise {
+                        prop_assert!(otherwise.step().is_some(), "otherwise must be set");
+                        if let Some(target) = otherwise.step() {
                             prop_assert!(
-                                workflow.node(*target).is_some(),
+                                workflow.node(target).is_some(),
                                 "otherwise target must be a valid node"
                             );
                         }

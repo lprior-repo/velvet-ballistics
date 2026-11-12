@@ -156,7 +156,7 @@ pub fn resume_action_outcome(
                         .checked_add(1)
                         .ok_or(RuntimeEngineError::Core(
                             EngineError::InternalInvariantViolation {
-                                reason: "seq_overflow_on_retry",
+                                reason: "seq_overflow_on_retry".into(),
                             },
                         ))?;
                 let next_attempt =
@@ -165,7 +165,7 @@ pub fn resume_action_outcome(
                         .checked_add(1)
                         .ok_or(RuntimeEngineError::Core(
                             EngineError::InternalInvariantViolation {
-                                reason: "attempt_overflow_on_retry",
+                                reason: "attempt_overflow_on_retry".into(),
                             },
                         ))?;
                 let idempotency_key = compute_idempotency_key(
@@ -193,7 +193,7 @@ pub fn resume_action_outcome(
             } else {
                 Err(RuntimeEngineError::Core(
                     EngineError::UnsupportedPrimitive {
-                        primitive: "action_failed_non_retryable",
+                        primitive: "action_failed_non_retryable".into(),
                     },
                 ))
             }
@@ -202,7 +202,7 @@ pub fn resume_action_outcome(
         #[allow(unreachable_code)]
         _ => Err(RuntimeEngineError::Core(
             EngineError::InternalInvariantViolation {
-                reason: "unknown_action_outcome",
+                reason: "unknown_action_outcome".into(),
             },
         )),
     }

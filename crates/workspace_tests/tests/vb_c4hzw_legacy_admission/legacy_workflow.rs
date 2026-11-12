@@ -18,7 +18,7 @@ pub(super) fn legacy_ask_action_workflow(action: ActionId) -> Result<CompiledWor
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
             ),
             node(

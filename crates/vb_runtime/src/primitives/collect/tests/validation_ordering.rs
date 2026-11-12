@@ -546,7 +546,7 @@ fn collect_next_returns_cursor_beyond_source_error_when_cursor_is_one_above_sour
     assert_eq!(
         collect_next(&mut run, &mut store, &mut states, collector, body, done),
         Err(EngineError::InternalInvariantViolation {
-            reason: "collect cursor beyond source items",
+            reason: "collect cursor beyond source items".into(),
         })
     );
     Ok(())

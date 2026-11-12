@@ -339,7 +339,7 @@ fn state_transition_succeeded_terminal_rejects_running() {
     assert_eq!(
         result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
 }
@@ -357,7 +357,7 @@ fn state_transition_failed_terminal_rejects_succeeded() {
     assert_eq!(
         result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
 }
@@ -375,7 +375,7 @@ fn state_transition_cancelled_terminal_rejects_pending() {
     assert_eq!(
         result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
 }

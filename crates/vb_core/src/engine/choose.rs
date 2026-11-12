@@ -30,14 +30,14 @@ fn choose_expr_target(
         let branch = branches
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "choose expr branch index checked by loop bound",
+                reason: "choose expr branch index checked by loop bound".into(),
             })?;
         if let Some(target) = choose_expr_branch_target(plan, run, store, *branch)? {
             return Ok(target);
         }
         index = index.checked_add(1).ok_or({
             EngineError::InternalInvariantViolation {
-                reason: "choose expr branch index overflow",
+                reason: "choose expr branch index overflow".into(),
             }
         })?;
     }
@@ -82,14 +82,14 @@ fn choose_slot_target(
         let branch = branches
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "choose slot branch index checked by loop bound",
+                reason: "choose slot branch index checked by loop bound".into(),
             })?;
         if let Some(target) = choose_slot_branch_target(run, *branch)? {
             return Ok(target);
         }
         index = index.checked_add(1).ok_or({
             EngineError::InternalInvariantViolation {
-                reason: "choose slot branch index overflow",
+                reason: "choose slot branch index overflow".into(),
             }
         })?;
     }

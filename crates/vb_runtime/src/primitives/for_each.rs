@@ -49,7 +49,7 @@ pub fn for_each_start(
         .first()
         .copied()
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "for_each item_count checked nonzero",
+            reason: "for_each item_count checked nonzero".into(),
         })?;
     run.write_slot_with_taint(item_slot, first, input_taint)?;
     let state = build_iterator_state(list_id, 1)?;
@@ -83,13 +83,13 @@ pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
         .get(cursor)
         .copied()
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "for_each cursor bounds-checked above",
+            reason: "for_each cursor bounds-checked above".into(),
         })?;
     run.write_slot_with_taint(item_output, item, iter_taint)?;
     let next_cursor = cursor
         .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "for_each cursor overflow",
+            reason: "for_each cursor overflow".into(),
         })?;
     let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store.insert_list(next_state)?;

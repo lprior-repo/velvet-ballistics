@@ -303,7 +303,7 @@ mod tests {
             StepIdx::new(2),
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
-                timeout_slot: Some(SlotIdx::new(1)),
+                timeout_slot: Some(SlotIdx::new(1)).into(),
             },
             None,
             Some(StepIdx::new(3)),
@@ -355,7 +355,7 @@ mod tests {
             StepIdx::new(1),
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             None,
             Some(StepIdx::new(2)),

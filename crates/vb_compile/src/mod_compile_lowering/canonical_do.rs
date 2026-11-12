@@ -2,7 +2,7 @@
 //! Do (action) node lowering with checked numeric ActionId and direct slot input.
 
 use super::CanonicalScope;
-use super::canonical_references::resolve_slot_reference;
+use super::canonical_references::resolve_slot_reference_scoped;
 use super::part_11::slot_idx_for_step;
 use crate::CompileError;
 use crate::mod_compile_errors::CompileErrors;
@@ -51,6 +51,5 @@ fn resolve_action_id(action: &str, step_index: usize) -> Result<ActionId, Compil
 }
 
 fn resolve_do_input(input_expr: &str, scope: CanonicalScope<'_>) -> Result<SlotIdx, CompileErrors> {
-    resolve_slot_reference(input_expr, scope.outputs, scope.step_outputs)
-        .map_err(|e| CompileErrors(vec![e]))
+    resolve_slot_reference_scoped(input_expr, scope).map_err(|e| CompileErrors(vec![e]))
 }

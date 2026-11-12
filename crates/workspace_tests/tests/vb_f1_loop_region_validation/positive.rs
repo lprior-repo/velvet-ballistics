@@ -21,7 +21,7 @@ fn collect_legacy_source_slot_fallback_is_a_real_owner() -> TestResult {
     owner.output = NodeOutput::Discard;
     owner.kind = CompiledNodeKind::CollectStart {
         source: slot(1),
-        limit: 2,
+        limit: 2.into(),
         page_size: 1,
         body: step(2),
         done: step(5),
@@ -103,13 +103,13 @@ fn together_topology_inside_region_is_not_activation_permission() -> TestResult 
         join: step(6),
     };
     edit(&mut parts, 3)?.kind = CompiledNodeKind::TogetherBranch {
-        branch: 0,
+        branch: 0.into(),
         entry: step(4),
         join: step(6),
         accumulator: slot(2),
     };
     edit(&mut parts, 6)?.kind = CompiledNodeKind::TogetherJoin {
-        branch_count: 1,
+        branch_count: 1.into(),
         accumulator: slot(2),
     };
     assert_region(&accept(parts)?, 1, 2, 7, 8)
@@ -127,11 +127,11 @@ fn asynchronous_body_continuations_are_checked_without_blanket_rejection() -> Te
         },
         CompiledNodeKind::WaitEvent {
             event: slot(0),
-            timeout_slot: Some(slot(2)),
+            timeout_slot: Some(slot(2)).into(),
         },
         CompiledNodeKind::Ask {
             prompt: slot(0),
-            timeout_slot: Some(slot(2)),
+            timeout_slot: Some(slot(2)).into(),
         },
         CompiledNodeKind::AskResume { answer: slot(3) },
     ];
