@@ -22,10 +22,9 @@
 // WHY WEAK (NOT STRONG)
 // ----------------------------------------------------------------------------
 // A STRONG binding would be `#[path =
-// "../../crates/vb_core/src/value.rs"]` directly, but that file's
-// surrounding module pulls in `serde::{Deserialize, Deserializer,
-// Serialize, Serializer}` and `crate::value_store::ValueStore` — proc
-// macros and inter-module dependencies that Verus 0.2026.05.05 cannot
+// "../../crates/vb_core/src/value/taint.rs"]` directly, but that file
+// carries `serde` derives and imports `super::slot::SlotValue` — proc
+// macros and an inter-module dependency that Verus 0.2026.05.05 cannot
 // resolve in single-file mode. The previous binding used
 // `crates/vb_core/src/proof_kernels/taint.rs` as a "STRONG by
 // file-path" stand-in, but that file is a proof-kernel substitute

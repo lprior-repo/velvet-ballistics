@@ -136,7 +136,8 @@ impl SlotIdx {
 }
 
 // ============================================================================
-// Slot value types — mirrors of `crates/vb_core/src/value.rs`
+// Slot value types — mirrors of `crates/vb_core/src/value/taint.rs`
+// and `crates/vb_core/src/value/slot.rs`
 // ============================================================================
 /// Mirror of the `Taint` discriminant set at `crates/vb_core/src/value/taint.rs:10-21`.
 /// Discriminant order mirrors the production `#[repr(u8)]` ordering
