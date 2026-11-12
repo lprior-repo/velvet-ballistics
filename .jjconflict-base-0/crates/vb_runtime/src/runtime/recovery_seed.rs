@@ -208,6 +208,21 @@ impl Runtime {
         journal: std::sync::Arc<vb_storage::FjallJournal>,
         artifact_digest: WorkflowDigest,
     ) -> RuntimeResult<RecoveryArtifactWorkflow> {
+        let artifact = self.load_recovery_artifact(journal, artifact_digest)?;
+        let workflow =
+            vb_storage::decode_compiled_ir(&artifact.ir, Some(artifact.artifact_version)).map_err(
+                |error| RuntimeError::Recovery {
+                    error: error.to_string(),
+                },
+            )?;
+        Ok(RecoveryArtifactWorkflow { artifact, workflow })
+    }
+
+    fn load_recovery_artifact(
+        &self,
+        journal: std::sync::Arc<vb_storage::FjallJournal>,
+        artifact_digest: WorkflowDigest,
+    ) -> RuntimeResult<vb_storage::admission::AcceptedArtifact> {
         use crate::admission::AcceptedArtifactStore;
 
         let store = crate::admission::StorageArtifactStore::with_catalog(
@@ -217,21 +232,17 @@ impl Runtime {
         let artifact = store
             .load_accepted_artifact(artifact_digest)
             .map_err(|error| RuntimeError::RecoveryCannotResume {
-                reason: match error {
-                    crate::admission::ArtifactEnvelopeError::ArtifactNotFound { .. } => {
-                        String::from("artifact_missing")
-                    }
-                    _ => String::from("artifact_decode_failed"),
-                },
+                reason: Self::classify_artifact_error(error),
             })?;
-        let parts = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
-            .map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })?;
-        let workflow =
-            CompiledWorkflow::try_from_parts(parts).map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })?;
-        Ok(RecoveryArtifactWorkflow { artifact, workflow })
+        Ok(artifact)
+    }
+
+    fn classify_artifact_error(error: crate::admission::ArtifactEnvelopeError) -> String {
+        match error {
+            crate::admission::ArtifactEnvelopeError::ArtifactNotFound { .. } => {
+                String::from("artifact_missing")
+            }
+            _ => String::from("artifact_decode_failed"),
+        }
     }
 }
