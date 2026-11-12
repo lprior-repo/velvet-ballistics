@@ -1,49 +1,63 @@
-/// Expression eval failure at step N must report step N, not StepIdx::ZERO.
-#[test]
-fn eval_replay_op_uses_actual_step_index() -> Result<(), String> {
-    let expr = make_expr_program(vec![
+fn context_overflow_expression() -> Result<ExprProgram, String> {
+    make_expr_program(vec![
         ExprOp::LoadConst(ConstIdx::new(0)),
         ExprOp::LoadConst(ConstIdx::new(1)),
         ExprOp::Add,
     ])
-    .map_err(|e| format!("make_expr_program: {}", e))?;
+    .map_err(|e| format!("make_expr_program: {}", e))
+}
 
-    let plan = make_plan(
-        vec![
-            node(
-                StepIdx::new(0),
-                CompiledNodeKind::Nop,
-                None,
-                Some(StepIdx::new(1)),
-            ),
-            node(
-                StepIdx::new(1),
-                CompiledNodeKind::EvalExpr {
-                    expr: ExprIdx::new(0),
-                },
-                None,
-                Some(StepIdx::new(2)),
-            ),
-            node(
-                StepIdx::new(2),
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
-                },
-                None,
-                None,
-            ),
-        ],
+fn context_overflow_eval_node() -> CompiledNode {
+    node(
+        StepIdx::new(1),
+        CompiledNodeKind::EvalExpr {
+            expr: ExprIdx::new(0),
+        },
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(2)),
+    )
+}
+
+fn context_overflow_nodes() -> Vec<CompiledNode> {
+    vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        context_overflow_eval_node(),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+            None,
+        ),
+    ]
+}
+
+fn context_overflow_plan() -> Result<crate::workflow::CompiledWorkflow, String> {
+    let expr = context_overflow_expression()?;
+    make_plan(
+        context_overflow_nodes(),
         vec![ConstValue::I64(i64::MAX), ConstValue::I64(1)],
         vec![expr],
         vec![],
     )
-    .map_err(|e| format!("make_plan: {}", e))?;
+    .map_err(|e| format!("make_plan: {}", e))
+}
 
+fn context_overflow_run() -> Result<RunFrame, String> {
     let mut run = make_frame(3).map_err(|e| format!("make_frame: {}", e))?;
     run.set_pc(StepIdx::new(1))
         .map_err(|e| format!("set_pc: {}", e))?;
 
-    let mut store = ValueStore::new();
+    Ok(run)
+}
+
+fn context_overflow_stack() -> Result<ReplayExprStack, String> {
     let mut stack = ReplayExprStack::new(4).map_err(|e| format!("stack new: {:?}", e))?;
     stack
         .push(SlotValue::I64(i64::MAX))
@@ -51,6 +65,16 @@ fn eval_replay_op_uses_actual_step_index() -> Result<(), String> {
     stack
         .push(SlotValue::I64(1))
         .map_err(|e| format!("push: {:?}", e))?;
+    Ok(stack)
+}
+
+/// Expression eval failure at step N must report step N, not StepIdx::ZERO.
+#[test]
+fn eval_replay_op_uses_actual_step_index() -> Result<(), String> {
+    let plan = context_overflow_plan()?;
+    let run = context_overflow_run()?;
+    let mut store = ValueStore::new();
+    let mut stack = context_overflow_stack()?;
     let mut taint = Taint::Clean;
 
     let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);

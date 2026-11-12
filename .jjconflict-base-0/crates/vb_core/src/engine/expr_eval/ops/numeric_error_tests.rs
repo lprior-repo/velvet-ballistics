@@ -72,7 +72,7 @@ fn check_type_mismatch(
     left: ConstValue,
     right: ConstValue,
 ) -> Result<(), String> {
-    let signal = super::drive_numeric_expr(super::binary_const_ops(op), vec![left, right], vec![]);
+    let signal = numeric_type_mismatch_signal(op, left, right);
     match signal {
         Err(EngineError::TypeMismatch { expected, found }) => {
             if expected != "number" || found != "boolean" {
@@ -84,6 +84,25 @@ fn check_type_mismatch(
         }
     }
     Ok(())
+}
+
+fn numeric_type_mismatch_signal(
+    op: ExprOp,
+    left: ConstValue,
+    right: ConstValue,
+) -> Result<crate::EngineSignal, EngineError> {
+    super::drive_numeric_expr(
+        vec![
+            ExprOp::LoadSlot(crate::ids::SlotIdx::new(0)),
+            ExprOp::LoadSlot(crate::ids::SlotIdx::new(1)),
+            op,
+        ],
+        vec![],
+        vec![
+            (left.to_slot_value()?, Taint::Clean),
+            (right.to_slot_value()?, Taint::Clean),
+        ],
+    )
 }
 
 fn check_integer_division_zero() -> Result<(), String> {

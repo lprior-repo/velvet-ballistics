@@ -1,0 +1,11 @@
+# Native constructor fixture migration
+
+This successor retains the original addendum as diagnostic history and records the actual six-file fixture fence authorized by the caller sweep. Base is 57a9fe14551070d824c8b44c3c8a3b8a8f7b3142; diagnostic source is frozen at 1487715e8a26e1452a3180a45d88c3f3046b4786. No production validation, runtime dispatch, source metadata, stack or proof source is changed.
+
+Numeric fixtures declare exactly their existing LoadSlot inputs as required Any roots; only the type-mismatch setup moves the same Bool/I64 literal operands from statically rejected constants to initialized dynamic slots. All original arithmetic, comparison, taint, error variants and messages remain. numeric_error_tests.rs is the additional caller-specific helper path.
+
+Contains Hot declares its actual receiver and needle roots. Contains replay uses its own two-input validated parts instead of changing shared make_plan admission for other callers. Validated Has controls declare their actual object root while malformed-stack constructor/runtime oracles remain unchanged. The replay nonzero-PC fixture supplies the required EvalExpr output destination and extracts bounded expression, node, plan, frame and stack helpers; context_tests.rs is the additional caller-specific path. Exact original PC/error matches remain.
+
+Focused diagnostic command selected 40 cases, 17 passed and 23 failed with exact SlotFlow errors, exit 101. After fixture migration the identical 40 registered identities yield 38 passed and two actual runtime Contains payload failures, exit 101. Null returns text/null instead of required list/null; Symbol receiver with numeric needle returns text/number instead of required list/symbol. These assertions are intentionally retained; parent owns production Contains. Shared numeric/replay/C2 control command passes 161, exit 0. This is not full-core, Kani or canonical CI acceptance.
+
+Only the six recorded Rust fixture files and these own addenda belong to this patch. Frozen prior Kani/test candidates and rejected local source outputs are retained. Local drafts with invented fields, forbidden expect/panic or non-Rust source were not applied; bounded integration uses actual source APIs and preserving diffs. Evidence is under target/native-fixture-r466; parent owns composition and independent reviews.

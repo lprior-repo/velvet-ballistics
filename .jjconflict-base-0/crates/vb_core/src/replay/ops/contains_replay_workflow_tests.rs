@@ -52,17 +52,46 @@ fn contains_replay_finish_node(step: StepIdx) -> CompiledNode {
     )
 }
 
+fn contains_replay_input(slot: SlotIdx) -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot,
+        kind: InputSlotKind::Any,
+        constraint: CompiledInputConstraint::required(),
+    }
+}
+
+fn contains_replay_parts(expression: ExprProgram) -> WorkflowParts {
+    WorkflowParts {
+        semantic_source_identity: None,
+        source_metadata: None,
+        input_slots: Box::new([
+            contains_replay_input(SlotIdx::new(0)),
+            contains_replay_input(SlotIdx::new(1)),
+        ]),
+        name: "test_ops".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        nodes: contains_replay_workflow_nodes(),
+        expressions: Box::new([expression]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 8,
+        symbols_count: 1,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
+
 fn contains_replay_workflow() -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     let expression = make_expr_program(vec![
         ExprOp::LoadSlot(SlotIdx::new(0)),
         ExprOp::LoadSlot(SlotIdx::new(1)),
         ExprOp::Contains,
     ])?;
-    make_plan(
-        contains_replay_workflow_nodes().into_vec(),
-        vec![],
-        vec![expression],
-        vec![],
+    crate::workflow::CompiledWorkflow::try_from_parts(contains_replay_parts(expression)).map_err(
+        |_| CoreError::InvalidCompiledWorkflow {
+            reason: "test workflow validation failed",
+        },
     )
 }
 

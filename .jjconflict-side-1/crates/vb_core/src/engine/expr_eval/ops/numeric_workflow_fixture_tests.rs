@@ -16,6 +16,27 @@ fn numeric_slot_count(slots: &[(SlotValue, Taint)]) -> Result<u16, EngineError> 
     }
 }
 
+fn numeric_input_slots(expr: &ExprProgram) -> Box<[crate::workflow::CompiledInputSlot]> {
+    let mut slots: Vec<_> = expr
+        .ops
+        .iter()
+        .filter_map(|op| match op {
+            ExprOp::LoadSlot(slot) => Some(*slot),
+            _ => None,
+        })
+        .collect();
+    slots.sort_unstable();
+    slots.dedup();
+    slots
+        .into_iter()
+        .map(|slot| crate::workflow::CompiledInputSlot {
+            slot,
+            kind: crate::workflow::InputSlotKind::Any,
+            constraint: crate::workflow::CompiledInputConstraint::required(),
+        })
+        .collect()
+}
+
 fn numeric_eval_node() -> crate::workflow::CompiledNode {
     node(
         StepIdx::new(0),
@@ -46,7 +67,7 @@ fn numeric_workflow_parts(
     WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
-        input_slots: Box::new([]),
+        input_slots: numeric_input_slots(&expr),
         name: Box::<str>::from("numeric_execution_test"),
         digest: WorkflowDigest::from_bytes([0xFA; 32]),
         nodes: vec![numeric_eval_node(), numeric_finish_node()].into_boxed_slice(),
@@ -67,11 +88,8 @@ fn numeric_workflow(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, EngineError> {
     CompiledWorkflow::try_from_parts(numeric_workflow_parts(expr, constants, slot_count)).map_err(
-        |error| {
-            eprintln!("numeric workflow construction error: {error:?}");
-            EngineError::InternalInvariantViolation {
-                reason: "workflow construction failed".into(),
-            }
+        |_| EngineError::InternalInvariantViolation {
+            reason: "workflow construction failed".into(),
         },
     )
 }

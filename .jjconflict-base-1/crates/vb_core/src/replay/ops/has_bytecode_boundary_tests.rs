@@ -87,11 +87,19 @@ fn has_bytecode_finish_node(step: StepIdx) -> crate::workflow::CompiledNode {
     )
 }
 
+fn has_bytecode_inputs() -> Box<[CompiledInputSlot]> {
+    Box::new([CompiledInputSlot {
+        slot: SlotIdx::new(0),
+        kind: InputSlotKind::Any,
+        constraint: CompiledInputConstraint::required(),
+    }])
+}
+
 fn has_bytecode_parts(expression: ExprProgram, key: SymbolId) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
-        input_slots: Box::new([]),
+        input_slots: has_bytecode_inputs(),
         name: "has_bytecode_boundary".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: has_bytecode_nodes(),
@@ -144,7 +152,6 @@ fn checked_has_plan(
     key: SymbolId,
 ) -> Result<crate::workflow::CompiledWorkflow, crate::workflow::WorkflowError> {
     crate::workflow::CompiledWorkflow::try_from_parts(has_bytecode_parts(valid_has_program(), key))
-        .inspect_err(|error| eprintln!("Has control construction error: {error:?}"))
 }
 
 #[cfg(feature = "test-util")]

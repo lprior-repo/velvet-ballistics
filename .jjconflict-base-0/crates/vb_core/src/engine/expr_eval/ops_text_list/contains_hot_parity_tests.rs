@@ -52,12 +52,22 @@ fn contains_hot_nodes() -> Box<[crate::workflow::CompiledNode]> {
     .into_boxed_slice()
 }
 
-fn contains_hot_plan() -> Result<CompiledWorkflow, crate::errors::CoreError> {
-    let expression = contains_hot_program()?;
-    CompiledWorkflow::try_from_parts(WorkflowParts {
+fn contains_hot_input(slot: SlotIdx) -> crate::workflow::CompiledInputSlot {
+    crate::workflow::CompiledInputSlot {
+        slot,
+        kind: crate::workflow::InputSlotKind::Any,
+        constraint: crate::workflow::CompiledInputConstraint::required(),
+    }
+}
+
+fn contains_hot_parts(expression: ExprProgram) -> WorkflowParts {
+    WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
-        input_slots: Box::new([]),
+        input_slots: Box::new([
+            contains_hot_input(SlotIdx::new(0)),
+            contains_hot_input(SlotIdx::new(1)),
+        ]),
         name: "contains_hot_test".into(),
         digest: WorkflowDigest::from_bytes([0xA5; 32]),
         nodes: contains_hot_nodes(),
@@ -69,10 +79,15 @@ fn contains_hot_plan() -> Result<CompiledWorkflow, crate::errors::CoreError> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
-    .inspect_err(|error| eprintln!("Contains Hot workflow construction error: {error:?}"))
-    .map_err(|_| crate::errors::CoreError::InvalidCompiledWorkflow {
-        reason: "Contains hot test workflow validation failed",
+    }
+}
+
+fn contains_hot_plan() -> Result<CompiledWorkflow, crate::errors::CoreError> {
+    let expression = contains_hot_program()?;
+    CompiledWorkflow::try_from_parts(contains_hot_parts(expression)).map_err(|_| {
+        crate::errors::CoreError::InvalidCompiledWorkflow {
+            reason: "Contains hot test workflow validation failed",
+        }
     })
 }
 
