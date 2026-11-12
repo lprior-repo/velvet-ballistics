@@ -5,12 +5,12 @@
 mod bound_symbols;
 pub use bound_symbols::{VersionedWorkflowParts, WorkflowIrV2};
 
-use super::{loop_regions, source_metadata};
 use super::validate::{validate_budget, validate_input_slots, validate_parts};
 use super::{
     AccessorProgram, CompiledInputSlot, CompiledLoopRegion, CompiledNode, CompiledNodeKind,
     ExprProgram, LoopRegionSlot, ResourceContract, WorkflowError, WorkflowParts,
 };
+use super::{loop_regions, source_metadata};
 use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 

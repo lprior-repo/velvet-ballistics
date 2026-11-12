@@ -35,6 +35,7 @@ fn compile_step(state: &mut Declarations, text: &str) -> Result<(), crate::Compi
         outputs: &state.outputs,
         step_outputs: &steps,
         slot_types: &state.types,
+        parent: None,
     };
     compile_canonical_expression(text, scope, &mut state.builder).map(|_| ())
 }

@@ -12,6 +12,7 @@ fn compile_literals(builder: &mut SlotCompiler, text: &str) -> Result<(), Compil
         outputs: &outputs,
         step_outputs: &outputs,
         slot_types: &types,
+        parent: None,
     };
     compile_canonical_expression(text, scope, builder).map(|_| ())
 }
@@ -144,6 +145,7 @@ fn helper_receiver_still_precedes_the_interned_key() -> TestResult {
         outputs: &outputs,
         step_outputs: &steps,
         slot_types: &types,
+        parent: None,
     };
     let mut builder = SlotCompiler::new();
     let (_, ty) = compile_canonical_expression("has($obj, \"key\")", scope, &mut builder)?;
@@ -169,6 +171,7 @@ fn local_alias_capture_is_delegated_without_symbol_side_effects() -> TestResult 
         outputs: &outputs,
         step_outputs: &steps,
         slot_types: &types,
+        parent: None,
     };
     let mut builder = SlotCompiler::new();
     compile_canonical_expression_with_binding(
