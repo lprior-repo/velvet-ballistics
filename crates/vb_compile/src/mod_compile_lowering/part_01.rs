@@ -81,7 +81,6 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         semantic_source_identity,
         builder,
         step_names,
-        steps,
         &layout,
     )
 }

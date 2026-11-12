@@ -16,7 +16,6 @@ pub(super) fn finalize_compiled_workflow(
     semantic_source_identity: WorkflowDigest,
     builder: SlotCompiler,
     step_names: Vec<Box<str>>,
-    steps: &[crate::StepAst],
     layout: &[CanonicalStepLayout],
 ) -> Result<CompiledWorkflow, CompileErrors> {
     let (parts, symbols) =
@@ -24,7 +23,7 @@ pub(super) fn finalize_compiled_workflow(
     let versioned = source_version(parts, symbols)?;
     let digest = crate::compute_compiled_ir_digest(&versioned)?;
     construct_source_workflow(versioned, digest)
-        .map_err(|error| CompileErrors(vec![named_workflow_error(error, steps, layout)]))
+        .map_err(|error| CompileErrors(vec![named_workflow_error(error, source.steps(), layout)]))
 }
 
 fn assemble_source_parts(
