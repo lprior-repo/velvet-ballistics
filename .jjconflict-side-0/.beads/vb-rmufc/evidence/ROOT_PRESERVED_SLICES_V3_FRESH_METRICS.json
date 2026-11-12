@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1",
+    "--commit",
+    "e3b7e718433be453dfd50747daeef31a4831ee13",
+    "--output-dir",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-rmufc-metrics-v3"
+  ],
+  "exit_code": 1,
+  "seconds": 0.214,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_PRESERVED_SLICES_V3_FRESH_METRICS"
+}

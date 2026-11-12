@@ -18,7 +18,7 @@ fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
     node1.output = NodeOutput::Discard;
     let mut node2 = finish_node(2, 0);
     node2.output = NodeOutput::Discard;
-    let wf = make_workflow(vec![node0, node1, node2], 8);
+    let wf = make_workflow(vec![node0, node1, node2], 8, &[]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -61,7 +61,7 @@ fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 8);
+    let wf = make_workflow(vec![node0, node1], 8, &[0, 5]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -105,7 +105,7 @@ fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
         Some(SlotIdx::new(0)),
         None,
     );
-    let wf = make_workflow(vec![node0], 8);
+    let wf = make_workflow(vec![node0], 8, &[5]);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -149,7 +149,7 @@ fn execute_wait_until_errors_on_uninitialized_deadline() {
         None,
         None,
     );
-    let wf = make_workflow(vec![node0], 8);
+    let wf = make_workflow(vec![node0], 8, &[5]);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -194,7 +194,7 @@ fn execute_wait_event_errors_on_uninitialized_event() {
         None,
         None,
     );
-    let wf = make_workflow(vec![node0], 8);
+    let wf = make_workflow(vec![node0], 8, &[5]);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -239,7 +239,7 @@ fn execute_ask_errors_on_uninitialized_prompt() {
         None,
         None,
     );
-    let wf = make_workflow(vec![node0], 8);
+    let wf = make_workflow(vec![node0], 8, &[5]);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -283,7 +283,7 @@ fn execute_ask_resume_errors_on_uninitialized_answer() {
         Some(SlotIdx::new(0)),
         None,
     );
-    let wf = make_workflow(vec![node0], 8);
+    let wf = make_workflow(vec![node0], 8, &[5]);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -329,7 +329,7 @@ fn execute_repeat_check_routes_forward_on_done() {
         None,
     );
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 8);
+    let wf = make_workflow(vec![node0, node1], 8, &[0]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();

@@ -1,0 +1,34 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/workspace_tests)
+error[E0599]: no method named `input_slots` found for struct `WorkflowParts` in the current scope
+   --> crates/workspace_tests/tests/compiler_input_schema_kinds.rs:241:14
+    |
+240 |           num.to_parts()
+    |           ---
+    |           |
+    |  _________method `input_slots` is available on `&CompiledWorkflow`
+    | |
+241 | |             .input_slots()
+    | |             -^^^^^^^^^^^-- help: remove the arguments
+    | |             ||
+    | |_____________|field, not a method
+    |
+
+error[E0599]: no method named `input_slots` found for struct `WorkflowParts` in the current scope
+   --> crates/workspace_tests/tests/compiler_input_schema_kinds.rs:249:14
+    |
+248 |           obj.to_parts()
+    |           ---
+    |           |
+    |  _________method `input_slots` is available on `&CompiledWorkflow`
+    | |
+249 | |             .input_slots()
+    | |             -^^^^^^^^^^^-- help: remove the arguments
+    | |             ||
+    | |_____________|field, not a method
+    |
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "compiler_input_schema_kinds") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

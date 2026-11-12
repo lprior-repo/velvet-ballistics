@@ -1,6 +1,24 @@
-use super::CanonicalStepLayout;
-use crate::mod_compile_errors::CompileError;
-use vb_core::StepIdx;
+//! Checked source-to-IR layout and diagnostic names.
+use super::*;
+
+pub(in crate::mod_compile_lowering) fn canonical_layout(
+    steps: &[crate::StepAst],
+    prefix: usize,
+) -> Result<Vec<CanonicalStepLayout>, CompileError> {
+    let mut layout = Vec::with_capacity(steps.len());
+    let mut cursor = prefix;
+    for step in steps {
+        let width = canonical_step_width_with_condition(step)?;
+        layout.push(CanonicalStepLayout {
+            start: step_idx(cursor)?,
+            width,
+        });
+        cursor = cursor
+            .checked_add(width)
+            .ok_or(CompileError::StepIndexOutOfRange { value: cursor })?;
+    }
+    Ok(layout)
+}
 
 pub(in crate::mod_compile_lowering) fn canonical_step_names(
     steps: &[crate::StepAst],
@@ -47,8 +65,6 @@ pub(in crate::mod_compile_lowering) fn layout_width(
         .ok_or(CompileError::StepIndexOutOfRange { value: index })
 }
 
-/// Name steps in backward-edge errors by walking the source layout; no
-/// compiled parts are cloned to build the diagnostic.
 pub(in crate::mod_compile_lowering) fn named_workflow_error(
     error: CompileError,
     steps: &[crate::StepAst],

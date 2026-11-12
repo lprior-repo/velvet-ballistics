@@ -1,0 +1,61 @@
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:120: static const char *FlagValue(const char *Param, const char *Name) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:121:   size_t Len = strlen(Name);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:122:   if (Param[0] == '-' && strstr(Param + 1, Name) == Param + 1 &&
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:123:       Param[Len + 1] == '=')
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:124:       return &Param[Len + 2];
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:125:   return nullptr;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:126: }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:127: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:128: // Avoid calling stol as it triggers a bug in clang/glibc build.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:129: static long MyStol(const char *Str) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:130:   long Res = 0;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:131:   long Sign = 1;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:132:   if (*Str == '-') {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:133:     Str++;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:134:     Sign = -1;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:135:   }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:136:   for (size_t i = 0; Str[i]; i++) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:137:     char Ch = Str[i];
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:138:     if (Ch < '0' || Ch > '9')
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:139:       return Res;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:140:     Res = Res * 10 + (Ch - '0');
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:141:   }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:142:   return Res * Sign;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:143: }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:144: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:145: static bool ParseOneFlag(const char *Param) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:146:   if (Param[0] != '-') return false;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:147:   if (Param[1] == '-') {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:148:     static bool PrintedWarning = false;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:149:     if (!PrintedWarning) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:150:       PrintedWarning = true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:151:       Printf("INFO: libFuzzer ignores flags that start with '--'\n");
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:152:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:153:     for (size_t F = 0; F < kNumFlags; F++)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:154:       if (FlagValue(Param + 1, FlagDescriptions[F].Name))
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:155:         Printf("WARNING: did you mean '%s' (single dash)?\n", Param + 1);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:156:     return true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:157:   }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:158:   for (size_t F = 0; F < kNumFlags; F++) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:159:     const char *Name = FlagDescriptions[F].Name;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:160:     const char *Str = FlagValue(Param, Name);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:161:     if (Str)  {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:162:       if (FlagDescriptions[F].IntFlag) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:163:         auto Val = MyStol(Str);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:164:         *FlagDescriptions[F].IntFlag = static_cast<int>(Val);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:165:         if (Flags.verbosity >= 2)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:166:           Printf("Flag: %s %d\n", Name, (int)Val);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:167:         return true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:168:       } else if (FlagDescriptions[F].UIntFlag) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:169:         auto Val = std::stoul(Str);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:170:         *FlagDescriptions[F].UIntFlag = static_cast<unsigned int>(Val);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:171:         if (Flags.verbosity >= 2)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:172:           Printf("Flag: %s %u\n", Name, (uint32_t)Val);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:173:         return true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:174:       } else if (FlagDescriptions[F].StrFlag) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:175:         *FlagDescriptions[F].StrFlag = Str;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:176:         if (Flags.verbosity >= 2)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:177:           Printf("Flag: %s %s\n", Name, Str);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:178:         return true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:179:       } else {  // Deprecated flag.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:180:         Printf("Flag: %s: deprecated, don't use\n", Name);

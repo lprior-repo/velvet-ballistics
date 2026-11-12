@@ -1,0 +1,34 @@
+# Martin Fowler Test Plan
+
+State3 does not implement tests. These names are executable-specification requirements for State6/State7.
+
+## Happy Path Tests
+- `given_full_journal_after_crash_when_recovered_then_pc_steps_slots_taint_terminal_match`
+- `given_snapshot_plus_tail_after_crash_when_recovered_then_snapshot_facts_and_tail_facts_match`
+- `given_waiting_run_when_restarted_then_wait_identity_and_state_survive`
+- `given_asking_run_and_answer_event_when_restarted_then_answer_slot_value_and_taint_survive`
+- `given_mid_collect_pagination_when_restarted_then_cursor_page_and_order_survive`
+
+## Error Path Tests
+- `given_header_without_recovery_events_when_recovered_then_no_recovery_data_is_returned`
+- `given_corrupt_snapshot_when_recovered_then_corrupt_snapshot_is_returned`
+- `given_sequence_gap_when_replayed_then_replay_divergence_is_returned`
+- `given_tail_before_snapshot_when_recovered_then_replay_divergence_is_returned`
+- `given_workflow_source_digest_mismatch_when_recovered_then_workflow_source_digest_mismatch_is_returned`
+- `given_compiled_ir_digest_mismatch_when_recovered_then_compiled_ir_digest_mismatch_is_returned`
+- `given_pending_non_idempotent_action_when_restarted_then_non_idempotent_action_blocked_is_returned`
+- `given_frame_dimension_overflow_when_recovered_then_frame_dimension_overflow_is_returned`
+- `given_unsupported_recovery_state_when_runtime_boundary_hydrates_then_invalid_recovery_hydration_is_returned`
+- `given_corrupt_collect_extra_when_hydrated_then_collect_extra_hydration_failed_is_returned`
+
+## Edge Case Tests
+- `given_non_empty_run_with_header_only_when_recovered_then_no_empty_success_frame_is_returned`
+- `given_same_journal_and_snapshot_when_replayed_twice_then_recovery_output_is_equivalent`
+- `given_stale_attempt_terminal_and_active_attempt_state_when_recovered_then_only_latest_attempt_is_used`
+- `given_secret_slot_in_durable_state_when_recovered_then_secret_taint_is_preserved`
+
+## Given-When-Then Scenario
+### Crash restart preserves all durable recovery dimensions
+Given: a run has a persisted header, ordered journal events, slot values with taint, wait/ask/action/collect facts, and an optional snapshot watermark.
+When: the process drops the journal handle, reopens storage, and invokes recovery from persisted state only.
+Then: recovery either reconstructs the exact latest-attempt `RunFrame` and side-table facts or returns the precise typed rejection required by the contract.

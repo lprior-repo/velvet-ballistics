@@ -1,0 +1,19 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "bdd-acceptance-evidence",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/state11-bdd-acceptance-report.md",
+    ".beads/vb-kyyf/verification-ledger-bdd.jsonl"
+  ],
+  "attempt": 4
+}

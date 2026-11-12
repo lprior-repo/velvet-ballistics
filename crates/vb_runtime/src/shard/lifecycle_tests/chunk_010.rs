@@ -40,7 +40,7 @@
         )?;
         let mut shard = Shard::new_with_journal(small_config(), shared);
         let run = kind.run();
-        submit_run(&mut shard, run, require_workflow("suspended", suspended_workflow())?);
+        submit_run(&mut shard, run, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let timer = guard_test_timer(PendingTimerKind::Wait);
         assert_eq!(shard.pending_timer_insert(run, timer), Ok(None));
         let filled = fill_queue_to_one_free_slot(&queue, QUEUE_CAPACITY, kind.first_filler_run())?;
@@ -119,7 +119,7 @@
     fn action_completion_rejects_missing_and_mismatched_pending_action() -> Result<(), String> {
         let mut missing = Shard::new(small_config());
         let run_missing = RunId::new(51_030);
-        submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?);
+        submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let ticket = pending_ticket(&missing, run_missing, StepIdx::ZERO, 1);
         let _removed = missing.pending_action_remove(run_missing);
         let state = missing.run_state_get(run_missing).ok_or("missing case active")?.clone();
@@ -132,7 +132,7 @@
 
         let mut mismatched = Shard::new(small_config());
         let run_mismatch = RunId::new(51_031);
-        submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?);
+        submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let pending = mismatched.pending_action_get(run_mismatch);
         let mut wrong = pending_ticket(&mismatched, run_mismatch, StepIdx::ZERO, 1);
         wrong.capacity = wrong.capacity.saturating_add(1);
@@ -151,7 +151,7 @@
     ) -> Result<(), String> {
         let mut missing = Shard::new(small_config());
         let run_missing = RunId::new(51_034);
-        submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?);
+        submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let _removed = missing.pending_action_remove(run_missing);
         let state = missing.run_state_get(run_missing).ok_or("legacy missing active")?.clone();
         let trace = missing.trace_ring().snapshot_for_run(run_missing, missing.trace_ring().capacity());
@@ -163,7 +163,7 @@
 
         let mut mismatched = Shard::new(small_config());
         let run_mismatch = RunId::new(51_035);
-        submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?);
+        submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let pending = mismatched.pending_action_get(run_mismatch);
         let state = mismatched.run_state_get(run_mismatch).ok_or("legacy mismatch active")?.clone();
         let trace = mismatched
@@ -181,7 +181,7 @@
     fn action_failure_rejects_missing_and_mismatched_pending_action() -> Result<(), String> {
         let mut missing = Shard::new(small_config());
         let run_missing = RunId::new(51_032);
-        submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?);
+        submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let ticket = pending_ticket(&missing, run_missing, StepIdx::ZERO, 1);
         let _removed = missing.pending_action_remove(run_missing);
         let state = missing.run_state_get(run_missing).ok_or("missing failure active")?.clone();
@@ -194,7 +194,7 @@
 
         let mut mismatched = Shard::new(small_config());
         let run_mismatch = RunId::new(51_033);
-        submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?);
+        submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let pending = mismatched.pending_action_get(run_mismatch);
         let mut wrong = pending_ticket(&mismatched, run_mismatch, StepIdx::ZERO, 1);
         wrong.capacity = wrong.capacity.saturating_add(1);

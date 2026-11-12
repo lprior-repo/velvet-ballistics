@@ -1,0 +1,3 @@
+{"id":"PF-001","severity":"info","status":"accepted","file":"crates/vb_core/src/kani_step_state_transition.rs","finding":"Runtime transition predicate is bound to the reviewed contract by a symbolic all-pairs Kani harness."}
+{"id":"PF-002","severity":"info","status":"accepted","file":"verification/verus/step_state_machine.rs","finding":"Verus model proves terminal blocking, suspended resume, idempotent remark, and selected all-pairs clauses with zero errors."}
+{"id":"PF-003","severity":"low","status":"accepted_caveat","file":"crates/vb_proof_kernels/src/step_state.rs","finding":"Direct Verus verification of production proof-kernel source is not claimed; parity is established by Kani and Rust tests."}

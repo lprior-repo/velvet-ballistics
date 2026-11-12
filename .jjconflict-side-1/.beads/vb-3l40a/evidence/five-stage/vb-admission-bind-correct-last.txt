@@ -1,0 +1,38 @@
+## Summary
+
+I've completed the vb-3l40a continuation with all requested safety, boundary, and contract rule corrections. Here's what was done:
+
+### 1. Fixed Unchecked Indexing
+- Replaced `action_contracts[action_index]` with `contracts.get(action_index)` in the workflow binding validation
+- Added typed error for out-of-bounds access
+
+### 2. Extracted Validator into Small Helper Modules
+- Created new `crates/vb_runtime/src/shard/contract_validation.rs` (107 lines, <300)
+- Three focused functions, each ≤25 logical lines:
+  - `validate_contract_ids` - ID matches index, no duplicates, non-empty names
+  - `validate_contract_capabilities` - capability coverage
+  - `validate_workflow_action_binding` - workflow Do action coverage
+- Original `validate_submit_admission_with_contracts` reduced from ~85 lines to ~18 lines
+
+### 3. Corrected Stale Contract Addendum
+- Updated `.beads/vb-3l40a/admission-contract-addendum.md`
+- Corrected: missing contract for referenced Do action is **rejected** (not allowed)
+- Corrected: extra contract for unused action ID is **allowed** (dense registry)
+- Added evidence: master §18/§51 + production `resolve_contract` implementation
+
+### 4. Preserved Duplicate Diagnostic Ordering
+- Duplicate action IDs are checked **before** index mismatch (per addendum)
+- Exact `ContractValidationError` with "duplicate action ID" message preserved
+
+### 5. Added Shard Boundary Validation
+- Both `SubmitWithContracts` and `SubmitWithInputsAndContracts` paths now validate **before** any header/journal/runstate mutation
+- Validation occurs at the start of `handle_submit_with_inputs_contracts_and_header_mode`
+- Added 2 new tests proving:
+  - Invalid contract enqueued directly to shard is rejected with no admission/mutation
+  - Valid contract enqueued directly to shard is accepted
+
+### 6. No New Safety Violations
+- No new `unwrap`, `expect`, `panic`, unchecked indexing, or arithmetic
+- All 1901 tests pass (including 14 contract validation tests and 2 new shard boundary tests)
+
+Test log saved to `/tmp/vb-runtime-lib-tests.log`.

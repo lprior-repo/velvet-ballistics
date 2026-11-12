@@ -1,0 +1,36 @@
+vb-eirmk.42.1: validate Has operands during AST typing
+
+- crates/vb_compile/src/type_taint_expr.rs
+- crates/vb_expr/src/expr_typecheck/tests/has_argument_types.rs
+- crates/vb_expr/src/expr_typecheck/tests.rs
+- crates/workspace_tests/tests/has_helper_compiler_preservation.rs
+- crates/workspace_tests/tests/support/has_compiler_artifact_cases.rs
+- crates/workspace_tests/tests/support/has_compiler_artifacts.rs
+- crates/workspace_tests/tests/support/has_compiler_precedence_cases.rs
+
+vb-eirmk.26.1: cover timer capacity and token authority
+
+- crates/vb_runtime/src/shard/lifecycle.rs
+- crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs
+- crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs
+
+vb-eirmk.42.1: retain compiler and timer test receipts
+
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/code/has-compiler-timer-composition-code-review-v1.json
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/combined/has-compiler-timer-moon-selected-v2.exit
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/combined/has-compiler-timer-moon-selected-v2.log.gz
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/combined/has-compiler-timer-moon-selected.exit
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/combined/has-compiler-timer-moon-selected.log.gz
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/compiler/has-malformed-prefix-native.exit
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/compiler/has-malformed-prefix-native.log
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/compiler/has-static-six-command-receipt.json
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/compiler/has-static-six-native.log
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/contract/has-parity-contract-proposal-v3.md
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/manifest-v2.json
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/manifest.json
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/test/has-public-compiler-test-review-v2.json
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/test/has-public-compiler-test-review-v3.json
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/test/timer-extra-composition-test-review-v1.json
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/timer/timer-extra-seven-native.exit
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/timer/timer-extra-seven-native.log
+- .beads/vb-eirmk.42.1/compiler-timer-evidence/commit-proposal.txt

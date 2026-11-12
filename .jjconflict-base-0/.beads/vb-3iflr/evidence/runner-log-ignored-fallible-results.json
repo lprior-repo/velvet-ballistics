@@ -1,0 +1,8 @@
+{
+  "command": "bash scripts/check-ignored-fallible-results.sh",
+  "exit_code": 0,
+  "seconds": 26.9,
+  "log_prefix": "/tmp/vb-ignored-check-vb3iflr",
+  "output": "FixturePass: clean production-like fixture exit=0\nFixturePass: DISCARD-001 bare fallible call exit=2\nFixturePass: DISCARD-002 let underscore exit=2\nFixturePass: DISCARD-003 ok err lossy exit=2\nFixturePass: DISCARD-003 embedded ok lossy exit=2\nFixturePass: DISCARD-003 split ok lossy exit=2\nFixturePass: DISCARD-004 swallowed Err exit=2\nFixturePass: DISCARD-005 drop fallible exit=2\nFixturePass: DISCARD-006 undocumented allow marker exit=2\nFixturePass: path-bound justified exception exit=0\nFixturePass: overbroad exception rejected exit=3\nFixturePass: malformed exception rejected exit=3\nScanDomain: crates/*/src xtask/src\nNonProductionExcluded: tests benches examples fuzz target .beads fixtures\nNoViolationFound",
+  "timestamp": "2026-10-22"
+}

@@ -1,0 +1,100 @@
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:1: #![forbid(unsafe_code)]
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:2: mod artifact_evidence_support;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:3: use artifact_evidence_support::*;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:4: use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:5: use vb_core::{
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:6:     ActionContract, ActionId, ActionTicket, Capability, RunId, RuntimePolicy, SeqNo, StepIdx,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:7: };
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:8: use vb_storage::executor::{ExecutorCatalog, ExecutorError, FjallRegister};
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:9: 
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:10: type TestResult = Result<(), Box<dyn std::error::Error>>;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:11: fn scope() -> CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:12:     CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:13:         namespace: 15,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:14:         key: 29,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:15:     }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:16: }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:17: fn external_contract() -> Result<ActionContract, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:18:     let mut contract = contract()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:19:     contract.required_capabilities =
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:20:         Box::new([Capability::new("velvet.register.write".into(), contract.id)]);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:21:     Ok(contract)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:22: }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:23: fn ticket(seq: u64) -> ActionTicket {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:24:     let run = RunId::new(100);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:25:     let seq = SeqNo::new(seq);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:26:     let action = ActionId::new(0);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:27:     ActionTicket {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:28:         run,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:29:         step: StepIdx::new(1),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:30:         seq,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:31:         action,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:32:         run_attempt: 1,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:33:         attempt: 1,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:34:         idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:35:         capacity: 2,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:36:     }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:37: }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:38: 
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:39: #[test]
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:40: fn registered_suite_executes_duplicate_conflicts_and_reopen() -> TestResult {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:41:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:42:     let report = catalog.conformance().report();
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:43:     assert_eq!(report.first, report.duplicate);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:44:     assert_eq!(report.first, report.reopened);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:45:     assert_eq!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:46:         (report.effects_before_reopen, report.effects_after_reopen),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:47:         (1, 1)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:48:     );
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:49:     assert_eq!(report.target_after_reopen, 42);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:50:     assert_eq!(report.checked_cases.len(), 4);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:51:     let audit = postcard::to_allocvec(report)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:52:     let restored: vb_storage::executor::ConformanceReport = postcard::from_bytes(&audit)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:53:     assert_eq!(&restored, report);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:54:     // No constructor accepts this deserialized report to mint ExecutedConformance.
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:55:     let fresh = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:56:     assert_eq!(fresh.conformance().digest(), catalog.conformance().digest());
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:57:     Ok(())
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:58: }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:59: 
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:60: #[test]
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:61: fn strict_pack_requires_registered_context_and_raw_metadata_cannot_self_certify() -> TestResult {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:62:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:63:     let contract = external_contract()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:64:     let workflow = action_workflow()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:65:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:66:     assert!(matches!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:67:         vb_storage::admission::prepare_compiled_artifact(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:68:             &workflow,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:69:             RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:70:             &[contract.clone()]
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:71:         ),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:72:         Err(vb_storage::JournalError::MissingRequiredProofFlag {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:73:             flag: "executor_conformance"
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:74:         })
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:75:     ));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:76:     let artifact =
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:77:         catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract], &[pack])?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:78:     assert!(matches!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:79:         vb_storage::admission::verify_accepted_artifact(&artifact),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:80:         Err(vb_storage::JournalError::ArtifactMalformed)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:81:     ));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:82:     assert_eq!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:83:         catalog.verify_artifact(&artifact, RuntimePolicy::Strict)?,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:84:         workflow
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:85:     );
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:86:     let mut forged = artifact;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:87:     let vb_core::artifact::ArtifactEvidence::Packed(evidence) = &mut forged.verification.evidence
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:88:     else {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:89:         return Err("missing packs".into());
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:90:     };
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:91:     let first = evidence.packs.first_mut().ok_or("missing pack")?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:92:     first.duplicate_ticket_test = vb_core::action_pack::ConformanceReportDigest::from_digest(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:93:         vb_core::WorkflowDigest::from_bytes([9; 32]),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:94:     );
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:95:     rebind(&mut forged)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:96:     assert!(matches!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:97:         catalog.verify_artifact(&forged, RuntimePolicy::Strict),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:98:         Err(ExecutorError::PackMismatch)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:99:     ));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:100:     Ok(())

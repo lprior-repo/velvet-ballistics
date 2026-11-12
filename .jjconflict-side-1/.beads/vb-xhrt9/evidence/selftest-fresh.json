@@ -1,0 +1,14 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-xhrt9-deepseek-gate-review",
+  "argv": [
+    ".beads/vb-e7rjr/supply-chain-status-selftest.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 0.041,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-xhrt9/evidence/selftest-fresh"
+}

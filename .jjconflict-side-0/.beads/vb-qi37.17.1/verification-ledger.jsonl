@@ -1,0 +1,13 @@
+{"gate":"cargo-test","command":"cargo test --workspace --all-targets","result":"FAIL_LOCAL","details":"1420 passed, 3 failed. 3 failures in vb_runtime::primitives::collect::tests (PolicyDigestMismatch) are pre-existing, NOT in bead scope. vb_cli tests pass clean.","scope":"workspace","bead_impact":"none","pre_existing":true,"timestamp":"2026-05-18"}
+{"gate":"clippy-workspace","command":"cargo clippy --workspace --all-targets -- -D warnings","result":"FAIL_LOCAL","details":"10 errors all in xtask/src/evidence_gate.rs (unnecessary_map_or, string_slice, arithmetic_side_effects). Pre-existing, NOT in bead scope.","scope":"workspace","bead_impact":"none","pre_existing":true,"timestamp":"2026-05-18"}
+{"gate":"clippy-vb_cli","command":"cargo clippy --package vb_cli --lib --bins --all-features -- -D warnings","result":"PASS","details":"0 warnings, 0 errors. vb_cli compiles clean.","scope":"touched-crate","bead_impact":"positive","pre_existing":false,"timestamp":"2026-05-18"}
+{"gate":"moon-ci","command":"moon ci --force","result":"FAIL_LOCAL","details":"13 completed, 3 failed (fmt, lint-src, test), 5 skipped. All failures are pre-existing workspace debt in xtask and vb_runtime.","scope":"workspace","bead_impact":"none","pre_existing":true,"timestamp":"2026-05-18"}
+{"obligation":"COMPILE-001","contract_clause":"INV-005","layer":"static-scan","result":"PASS","evidence":"cargo check --workspace: 0 E0061 errors"}
+{"obligation":"COMPILE-002","contract_clause":"INV-005","layer":"static-scan","result":"PASS","evidence":"cargo check --workspace: 0 E0061 errors"}
+{"obligation":"UNWRAP-001","contract_clause":"INV-001","layer":"static-scan","result":"PASS","evidence":"vb_cli clippy -- -D warnings: 0 unwrap violations"}
+{"obligation":"UNWRAP-002","contract_clause":"INV-001","layer":"waiver","result":"WAIVED","evidence":"as_str().unwrap_or on Option is zero-panic; approved by contract-verification-review.md"}
+{"obligation":"DEAD-001","contract_clause":"INV-006","layer":"static-scan","result":"PASS","evidence":"parse_incident dead code removed; 0 dead_code warnings"}
+{"obligation":"UNIT-001","contract_clause":"POST-001","layer":"cargo test","result":"PASS","evidence":"8 unit tests for build_incident_report all passing"}
+{"obligation":"UNIT-002","contract_clause":"POST-002","layer":"cargo test","result":"PASS","evidence":"5 unit tests for build_repair_hints all passing"}
+{"obligation":"INT-001","contract_clause":"POST-003","layer":"cargo test","result":"PASS","evidence":"3 integration tests for cmd_incident all passing"}
+{"obligation":"QA-001","contract_clause":"INV-002","layer":"manual-qa","result":"PASS","evidence":"All output paths use structured Error types with no panic/debug formatting"}

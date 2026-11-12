@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tjnjt-local3090-original-tests",
+  "argv": [
+    "cargo",
+    "+nightly-2026-04-28",
+    "fmt",
+    "-p",
+    "vb_core",
+    "-p",
+    "vb_runtime",
+    "--check"
+  ],
+  "exit_code": 0,
+  "seconds": 0.558,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tjnjt/evidence/03-fmt-check"
+}

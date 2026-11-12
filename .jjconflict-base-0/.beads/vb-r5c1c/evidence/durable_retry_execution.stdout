@@ -1,0 +1,7 @@
+
+running 2 tests
+test checkpoint_roundtrips_full_retry_authority ... ok
+test durable_retry_reopens_and_completes_failed_step ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

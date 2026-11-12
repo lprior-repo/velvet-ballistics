@@ -1,0 +1,27 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-b24vj-local5090-ask-coverage",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "shard::tests",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "seconds": 0.071,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-b24vj/evidence/all-shard-tests-v2",
+  "coordinator_message": "Your cargo test --package velvet-ballistics --lib -- shard::tests ran ZERO tests; this cannotcountascoverage. Actual shard sourcepackage vb_runtime. Use immutable runner exact cargo test -p vb_runtime --lib shard_ask_ticket then check running>0/new test actuallynamed. Avoid piped statusloss. No root/package fallback means fixcommands notfakegreen."
+}

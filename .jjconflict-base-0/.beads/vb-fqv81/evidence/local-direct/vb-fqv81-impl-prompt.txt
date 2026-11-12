@@ -1,0 +1,10 @@
+Return ONLY final JSON object for .beads/metadata.json after removing ONLY dolt_server_port key. Preserve all other exact fields/values. No explanatory text. Actual:
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_server_port": 44101,
+  "dolt_database": "velvet-ballistics",
+  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+}

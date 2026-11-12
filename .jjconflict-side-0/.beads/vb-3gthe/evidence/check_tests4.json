@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures",
+  "argv": [
+    "cargo",
+    "check",
+    "--tests",
+    "--workspace"
+  ],
+  "exit_code": 101,
+  "seconds": 3.484,
+  "timeout_seconds": 420,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-3gthe/evidence/check_tests4"
+}

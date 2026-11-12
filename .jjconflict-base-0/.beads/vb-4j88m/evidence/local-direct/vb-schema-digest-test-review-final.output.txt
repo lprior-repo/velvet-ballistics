@@ -1,0 +1,11 @@
+All three prior findings are resolved by the provided fixes:
+
+1. **Missing Any digest** → `any_schema_digest_and_roundtrip` tests Any compilation, stable digest, digest differentiation from number, and exact IR roundtrip preserving Any kind.
+
+2. **Missing CLI typed mismatch** → Existing `i64_port_bool` test covers exact kind mismatch (Bool supplied to I64 port), confirmed passing in the 17 CLI variant runs.
+
+3. **Default/nonempty fields** → `test_schema_kind_mapping` includes `{is: number, default: 42}` mapping to I64; `any_schema_digest_and_roundtrip` includes nonempty object `{is: object, fields: {enabled: boolean}}` mapping to Object.
+
+No new tests invented beyond fixing the specific findings. All fixes are actual tests targeting the reported gaps.
+
+STATUS: APPROVED

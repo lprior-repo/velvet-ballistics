@@ -1,0 +1,220 @@
++            if boundary.kind() == crate::recovery::RecoveredRunBoundaryKind::PendingAction {
++                crate::shard::types::RegisteredExecutionMode::ReconcileOnly
++            } else {
++                crate::shard::types::RegisteredExecutionMode::Live
++            };
+         let state = if let Some(checkpoint) = retry_checkpoint {
+             let (state, _attempt, _retry_step, _prior_seq) = checkpoint
+                 .restore(workflow, artifact_digest, &artifact.action_contracts)
+                 .map_err(|error| RuntimeError::Recovery {
+                     error: format!("retry checkpoint validation failed: {error}"),
+                 })?;
+             if state.frame.run_id() != run {
+                 return Err(RuntimeError::Recovery {
+                     error: "retry checkpoint run identity mismatch".to_string(),
+                 });
+             }
+             self.prepare_run_slots(run)?;
+             state
+         } else {
+-            // Step 7: Build initial admission and recover the legacy resumable frame.
+-            let granted_caps = vb_core::capability::CapabilitySet::from_grants(
+-                artifact.required_capabilities.clone(),
+-            );
+-            let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
++            // Step 7: Restore the original historical admission validated by the
++            // recovery prefix flow (validate_recovery_admission) rather than
++            // rebuilding admission from current policy. Rebuilding could upgrade
++            // a legacy Unverified admission to Pinned, authorizing external
++            // effects the original run never had authority for.
+             let frame_step_count = frame.step_count();
+             let max_slots = workflow.resource_contract().max_slots;
+             self.prepare_run_slots(run)?;
++            let state_admission = match admission {
++                crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(h),
++                crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => {
++                    unverified_admission
++                }
++            };
+             crate::shard::types::RunState {
+                 registered_execution,
+                 frame,
+                 run_attempt: core::num::NonZeroU16::MIN,
+                 workflow,
+                 store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
+                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+-                admission,
++                admission: state_admission,
+                 collect_states,
+                 action_contracts: artifact.action_contracts.clone(),
+             }
+         };
+ 
+         self.terminal_runs_remove(run);
+         self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+ 
+         // Step 7: Handle boundary for suspended operations
+         match boundary.kind() {
+             crate::recovery::RecoveredRunBoundaryKind::None => {}
+             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
+                 // Re-inject the durable pending-action ticket and leave the run
+                 // suspended at the pending action. Recovery MUST NOT re-drive the
+                 // Do node: the action is already durably scheduled
+                 // (ActionScheduledTicket) and its input slot may not be re-readable
+                 // (legacy unbound admission does not retain inputs). Re-driving would
+                 // emit a duplicate StepStarted and, for legacy runs, fail closed on
+                 // the un-rehydrated input slot. The recovered run resumes only on the
+                 // external action completion/failure signal.
+                 if let Some(t) = boundary.pending_action_ticket().map(|t| t.ticket()) {
+                     // Restore the per-step attempt counter so a later completion or
+                     // failure can validate the recovered ticket's attempt
+                     // (validate_ticket_attempt requires action_attempts[step] to
+                     // equal the scheduled ticket's attempt).
+                     if let Some(state) = self.run_state_get_mut(run) {
+                         crate::shard::helpers::record_scheduled_attempt(state, t);
+                     }
+                     self.reinject_pending_action(run, t)?;
+                     self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
+                     return Ok(());
+                 }
+             }
+             crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
+                 if let Some(ask) = boundary.open_ask() {
+@@ -656,71 +703,71 @@ impl Shard {
+     #[allow(clippy::needless_pass_by_value)]
+     pub(crate) fn handle_action_failure(
+         &mut self,
+         ticket: ActionTicket,
+         failure: ActionFailure,
+     ) -> RuntimeResult<()> {
+         let run = ticket.run;
+         let code = failure.code;
+         self.require_pending_action_ownership(ticket)?;
+         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
+         // 1. Preflight (read-only): validate and decide the failure outcome.
+         //    No mutation has occurred yet, so a journal append failure
+         //    below cannot diverge memory-only state from durable evidence.
+         let preflight = {
+             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+             preflight_action_failure(state, ticket, &failure)?
+         };
+         // 2. Journal append FIRST. FailRun needs both ActionFailed and
+         //    RunFailed to append as one same-run batch before any pending
+         //    action, trace, frame, counter, or terminal-state mutation. If
+         //    the batch is rejected by a bounded queued journal, no partial
+         //    ActionFailed prefix can consume the last queue slot.
+         let action_failed_event = RuntimeJournalEvent::ActionFailed {
+             run,
+             step: preflight.ticket.step,
+             action: preflight.ticket.action,
+             attempt: preflight.ticket.attempt,
+         };
+         if preflight.outcome == ActionFailureOutcome::FailRun {
+             let attempt = self
+                 .run_state_get(run)
+                 .map(|state| state.run_attempt.get())
+                 .ok_or(RuntimeError::RunNotFound)?;
+             self.append_journal_events_atomically([
+                 action_failed_event,
+-                RuntimeJournalEvent::RunFailed { run, attempt},
++                RuntimeJournalEvent::RunFailed { run, attempt },
+             ])?;
+         } else {
+             self.append_journal_event(action_failed_event)?;
+         }
+         // 3. Apply preflight mutations to the run frame / action_attempts.
+         //    Held in a narrow scope so `pending_action_remove` and
+         //    `trace_ring.push` can borrow `self` after the mutable
+         //    state borrow ends.
+         {
+             let state = self
+                 .run_state_get_mut(run)
+                 .ok_or(RuntimeError::RunNotFound)?;
+             apply_action_failure_preflight(state, &preflight)?;
+         }
+         let _removed_ticket = self.pending_action_remove(run);
+         self.trace_ring.push(TraceEvent::ActionFailed {
+             run,
+             step: preflight.ticket.step,
+             code,
+         });
+         // 4. Drive the run state machine forward using the preflighted outcome.
+         match preflight.outcome {
+             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
+                 self.drive_run(run)
+             }
+             ActionFailureOutcome::FailRun => {
+                 let state = self.take_run_state(run)?;
+                 self.fail_run_state_with_retry_checkpoint(run, preflight.ticket.step, state)
+             }
+         }
+     }
+ 
+     pub fn ticket_with_retry_capacity(
+         &self,
+         ticket: ActionTicket,
+FILE crates/vb_runtime/src/shard/lifecycle/chunk_004.rs SHA256 893b0f152edd2b55b526d214f1a27fd31fcea4ad24951bfc01e9a7791494c274
+diff --git a/crates/vb_runtime/src/shard/lifecycle/chunk_004.rs b/crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
+index 8da8f69d2..765e6352f 100644
+--- a/crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
++++ b/crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
+@@ -1,79 +1,83 @@
+ impl Shard {
+     fn reserve_cancel_kill_terminalization(&mut self, run: RunId) -> RuntimeResult<()> {
+         self.reserve_checked_out_run_slot(run)?;
+         self.reserve_terminal_run_slot(run)
+     }
+ 
+     fn append_cancel_terminal_events(
+         &mut self,
+         run: RunId,
+         reason: Option<String>,
+         attempt: u16,
+     ) -> RuntimeResult<()> {
+         self.append_terminal_events_with_pending_action(
+             run,
+             RuntimeJournalEvent::RunCancelled {
+                 run,
+                 reason,
+-                attempt,},
++                attempt,
++            },
+         )
+     }
+ 
+     fn append_kill_terminal_events(&mut self, run: RunId, attempt: u16) -> RuntimeResult<()> {
+         self.append_terminal_events_with_pending_action(
+             run,
+-            RuntimeJournalEvent::RunKilled { run, attempt},
++            RuntimeJournalEvent::RunKilled { run, attempt },
+         )
+     }
+ 
+     fn append_terminal_events_with_pending_action(
+         &mut self,
+         run: RunId,
+         terminal: RuntimeJournalEvent,
+     ) -> RuntimeResult<()> {
+         match self.pending_action_get(run) {
+             Some(ticket) if ticket.run == run => self.append_journal_events_atomically([
+                 RuntimeJournalEvent::ActionAbandoned { ticket },
+                 terminal,
+             ]),
+             Some(_) => Err(RuntimeError::InvalidActionCompletion),
+             None => self.append_journal_event(terminal),
+         }
+     }
+ 
+-    fn require_pending_action_ownership(&self, ticket: ActionTicket) -> RuntimeResult<()> {
++    pub(super) fn require_pending_action_ownership(
++        &self,
++        ticket: ActionTicket,
++    ) -> RuntimeResult<()> {
+         if !self.run_state_contains(ticket.run) {
+             return Err(RuntimeError::RunNotFound);
+         }
+         match self.pending_action_get(ticket.run) {
+             Some(pending) if pending == ticket => Ok(()),
+             Some(pending)
+                 if ticket.attempt > 0
+                     && ticket.attempt < pending.attempt

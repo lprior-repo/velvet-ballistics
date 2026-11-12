@@ -56,6 +56,8 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
     // documented at the call site by using the long-named test/bench-only factory.
     let mut runtime =
         vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+    crate::run_compiled_runtime::secret_presence::AvailableNames::default()
+        .install(&mut runtime, &compiled);
     if let Err(e) = runtime.submit_compiled(run_id, compiled) {
         if output != OutputFormat::Text {
             json_error(

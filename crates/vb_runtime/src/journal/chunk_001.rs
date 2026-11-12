@@ -232,11 +232,29 @@ pub enum RuntimeJournalEvent {
         /// Execution attempt number for this step.
         attempt: u16,
     },
+    /// A deterministic step failed before entering its handler.
+    StepFailed {
+        /// Run identifier.
+        run: RunId,
+        /// Failed step.
+        step: StepIdx,
+        /// Execution attempt.
+        attempt: u16,
+    },
     /// Run was resumed from a suspended state.
     Resumed {
         /// Run identifier.
         run: RunId,
         /// Monotonic timestamp in seconds since epoch.
         timestamp: u64,
+    },
+    /// Complete failed-action state and exact durable retry timer authority.
+    RetryTimerScheduled {
+        /// Owning run.
+        run: RunId,
+        /// Failed action step.
+        step: StepIdx,
+        /// Exact versioned deadline and checkpoint payload.
+        timer: vb_storage::retry_timer::RetryTimerV1,
     },
 }

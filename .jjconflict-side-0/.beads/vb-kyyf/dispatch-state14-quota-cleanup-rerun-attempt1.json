@@ -1,0 +1,24 @@
+{
+  "bead_id": "GLOBAL-main-gate-for-vb-kyyf-landing",
+  "state": 14,
+  "sublane": "serial-quota-cleanup-and-moon-ci-rerun",
+  "delegate": "general",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/mutants-tmpdir-repair-report.md",
+    ".beads/vb-kyyf/global-format-repair-report.md",
+    ".beads/vb-kyyf/landing-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/quota-cleanup-rerun-report.md"
+  ],
+  "attempt": 1,
+  "allowed_cleanup_scope": [
+    "/tmp/opencode/vb-kyyf-moon-ci-tmp",
+    "/tmp/opencode/cargo-mutants-*",
+    "/home/lewis/src/bd-vb-kyyf-bdd/.tmp"
+  ],
+  "blocker": "External temp quota caused mutants-smoke Disk quota exceeded after recursion fix",
+  "required_gate": "moon ci with clean external TMPDIR outside workspace"
+}

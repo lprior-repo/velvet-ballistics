@@ -25,6 +25,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             1,
             vec![ConstValue::I64(5)],
+            &[],
         )?;
         let mut r = mkr(2, 1)?;
         let mut b = StepBudget::new(10);
@@ -37,7 +38,7 @@ mod tests {
 
     #[test]
     fn cat8_nop_advances_pc() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1, &[0])?;
         let mut r = mkr(2, 1)?;
         ws(&mut r, 0, SlotValue::Null)?;
         let mut b = StepBudget::new(10);
@@ -54,6 +55,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             1,
             vec![ConstValue::I64(33)],
+            &[],
         )?;
         let mut r = mkr(2, 1)?;
         let mut b = StepBudget::new(10);
@@ -74,7 +76,7 @@ mod tests {
 
     #[test]
     fn cat9_copy_evidence_value() -> Result<(), String> {
-        let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2)?;
+        let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2, &[0, 1])?;
         let mut r = mkr(2, 2)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         ws(&mut r, 1, SlotValue::I64(88))?;
@@ -96,7 +98,7 @@ mod tests {
 
     #[test]
     fn cat10_do_awaiting_action() -> Result<(), String> {
-        let wf = mkwf(vec![don(0, 1, 0)], 1)?;
+        let wf = mkwf(vec![don(0, 1, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -157,7 +159,7 @@ mod tests {
     // Do node without contract fails closed.
     #[test]
     fn cat10_do_without_contract_rejects() -> Result<(), String> {
-        let wf = mkwf(vec![don(0, 1, 0)], 1)?;
+        let wf = mkwf(vec![don(0, 1, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -169,7 +171,7 @@ mod tests {
 
     #[test]
     fn bonus_compat() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1, &[0])?;
         let mut r = mkr(2, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -192,6 +194,7 @@ mod tests {
                 fin(3, 1),
             ],
             2,
+            &[1],
         )?;
         let mut r = mkr(4, 2)?;
         ws(&mut r, 1, SlotValue::I64(0))?;
@@ -203,7 +206,7 @@ mod tests {
 
     #[test]
     fn bonus_zero_budget() -> Result<(), String> {
-        let wf = mkwf(vec![fin(0, 0)], 1)?;
+        let wf = mkwf(vec![fin(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(0);
@@ -216,7 +219,7 @@ mod tests {
 
     #[test]
     fn bonus_evidence_order() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1, &[0])?;
         let mut r = mkr(2, 1)?;
         ws(&mut r, 0, SlotValue::Null)?;
         let mut b = StepBudget::new(10);
@@ -238,7 +241,7 @@ mod tests {
     /// returns Finished.
     #[test]
     fn drive_with_actions_empty_contracts_finish_only_returns_finished() -> Result<(), String> {
-        let wf = mkwf(vec![fin(0, 0)], 1)?;
+        let wf = mkwf(vec![fin(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(42))?;
         let mut b = StepBudget::new(10);

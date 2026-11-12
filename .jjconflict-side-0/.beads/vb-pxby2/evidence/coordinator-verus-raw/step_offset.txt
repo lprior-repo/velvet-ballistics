@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/step_offset.rs
+verification results:: 13 verified, 0 errors

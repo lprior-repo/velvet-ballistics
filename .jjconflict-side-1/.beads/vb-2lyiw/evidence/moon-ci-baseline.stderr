@@ -1,0 +1,339 @@
+[ WARN 2026-10-21 21:25:58.143] moon_task_hasher::task_hasher  Attempted to hash input .beads/vb-jpq7/closure-evidence-manifest.jsonl but it does not exist, skipping 
+[ WARN 21:25:58.380] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="e79ce74b0ae201e04e54f0d17d9f4d4bcdf9deff2bf336cc3aac69e4b8e8eb53" blob_hash="e79ce74b0ae201e04e54f0d17d9f4d4bcdf9deff2bf336cc3aac69e4b8e8eb53" details=[] code=Internal
+[ WARN 21:25:58.381] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="e79ce74b0ae201e04e54f0d17d9f4d4bcdf9deff2bf336cc3aac69e4b8e8eb53" blob_hash="8903048db22d8bc96ca9f03194e5ad819431300f5bebefb88b114c6210745dad" details=[] code=Internal
+[ WARN 21:25:58.381] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/e7/e79ce74b0ae201e04e54f0d17d9f4d4bcdf9deff2bf336cc3aac69e4b8e8eb53-390177062: no such file or directory  hash="e79ce74b0ae201e04e54f0d17d9f4d4bcdf9deff2bf336cc3aac69e4b8e8eb53"
+[ WARN 21:25:58.475] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="fe406f137b58f5f57ef714c3b041b686c95f41342be5af0a84c3ae96cdb500ed" blob_hash="fe406f137b58f5f57ef714c3b041b686c95f41342be5af0a84c3ae96cdb500ed" details=[] code=Internal
+[ WARN 21:25:58.476] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/fe/fe406f137b58f5f57ef714c3b041b686c95f41342be5af0a84c3ae96cdb500ed-896264008: no such file or directory  hash="fe406f137b58f5f57ef714c3b041b686c95f41342be5af0a84c3ae96cdb500ed"
+[ WARN 21:25:58.782] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="0c48d4887d60f640ec25741e918eeec80b65d1b86808523322f56bbcb1aef09c" blob_hash="0c48d4887d60f640ec25741e918eeec80b65d1b86808523322f56bbcb1aef09c" details=[] code=Internal
+[ WARN 21:25:58.782] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/0c/0c48d4887d60f640ec25741e918eeec80b65d1b86808523322f56bbcb1aef09c-651095482: no such file or directory  hash="0c48d4887d60f640ec25741e918eeec80b65d1b86808523322f56bbcb1aef09c"
+                    velvet-ballistics:verify-loom | error: could not execute process `/home/lewis/.local/share/mise/installs/sccache/0.16.0/sccache-v0.16.0-x86_64-unknown-linux-musl/sccache rustc -vV` (never executed)
+
+                    velvet-ballistics:verify-loom | Caused by:
+                    velvet-ballistics:verify-loom |   No such file or directory (os error 2)
+[ WARN 21:25:59.096] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.097] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.098] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.102] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.110] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.112] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.112] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.123] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.126] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.130] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:25:59.911] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="3073e4b6948657a89914d30c80a64618a25eb63c8fe713dc24fe94ce2996f075" blob_hash="3073e4b6948657a89914d30c80a64618a25eb63c8fe713dc24fe94ce2996f075" details=[] code=Internal
+[ WARN 21:25:59.912] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="3073e4b6948657a89914d30c80a64618a25eb63c8fe713dc24fe94ce2996f075" blob_hash="5bd9634e4614b0e1e5327f1a8d27d0e6cb5bee36d86235cbfe2cbd1ac144b804" details=[] code=Internal
+                velvet-ballistics:benchmark-proof |     Blocking waiting for file lock on package cache
+[ WARN 21:25:59.989] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/30/3073e4b6948657a89914d30c80a64618a25eb63c8fe713dc24fe94ce2996f075-297520171: no such file or directory  hash="3073e4b6948657a89914d30c80a64618a25eb63c8fe713dc24fe94ce2996f075"
+[ WARN 21:25:59.998] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="3f2e8631e1613b3e9bec396b8dff4fb07a5e81e9b8df7e2730f51b4eb4f1b3f9" blob_hash="3f2e8631e1613b3e9bec396b8dff4fb07a5e81e9b8df7e2730f51b4eb4f1b3f9" details=[] code=Internal
+[ WARN 21:25:59.999] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="3f2e8631e1613b3e9bec396b8dff4fb07a5e81e9b8df7e2730f51b4eb4f1b3f9" blob_hash="71d702aeff47a408d95d2957be1d98e1ca75fab46a10238395bd8bfa27330815" details=[] code=Internal
+[ WARN 21:25:59.999] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="99a68e2281082cec692c9ae835593417da8709f48bf5f96d58242489823a95aa" blob_hash="99a68e2281082cec692c9ae835593417da8709f48bf5f96d58242489823a95aa" details=[] code=Internal
+[ WARN 21:26:00.000] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/3f/3f2e8631e1613b3e9bec396b8dff4fb07a5e81e9b8df7e2730f51b4eb4f1b3f9-921478287: no such file or directory  hash="3f2e8631e1613b3e9bec396b8dff4fb07a5e81e9b8df7e2730f51b4eb4f1b3f9"
+[ WARN 21:26:00.001] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="99a68e2281082cec692c9ae835593417da8709f48bf5f96d58242489823a95aa" blob_hash="a75695795afceda2d1007f9172a014d9466d8b39c9d4c98409ea60e761be2839" details=[] code=Internal
+[ WARN 21:26:00.001] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/99/99a68e2281082cec692c9ae835593417da8709f48bf5f96d58242489823a95aa-930733977: no such file or directory  hash="99a68e2281082cec692c9ae835593417da8709f48bf5f96d58242489823a95aa"
+                velvet-ballistics:benchmark-proof |     Blocking waiting for file lock on build directory
+[ WARN 21:26:00.534] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="1805e3ef63bc2f306f22be91190609cfbe1bc705f16059911ca7e88c0398cc0c" blob_hash="1805e3ef63bc2f306f22be91190609cfbe1bc705f16059911ca7e88c0398cc0c" details=[] code=Internal
+[ WARN 21:26:00.535] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="1805e3ef63bc2f306f22be91190609cfbe1bc705f16059911ca7e88c0398cc0c" blob_hash="b79bfef91671a5b7896e405791d389bf1d41bdc10acc29a0941e100bdd2c3046" details=[] code=Internal
+[ WARN 21:26:00.536] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/18/1805e3ef63bc2f306f22be91190609cfbe1bc705f16059911ca7e88c0398cc0c-024183030: no such file or directory  hash="1805e3ef63bc2f306f22be91190609cfbe1bc705f16059911ca7e88c0398cc0c"
+[ WARN 21:26:01.037] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="86c64d9031baab3ba24dc0580448efb7d208bc7eb12ec35cca384ce70a09fc03" blob_hash="86c64d9031baab3ba24dc0580448efb7d208bc7eb12ec35cca384ce70a09fc03" details=[] code=Internal
+[ WARN 21:26:01.038] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/86/86c64d9031baab3ba24dc0580448efb7d208bc7eb12ec35cca384ce70a09fc03-356434840: no such file or directory  hash="86c64d9031baab3ba24dc0580448efb7d208bc7eb12ec35cca384ce70a09fc03"
+                  velvet-ballistics:fuzz-proptest |    Compiling proc-macro2 v1.0.106
+                  velvet-ballistics:fuzz-proptest |    Compiling quote v1.0.45
+                  velvet-ballistics:fuzz-proptest |    Compiling unicode-ident v1.0.24
+                  velvet-ballistics:fuzz-proptest |    Compiling libc v0.2.186
+                  velvet-ballistics:fuzz-proptest |    Compiling syn v2.0.117
+                  velvet-ballistics:fuzz-proptest |    Compiling cfg-if v1.0.4
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_core v1.0.228
+                  velvet-ballistics:fuzz-proptest |    Compiling semver v1.0.28
+                  velvet-ballistics:fuzz-proptest |    Compiling autocfg v1.5.1
+                  velvet-ballistics:fuzz-proptest |    Compiling serde v1.0.228
+                  velvet-ballistics:fuzz-proptest |    Compiling num-traits v0.2.19
+                  velvet-ballistics:fuzz-proptest |    Compiling rustc_version v0.4.1
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_derive v1.0.228
+                  velvet-ballistics:fuzz-proptest |    Compiling thiserror v2.0.18
+                  velvet-ballistics:fuzz-proptest |    Compiling thiserror-impl v2.0.18
+                  velvet-ballistics:fuzz-proptest |    Compiling equivalent v1.0.2
+                  velvet-ballistics:fuzz-proptest |    Compiling once_cell v1.21.4
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-utils v0.8.21
+                  velvet-ballistics:fuzz-proptest |    Compiling jobserver v0.1.35
+                  velvet-ballistics:fuzz-proptest |    Compiling scopeguard v1.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling shlex v1.3.0
+                  velvet-ballistics:fuzz-proptest |    Compiling find-msvc-tools v0.1.9
+                  velvet-ballistics:fuzz-proptest |    Compiling bitflags v2.11.1
+                  velvet-ballistics:fuzz-proptest |    Compiling cc v1.2.62
+                  velvet-ballistics:fuzz-proptest |    Compiling lock_api v0.4.14
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.17.1
+                  velvet-ballistics:fuzz-proptest |    Compiling rustix v1.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling getrandom v0.4.2
+                  velvet-ballistics:fuzz-proptest |    Compiling indexmap v2.14.0
+                  velvet-ballistics:fuzz-proptest |    Compiling iana-time-zone v0.1.65
+                  velvet-ballistics:fuzz-proptest |    Compiling getrandom v0.3.4
+                  velvet-ballistics:fuzz-proptest |    Compiling linux-raw-sys v0.12.1
+                  velvet-ballistics:fuzz-proptest |    Compiling chrono v0.4.44
+                  velvet-ballistics:fuzz-proptest |    Compiling spin v0.9.8
+                  velvet-ballistics:fuzz-proptest |    Compiling bytes v1.11.1
+                  velvet-ballistics:fuzz-proptest |    Compiling smallvec v1.15.1
+                  velvet-ballistics:fuzz-proptest |    Compiling regex-syntax v0.8.10
+                  velvet-ballistics:fuzz-proptest |    Compiling fastrand v2.4.1
+                  velvet-ballistics:fuzz-proptest |    Compiling tempfile v3.27.0
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_core)
+                  velvet-ballistics:fuzz-proptest |    Compiling heapless v0.7.17
+                  velvet-ballistics:fuzz-proptest |    Compiling zerocopy v0.8.48
+                  velvet-ballistics:fuzz-proptest |    Compiling byteorder v1.5.0
+                  velvet-ballistics:fuzz-proptest |    Compiling arrayvec v0.7.6
+                  velvet-ballistics:fuzz-proptest |    Compiling byteorder-lite v0.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling hash32 v0.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling blake3 v1.8.5
+                  velvet-ballistics:fuzz-proptest |    Compiling fnv v1.0.7
+                  velvet-ballistics:fuzz-proptest |    Compiling stable_deref_trait v1.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling log v0.4.29
+                  velvet-ballistics:fuzz-proptest |    Compiling parking_lot_core v0.9.12
+                  velvet-ballistics:fuzz-proptest |    Compiling arraydeque v0.5.1
+
+  velvet-ballistics:verify-production-inner-drift | PRODUCTION-INNER DRIFT DETECTED. See target/verus-drift/drift.log
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-epoch v0.9.18
+                  velvet-ballistics:fuzz-proptest |    Compiling cobs v0.3.0
+                  velvet-ballistics:fuzz-proptest |    Compiling logos-codegen v0.15.1
+                  velvet-ballistics:fuzz-proptest |    Compiling foldhash v0.1.5
+                  velvet-ballistics:fuzz-proptest |    Compiling arrayref v0.3.9
+                  velvet-ballistics:fuzz-proptest |    Compiling anstyle v1.0.14
+                  velvet-ballistics:fuzz-proptest |    Compiling simd-adler32 v0.3.9
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.16.1
+                  velvet-ballistics:fuzz-proptest |    Compiling compare v0.0.6
+                  velvet-ballistics:fuzz-proptest |    Compiling constant_time_eq v0.4.2
+                  velvet-ballistics:fuzz-proptest |    Compiling twox-hash v2.1.2
+                  velvet-ballistics:fuzz-proptest |    Compiling xxhash-rust v0.8.15
+                  velvet-ballistics:fuzz-proptest |    Compiling memchr v2.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling zmij v1.0.21
+                  velvet-ballistics:fuzz-proptest |    Compiling cpufeatures v0.3.0
+                  velvet-ballistics:fuzz-proptest |    Compiling crc32fast v1.5.0
+                  velvet-ballistics:fuzz-proptest |    Compiling sfa v1.0.0
+                  velvet-ballistics:fuzz-proptest |    Compiling lz4_flex v0.13.1
+                  velvet-ballistics:fuzz-proptest |    Compiling interval-heap v0.0.5
+                  velvet-ballistics:fuzz-proptest |    Compiling quick_cache v0.6.22
+[ WARN 21:26:09.345] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="57015ca341b4c239e7a81a8de2a24f3d28b5c03601b9533966535a3ce12002a7" blob_hash="57015ca341b4c239e7a81a8de2a24f3d28b5c03601b9533966535a3ce12002a7" details=[] code=Internal
+[ WARN 21:26:09.346] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/57/57015ca341b4c239e7a81a8de2a24f3d28b5c03601b9533966535a3ce12002a7-997619850: no such file or directory  hash="57015ca341b4c239e7a81a8de2a24f3d28b5c03601b9533966535a3ce12002a7"
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_validate)
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.15.5
+                  velvet-ballistics:fuzz-proptest |    Compiling postcard v1.1.3
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-skiplist v0.1.3
+                  velvet-ballistics:fuzz-proptest |    Compiling enum_dispatch v0.3.13
+                  velvet-ballistics:fuzz-proptest |    Compiling crc32c v0.6.8
+                  velvet-ballistics:fuzz-proptest |    Compiling adler2 v2.0.1
+                  velvet-ballistics:fuzz-proptest |    Compiling beef v0.5.2
+                  velvet-ballistics:fuzz-proptest |    Compiling rustc-hash v2.1.2
+                  velvet-ballistics:fuzz-proptest |    Compiling varint-rs v2.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling self_cell v1.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.14.5
+                  velvet-ballistics:fuzz-proptest |    Compiling utf8parse v0.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling byteview v0.10.1
+                  velvet-ballistics:fuzz-proptest |    Compiling lazy_static v1.5.0
+                  velvet-ballistics:fuzz-proptest |    Compiling version_check v0.9.5
+                  velvet-ballistics:fuzz-proptest |    Compiling lsm-tree v3.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling ahash v0.8.12
+                  velvet-ballistics:fuzz-proptest |    Compiling anstyle-parse v1.0.0
+[ WARN 21:26:10.443] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="b46e411ede7992ab947c5f9803da5ffac43a27e14184087a5ddfbe6d5442102c" blob_hash="b46e411ede7992ab947c5f9803da5ffac43a27e14184087a5ddfbe6d5442102c" details=[] code=Internal
+[ WARN 21:26:10.446] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="b46e411ede7992ab947c5f9803da5ffac43a27e14184087a5ddfbe6d5442102c" blob_hash="37da6b9dabcff80e5c8dbfb3e03cccb18add19c157f89c0cdd04cad8d220e3b7" details=[] code=Internal
+[ WARN 21:26:10.446] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/b4/b46e411ede7992ab947c5f9803da5ffac43a27e14184087a5ddfbe6d5442102c-449582395: no such file or directory  hash="b46e411ede7992ab947c5f9803da5ffac43a27e14184087a5ddfbe6d5442102c"
+                  velvet-ballistics:fuzz-proptest |    Compiling dashmap v6.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling miniz_oxide v0.8.9
+                  velvet-ballistics:fuzz-proptest |    Compiling hashlink v0.10.0
+                  velvet-ballistics:fuzz-proptest |    Compiling flume v0.12.0
+                  velvet-ballistics:fuzz-proptest |    Compiling anstyle-query v1.1.5
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_json v1.0.150
+                  velvet-ballistics:fuzz-proptest |    Compiling is_terminal_polyfill v1.70.2
+                  velvet-ballistics:fuzz-proptest |    Compiling camino v1.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling itoa v1.0.18
+                  velvet-ballistics:fuzz-proptest |    Compiling colorchoice v1.0.5
+                  velvet-ballistics:fuzz-proptest |    Compiling anstream v1.0.0
+                  velvet-ballistics:fuzz-proptest |    Compiling fjall v3.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling flate2 v1.1.9
+                  velvet-ballistics:fuzz-proptest |    Compiling saphyr-parser v0.0.6
+                  velvet-ballistics:fuzz-proptest |    Compiling logos-derive v0.15.1
+                  velvet-ballistics:fuzz-proptest |    Compiling aho-corasick v1.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling fdeflate v0.3.7
+                  velvet-ballistics:fuzz-proptest |    Compiling ordered-float v5.3.0
+                  velvet-ballistics:fuzz-proptest |    Compiling encoding_rs v0.8.35
+                  velvet-ballistics:fuzz-proptest |    Compiling heck v0.5.0
+                  velvet-ballistics:fuzz-proptest |    Compiling unicode-width v0.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling winnow v1.0.3
+                  velvet-ballistics:fuzz-proptest |    Compiling clap_lex v1.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling pxfm v0.1.29
+                  velvet-ballistics:fuzz-proptest |    Compiling strsim v0.11.1
+                  velvet-ballistics:fuzz-proptest |    Compiling anyhow v1.0.102
+                  velvet-ballistics:fuzz-proptest |    Compiling clap_builder v4.6.0
+                  velvet-ballistics:fuzz-proptest |    Compiling moxcms v0.8.1
+                  velvet-ballistics:fuzz-proptest |    Compiling encoding_rs_io v0.1.7
+                  velvet-ballistics:fuzz-proptest |    Compiling toml_parser v1.1.2+spec-1.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling annotate-snippets v0.12.16
+                  velvet-ballistics:fuzz-proptest |    Compiling clap_derive v4.6.1
+                  velvet-ballistics:fuzz-proptest |    Compiling regex-automata v0.4.14
+                  velvet-ballistics:fuzz-proptest |    Compiling saphyr v0.0.6
+                  velvet-ballistics:fuzz-proptest |    Compiling png v0.18.1
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_storage)
+                  velvet-ballistics:fuzz-proptest |    Compiling logos v0.15.1
+                   velvet-ballistics:verify-verus | Verus target failed: verification/verus/recovery_verification.rs (exit 1)
+                  velvet-ballistics:fuzz-proptest |    Compiling saphyr-parser-bw v0.0.611
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-channel v0.5.15
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-queue v0.3.12
+                  velvet-ballistics:fuzz-proptest |    Compiling libfuzzer-sys v0.4.13
+                  velvet-ballistics:fuzz-proptest |    Compiling cargo-platform v0.1.9
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_spanned v1.1.1
+                  velvet-ballistics:fuzz-proptest |    Compiling toml_datetime v0.7.5+spec-1.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling nohash-hasher v0.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling ryu v1.0.23
+                  velvet-ballistics:fuzz-proptest |    Compiling base64 v0.22.1
+                  velvet-ballistics:fuzz-proptest |    Compiling rtrb v0.3.4
+                  velvet-ballistics:fuzz-proptest |    Compiling bytemuck v1.25.0
+                  velvet-ballistics:fuzz-proptest |    Compiling unsafe-libyaml v0.2.11
+                  velvet-ballistics:fuzz-proptest |    Compiling toml_writer v1.1.1+spec-1.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling winnow v0.7.15
+                  velvet-ballistics:fuzz-proptest |    Compiling toml v0.9.12+spec-1.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_yaml v0.9.34+deprecated
+                  velvet-ballistics:fuzz-proptest |    Compiling image v0.25.10
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_runtime)
+                  velvet-ballistics:fuzz-proptest |    Compiling serde-saphyr v0.0.25
+                  velvet-ballistics:fuzz-proptest |    Compiling cargo_metadata v0.19.2
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_expr)
+                  velvet-ballistics:fuzz-proptest |    Compiling clap v4.6.1
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_yaml)
+                  velvet-ballistics:fuzz-proptest |    Compiling regex v1.12.3
+                  velvet-ballistics:fuzz-proptest |    Compiling mio v1.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling arbitrary v1.4.2
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_ipc)
+                  velvet-ballistics:fuzz-proptest |    Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/xtask)
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_compile)
+                  velvet-ballistics:fuzz-proptest |    Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/fuzz)
+                  velvet-ballistics:fuzz-proptest |    Compiling rand_core v0.9.5
+                  velvet-ballistics:fuzz-proptest |    Compiling ppv-lite86 v0.2.21
+                  velvet-ballistics:fuzz-proptest |    Compiling wait-timeout v0.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling bit-vec v0.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling quick-error v1.2.3
+                  velvet-ballistics:fuzz-proptest |    Compiling rusty-fork v0.3.1
+                  velvet-ballistics:fuzz-proptest |    Compiling bit-set v0.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling rand_chacha v0.9.0
+                  velvet-ballistics:fuzz-proptest |    Compiling rand_xorshift v0.4.0
+                  velvet-ballistics:fuzz-proptest |    Compiling rand v0.9.4
+                  velvet-ballistics:fuzz-proptest |    Compiling unarray v0.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling proptest v1.11.0
+                  velvet-ballistics:fuzz-proptest |     Finished `test` profile [unoptimized + debuginfo] target(s) in 34.57s
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_digest_coherence.rs (target/debug/deps/proptest_digest_coherence-fbac866e13eb11ec)
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-b77b7498c6265a09)
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-26ec313b9a5d2f64)
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_roundtrip_determinism.rs (target/debug/deps/proptest_roundtrip_determinism-0d13f9af6a0ff170)
+[ WARN 21:26:44.691] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="6ea00af598456f55dd6e56ce020b2998df83c5bab1d6b674e2f1e73c00666225" blob_hash="6ea00af598456f55dd6e56ce020b2998df83c5bab1d6b674e2f1e73c00666225" details=[] code=Internal
+[ WARN 21:26:44.692] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="6ea00af598456f55dd6e56ce020b2998df83c5bab1d6b674e2f1e73c00666225" blob_hash="e057261d02d8f1aea9be937f4319b740cedeaaffaba9f8d12dee9840e7c7ebaf" details=[] code=Internal
+[ WARN 21:26:44.692] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/6e/6ea00af598456f55dd6e56ce020b2998df83c5bab1d6b674e2f1e73c00666225-325861952: no such file or directory  hash="6ea00af598456f55dd6e56ce020b2998df83c5bab1d6b674e2f1e73c00666225"
+[ WARN 21:26:44.699] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:26:44.750] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="171967a2fd97e5b1d64d154f2932bd75a3f7119e61aa3b27fe58b1c9ae03dd20" blob_hash="171967a2fd97e5b1d64d154f2932bd75a3f7119e61aa3b27fe58b1c9ae03dd20" details=[] code=Internal
+[ WARN 21:26:44.759] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                  velvet-ballistics:source-length | FAIL crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs [category=production] has 500 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+                  velvet-ballistics:source-length | FAIL crates/vb_runtime/src/engine/execute/dispatch.rs [category=production] has 301 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+                  velvet-ballistics:source-length | FAIL crates/vb_runtime/src/recovery/full.rs [category=production] has 363 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+                  velvet-ballistics:source-length | FAIL crates/vb_runtime/src/run_checkpoint.rs [category=production] has 388 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+                  velvet-ballistics:source-length | FAIL crates/vb_runtime/src/shard/lifecycle/chunk_005.rs [category=production] has 352 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+                  velvet-ballistics:source-length | FAIL crates/vb_runtime/src/shard/transitions.rs [category=production] has 343 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+                  velvet-ballistics:source-length | source-length gate summary:
+                  velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+                  velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+                  velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+                  velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+                  velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+                  velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+                  velvet-ballistics:source-length |   test_in_src        scanned=303   warn=48   over_limit=0    limit=1500 warn_at=1200
+                  velvet-ballistics:source-length |   test_top_level     scanned=383   warn=6    over_limit=0    limit=3000 warn_at=2400
+                  velvet-ballistics:source-length |   production         scanned=936   warn=191  over_limit=6    limit=300 warn_at=240
+                  velvet-ballistics:source-length |   ledger rows used:    384
+[ WARN 21:26:49.291] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                          velvet-ballistics:check | error: unused variable: `tick_before`
+                          velvet-ballistics:check |    --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:264:9
+                          velvet-ballistics:check |     |
+                          velvet-ballistics:check | 264 |     let tick_before = runtime.tick_all();
+                          velvet-ballistics:check |     |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_before`
+                          velvet-ballistics:check |     |
+                          velvet-ballistics:check |     = note: `-D unused-variables` implied by `-D warnings`
+                          velvet-ballistics:check |     = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+                          velvet-ballistics:check | error: unused variable: `tick_after_fail`
+                          velvet-ballistics:check |    --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:314:9
+                          velvet-ballistics:check |     |
+                          velvet-ballistics:check | 314 |     let tick_after_fail = runtime.tick_all();
+                          velvet-ballistics:check |     |         ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_after_fail`
+
+                          velvet-ballistics:check | error: variable does not need to be mutable
+                          velvet-ballistics:check |    --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:353:9
+                          velvet-ballistics:check |     |
+                          velvet-ballistics:check | 353 |     let mut runtime = recover_and_schedule(&path, run, checkpoint, next_seq)?;
+                          velvet-ballistics:check |     |         ----^^^^^^^
+                          velvet-ballistics:check |     |         |
+                          velvet-ballistics:check |     |         help: remove this `mut`
+                          velvet-ballistics:check |     |
+                          velvet-ballistics:check |     = note: `-D unused-mut` implied by `-D warnings`
+                          velvet-ballistics:check |     = help: to override `-D warnings` add `#[allow(unused_mut)]`
+
+                          velvet-ballistics:check | error: could not compile `vb_runtime` (test "durable_retry_run_attempt_authority") due to 3 previous errors
+[ WARN 21:27:26.324] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:27:39.342] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="09afca62d3aa94576058cb65d6f1ff5cab1029118e7c00d11a45daca3b2e9f4b" blob_hash="09afca62d3aa94576058cb65d6f1ff5cab1029118e7c00d11a45daca3b2e9f4b" details=[] code=Internal
+[ WARN 21:27:39.343] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/09/09afca62d3aa94576058cb65d6f1ff5cab1029118e7c00d11a45daca3b2e9f4b-060341289: no such file or directory  hash="09afca62d3aa94576058cb65d6f1ff5cab1029118e7c00d11a45daca3b2e9f4b"
+[ WARN 21:27:39.353] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+error: could not execute process `/home/lewis/.local/share/mise/installs/sccache/0.16.0/sccache-v0.16.0-x86_64-unknown-linux-musl/sccache rustc -vV` (never executed)
+
+Caused by:
+  No such file or directory (os error 2)
+PRODUCTION-INNER DRIFT DETECTED. See target/verus-drift/drift.log
+Verus target failed: verification/verus/recovery_verification.rs (exit 1)
+FAIL crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs [category=production] has 500 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_runtime/src/engine/execute/dispatch.rs [category=production] has 301 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_runtime/src/recovery/full.rs [category=production] has 363 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_runtime/src/run_checkpoint.rs [category=production] has 388 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_runtime/src/shard/lifecycle/chunk_005.rs [category=production] has 352 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_runtime/src/shard/transitions.rs [category=production] has 343 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+source-length gate summary:
+  generated          scanned=1     excluded (no limit)
+  perf               scanned=0     excluded (no limit)
+  kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+  verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+  flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+  verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+  test_in_src        scanned=303   warn=48   over_limit=0    limit=1500 warn_at=1200
+  test_top_level     scanned=383   warn=6    over_limit=0    limit=3000 warn_at=2400
+  production         scanned=936   warn=191  over_limit=6    limit=300 warn_at=240
+  ledger rows used:    384
+error: unused variable: `tick_before`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:264:9
+    |
+264 |     let tick_before = runtime.tick_all();
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_before`
+    |
+    = note: `-D unused-variables` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+error: unused variable: `tick_after_fail`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:314:9
+    |
+314 |     let tick_after_fail = runtime.tick_all();
+    |         ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_after_fail`
+
+error: variable does not need to be mutable
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:353:9
+    |
+353 |     let mut runtime = recover_and_schedule(&path, run, checkpoint, next_seq)?;
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `-D unused-mut` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(unused_mut)]`
+
+error: could not compile `vb_runtime` (test "durable_retry_run_attempt_authority") due to 3 previous errors

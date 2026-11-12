@@ -1,0 +1,14 @@
+```json
+[
+  {"file": "crates/vb_storage/src/admission/tests.rs", "old": "        name: Box::<str>::from(\"test_admission\"),", "new": "        name: Box::<str>::from(\"test_admission\"),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/proptests.rs", "old": "        name: Box::from(\"admit_test\"),", "new": "        name: Box::from(\"admit_test\"),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/proptests.rs", "old": "        name: Box::from(\"checksum_test\"),", "new": "        name: Box::from(\"checksum_test\"),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/proptests.rs", "old": "        name: Box::from(\"submit_test\"),", "new": "        name: Box::from(\"submit_test\"),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/proptests.rs", "old": "        name: Box::from(\"mismatch_test\"),", "new": "        name: Box::from(\"mismatch_test\"),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/proptests.rs", "old": "        name: Box::from(\"different_workflow\"),", "new": "        name: Box::from(\"different_workflow\"),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/recovery/tests.rs", "old": "        name: \"recovery_replay\".into(),", "new": "        name: \"recovery_replay\".into(),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/recovery/tests.rs", "old": "        name: \"action_recovery\".into(),", "new": "        name: \"action_recovery\".into(),\n        input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/vb_2bok_durability_gate_tests.rs", "old": "            name: Box::<str>::from(\"vb_2bok_test\"),", "new": "            name: Box::<str>::from(\"vb_2bok_test\"),\n            input_slots: Box::new([]),"},
+  {"file": "crates/vb_storage/src/hydrate_tests.rs", "old": "        assert!(\n            matches!(result, Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {\n                snapshot_run: sr,\n                snapshot_seq: _\n            }) if sr == RunId::new(1)),\n            \"should reject mismatched run, got {:?}\",\n            result\n        );", "new": "        assert_eq!(\n            result,\n            Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {\n                expected_run: requested_run,\n                snapshot_run,\n                snapshot_seq: EventSeq::new(5)\n            })\n        );"}
+]
+```

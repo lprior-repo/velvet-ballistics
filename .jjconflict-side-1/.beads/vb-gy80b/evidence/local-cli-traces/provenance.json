@@ -1,0 +1,11 @@
+{
+  "agent_type": "standalone Codex CLI agent with actual tool calls",
+  "gpu": "5090",
+  "provider_base_url": "http://127.0.0.1:11002/v1",
+  "reasoning_effort": "high",
+  "cloud_fallback": false,
+  "native_subagent_result": "rejected: model unsupported with ChatGPT account",
+  "acceptance": "pending independent code and test reviews",
+  "coordinator_role": "task routing, candidate rejection and feedback, evidence preservation; no feature patch applied by coordinator",
+  "measurement": "No measured 98 percent work share is claimed."
+}

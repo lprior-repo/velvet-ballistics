@@ -1,0 +1,117 @@
+[ WARN 2026-10-21 15:10:14.119] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 15:10:14.119] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 15:10:14.119] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 15:10:14.204] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="a31dcdb0b0b56b5b73c2613c32b45e6332913ec2cd5720d0ee5ae5c2849d4561" blob_hash="a31dcdb0b0b56b5b73c2613c32b45e6332913ec2cd5720d0ee5ae5c2849d4561" details=[] code=Internal
+[ WARN 15:10:14.205] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/a3/a31dcdb0b0b56b5b73c2613c32b45e6332913ec2cd5720d0ee5ae5c2849d4561-779442172: no such file or directory  hash="a31dcdb0b0b56b5b73c2613c32b45e6332913ec2cd5720d0ee5ae5c2849d4561"
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (a2ae2fad)
+▮▮▮▮ velvet-ballistics:unsafe-audit (a31dcdb0)
+▮▮▮▮ velvet-ballistics:unsafe-audit (8ms, a31dcdb0)
+▮▮▮▮ velvet-ballistics:panic-surface (bcc35de1)
+[ WARN 15:10:18.317] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="bcc35de1ace0dc6538f4be8238f9bf1bbf540ab504c08c14c0d6e532b532ddca" blob_hash="bcc35de1ace0dc6538f4be8238f9bf1bbf540ab504c08c14c0d6e532b532ddca" details=[] code=Internal
+[ WARN 15:10:18.318] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="bcc35de1ace0dc6538f4be8238f9bf1bbf540ab504c08c14c0d6e532b532ddca" blob_hash="afa594f24e067d3cec158193742b3e128ab567d32c9594ee134ab941f3632fd6" details=[] code=Internal
+[ WARN 15:10:18.319] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/bc/bcc35de1ace0dc6538f4be8238f9bf1bbf540ab504c08c14c0d6e532b532ddca-512187541: no such file or directory  hash="bcc35de1ace0dc6538f4be8238f9bf1bbf540ab504c08c14c0d6e532b532ddca"
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-yx3ux-lint-5090
+velvet-ballistics:panic-surface | CommitSHA: 7cce3881458115e19c1dd63cde10a377c08f844f
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (3s 772ms, bcc35de1)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+[ WARN 15:10:39.464] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="a2ae2fadcfdca977ab7c04e5cdf3a3011263deae8ebd07e3e6c6a070d252d5f5" blob_hash="a2ae2fadcfdca977ab7c04e5cdf3a3011263deae8ebd07e3e6c6a070d252d5f5" details=[] code=Internal
+[ WARN 15:10:39.464] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="a2ae2fadcfdca977ab7c04e5cdf3a3011263deae8ebd07e3e6c6a070d252d5f5" blob_hash="4c1eb320882678dbaee53081fc8abeba2799db5c7e78ee0c45f36c36dc1a647e" details=[] code=Internal
+[ WARN 15:10:39.464] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/a2/a2ae2fadcfdca977ab7c04e5cdf3a3011263deae8ebd07e3e6c6a070d252d5f5-648241570: no such file or directory  hash="a2ae2fadcfdca977ab7c04e5cdf3a3011263deae8ebd07e3e6c6a070d252d5f5"
+[ WARN 15:10:39.491] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (25s 302ms, a2ae2fad)
+▮▮▮▮ velvet-ballistics:lint-src (9b323c89)
+velvet-ballistics:lint-src | error: using a potentially dangerous silent `as` conversion
+velvet-ballistics:lint-src |   --> fuzz/fuzz_targets/vb_vzcuf_PS_007.rs:19:25
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 19 |     if storage_limit <= u32::MAX as u64 { let as_u32: u32 = storage_limit as u32; assert_eq!(as_u32 as u64, storage_limit); }
+velvet-ballistics:lint-src |    |                         ^^^^^^^^^^^^^^^
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: consider using a safe wrapper for this conversion
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+velvet-ballistics:lint-src |    = note: requested on the command line with `-D clippy::as-conversions`
+
+velvet-ballistics:lint-src | error: using a potentially dangerous silent `as` conversion
+velvet-ballistics:lint-src |   --> fuzz/fuzz_targets/vb_vzcuf_PS_007.rs:19:61
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 19 |     if storage_limit <= u32::MAX as u64 { let as_u32: u32 = storage_limit as u32; assert_eq!(as_u32 as u64, storage_limit); }
+velvet-ballistics:lint-src |    |                                                             ^^^^^^^^^^^^^^^^^^^^
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: consider using a safe wrapper for this conversion
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+
+velvet-ballistics:lint-src | error: using a potentially dangerous silent `as` conversion
+velvet-ballistics:lint-src |   --> fuzz/fuzz_targets/vb_vzcuf_PS_007.rs:19:94
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 19 |     if storage_limit <= u32::MAX as u64 { let as_u32: u32 = storage_limit as u32; assert_eq!(as_u32 as u64, storage_limit); }
+velvet-ballistics:lint-src |    |                                                                                              ^^^^^^^^^^^^^
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: consider using a safe wrapper for this conversion
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+
+velvet-ballistics:lint-src | error: indexing may panic
+velvet-ballistics:lint-src |   --> fuzz/fuzz_targets/vb_vzcuf_PS_007.rs:59:11
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 59 |     match data[0] % 3 {
+velvet-ballistics:lint-src |    |           ^^^^^^^
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: consider using `.get(n)` or `.get_mut(n)` instead
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+velvet-ballistics:lint-src |    = note: requested on the command line with `-D clippy::indexing-slicing`
+
+velvet-ballistics:lint-src | error: slicing may panic
+velvet-ballistics:lint-src |   --> fuzz/fuzz_targets/vb_vzcuf_PS_007.rs:60:33
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 60 |         0 => fuzz_bridge_value(&data[1..]),
+velvet-ballistics:lint-src |    |                                 ^^^^^^^^^
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+velvet-ballistics:lint-src | error: slicing may panic
+velvet-ballistics:lint-src |   --> fuzz/fuzz_targets/vb_vzcuf_PS_007.rs:61:36
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 61 |         1 => fuzz_bridge_defaults(&data[1..]),
+velvet-ballistics:lint-src |    |                                    ^^^^^^^^^
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+velvet-ballistics:lint-src | error: slicing may panic
+velvet-ballistics:lint-src |   --> fuzz/fuzz_targets/vb_vzcuf_PS_007.rs:62:36
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 62 |         _ => fuzz_multiple_events(&data[1..]),
+velvet-ballistics:lint-src |    |                                    ^^^^^^^^^
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+velvet-ballistics:lint-src | error: could not compile `velvet-ballistics-fuzz` (bin "vb_vzcuf_PS_007") due to 7 previous errors
+▮▮▮▮ velvet-ballistics:lint-src (9s 252ms, 9b323c89)
+Error: task_runner::run_failed
+
+  × Task velvet-ballistics:lint-src failed to run.
+  ╰─▶ Process set failed: exit code 101
+

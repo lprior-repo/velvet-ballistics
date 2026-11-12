@@ -1,0 +1,20 @@
++zsh:1> RUST_BACKTRACE=1 cargo fuzz run --sanitizer address vb_rpch_replay_events_fuzz -- '-runs=8' '-seed=4242' '-max_len=64' '-timeout=60' '-rss_limit_mb=2048' '-print_final_stats=1'
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.04s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.04s
+     Running `target/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/vb_rpch_replay_events_fuzz/ -runs=8 -seed=4242 -max_len=64 -timeout=60 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_replay_events_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (79482 inline 8-bit counters): 79482 [0x5651dc829da0, 0x5651dc83d41a), 
+INFO: Loaded 1 PC tables (79482 PCs): 79482 [0x5651dc83d420,0x5651dc973bc0), 
+INFO:        9 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_replay_events_fuzz
+INFO: seed corpus: files: 9 min: 1b max: 3b total: 14b rss: 65Mb
+#10	INITED cov: 6347 ft: 6398 corp: 8/13b exec/s: 0 rss: 142Mb
+#10	DONE   cov: 6347 ft: 6398 corp: 8/13b lim: 4 exec/s: 0 rss: 142Mb
+Done 10 runs in 0 second(s)
+stat::number_of_executed_units: 10
+stat::average_exec_per_sec:     0
+stat::new_units_added:          0
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              142
+
+exit_status=0

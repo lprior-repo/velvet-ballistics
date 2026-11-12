@@ -1,0 +1,100 @@
+own-patch:101: +
+own-patch:102: +    // =============================================================================
+own-patch:103: +    // Group G: Backpressure Warning Outcome surfacing (VB-D8MD3)
+own-patch:104: +    // Scenario G1: enqueue_with_backpressure_warning_outcome returns Delivered when sent
+own-patch:105: +    // Scenario G2: enqueue_with_backpressure_warning_outcome returns Delivered without channel
+own-patch:106: +    // Scenario G3: enqueue_with_backpressure_warning_outcome returns Delivered below threshold
+own-patch:107: +    // Scenario G4: enqueue_with_backpressure_warning_outcome returns Delivered on queue full
+own-patch:108: +    // Scenario G5: enqueue_with_backpressure_warning_outcome returns ChannelFull when channel full
+own-patch:109: +    // Scenario G6: enqueue_with_backpressure_warning_outcome returns ChannelDisconnected
+own-patch:110: +    // =============================================================================
+own-patch:111: +
+own-patch:112: +    #[test]
+own-patch:113: +    fn backpressure_outcome_delivered_when_warning_sent() {
+own-patch:114: +        let capacity = 10;
+own-patch:115: +        let (queue, rx) =
+own-patch:116: +            BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+own-patch:117: +
+own-patch:118: +        for i in 0..7 {
+own-patch:119: +            let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+own-patch:120: +            assert_eq!(enqueue_result, Ok(()));
+own-patch:121: +            assert_eq!(
+own-patch:122: +                bp_outcome,
+own-patch:123: +                BackpressureWarningOutcome::Delivered,
+own-patch:124: +                "below threshold ({i}/7), outcome should be Delivered"
+own-patch:125: +            );
+own-patch:126: +        }
+own-patch:127: +
+own-patch:128: +        // 8th item (80%) — warning fires, must be Delivered
+own-patch:129: +        let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+own-patch:130: +        assert_eq!(enqueue_result, Ok(()));
+own-patch:131: +        assert_eq!(
+own-patch:132: +            bp_outcome,
+own-patch:133: +            BackpressureWarningOutcome::Delivered,
+own-patch:134: +            "80% capacity: warning must be delivered when receiver is live"
+own-patch:135: +        );
+own-patch:136: +
+own-patch:137: +        // Verify the warning arrived on the channel
+own-patch:138: +        let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+own-patch:139: +        assert_eq!(
+own-patch:140: +            warning,
+own-patch:141: +            Ok(BackpressureWarning { depth: 8, capacity: 10 }),
+own-patch:142: +            "warning must be present on channel when outcome is Delivered"
+own-patch:143: +        );
+own-patch:144: +    }
+own-patch:145: +
+own-patch:146: +    #[test]
+own-patch:147: +    fn backpressure_outcome_delivered_without_channel() {
+own-patch:148: +        let queue = BoundedActionCompletionQueue::new_infallible(10);
+own-patch:149: +
+own-patch:150: +        for i in 0..8 {
+own-patch:151: +            let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+own-patch:152: +            assert_eq!(enqueue_result, Ok(()));
+own-patch:153: +            assert_eq!(
+own-patch:154: +                bp_outcome,
+own-patch:155: +                BackpressureWarningOutcome::Delivered,
+own-patch:156: +                "no channel configured: outcome must always be Delivered (depth={i})"
+own-patch:157: +            );
+own-patch:158: +        }
+own-patch:159: +    }
+own-patch:160: +
+own-patch:161: +    #[test]
+own-patch:162: +    fn backpressure_outcome_delivered_below_threshold() {
+own-patch:163: +        let capacity = 10;
+own-patch:164: +        let (_queue, rx) =
+own-patch:165: +            BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+own-patch:166: +
+own-patch:167: +        for i in 0..7 {
+own-patch:168: +            let queue = BoundedActionCompletionQueue::new_infallible(capacity);
+own-patch:169: +            let (_enqueue_result, bp_outcome) =
+own-patch:170: +                queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+own-patch:171: +            assert_eq!(
+own-patch:172: +                bp_outcome,
+own-patch:173: +                BackpressureWarningOutcome::Delivered,
+own-patch:174: +                "below 80% threshold ({i}/7): outcome is Delivered, no warning sent"
+own-patch:175: +            );
+own-patch:176: +        }
+own-patch:177: +
+own-patch:178: +        // Verify no warnings on channel
+own-patch:179: +        assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+own-patch:180: +    }
+own-patch:181: +
+own-patch:182: +    #[test]
+own-patch:183: +    fn backpressure_outcome_delivered_on_queue_full() {
+own-patch:184: +        let capacity = 3;
+own-patch:185: +        let (_queue, rx) =
+own-patch:186: +            BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+own-patch:187: +
+own-patch:188: +        let queue = BoundedActionCompletionQueue::new_infallible(capacity);
+own-patch:189: +
+own-patch:190: +        // Fill the queue
+own-patch:191: +        for i in 0..3 {
+own-patch:192: +            let (enqueue_result, _bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+own-patch:193: +            assert_eq!(enqueue_result, Ok(()));
+own-patch:194: +        }
+own-patch:195: +
+own-patch:196: +        // Try to enqueue beyond capacity — returns QueueFull with Delivered outcome
+own-patch:197: +        let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(99));
+own-patch:198: +        assert_eq!(
+own-patch:199: +            enqueue_result,
+own-patch:200: +            Err(ActionQueueError::QueueFull {

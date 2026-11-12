@@ -1,0 +1,25 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 9,
+  "sublane": "test-review-public-surface-audit-evidence-repair-after-state11-rejection",
+  "delegate": "test-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/test-writer-report.md",
+    ".beads/vb-vt2f/contract.md",
+    "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+    "crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/test-review.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/test-repair-guide.md"
+  ],
+  "attempt": 2,
+  "repair_route": "State 9 public surface audit evidence repair for PRE-001/INV-002 after State 11 rejection"
+}

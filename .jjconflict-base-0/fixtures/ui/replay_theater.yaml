@@ -1,0 +1,137 @@
+name: replay_theater
+screen_kind: ReplayTheater
+app_snapshot:
+  status:
+    storage_health: Healthy
+    writer_queue_depth: 1
+    journal_batch_healthy: true
+    snapshot_seq: 2048
+    blob_store_ok: true
+    index_healthy: true
+    uptime_seconds: 64800
+    active_run_count: 1
+  active_runs:
+    - run_id: run_replay_01
+      workflow_id: wf_replay01
+      status: Failure
+      started_at: 1715200000
+      finished_at: 1715200600
+      step_count: 6
+      event_count: 1200
+  selected_run: null
+  selected_workflow:
+    workflow_id: wf_replay01
+    workflow_digest: "0x6666666666666666666666666666666666666666666666666666666666666666"
+    nodes:
+      - step_idx: 0
+        label: Begin
+        kind: Start
+        input_slot_count: 0
+        output_slot_count: 1
+      - step_idx: 1
+        label: Execute
+        kind: Sequence
+        input_slot_count: 1
+        output_slot_count: 1
+      - step_idx: 2
+        label: Check
+        kind: If
+        input_slot_count: 1
+        output_slot_count: 2
+      - step_idx: 3
+        label: Retry
+        kind: Do
+        input_slot_count: 1
+        output_slot_count: 1
+      - step_idx: 4
+        label: Skip
+        kind: Do
+        input_slot_count: 1
+        output_slot_count: 1
+      - step_idx: 5
+        label: End
+        kind: Finish
+        input_slot_count: 1
+        output_slot_count: 0
+    edges:
+      - from_step: 0
+        to_step: 1
+        label: null
+      - from_step: 1
+        to_step: 2
+        label: null
+      - from_step: 2
+        to_step: 3
+        label: "ok"
+      - from_step: 2
+        to_step: 4
+        label: "fail"
+      - from_step: 3
+        to_step: 5
+        label: null
+      - from_step: 4
+        to_step: 5
+        label: null
+    node_x: [150, 300, 450, 350, 550, 700]
+    node_y: [300, 300, 300, 150, 450, 300]
+  verification: null
+  replay:
+    run_id: run_replay_01
+    status: Failure
+    selected_seq: 512
+    events:
+      - seq: 100
+        timestamp: 1715200000
+        shard: 0
+        step: 0
+        kind: StepEntered
+        evidence_id: null
+        digest: null
+      - seq: 200
+        timestamp: 1715200100
+        shard: 0
+        step: 1
+        kind: StepEntered
+        evidence_id: null
+        digest: null
+      - seq: 300
+        timestamp: 1715200200
+        shard: 0
+        step: 2
+        kind: StepEntered
+        evidence_id: null
+        digest: null
+      - seq: 400
+        timestamp: 1715200300
+        shard: 0
+        step: 2
+        kind: ActionFailed
+        evidence_id: null
+        digest: null
+      - seq: 500
+        timestamp: 1715200400
+        shard: 0
+        step: 2
+        kind: ErrorCaught
+        evidence_id: null
+        digest: null
+      - seq: 512
+        timestamp: 1715200500
+        shard: 0
+        step: 2
+        kind: StepExited
+        evidence_id: null
+        digest: null
+    slot_diffs:
+      - slot_idx: 0
+        before: "state:idle"
+        after: "state:failed"
+        taint_before: Clean
+        taint_after: Tainted
+    playback_speed: 1.0
+    is_playing: false
+    recovery:
+      strategy: ScheduleRetry
+      max_attempts: 3
+      idempotency_required: true
+  incident: null

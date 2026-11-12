@@ -1,0 +1,120 @@
+```rust
+fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> {
+    let nop_node = super::CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: None,
+        next: Some(vb_core::ids::StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: super::CompiledNodeKind::Nop,
+    };
+    let do_node = super::CompiledNode {
+        id: vb_core::ids::StepIdx::new(1),
+        output: Some(SlotIdx::ZERO),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: super::CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let parts = super::WorkflowParts {
+        name: Box::from("nop_then_do"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([nop_node, do_node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: super::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .map_err(Into::into)
+}
+
+#[test]
+fn bare_submit_no_input_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+
+    let mut config = small_config();
+    config.step_budget_per_tick = 1;
+
+    let mut shard = Shard::new_with_journal(config, shared);
+
+    let run = RunId::new(10);
+    let workflow = nop_then_do()?;
+
+    let caps = super::test_fixtures::contract_capability_for(ActionId::new(0));
+
+    shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: caps.clone(),
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard.run_state_get(run).ok_or("run state missing")?;
+
+    assert_eq!(
+        state.frame.read_slot(SlotIdx::ZERO),
+        Err(vb_core::errors::CoreError::SlotUninitialized { slot: SlotIdx::ZERO })
+    );
+
+    assert!(state.action_contracts.is_empty());
+
+    assert_eq!(
+        state.admission.as_ref().ok_or("missing admission")?.granted_capabilities(),
+        &caps
+    );
+
+    Ok(())
+}
+
+#[test]
+fn submit_with_inputs_no_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+
+    let mut config = small_config();
+    config.step_budget_per_tick = 1;
+
+    let mut shard = Shard::new_with_journal(config, shared);
+
+    let run = RunId::new(11);
+    let workflow = nop_then_do()?;
+
+    let caps = super::test_fixtures::contract_capability_for(ActionId::new(0));
+
+    shard.enqueue(ShardCommand::SubmitWithInputs {
+        run,
+        workflow,
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
+        caps: caps.clone(),
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard.run_state_get(run).ok_or("run state missing")?;
+
+    assert_eq!(
+        state.frame.read_slot(SlotIdx::ZERO),
+        Ok(&SlotValue::I64(7))
+    );
+
+    assert!(state.action_contracts.is_empty());
+
+    assert_eq!(
+        state.admission.as_ref().ok_or("missing admission")?.granted_capabilities(),
+        &caps
+    );
+
+    Ok(())
+}
+```

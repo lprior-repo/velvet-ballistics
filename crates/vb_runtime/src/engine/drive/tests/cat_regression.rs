@@ -27,7 +27,11 @@ mod tests {
         // collect branch (push_slot_written_with_extra) instead of the
         // silent-drop push_slot_written_with_taint branch that the
         // previous SetConst+Finish workflow used.
-        let wf = mkwf(vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)], 2)?;
+        let wf = mkwf(
+            vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)],
+            2,
+            &[0],
+        )?;
         let mut run = mkr(3, 2)?;
         let mut store = ValueStore::new();
         let source_page: Box<[SlotValue]> = Box::from([SlotValue::I64(10), SlotValue::I64(20)]);
@@ -268,6 +272,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             1,
             vec![ConstValue::I64(7)],
+            &[],
         )?;
         let mut run = mkr(2, 1)?;
         let mut store = ValueStore::new();
@@ -335,6 +340,7 @@ mod tests {
             vec![nop_node, setc(1, 0, 0, 2), fin(2, 0)],
             2,
             vec![ConstValue::I64(7)],
+            &[1],
         )?;
         let mut run = mkr(3, 2)?;
         let mut store = ValueStore::new();

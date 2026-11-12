@@ -1,0 +1,1367 @@
+────────────
+ Nextest run ID 8c32110d-b97b-4b00-9e99-9e2899a3fff0 with nextest profile: default
+    Starting 14344 tests across 290 binaries (27 tests skipped)
+        FAIL [   0.016s] ( 9175/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_journaled_gate_count_equals_fifteen
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_encoder_journaled_gate_count_equals_fifteen ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_encoder_journaled_gate_count_equals_fifteen
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'accepted_artifact_encoder_journaled_gate_count_equals_fifteen' (1908895) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:199:5:
+    assertion `left == right` failed: Journaled must have 15 gates
+      left: 0
+     right: 15
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.017s] ( 9184/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_gate_count_equals_fifteen
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_encoder_strict_gate_count_equals_fifteen ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_encoder_strict_gate_count_equals_fifteen
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'accepted_artifact_encoder_strict_gate_count_equals_fifteen' (1908946) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:209:5:
+    assertion `left == right` failed: Strict must have 15 gates
+      left: 0
+     right: 15
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.017s] ( 9185/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_proof_has_durable_true
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_encoder_strict_proof_has_durable_true ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_encoder_strict_proof_has_durable_true
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'accepted_artifact_encoder_strict_proof_has_durable_true' (1908948) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:189:5:
+    Strict policy must be durable
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.020s] ( 9187/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled' (1908920) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:105:5:
+    assertion `left == right` failed
+      left: 0
+     right: 15
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.019s] ( 9189/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict' (1908917) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:113:5:
+    assertion `left == right` failed
+      left: 0
+     right: 15
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.014s] ( 9198/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true' (1909000) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:158:5:
+    assertion `left == right` failed
+      left: 0
+     right: 15
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.017s] ( 9214/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_journaled
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_validator_requires_all_proof_flags_true_under_journaled ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_validator_requires_all_proof_flags_true_under_journaled
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'accepted_artifact_validator_requires_all_proof_flags_true_under_journaled' (1909023) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:405:5:
+    assertion failed: p.bounded_claimed && p.taint_safe_claimed && p.retry_safe_claimed &&
+            p.replayable_claimed && !p.durable
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.018s] ( 9223/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_strict
+  stdout ───
+
+    running 1 test
+    test accepted_artifact_validator_requires_all_proof_flags_true_under_strict ... FAILED
+
+    failures:
+
+    failures:
+        accepted_artifact_validator_requires_all_proof_flags_true_under_strict
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'accepted_artifact_validator_requires_all_proof_flags_true_under_strict' (1909029) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:390:5:
+    assertion failed: p.bounded_claimed && p.taint_safe_claimed && p.retry_safe_claimed &&
+            p.replayable_claimed && p.durable
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.732s] (10726/14344) velvet-ballistics::admission_evidence_integration run_without_artifact_under_relaxed_policy
+  stdout ───
+
+    running 1 test
+    test run_without_artifact_under_relaxed_policy ... FAILED
+
+    failures:
+
+    failures:
+        run_without_artifact_under_relaxed_policy
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.73s
+
+  stderr ───
+
+    thread 'run_without_artifact_under_relaxed_policy' (1918187) panicked at crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs:132:13:
+    relaxed submit_artifact should succeed: artifact checksum mismatch
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.751s] (10728/14344) velvet-ballistics::admission_evidence_integration restart_lookup_finds_persisted_header
+  stdout ───
+
+    running 1 test
+    test restart_lookup_finds_persisted_header ... FAILED
+
+    failures:
+
+    failures:
+        restart_lookup_finds_persisted_header
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.75s
+
+  stderr ───
+
+    thread 'restart_lookup_finds_persisted_header' (1918179) panicked at crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs:307:13:
+    submit_artifact failed: artifact checksum mismatch
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.826s] (10758/14344) velvet-ballistics::admission_evidence_integration journal_persistence_survives_runtime_drop_and_reopen
+  stdout ───
+
+    running 1 test
+    test journal_persistence_survives_runtime_drop_and_reopen ... FAILED
+
+    failures:
+
+    failures:
+        journal_persistence_survives_runtime_drop_and_reopen
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.82s
+
+  stderr ───
+
+    thread 'journal_persistence_survives_runtime_drop_and_reopen' (1918182) panicked at crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs:541:17:
+    submit_artifact failed: artifact checksum mismatch
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.730s] (10774/14344) velvet-ballistics::cli_integration cli_diff_identical_runs_reports_zero_differences
+  stdout ───
+
+    running 1 test
+    test cli_diff_identical_runs_reports_zero_differences ... FAILED
+
+    failures:
+
+    failures:
+        cli_diff_identical_runs_reports_zero_differences
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.73s
+
+  stderr ───
+
+    thread 'cli_diff_identical_runs_reports_zero_differences' (1919049) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run setup for diff test failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.739s] (10781/14344) velvet-ballistics::cli_integration cli_ai_context_for_journaled_run_emits_compiled_ir_summary
+  stdout ───
+
+    running 1 test
+    test cli_ai_context_for_journaled_run_emits_compiled_ir_summary ... FAILED
+
+    failures:
+
+    failures:
+        cli_ai_context_for_journaled_run_emits_compiled_ir_summary
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.74s
+
+  stderr ───
+
+    thread 'cli_ai_context_for_journaled_run_emits_compiled_ir_summary' (1919003) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run --durability journaled --db failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.748s] (10792/14344) velvet-ballistics::cli_integration cli_canonical_emit_postcard_frames_required_output_contract_commands
+  stdout ───
+
+    running 1 test
+    test cli_canonical_emit_postcard_frames_required_output_contract_commands ... FAILED
+
+    failures:
+
+    failures:
+        cli_canonical_emit_postcard_frames_required_output_contract_commands
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.75s
+
+  stderr ───
+
+    thread 'cli_canonical_emit_postcard_frames_required_output_contract_commands' (1919006) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run setup for emit postcard failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.760s] (10819/14344) velvet-ballistics::cli_integration cli_canonical_emit_yaml_covers_required_output_contract_commands
+  stdout ───
+
+    running 1 test
+    test cli_canonical_emit_yaml_covers_required_output_contract_commands ... FAILED
+
+    failures:
+
+    failures:
+        cli_canonical_emit_yaml_covers_required_output_contract_commands
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.76s
+
+  stderr ───
+
+    thread 'cli_canonical_emit_yaml_covers_required_output_contract_commands' (1919015) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run setup for emit yaml failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.026s] (11000/14344) velvet-ballistics::finish_input_execution finish_input_execution
+  stdout ───
+
+    running 1 test
+    test finish_input_execution ... FAILED
+
+    failures:
+
+    failures:
+        finish_input_execution
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: "command failed: \"/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/target/debug/velvet-ballistics\" \"run\" \"/tmp/.tmp6cPXyI/flow_1.yaml\" \"--db\" \"/tmp/.tmp6cPXyI/db_run_1_journaled\" \"--input-bin\" \"/tmp/.tmp6cPXyI/input_1.bin\" \"--durability\" \"journaled\"\nstdout: \nstderr: runtime submit error: admission rejected: artifact invalid\n"
+
+        FAIL [   0.421s] (11006/14344) velvet-ballistics::cli_integration cli_replay_journaled_run_produces_deterministic_output
+  stdout ───
+
+    running 1 test
+    test cli_replay_journaled_run_produces_deterministic_output ... FAILED
+
+    failures:
+
+    failures:
+        cli_replay_journaled_run_produces_deterministic_output
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.42s
+
+  stderr ───
+
+    thread 'cli_replay_journaled_run_produces_deterministic_output' (1923870) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run setup for replay test failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.467s] (11007/14344) velvet-ballistics::cli_integration cli_inspect_compiled_run_shows_status_and_event_count
+  stdout ───
+
+    running 1 test
+    test cli_inspect_compiled_run_shows_status_and_event_count ... FAILED
+
+    failures:
+
+    failures:
+        cli_inspect_compiled_run_shows_status_and_event_count
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.46s
+
+  stderr ───
+
+    thread 'cli_inspect_compiled_run_shows_status_and_event_count' (1923631) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run for inspect setup failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.415s] (11008/14344) velvet-ballistics::cli_integration cli_run_strict_durability_writes_journal_events
+  stdout ───
+
+    running 1 test
+    test cli_run_strict_durability_writes_journal_events ... FAILED
+
+    failures:
+
+    failures:
+        cli_run_strict_durability_writes_journal_events
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.41s
+
+  stderr ───
+
+    thread 'cli_run_strict_durability_writes_journal_events' (1924210) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run --durability strict failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.461s] (11009/14344) velvet-ballistics::cli_integration cli_run_journaled_then_events_and_inspect_read_temp_db
+  stdout ───
+
+    running 1 test
+    test cli_run_journaled_then_events_and_inspect_read_temp_db ... FAILED
+
+    failures:
+
+    failures:
+        cli_run_journaled_then_events_and_inspect_read_temp_db
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.46s
+
+  stderr ───
+
+    thread 'cli_run_journaled_then_events_and_inspect_read_temp_db' (1923881) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run --durability journaled --db failed: stdout= stderr=runtime submit error: admission rejected: artifact invalid
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.471s] (11010/14344) velvet-ballistics::cli_integration cli_run_json_output_reports_structured_run_result
+  stdout ───
+
+    running 1 test
+    test cli_run_json_output_reports_structured_run_result ... FAILED
+
+    failures:
+
+    failures:
+        cli_run_json_output_reports_structured_run_result
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.47s
+
+  stderr ───
+
+    thread 'cli_run_json_output_reports_structured_run_result' (1923910) panicked at crates/velvet_ballistics/tests/cli_integration.rs:147:5:
+    run --emit yaml failed: stdout= stderr=error: "runtime submit error: admission rejected: artifact invalid"
+    success: false
+
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.020s] (12883/14344) velvet-ballistics-workspace-tests::vb_9agmk_artifact_evidence runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue
+  stdout ───
+
+    running 1 test
+    test runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue ... FAILED
+
+    failures:
+
+    failures:
+        runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue' (1937934) panicked at crates/workspace_tests/tests/artifact_evidence_support/runtime_cases.rs:60:5:
+    assertion `left == right` failed
+      left: Err(AdmissionActionAbiDigestMismatch { action: ActionId(0), expected: WorkflowDigest([243, 198, 170, 88, 20, 65, 155, 244, 197, 126, 126, 53, 189, 20, 149, 27, 162, 217, 177, 162, 40, 8, 29, 227, 76, 169, 48, 107, 61, 46, 211, 164]), submitted: WorkflowDigest([67, 64, 16, 44, 159, 234, 50, 125, 165, 61, 84, 253, 19, 82, 115, 81, 178, 44, 212, 3, 23, 104, 175, 242, 102, 39, 73, 210, 75, 55, 164, 209]) })
+     right: Err(AdmissionArtifactInvalid { digest: WorkflowDigest([213, 4, 161, 94, 175, 22, 67, 37, 54, 173, 234, 36, 8, 250, 59, 93, 208, 187, 137, 69, 181, 90, 22, 228, 38, 24, 221, 44, 194, 136, 18, 89]) })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.024s] (12888/14344) velvet-ballistics-workspace-tests::vb_9agmk_artifact_evidence runtime_cases::journaled_runtime_and_processing_reject_replacement_execution_contracts
+  stdout ───
+
+    running 1 test
+    test runtime_cases::journaled_runtime_and_processing_reject_replacement_execution_contracts ... FAILED
+
+    failures:
+
+    failures:
+        runtime_cases::journaled_runtime_and_processing_reject_replacement_execution_contracts
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'runtime_cases::journaled_runtime_and_processing_reject_replacement_execution_contracts' (1937935) panicked at crates/workspace_tests/tests/artifact_evidence_support/runtime_cases.rs:60:5:
+    assertion `left == right` failed
+      left: Err(AdmissionActionAbiDigestMismatch { action: ActionId(0), expected: WorkflowDigest([243, 198, 170, 88, 20, 65, 155, 244, 197, 126, 126, 53, 189, 20, 149, 27, 162, 217, 177, 162, 40, 8, 29, 227, 76, 169, 48, 107, 61, 46, 211, 164]), submitted: WorkflowDigest([67, 64, 16, 44, 159, 234, 50, 125, 165, 61, 84, 253, 19, 82, 115, 81, 178, 44, 212, 3, 23, 104, 175, 242, 102, 39, 73, 210, 75, 55, 164, 209]) })
+     right: Err(AdmissionArtifactInvalid { digest: WorkflowDigest([213, 4, 161, 94, 175, 22, 67, 37, 54, 173, 234, 36, 8, 250, 59, 93, 208, 187, 137, 69, 181, 90, 22, 228, 38, 24, 221, 44, 194, 136, 18, 89]) })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.014s] (12937/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_under_required
+  stdout ───
+
+    running 1 test
+    test admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_under_required ... FAILED
+
+    failures:
+
+    failures:
+        admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_under_required
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_under_required' (1938095) panicked at crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:400:5:
+    assertion `left == right` failed
+      left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+     right: Err(ArtifactInvalidGateCount { found: 14, required: 15 })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.020s] (12941/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_gate_count_matches_required
+  stdout ───
+
+    running 1 test
+    test admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_gate_count_matches_required ... FAILED
+
+    failures:
+
+    failures:
+        admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_gate_count_matches_required
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.01s
+
+  stderr ───
+    Error: "admission rejected: artifact proof flag evidence is false"
+
+        FAIL [   0.020s] (12943/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted
+  stdout ───
+
+    running 1 test
+    test admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted ... FAILED
+
+    failures:
+
+    failures:
+        admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted' (1938104) panicked at crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:431:5:
+    assertion `left == right` failed
+      left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+     right: Err(CapabilityDenied { action: ActionId(9), required: Capability { name: "net.fetch", action: ActionId(9) }, granted: CapabilitySet { grants: [] } })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.014s] (12983/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_variant
+  stdout ───
+
+    running 1 test
+    test strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_variant ... FAILED
+
+    failures:
+
+    failures:
+        strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_variant
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_variant' (1938234) panicked at crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:511:5:
+    assertion `left == right` failed
+      left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+     right: Err(ArtifactInvalidGateCount { found: 2, required: 15 })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.020s] (12994/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact_variant
+  stdout ───
+
+    running 1 test
+    test runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact_variant ... FAILED
+
+    failures:
+
+    failures:
+        runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact_variant
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact_variant' (1938264) panicked at crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:482:5:
+    assertion `left == right` failed
+      left: Err(ArtifactEvidenceInvalid)
+     right: Err(InvalidGateCount { found: 2, required: 15 })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.019s] (12996/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted
+  stdout ───
+
+    running 1 test
+    test storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted ... FAILED
+
+    failures:
+
+    failures:
+        storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted' (1938263) panicked at crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:212:5:
+    assertion `left == right` failed
+      left: false
+     right: true
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (13035/14344) velvet-ballistics-workspace-tests::vb_eepg_bdd_tests unknown_record_kind_rejection::is_known_record_kind_returns_false_for_invalid_kinds
+  stdout ───
+
+    running 1 test
+    test unknown_record_kind_rejection::is_known_record_kind_returns_false_for_invalid_kinds ... FAILED
+
+    failures:
+
+    failures:
+        unknown_record_kind_rejection::is_known_record_kind_returns_false_for_invalid_kinds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'unknown_record_kind_rejection::is_known_record_kind_returns_false_for_invalid_kinds' (1938495) panicked at crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:520:13:
+    kind 4 must be unknown, got Err(RecordKindFamilyMismatch { magic: 1447184965, kind: 4 })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.230s] (13173/14344) velvet-ballistics-workspace-tests::vb_8ma2_workspace_assertions valid_workspace_passes_sharpened_assertions
+  stdout ───
+
+    running 1 test
+    test valid_workspace_passes_sharpened_assertions ... FAILED
+
+    failures:
+
+    failures:
+        valid_workspace_passes_sharpened_assertions
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.22s
+
+  stderr ───
+
+    thread 'valid_workspace_passes_sharpened_assertions' (1937812) panicked at crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:159:5:
+    Cargo.toml: workspace.members missing ["crates/vb_expr", "crates/vb_yaml", "fuzz"]
+    Cargo.toml: workspace.members unexpected ["crates/vb_queue_semantics"]
+    Cargo.toml: workspace.exclude missing ["xtask"]
+    Cargo.toml: workspace.exclude unexpected ["crates/vb_ui", "fuzz"]
+    crates/vb_yaml/Cargo.toml: unreadable manifest: No such file or directory (os error 2)
+    crates/vb_expr/Cargo.toml: unreadable manifest: No such file or directory (os error 2)
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.019s] (13231/14344) velvet-ballistics-workspace-tests::vb_kkvb_xtask_command_shell_coverage xtask_help_lists_required_and_legacy_commands_when_requested
+  stdout ───
+
+    running 1 test
+    test xtask_help_lists_required_and_legacy_commands_when_requested ... FAILED
+
+    failures:
+
+    failures:
+        xtask_help_lists_required_and_legacy_commands_when_requested
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'xtask_help_lists_required_and_legacy_commands_when_requested' (1938876) panicked at crates/workspace_tests/tests/vb_kkvb_xtask_command_shell_coverage.rs:23:5:
+    assertion `left == right` failed
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.020s] (13233/14344) velvet-ballistics-workspace-tests::vb_kkvb_xtask_command_shell_coverage xtask_version_prints_package_version_when_requested
+  stdout ───
+
+    running 1 test
+    test xtask_version_prints_package_version_when_requested ... FAILED
+
+    failures:
+
+    failures:
+        xtask_version_prints_package_version_when_requested
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'xtask_version_prints_package_version_when_requested' (1938893) panicked at crates/workspace_tests/tests/vb_kkvb_xtask_command_shell_coverage.rs:41:5:
+    assertion `left == right` failed
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (13334/14344) velvet-ballistics-workspace-tests::vb_lp2v_admission_integration given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count
+  stdout ───
+
+    running 1 test
+    test given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count ... FAILED
+
+    failures:
+
+    failures:
+        given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count' (1939237) panicked at crates/workspace_tests/tests/vb_lp2v_admission_integration.rs:510:5:
+    Strict must reject wrong gate_count=7, got Err(ArtifactInvalidProofFlag { flag: "evidence" })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.021s] (13353/14344) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_antiinvariant_tampered_digest_rejected
+  stdout ───
+
+    running 1 test
+    test pi_02_antiinvariant_tampered_digest_rejected ... FAILED
+
+    failures:
+
+    failures:
+        pi_02_antiinvariant_tampered_digest_rejected
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'pi_02_antiinvariant_tampered_digest_rejected' (1939248) panicked at crates/workspace_tests/tests/vb_lp2v_admission_proptests.rs:376:5:
+    Relaxed must accept tampered digest (no checksum gate), got Err(ArtifactChecksumMismatch)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.020s] (13356/14344) velvet-ballistics-workspace-tests::vb_lp2v_proof_admission_bdd given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted
+  stdout ───
+
+    running 1 test
+    test given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted ... FAILED
+
+    failures:
+
+    failures:
+        given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: "admission rejected: capability count mismatch: required 0, granted 1"
+
+        FAIL [   0.021s] (13358/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance secret_false_pass_fixture_is_rejected
+  stdout ───
+
+    running 1 test
+    test secret_false_pass_fixture_is_rejected ... FAILED
+
+    failures:
+
+    failures:
+        secret_false_pass_fixture_is_rejected
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'secret_false_pass_fixture_is_rejected' (1939257) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:512:13:
+    assertion `left == right` failed
+      left: "parse false-pass diagnostic: missing structured command diagnostic"
+     right: ""
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.024s] (13360/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance intentional_secret_fixture_fails_redaction_gate
+  stdout ───
+
+    running 1 test
+    test intentional_secret_fixture_fails_redaction_gate ... FAILED
+
+    failures:
+
+    failures:
+        intentional_secret_fixture_fails_redaction_gate
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'intentional_secret_fixture_fails_redaction_gate' (1939284) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:255:5:
+    assertion `left == right` failed: expected `cargo xtask ai-release --bead vb-nf2u` to succeed and emit UI release evidence
+    stdout:
+
+    stderr:
+    error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing`
+
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.024s] (13361/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance overlap_negative_fixture_is_consumed_by_command_boundary
+  stdout ───
+
+    running 1 test
+    test overlap_negative_fixture_is_consumed_by_command_boundary ... FAILED
+
+    failures:
+
+    failures:
+        overlap_negative_fixture_is_consumed_by_command_boundary
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'overlap_negative_fixture_is_consumed_by_command_boundary' (1939268) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:255:5:
+    assertion `left == right` failed: expected `cargo xtask ai-release --bead vb-nf2u` to succeed and emit UI release evidence
+    stdout:
+
+    stderr:
+    error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing`
+
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.025s] (13363/14344) velvet-ballistics-workspace-tests::vb_lp2v_proof_admission_bdd given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted
+  stdout ───
+
+    running 1 test
+    test given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted ... FAILED
+
+    failures:
+
+    failures:
+        given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: "admission rejected: capability count mismatch: required 0, granted 1"
+
+        FAIL [   0.025s] (13364/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance intentional_overlap_fixture_fails_gate
+  stdout ───
+
+    running 1 test
+    test intentional_overlap_fixture_fails_gate ... FAILED
+
+    failures:
+
+    failures:
+        intentional_overlap_fixture_fails_gate
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'intentional_overlap_fixture_fails_gate' (1939245) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:255:5:
+    assertion `left == right` failed: expected `cargo xtask ai-release --bead vb-nf2u` to succeed and emit UI release evidence
+    stdout:
+
+    stderr:
+    error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing`
+
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.025s] (13367/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance secret_negative_fixture_is_consumed_by_command_boundary
+  stdout ───
+
+    running 1 test
+    test secret_negative_fixture_is_consumed_by_command_boundary ... FAILED
+
+    failures:
+
+    failures:
+        secret_negative_fixture_is_consumed_by_command_boundary
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'secret_negative_fixture_is_consumed_by_command_boundary' (1939267) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:255:5:
+    assertion `left == right` failed: expected `cargo xtask ai-release --bead vb-nf2u` to succeed and emit UI release evidence
+    stdout:
+
+    stderr:
+    error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing`
+
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.031s] (13378/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance secret_values_are_redacted_in_every_screen
+  stdout ───
+
+    running 1 test
+    test secret_values_are_redacted_in_every_screen ... FAILED
+
+    failures:
+
+    failures:
+        secret_values_are_redacted_in_every_screen
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.02s
+
+  stderr ───
+
+    thread 'secret_values_are_redacted_in_every_screen' (1939317) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:255:5:
+    assertion `left == right` failed: expected `cargo xtask ai-release --bead vb-nf2u` to succeed and emit UI release evidence
+    stdout:
+
+    stderr:
+    error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing`
+
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.034s] (13388/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance all_eight_screens_pass_reachability_and_overlap_gates
+  stdout ───
+
+    running 1 test
+    test all_eight_screens_pass_reachability_and_overlap_gates ... FAILED
+
+    failures:
+
+    failures:
+        all_eight_screens_pass_reachability_and_overlap_gates
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.03s
+
+  stderr ───
+
+    thread 'all_eight_screens_pass_reachability_and_overlap_gates' (1939252) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:255:5:
+    assertion `left == right` failed: expected `cargo xtask ai-release --bead vb-nf2u` to succeed and emit UI release evidence
+    stdout:
+
+    stderr:
+    error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing`
+
+      left: Some(101)
+     right: Some(0)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.034s] (13389/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance overlap_false_pass_fixture_is_rejected
+  stdout ───
+
+    running 1 test
+    test overlap_false_pass_fixture_is_rejected ... FAILED
+
+    failures:
+
+    failures:
+        overlap_false_pass_fixture_is_rejected
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.03s
+
+  stderr ───
+
+    thread 'overlap_false_pass_fixture_is_rejected' (1939286) panicked at crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs:512:13:
+    assertion `left == right` failed
+      left: "parse false-pass diagnostic: missing structured command diagnostic"
+     right: ""
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.004s] (13418/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+  stdout ───
+
+    running 1 test
+    test given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated ... FAILED
+
+    failures:
+
+    failures:
+        given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated' (1939611) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1400:9:
+    assertion `left == right` failed: denial diagnostic case decode_failed
+      left: PublicAdmissionDiagnostic { category: "invalid_envelope", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_invalid" }
+     right: PublicAdmissionDiagnostic { category: "decode_failed", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_decode_failed" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (13424/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies
+  stdout ───
+
+    running 1 test
+    test given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies ... FAILED
+
+    failures:
+
+    failures:
+        given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies' (1939621) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:613:5:
+    assertion `left == right` failed
+      left: InvalidProofFlag { flag: "evidence" }
+     right: DigestMismatch { requested: WorkflowDigest([209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209]), record: WorkflowDigest([210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210]), envelope: WorkflowDigest([210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210]) }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.006s] (13427/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved
+  stdout ───
+
+    running 1 test
+    test given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved ... FAILED
+
+    failures:
+
+    failures:
+        given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved' (1939630) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1252:9:
+    assertion `left == right` failed: public diagnostic case decode_failed
+      left: PublicAdmissionDiagnostic { category: "invalid_envelope", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_invalid" }
+     right: PublicAdmissionDiagnostic { category: "decode_failed", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_decode_failed" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (13428/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies
+  stdout ───
+
+    running 1 test
+    test given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies ... FAILED
+
+    failures:
+
+    failures:
+        given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies' (1939632) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:544:9:
+    assertion `left == right` failed: gate_count=0 must deny with observed and required gate counts
+      left: InvalidProofFlag { flag: "evidence" }
+     right: InvalidGateCount { found: 0, required: 15 }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (13429/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies
+  stdout ───
+
+    running 1 test
+    test given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies ... FAILED
+
+    failures:
+
+    failures:
+        given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies' (1939633) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1101:9:
+    assertion `left == right` failed: invalid envelope case GateCount { found: 0 }
+      left: InvalidProofFlag { flag: "evidence" }
+     right: InvalidGateCount { found: 0, required: 15 }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (13430/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_required_capability_with_extras_or_duplicates_then_denied
+  stdout ───
+
+    running 1 test
+    test given_required_capability_with_extras_or_duplicates_then_denied ... FAILED
+
+    failures:
+
+    failures:
+        given_required_capability_with_extras_or_duplicates_then_denied
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_required_capability_with_extras_or_duplicates_then_denied' (1939647) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:744:9:
+    assertion `left == right` failed: capability cardinality-mismatch case excess must deny closed
+      left: InvalidProofFlag { flag: "evidence" }
+     right: CapabilityCountMismatch { required_count: 1, granted_count: 2 }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.004s] (13431/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_missing_prefix_or_action_mismatched_capability_then_capability_denied
+  stdout ───
+
+    running 1 test
+    test given_missing_prefix_or_action_mismatched_capability_then_capability_denied ... FAILED
+
+    failures:
+
+    failures:
+        given_missing_prefix_or_action_mismatched_capability_then_capability_denied
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_missing_prefix_or_action_mismatched_capability_then_capability_denied' (1939656) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:691:9:
+    assertion `left == right` failed: capability mismatch case missing must preserve action, required, and granted
+      left: InvalidProofFlag { flag: "evidence" }
+     right: CapabilityDenied { action: ActionId(7), required: Capability { name: "network.github", action: ActionId(7) }, granted: CapabilitySet { grants: [] } }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (13432/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required
+  stdout ───
+
+    running 1 test
+    test given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required ... FAILED
+
+    failures:
+
+    failures:
+        given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required' (1939649) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1441:5:
+    assertion `left == right` failed
+      left: Err(AdmissionArtifactInvalid { digest: WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89]) })
+     right: Ok(true)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (13435/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies
+  stdout ───
+
+    running 1 test
+    test given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies ... FAILED
+
+    failures:
+
+    failures:
+        given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies' (1939660) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:580:5:
+    assertion `left == right` failed
+      left: InvalidProofFlag { flag: "evidence" }
+     right: InvalidProofFlag { flag: "durable" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.004s] (13436/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+  stdout ───
+
+    running 1 test
+    test proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted ... FAILED
+
+    failures:
+
+    failures:
+        proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted' (1939665) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1502:1:
+    Test failed: assertion failed: `(left == right)` 
+      left: `InvalidProofFlag { flag: "evidence" }`,
+     right: `Admitted(RunAdmission { artifact_digest: WorkflowDigest([250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]), run_id: RunId(501), granted_capabilities: CapabilitySet { grants: [Capability { name: "network.service.1", action: ActionId(1) }] }, policy: Strict, budget: None, idempotency_attested: [] })` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1529.
+    minimal failing input: required_action = 1, _granted_action = 1, name_suffix = 1, mutation = 0
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.006s] (13438/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_fail_closed_envelope_predicate_denies_any_invalid_field
+  stdout ───
+
+    running 1 test
+    test proptest_fail_closed_envelope_predicate_denies_any_invalid_field ... FAILED
+
+    failures:
+
+    failures:
+        proptest_fail_closed_envelope_predicate_denies_any_invalid_field
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'proptest_fail_closed_envelope_predicate_denies_any_invalid_field' (1939675) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1502:1:
+    Test failed: assertion failed: `(left == right)` 
+      left: `InvalidProofFlag { flag: "evidence" }`,
+     right: `InvalidGateCount { found: 0, required: 15 }` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1566.
+    minimal failing input: gate_count = 0, durable = false, bounded = false, taint_safe = false, retry_safe = false, replayable = false
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.006s] (13439/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_gate_count_acceptance_is_singleton_canonical_15
+  stdout ───
+
+    running 1 test
+    test proptest_gate_count_acceptance_is_singleton_canonical_15 ... FAILED
+
+    failures:
+
+    failures:
+        proptest_gate_count_acceptance_is_singleton_canonical_15
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'proptest_gate_count_acceptance_is_singleton_canonical_15' (1939678) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:863:1:
+    Test failed: assertion failed: `(left == right)` 
+      left: `InvalidProofFlag { flag: "evidence" }`,
+     right: `InvalidGateCount { found: 0, required: 15 }` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:900.
+    minimal failing input: found = 0
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.011s] (13442/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_stale_artifact_when_strict_run_created_then_stale_certificate_denies
+  stdout ───
+
+    running 1 test
+    test given_stale_artifact_when_strict_run_created_then_stale_certificate_denies ... FAILED
+
+    failures:
+
+    failures:
+        given_stale_artifact_when_strict_run_created_then_stale_certificate_denies
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_stale_artifact_when_strict_run_created_then_stale_certificate_denies' (1939687) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:647:5:
+    assertion `left == right` failed
+      left: InvalidProofFlag { flag: "evidence" }
+     right: Admitted(RunAdmission { artifact_digest: WorkflowDigest([81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81]), run_id: RunId(46), granted_capabilities: CapabilitySet { grants: [] }, policy: Strict, budget: None, idempotency_attested: [] })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.010s] (13443/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile
+  stdout ───
+
+    running 1 test
+    test given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile ... FAILED
+
+    failures:
+
+    failures:
+        given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile' (1939673) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:783:5:
+    assertion `left == right` failed
+      left: InvalidProofFlag { flag: "evidence" }
+     right: Admitted(RunAdmission { artifact_digest: WorkflowDigest([164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164]), run_id: RunId(48), granted_capabilities: CapabilitySet { grants: [Capability { name: "network.github", action: ActionId(7) }] }, policy: Journaled, budget: None, idempotency_attested: [] })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.015s] (13445/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_digest_equality_is_required_across_requested_record_and_envelope
+  stdout ───
+
+    running 1 test
+    test proptest_digest_equality_is_required_across_requested_record_and_envelope ... FAILED
+
+    failures:
+
+    failures:
+        proptest_digest_equality_is_required_across_requested_record_and_envelope
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.01s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+    proptest: Saving this and future failures in /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.proptest-regressions
+    proptest: If this test was run on a CI system, you may wish to add the following line to your copy of the file.
+    cc 4151db589bc09cb236ebd3f7664b1cd3dc43d4a014f36e2b86e2b18d370ff911
+
+    thread 'proptest_digest_equality_is_required_across_requested_record_and_envelope' (1939695) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1502:1:
+    Test failed: assertion failed: `(left == right)` 
+      left: `InvalidProofFlag { flag: "evidence" }`,
+     right: `DigestMismatch { requested: WorkflowDigest([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), record: WorkflowDigest([54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54]), envelope: WorkflowDigest([54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54]) }` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1600.
+    minimal failing input: requested_byte = 0, record_byte = 54, envelope_byte = 54
+    successes: 158
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.004s] (13455/14344) velvet-ballistics-workspace-tests::vb_ssei_verification_admission_acceptance test_strict_verify_emits_certificate_when_workflow_is_safe
+  stdout ───
+
+    running 1 test
+    test test_strict_verify_emits_certificate_when_workflow_is_safe ... FAILED
+
+    failures:
+
+    failures:
+        test_strict_verify_emits_certificate_when_workflow_is_safe
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'test_strict_verify_emits_certificate_when_workflow_is_safe' (1939823) panicked at crates/workspace_tests/tests/vb_ssei_verification_admission_acceptance.rs:168:5:
+    assertion failed: matches!(observed, Ok(admission) if admission.granted_capabilities() ==
+        &grants && admission.idempotency_attested() == [action] &&
+        admission.policy() == RuntimePolicy::Strict)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+────────────
+     Summary [  26.358s] 14344 tests run: 14283 passed, 61 failed, 27 skipped
+        FAIL [   0.016s] ( 9175/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_journaled_gate_count_equals_fifteen
+        FAIL [   0.017s] ( 9184/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_gate_count_equals_fifteen
+        FAIL [   0.017s] ( 9185/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_proof_has_durable_true
+        FAIL [   0.020s] ( 9187/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
+        FAIL [   0.019s] ( 9189/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict
+        FAIL [   0.014s] ( 9198/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true
+        FAIL [   0.017s] ( 9214/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_journaled
+        FAIL [   0.018s] ( 9223/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_strict
+        FAIL [   0.732s] (10726/14344) velvet-ballistics::admission_evidence_integration run_without_artifact_under_relaxed_policy
+        FAIL [   0.751s] (10728/14344) velvet-ballistics::admission_evidence_integration restart_lookup_finds_persisted_header
+        FAIL [   0.826s] (10758/14344) velvet-ballistics::admission_evidence_integration journal_persistence_survives_runtime_drop_and_reopen
+        FAIL [   0.730s] (10774/14344) velvet-ballistics::cli_integration cli_diff_identical_runs_reports_zero_differences
+        FAIL [   0.739s] (10781/14344) velvet-ballistics::cli_integration cli_ai_context_for_journaled_run_emits_compiled_ir_summary
+        FAIL [   0.748s] (10792/14344) velvet-ballistics::cli_integration cli_canonical_emit_postcard_frames_required_output_contract_commands
+        FAIL [   0.760s] (10819/14344) velvet-ballistics::cli_integration cli_canonical_emit_yaml_covers_required_output_contract_commands
+        FAIL [   0.026s] (11000/14344) velvet-ballistics::finish_input_execution finish_input_execution
+        FAIL [   0.421s] (11006/14344) velvet-ballistics::cli_integration cli_replay_journaled_run_produces_deterministic_output
+        FAIL [   0.467s] (11007/14344) velvet-ballistics::cli_integration cli_inspect_compiled_run_shows_status_and_event_count
+        FAIL [   0.415s] (11008/14344) velvet-ballistics::cli_integration cli_run_strict_durability_writes_journal_events
+        FAIL [   0.461s] (11009/14344) velvet-ballistics::cli_integration cli_run_journaled_then_events_and_inspect_read_temp_db
+        FAIL [   0.471s] (11010/14344) velvet-ballistics::cli_integration cli_run_json_output_reports_structured_run_result
+        FAIL [   0.020s] (12883/14344) velvet-ballistics-workspace-tests::vb_9agmk_artifact_evidence runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue
+        FAIL [   0.024s] (12888/14344) velvet-ballistics-workspace-tests::vb_9agmk_artifact_evidence runtime_cases::journaled_runtime_and_processing_reject_replacement_execution_contracts
+        FAIL [   0.014s] (12937/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_under_required
+        FAIL [   0.020s] (12941/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_gate_count_matches_required
+        FAIL [   0.020s] (12943/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted
+        FAIL [   0.014s] (12983/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_variant
+        FAIL [   0.020s] (12994/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact_variant
+        FAIL [   0.019s] (12996/14344) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted
+        FAIL [   0.003s] (13035/14344) velvet-ballistics-workspace-tests::vb_eepg_bdd_tests unknown_record_kind_rejection::is_known_record_kind_returns_false_for_invalid_kinds
+        FAIL [   0.230s] (13173/14344) velvet-ballistics-workspace-tests::vb_8ma2_workspace_assertions valid_workspace_passes_sharpened_assertions
+        FAIL [   0.019s] (13231/14344) velvet-ballistics-workspace-tests::vb_kkvb_xtask_command_shell_coverage xtask_help_lists_required_and_legacy_commands_when_requested
+        FAIL [   0.020s] (13233/14344) velvet-ballistics-workspace-tests::vb_kkvb_xtask_command_shell_coverage xtask_version_prints_package_version_when_requested
+        FAIL [   0.003s] (13334/14344) velvet-ballistics-workspace-tests::vb_lp2v_admission_integration given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count
+        FAIL [   0.021s] (13353/14344) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_antiinvariant_tampered_digest_rejected
+        FAIL [   0.020s] (13356/14344) velvet-ballistics-workspace-tests::vb_lp2v_proof_admission_bdd given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted
+        FAIL [   0.021s] (13358/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance secret_false_pass_fixture_is_rejected
+        FAIL [   0.024s] (13360/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance intentional_secret_fixture_fails_redaction_gate
+        FAIL [   0.024s] (13361/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance overlap_negative_fixture_is_consumed_by_command_boundary
+        FAIL [   0.025s] (13363/14344) velvet-ballistics-workspace-tests::vb_lp2v_proof_admission_bdd given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted
+        FAIL [   0.025s] (13364/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance intentional_overlap_fixture_fails_gate
+        FAIL [   0.025s] (13367/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance secret_negative_fixture_is_consumed_by_command_boundary
+        FAIL [   0.031s] (13378/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance secret_values_are_redacted_in_every_screen
+        FAIL [   0.034s] (13388/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance all_eight_screens_pass_reachability_and_overlap_gates
+        FAIL [   0.034s] (13389/14344) velvet-ballistics-workspace-tests::vb_nf2u_ui_release_acceptance overlap_false_pass_fixture_is_rejected
+        FAIL [   0.004s] (13418/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+        FAIL [   0.005s] (13424/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies
+        FAIL [   0.006s] (13427/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved
+        FAIL [   0.005s] (13428/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies
+        FAIL [   0.005s] (13429/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies
+        FAIL [   0.003s] (13430/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_required_capability_with_extras_or_duplicates_then_denied
+        FAIL [   0.004s] (13431/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_missing_prefix_or_action_mismatched_capability_then_capability_denied
+        FAIL [   0.003s] (13432/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required
+        FAIL [   0.005s] (13435/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies
+        FAIL [   0.004s] (13436/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+        FAIL [   0.006s] (13438/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_fail_closed_envelope_predicate_denies_any_invalid_field
+        FAIL [   0.006s] (13439/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_gate_count_acceptance_is_singleton_canonical_15
+        FAIL [   0.011s] (13442/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_stale_artifact_when_strict_run_created_then_stale_certificate_denies
+        FAIL [   0.010s] (13443/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile
+        FAIL [   0.015s] (13445/14344) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_digest_equality_is_required_across_requested_record_and_envelope
+        FAIL [   0.004s] (13455/14344) velvet-ballistics-workspace-tests::vb_ssei_verification_admission_acceptance test_strict_verify_emits_certificate_when_workflow_is_safe
+error: test run failed

@@ -53,50 +53,7 @@ pub fn validate_gate_12_action_contract_completeness(
 }
 
 pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> ValidationResult<()> {
-    let slot_count = usize::from(parts.slot_count);
-    if slot_count == 0 {
-        return Ok(());
-    }
-    let mut slot_const_kind: Vec<u8> = vec![0; slot_count];
-    for node in parts.nodes.iter() {
-        if let CompiledNodeKind::SetConst { value } = &node.kind {
-            let cidx = value.as_usize();
-            if cidx >= parts.constants.len() {
-                continue;
-            }
-            if let Some(constant) = parts.constants.get(cidx) {
-                let kind = const_value_discriminant(constant);
-                if let Some(slot) = node.output.slot() {
-                    let su = slot.as_usize();
-                    if su < slot_count {
-                        let existing = slot_const_kind
-                            .get(su)
-                            .copied()
-                            .ok_or(ValidationError::SlotTypeInconsistency { slot: su })?;
-                        if existing == 0 {
-                            if let Some(e) = slot_const_kind.get_mut(su) {
-                                *e = kind;
-                            }
-                        } else if existing != kind {
-                            return Err(ValidationError::SlotTypeInconsistency { slot: su });
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
-    match value {
-        vb_core::value::ConstValue::Null => 1,
-        vb_core::value::ConstValue::Bool(_) => 2,
-        vb_core::value::ConstValue::I64(_) => 3,
-        vb_core::value::ConstValue::F64(_) => 4,
-        vb_core::value::ConstValue::Symbol(_) => 5,
-        _ => 0,
-    }
+    crate::gates::validate_gate_14_slot_type_consistency(parts)
 }
 
 pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationResult<()> {

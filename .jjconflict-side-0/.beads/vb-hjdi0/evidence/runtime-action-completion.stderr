@@ -1,0 +1,25 @@
+   Compiling log v0.4.29
+   Compiling rustversion v1.0.22
+   Compiling tracing-core v0.1.36
+   Compiling sfa v1.0.0
+   Compiling regex-automata v0.4.14
+   Compiling lazy_static v1.5.0
+   Compiling pin-project-lite v0.2.17
+   Compiling generator v0.8.8
+   Compiling lsm-tree v3.1.4
+   Compiling tracing v0.1.44
+   Compiling sharded-slab v0.1.7
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair/crates/vb_core)
+   Compiling matchers v0.2.0
+   Compiling tracing-log v0.2.0
+   Compiling thread_local v1.1.9
+   Compiling nu-ansi-term v0.50.3
+   Compiling tracing-subscriber v0.3.23
+   Compiling fjall v3.1.4
+   Compiling scoped-tls v1.0.1
+   Compiling loom v0.7.2
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.89s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-e41f7eef45fa4cdf)

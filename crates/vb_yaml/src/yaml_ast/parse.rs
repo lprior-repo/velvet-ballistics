@@ -137,9 +137,14 @@ pub(super) fn opt_control_str(
 ) -> YamlResult<Option<String>> {
     match lookup(node, field) {
         None => Ok(None),
-        Some(v) => Ok(Some(
-            v.as_str().map_or_else(String::new, ToString::to_string),
-        )),
+        Some(v) => v
+            .as_str()
+            .filter(|value| !value.is_empty())
+            .map(|value| Some(value.to_owned()))
+            .ok_or(YamlError::FieldShape {
+                field,
+                expected: "a non-empty string",
+            }),
     }
 }
 

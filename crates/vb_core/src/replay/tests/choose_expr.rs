@@ -292,7 +292,7 @@ fn replay_choose_expr_gt_comparison_true_branch() -> Result<(), CoreError> {
         ]
         .into(),
     )?;
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -373,7 +373,7 @@ fn replay_choose_expr_gt_comparison_false_takes_otherwise() -> Result<(), CoreEr
         ]
         .into(),
     )?;
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -438,7 +438,7 @@ fn replay_choose_expr_gt_comparison_false_takes_otherwise() -> Result<(), CoreEr
 #[test]
 fn replay_choose_expr_non_boolean_condition_returns_error() -> Result<(), CoreError> {
     let expr_i64 = ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into())?;
-    let plan = make_plan(
+    let plan = make_rejected_plan(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -472,6 +472,7 @@ fn replay_choose_expr_non_boolean_condition_returns_error() -> Result<(), CoreEr
         ],
         vec![ConstValue::I64(42)],
         vec![expr_i64],
+        crate::workflow::SlotFlowFailure::IncompatibleType,
     )?;
 
     let mut store = ValueStore::new();
@@ -497,7 +498,7 @@ fn replay_choose_expr_equality_predicate_true() -> Result<(), CoreError> {
         ]
         .into(),
     )?;
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -577,7 +578,7 @@ fn replay_choose_expr_and_combinator_both_true_takes_branch() -> Result<(), Core
         ]
         .into(),
     )?;
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -649,7 +650,7 @@ fn replay_choose_expr_or_combinator_one_true_takes_branch() -> Result<(), CoreEr
         ]
         .into(),
     )?;
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),

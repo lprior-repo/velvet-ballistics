@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/idempotency_decision.rs
+verification results:: 15 verified, 0 errors

@@ -1,0 +1,72 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.81s
+     Running unittests src/lib.rs (target/debug/deps/vb_validate-aa9feb3038d1ae93)
+
+running 13 tests
+test schema_support::schema_fields::fields_tests::trigger::validate_trigger_accepts_supported_triggers ... ok
+test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_event_with_legacy_name_field ... ok
+test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_empty_or_missing ... ok
+test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_multiple_triggers ... ok
+test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_unsupported_trigger_shapes ... ok
+test schema_support::schema_tests::validate_trigger_accepts_event_trigger ... ok
+test schema_support::schema_tests::validate_trigger_accepts_manual_trigger ... ok
+test schema_support::schema_tests::validate_trigger_accepts_schedule_trigger ... ok
+test schema_support::schema_tests::validate_trigger_accepts_webhook_trigger ... ok
+test schema_support::schema_tests::validate_trigger_rejects_empty_when_mapping ... ok
+test schema_support::schema_tests::validate_trigger_rejects_ipc_trigger ... ok
+test schema_support::schema_tests::validate_trigger_rejects_schedule_without_cron ... ok
+test schema_support::schema_tests::validate_trigger_rejects_unsupported_trigger ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 857 filtered out; finished in 0.00s
+
+     Running tests/capability_contract_schema.rs (target/debug/deps/capability_contract_schema-0128ad60dd011188)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/capability_schema_kani.rs (target/debug/deps/capability_schema_kani-5f4b30517a0cb536)
+
+running 1 test
+test proptest_validate_trigger_rejects_empty_when_mapping ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.00s
+
+     Running tests/gate_08_accessor_parity.rs (target/debug/deps/gate_08_accessor_parity-6cf0aba84db3b7c2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/idempotency_contract_red.rs (target/debug/deps/idempotency_contract_red-4fe6882cd4095a99)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.00s
+
+     Running tests/proptest_diag_codes_promotion.rs (target/debug/deps/proptest_diag_codes_promotion-be4b45526fb92e2e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/proptest_validation_error_code_registry_extended.rs (target/debug/deps/proptest_validation_error_code_registry_extended-b524eca39f828da2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/proptest_validation_error_codes.rs (target/debug/deps/proptest_validation_error_codes-ca3cb5004b8788d7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/red_phase_validation.rs (target/debug/deps/red_phase_validation-f3d340c85ace4ce4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s

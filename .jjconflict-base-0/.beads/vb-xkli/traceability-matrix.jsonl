@@ -1,0 +1,8 @@
+{"requirement":"P0-KANI-REPAIR","obligation":"KANI-EXPR-BYTECODE-001","evidence":"machine-gate-report.md"}
+{"requirement":"P0-KANI-REPAIR","obligation":"KANI-SLOT-REF-001","evidence":"machine-gate-report.md"}
+{"requirement":"P0-KANI-REPAIR","obligation":"KANI-CONSTANT-POOL-001","evidence":"machine-gate-report.md"}
+{"requirement":"P0-KANI-REPAIR","obligation":"KANI-ACCESSOR-REF-001","evidence":"machine-gate-report.md"}
+{"requirement":"P0-KANI-REPAIR","obligation":"INV-007-NODEDUP-001","evidence":"machine-gate-report.md"}
+{"requirement":"P0-KANI-REPAIR","obligation":"KANI-ADMISSION-001-MALFORMED-GATE-PROOF-REJECT","evidence":"machine-gate-report.md"}
+{"requirement":"P0-KANI-REPAIR","obligation":"KANI-ADMISSION-001-CAPABILITY-REJECT","evidence":"machine-gate-report.md"}
+{"requirement":"P0-KANI-REPAIR","obligation":"KANI-ADMISSION-001-VALID-ACCEPT","evidence":"machine-gate-report.md"}

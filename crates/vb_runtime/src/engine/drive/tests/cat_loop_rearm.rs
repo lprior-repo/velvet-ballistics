@@ -37,7 +37,7 @@ fn fixture() -> Result<CompiledWorkflow, String> {
         ),
         fin(4, 0),
     ];
-    mkwfc(nodes, 4, vec![])
+    mkwfc(nodes, 4, vec![], &[0])
 }
 
 fn checked<T, E: std::fmt::Debug>(r: Result<T, E>) -> Result<T, String> {

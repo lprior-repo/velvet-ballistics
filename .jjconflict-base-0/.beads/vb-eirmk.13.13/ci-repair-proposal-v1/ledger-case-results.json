@@ -1,0 +1,161 @@
+{
+  "working_copy_revision": "a975a09b55fc0ca424a833d5218af5b1aaeaedd8",
+  "tree_parent": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+  "git_head": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+  "base": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+  "argv": [
+    "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+    "--base",
+    "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+  ],
+  "current_ledger_rows": 57,
+  "current_ledger_sha256": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb",
+  "proposal_tsv_sha256": "9cec042ed6830352329401448fd397067619c88814a897663b408639b0c62ce3",
+  "cases": {
+    "main-ledger-plus-two": {
+      "argv": [
+        "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+        "--base",
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+      ],
+      "exit_code": 0,
+      "emitted_total": 0,
+      "distinct_findings": 0,
+      "duplicate_emissions": 0,
+      "findings_by_kind": {},
+      "findings_by_path": {},
+      "findings": [],
+      "justified_lines": [
+        "JUSTIFIED|DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0|bead=vb-eirmk.13.3",
+        "JUSTIFIED|WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0|bead=vb-eirmk.13.3"
+      ],
+      "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-two.stdout.log",
+      "stdout_sha256": "5f5ad7827b600974ba488321ba68791f9a34973f5e8decb45f3a54a7c1dc64bd",
+      "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-two.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0,
+      "stdout_bytes": 332,
+      "case_name": "proposal_rows_both"
+    },
+    "main-ledger-plus-weakened-only": {
+      "argv": [
+        "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+        "--base",
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+      ],
+      "exit_code": 1,
+      "emitted_total": 1,
+      "distinct_findings": 1,
+      "duplicate_emissions": 0,
+      "findings_by_kind": {
+        "DeletedTestDeclaration": 1
+      },
+      "findings_by_path": {
+        "crates/vb_core/src/replay/ops/tests.rs": [
+          "DeletedTestDeclaration|removed_declarations=90 added_declarations=0"
+        ]
+      },
+      "findings": [
+        {
+          "kind": "DeletedTestDeclaration",
+          "path": "crates/vb_core/src/replay/ops/tests.rs",
+          "detail": "removed_declarations=90 added_declarations=0"
+        }
+      ],
+      "justified_lines": [
+        "JUSTIFIED|WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0|bead=vb-eirmk.13.3"
+      ],
+      "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-weakened-only.stdout.log",
+      "stdout_sha256": "dc226ed4b5f8a2c17340cd80a0b65f0297ef856817e5bdf2e3d9d884fe0a79bc",
+      "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-weakened-only.stderr.log",
+      "stderr_sha256": "c1bb671ebec8eaa2ca8090e1c937a73cf3b2c883a4555b5c64a5f3d849f54a90",
+      "stderr_bytes": 201,
+      "stdout_bytes": 129,
+      "case_name": "declaration_row_omitted"
+    },
+    "main-ledger-plus-declaration-only": {
+      "argv": [
+        "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+        "--base",
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+      ],
+      "exit_code": 1,
+      "emitted_total": 1,
+      "distinct_findings": 1,
+      "duplicate_emissions": 0,
+      "findings_by_kind": {
+        "WeakenedAssertion": 1
+      },
+      "findings_by_path": {
+        "crates/vb_core/src/replay/ops/tests.rs": [
+          "WeakenedAssertion|removed_exact=4 added_exact=0 added_weak=0"
+        ]
+      },
+      "findings": [
+        {
+          "kind": "WeakenedAssertion",
+          "path": "crates/vb_core/src/replay/ops/tests.rs",
+          "detail": "removed_exact=4 added_exact=0 added_weak=0"
+        }
+      ],
+      "justified_lines": [
+        "JUSTIFIED|DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0|bead=vb-eirmk.13.3"
+      ],
+      "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-declaration-only.stdout.log",
+      "stdout_sha256": "9b6e444ae050b5e214586498c30e852bee01d30c7bde2695596d83ca6b0a0191",
+      "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-declaration-only.stderr.log",
+      "stderr_sha256": "870c93628971294e143e34d8d3e47674137e529f04eac6e24bb049f9fd6f6606",
+      "stderr_bytes": 194,
+      "stdout_bytes": 136,
+      "case_name": "assertion_row_omitted"
+    },
+    "main-ledger-no-append": {
+      "argv": [
+        "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+        "--base",
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+      ],
+      "exit_code": 1,
+      "emitted_total": 2,
+      "distinct_findings": 2,
+      "duplicate_emissions": 0,
+      "findings_by_kind": {
+        "DeletedTestDeclaration": 1,
+        "WeakenedAssertion": 1
+      },
+      "findings_by_path": {
+        "crates/vb_core/src/replay/ops/tests.rs": [
+          "DeletedTestDeclaration|removed_declarations=90 added_declarations=0",
+          "WeakenedAssertion|removed_exact=4 added_exact=0 added_weak=0"
+        ]
+      },
+      "findings": [
+        {
+          "kind": "DeletedTestDeclaration",
+          "path": "crates/vb_core/src/replay/ops/tests.rs",
+          "detail": "removed_declarations=90 added_declarations=0"
+        },
+        {
+          "kind": "WeakenedAssertion",
+          "path": "crates/vb_core/src/replay/ops/tests.rs",
+          "detail": "removed_exact=4 added_exact=0 added_weak=0"
+        }
+      ],
+      "justified_lines": [],
+      "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-no-append.stdout.log",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-no-append.stderr.log",
+      "stderr_sha256": "c394df48fa48f85331718569e7f17124bf3702d1f0f119910d4654b4555d9100",
+      "stderr_bytes": 301,
+      "stdout_bytes": 0,
+      "case_name": "no_proposal_rows"
+    }
+  },
+  "source_pin": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+  "source_tree_equal_to_frozen_pin": true,
+  "raw_finding_count_semantics": "Each emitted stderr finding line parsed as kind|path|detail; distinct is exact row uniqueness; duplicate_emissions is emitted minus distinct.",
+  "supersedes_parser_summary": {
+    "path": "target/core-build-20261110/evidence/test-integrity-v5-2e674/case-results.json",
+    "reason": "Initial parser failed to recognize pipe-delimited finding rows; those zero counts are invalid. This corrected result parses each raw stderr finding line and records per-case raw log hashes."
+  }
+}

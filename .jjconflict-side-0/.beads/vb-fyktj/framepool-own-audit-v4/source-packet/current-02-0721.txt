@@ -1,0 +1,61 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/frame_pool/tests.rs
+721: // =====================================================================
+722: 
+723: #[test]
+724: fn frame_pool_take_returns_error_when_exhausted() {
+725:     // Given a pool with capacity 1 (pre-allocated, so only 1 frame exists)
+726:     let mut pool = new_pool(4, 2, 1);
+727:     // When taking the one frame
+728:     let frame = pool.take(RunId::new(1), StepIdx::new(0));
+729:     assert!(frame.is_ok());
+730:     // Then taking a second frame returns AllocationFailed (no fresh alloc fallback)
+731:     let second = pool.take(RunId::new(2), StepIdx::new(0));
+732:     assert!(matches!(
+733:         second,
+734:         Err(vb_core::errors::CoreError::AllocationFailed)
+735:     ));
+736: }
+737: 
+738: #[test]
+739: fn frame_pool_reused_frame_has_zero_executed_count() {
+740:     // Given a pool with a frame that had non-zero executed count
+741:     let mut pool = new_pool(4, 2, 4);
+742:     let mut frame = match pool.take(RunId::new(1), StepIdx::new(0)) {
+743:         Ok(f) => f,
+744:         Err(_) => return,
+745:     };
+746:     for _ in 0..10 {
+747:         let _ = frame.increment_executed();
+748:     }
+749:     assert_eq!(frame.executed(), 10);
+750:     pool.release(frame);
+751: 
+752:     // When taking the reused frame
+753:     let reused = match pool.take(RunId::new(2), StepIdx::new(0)) {
+754:         Ok(f) => f,
+755:         Err(_) => return,
+756:     };
+757:     // Then executed count must be zero
+758:     assert_eq!(
+759:         reused.executed(),
+760:         0,
+761:         "reused frame must have clean executed counter"
+762:     );
+763: }
+764: 
+765: #[test]
+766: fn frame_pool_capacity_one_never_exceeds_limit() {
+767:     // Given a pool with capacity 1
+768:     let mut pool = new_pool(2, 1, 1);
+769:     // When releasing 100 frames
+770:     for i in 1u64..=100 {
+771:         let frame = match pool.take(RunId::new(i), StepIdx::new(0)) {
+772:             Ok(f) => f,
+773:             Err(_) => return,
+774:         };
+775:         pool.release(frame);
+776:     }
+777:     // Then the pool never exceeds capacity 1
+778:     assert_eq!(pool.available(), 1);
+779:     assert_eq!(pool.capacity(), 1);
+780: }

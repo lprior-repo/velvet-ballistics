@@ -1,0 +1,20 @@
+{
+  "role": "inspected-code-and-test-generation",
+  "provider": "local5090-native-ninfer-via-codex-bridge",
+  "model": "qwen3.8-27b-uncensored",
+  "status": "completed",
+  "usage": {
+    "input_tokens": 404,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 3672,
+    "output_tokens_details": {
+      "reasoning_tokens": 3062
+    },
+    "total_tokens": 4076
+  },
+  "request_sha256": "69b2c73b055ecab67a884905f43efc614fe297207fa4d2d93f99286227f5359d",
+  "reasoning_effort": "high mapped xhigh",
+  "max_output_tokens": 32768
+}

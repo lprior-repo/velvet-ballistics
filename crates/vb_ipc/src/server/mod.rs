@@ -117,6 +117,9 @@ pub trait WorkflowResolver {
         &mut self,
         digest: vb_core::WorkflowDigest,
     ) -> Result<CompiledWorkflow, WorkflowResolutionError>;
+
+    /// Installs host-confirmed names before admission; runtime keeps admission authority.
+    fn prepare_runtime(&mut self, _runtime: &mut Runtime, _workflow: &CompiledWorkflow) {}
 }
 
 /// Workflow resolution failed before runtime submission.

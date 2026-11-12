@@ -1,0 +1,127 @@
+{
+  "audit": {
+    "bead": "vb-aelha",
+    "date": "2026-10-22",
+    "scope": "Backend/IR Interpreter Complete",
+    "source_baseline": "d5f38934",
+    "auditor": "local3090 scout"
+  },
+  "p0_beads": [
+    {
+      "id": "vb-8vknz",
+      "title": "Resource budget dimensions",
+      "status": "OPEN",
+      "gap_type": "missing_dimensions",
+      "missing": [
+        "max_cumulative_journal_bytes",
+        "max_concurrent_tickets",
+        "max_open_gates",
+        "max_signal_subscriptions",
+        "max_incident_emissions",
+        "cost_units",
+        "tenant_quota",
+        "global_quota"
+      ],
+      "missing_runtime": [
+        "remaining_budget_counters",
+        "typed_exhaustion_policy",
+        "budget_release_on_terminal"
+      ],
+      "rank": 5,
+      "dependencies": ["vb-ny068"],
+      "effort": "L"
+    },
+    {
+      "id": "vb-f8lko",
+      "title": "Compatibility algebra",
+      "status": "OPEN",
+      "gap_type": "missing_algebra",
+      "missing": [
+        "six_class_compatibility_enum",
+        "decision_record_binding",
+        "shared_decision_seam",
+        "replay_only_semantics",
+        "migration_required_semantics",
+        "journal_compatibility_decisions"
+      ],
+      "rank": 4,
+      "dependencies": [],
+      "effort": "L"
+    },
+    {
+      "id": "vb-ifn5b",
+      "title": "Manual gate receipts",
+      "status": "OPEN",
+      "gap_type": "missing_types",
+      "missing": [
+        "ManualGatePolicy",
+        "ManualGateDecision",
+        "ApprovalReceipt",
+        "separation_of_duties",
+        "evidence_bundle",
+        "timeout_escalation",
+        "break_glass_permission",
+        "receipt_digest_binding",
+        "replay_rule"
+      ],
+      "decision_kinds": ["approve", "deny", "request_more_evidence", "delegate", "break_glass"],
+      "rank": 3,
+      "dependencies": ["vb-hk1j8"],
+      "effort": "M"
+    },
+    {
+      "id": "vb-hk1j8",
+      "title": "Capability grant lifecycle",
+      "status": "OPEN",
+      "gap_type": "missing_lifecycle",
+      "missing": [
+        "CapabilityGrant_type",
+        "issuer_identity",
+        "subject_binding",
+        "scope_validation",
+        "expiry_checking",
+        "revocation_mechanism",
+        "delegability_rules",
+        "break_glass_marker",
+        "approval_receipt_linkage",
+        "narrowed_executor_scope"
+      ],
+      "rank": 2,
+      "dependencies": [],
+      "effort": "M"
+    },
+    {
+      "id": "vb-ny068",
+      "title": "Replay policy separation",
+      "status": "OPEN",
+      "gap_type": "missing_policy_seam",
+      "missing": [
+        "policy_decision_seam_at_dispatch",
+        "admission_replay_policy_pinning",
+        "live_effect_policy_evaluation",
+        "emergency_deny_overlay",
+        "policy_decision_journal_event",
+        "replay_historical_reconstruction"
+      ],
+      "rank": 1,
+      "dependencies": [],
+      "effort": "S"
+    }
+  ],
+  "smallest_unblocked": {
+    "bead": "vb-ny068",
+    "rationale": "Smallest scope, no dependencies, builds on existing RuntimePolicy enum",
+    "contract_inputs": [
+      "PolicyDecisionSeam trait with evaluate_policy method",
+      "PolicyDecision enum: Allow, Suspend, Deny",
+      "EmergencyDenyOverlay type with monotonic tighten-only operations",
+      "PolicyEvaluated journal event with policy/input digests and decision"
+    ]
+  },
+  "implementation_notes": {
+    "new_crates_needed": false,
+    "schema_migrations_required": true,
+    "replay_determinism_maintained": true,
+    "wire_schema_compatibility": true
+  }
+}

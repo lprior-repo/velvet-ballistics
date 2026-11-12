@@ -163,6 +163,7 @@ fn minimal_expr_plan() -> Result<crate::workflow::CompiledWorkflow, String> {
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("choose_expr_test"),
         digest: WorkflowDigest::from_bytes([0x55; 32]),

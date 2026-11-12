@@ -60,7 +60,8 @@ fn phase46_parts_with_nodes(nodes: Vec<CompiledNode>, slot_count: u16) -> Workfl
     let max_steps = u16::try_from(nodes.len()).unwrap_or(u16::MAX);
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("phase46"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -254,7 +255,8 @@ fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
 fn phase46_accepts_foreach_forward() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::List),
         name: Box::<str>::from("phase46_foreach"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -283,7 +285,7 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
-                None,
+                Some(SlotIdx::new(1)),
                 None,
             ),
             crate::workflow::node(
@@ -314,6 +316,7 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
 fn phase46_rejects_improper_nesting() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("phase46_nesting"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -365,7 +368,7 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                     body: StepIdx::new(1),
                     done: StepIdx::new(5),
                 },
-                None,
+                Some(SlotIdx::new(1)),
                 None,
             ),
             crate::workflow::node(
@@ -405,7 +408,8 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
 fn phase46_accepts_proper_nesting() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::List),
         name: Box::<str>::from("phase46_proper"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -446,7 +450,7 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                     body: StepIdx::new(2),
                     done: StepIdx::new(4),
                 },
-                None,
+                Some(SlotIdx::new(2)),
                 None,
             ),
             crate::workflow::node(
@@ -456,7 +460,7 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                     body: StepIdx::new(1),
                     done: StepIdx::new(5),
                 },
-                None,
+                Some(SlotIdx::new(1)),
                 None,
             ),
             crate::workflow::node(
@@ -493,7 +497,8 @@ fn phase46_accepts_accessor_field() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("phase46_acc_field"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![crate::workflow::node(
@@ -529,7 +534,8 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("phase46_acc_index"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![crate::workflow::node(
@@ -563,6 +569,7 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
 fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("cycle_next"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -610,6 +617,7 @@ fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), Strin
     // Two nodes with the same StepIdx (both claim to be step 0).
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("dup_step_idx"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -658,6 +666,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
     // Finish node references slot 99 but slot_count is only 1.
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_finish"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -690,6 +699,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
 fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_list"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -722,6 +732,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> 
 fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_output"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),

@@ -1,0 +1,12 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 7,
+  "sublane": "test-planning",
+  "delegate": "test-planner",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/traceability-matrix.jsonl", ".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/contract-verification-review.md", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/proof-evidence.md"],
+  "output_artifacts": [".beads/vb-vt2f/test-plan.md"],
+  "status": "QUEUED"
+}

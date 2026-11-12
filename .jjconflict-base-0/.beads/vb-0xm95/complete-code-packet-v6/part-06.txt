@@ -1,0 +1,220 @@
++
++        // Unverified admission must be denied at the Admission layer for
++        // every Unverified admission, regardless of prior outcome
++        // (Allowed/Denied/Suspended). Emergency layer remains highest priority.
++        if decision.admission == PinnedAdmissionPolicy::Unverified {
++            return Ok(DecisionRecord {
++                ticket: decision.ticket,
++                admission: decision.admission,
++                current_live: decision.current_live,
++                input_digest: decision.input_digest,
++                taint: decision.taint,
++                outcome: DecisionCode::Denied,
++                layer: PolicyLayer::Admission,
++                emergency_influence: decision.emergency_influence,
++                compat_influence: decision.compat_influence,
++            });
++        }
++
++        Ok(decision)
++    }
++
++    /// Evaluate admission policy, apply admission priority, persist decision,
++    /// and return rejection if not Allowed.
++    ///
++    /// This helper reads the durable emergency marker, mirrors it into the
++    /// owned live policy, evaluates the actual ticket/admission_pin/encoded_bytes/
++    /// input_taint, applies the admission priority rule (Unverified → Denied at
++    /// Admission), persists the full final decision, and returns policy rejection
++    /// carrying the decision if not Allowed.
++    pub(super) fn evaluate_admission_and_persist(
++        &mut self,
++        ctx: AdmissionEvalContext,
++    ) -> Result<DecisionRecord, RegisteredExecutionError> {
++        let durable_emergency = self.read_durable_emergency_state()?;
++        if durable_emergency {
++            self.live_policy.activate_emergency_deny();
++        }
++        let decision = self.live_policy.evaluate(
++            ctx.ticket,
++            ctx.admission_pin,
++            &ctx.encoded_bytes,
++            ctx.input_taint,
++        )?;
++        let decision = self.dispatch_policy_decision(decision)?;
++        let shard = self.shard_for_mut(ctx.ticket.run)?;
++        shard.append_policy_decision_strict(decision.clone())?;
++        if decision.outcome != DecisionCode::Allowed {
++            return Err(RegisteredExecutionError::PolicyDenied(Box::new(decision)));
++        }
++        Ok(decision)
++    }
++
++    /// Helper for configure_live_policy: updates owned live policy state.
++    /// Does not persist; configuration is actor-owned runtime state.
++    pub(super) fn configure_live_policy_helper(
++        &mut self,
++        digest: vb_core::policy::PolicyDigest,
++        rule: vb_core::policy::PolicyRule,
++    ) {
++        self.live_policy.configure(digest, rule);
++    }
++
++    /// Helper for activate_emergency_deny: persists emergency marker,
++    /// verifies the returned state is Active, then mirrors into owned live policy.
++    pub(super) fn activate_emergency_deny_helper(&mut self) -> RuntimeResult<()> {
++        let journal = self
++            .journal
++            .storage_journal()
++            .ok_or(RuntimeError::RecoveryNotAvailable)?;
++        let state = journal.activate_emergency_deny()?;
++        if !matches!(state, EmergencyDenyState::Active) {
++            return Err(RuntimeError::RecoveryNotAvailable);
++        }
++        self.live_policy.activate_emergency_deny();
++        Ok(())
++    }
++
++    fn read_durable_emergency_state(&self) -> RuntimeResult<bool> {
++        let journal = self
++            .journal
++            .storage_journal()
++            .ok_or(RuntimeError::RecoveryNotAvailable)?;
++        let state = journal.emergency_deny_state()?;
++        Ok(matches!(state, EmergencyDenyState::Active))
++    }
++}
+FILE crates/vb_runtime/src/runtime/registered_executor.rs SHA256 8ce1ff241a6896c60821c8052ce131637d7369d4f1fa0a046a628d18009f1368
+diff --git a/crates/vb_runtime/src/runtime/registered_executor.rs b/crates/vb_runtime/src/runtime/registered_executor.rs
+index 1b72d9152..52ca73ccf 100644
+--- a/crates/vb_runtime/src/runtime/registered_executor.rs
++++ b/crates/vb_runtime/src/runtime/registered_executor.rs
+@@ -1,65 +1,77 @@
+ use super::Runtime;
++use super::live_policy_dispatch::AdmissionEvalContext;
+ use crate::{RuntimeError, shard::ShardCommand};
++use vb_core::policy::DecisionRecord;
+ use vb_core::{ActionTicket, RunId};
+ use vb_storage::executor::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
+ 
+ /// Runtime authority failures and uncertain adapter outcomes remain distinct.
+ #[derive(Debug, thiserror::Error)]
+ pub enum RegisteredExecutionError {
+     /// Runtime ticket/state or completion queue failed.
+     #[error("registered runtime: {0}")]
+     Runtime(#[from] RuntimeError),
+     /// Executor rejected authority or requires receipt reconciliation.
+     #[error("registered executor: {0}")]
+     Executor(#[from] ExecutorError),
++    /// Live policy rejected execution before any adapter effect.
++    #[error("policy denied execution: {0:?}")]
++    PolicyDenied(Box<DecisionRecord>),
+ }
+ 
+ impl Runtime {
+     /// Execute only a canonical pending action with its actual live I64 input.
+     /// A post-effect queue failure preserves the durable receipt for reconciliation.
+     pub fn execute_registered_action(
+         &mut self,
+         adapter: &mut FjallRegister,
+         run: RunId,
+         wire_step: u64,
+         grant: &RegisterGrant,
+     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
+         let (ticket, context) = self.registered_context(run, wire_step, grant)?;
+         if context.mode != crate::shard::types::RegisteredExecutionMode::Live {
+             return Err(ExecutorError::Unauthorized.into());
+         }
++        let eval_ctx = AdmissionEvalContext {
++            ticket,
++            admission_pin: context.admission_pin,
++            encoded_bytes: context.encoded_bytes,
++            input_taint: context.input_taint,
++        };
++        self.evaluate_admission_and_persist(eval_ctx)?;
+         let receipt = adapter.execute(grant, ticket, context.value)?;
+         self.enqueue_registered_completion(ticket, context.output, receipt.clone())?;
+         Ok(receipt)
+     }
+ 
+     /// Recovery reads an existing receipt and never invokes a production effect.
+     /// Missing receipts and Blocked recovery fail before any target write.
+     pub fn reconcile_registered_action(
+         &mut self,
+         adapter: &mut FjallRegister,
+         run: RunId,
+         wire_step: u64,
+         grant: &RegisterGrant,
+     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
+         let (ticket, context) = self.registered_context(run, wire_step, grant)?;
+         let catalog = self
+             .journal
+             .executor_catalog()
+             .ok_or(ExecutorError::CatalogRequired)?;
+         catalog.require_receipt_recovery(&context.artifact, ticket.action)?;
+         let receipt = adapter.reconcile(grant, ticket, context.value)?;
+         self.enqueue_registered_completion(ticket, context.output, receipt.clone())?;
+         Ok(receipt)
+     }
+ 
+     pub(super) fn validate_registered_recovery(
+         &self,
+         artifact: &vb_storage::AcceptedArtifact,
+         boundary: crate::recovery::RecoveredRunBoundary,
+     ) -> Result<(), RuntimeError> {
+         let Some(pending) = boundary.pending_action_ticket() else {
+             return Ok(());
+         };
+         let vb_core::artifact::ArtifactEvidence::Packed(packed) = &artifact.verification.evidence
+         else {
+FILE crates/vb_runtime/src/shard/impl_.rs SHA256 c2b206285b5c16e9200a10e24d37cb521eebea5158e05993a89fb951d9acd039
+diff --git a/crates/vb_runtime/src/shard/impl_.rs b/crates/vb_runtime/src/shard/impl_.rs
+index 9dc520c34..12c4282c3 100644
+--- a/crates/vb_runtime/src/shard/impl_.rs
++++ b/crates/vb_runtime/src/shard/impl_.rs
+@@ -1,13 +1,14 @@
+ #![forbid(unsafe_code)]
+ //! Shard construction, queue operations, and core tick processing.
+ 
+ include!("impl_parts/chunk_004.rs");
+ include!("impl_parts/chunk_001.rs");
+ include!("impl_parts/chunk_002.rs");
+ include!("impl_parts/chunk_003.rs");
++include!("impl_parts/policy_decision.rs");
+ 
+ #[cfg(test)]
+ mod tests {
+     include!("impl_tests/chunk_001.rs");
+     include!("impl_tests/chunk_002.rs");
+ }
+FILE crates/vb_runtime/src/shard/impl_parts/policy_decision.rs SHA256 c6210a2723cf4e5262a6241cbe15d47d3468938bdb5e3779ec66f95a5a0f0763
+diff --git a/crates/vb_runtime/src/shard/impl_parts/policy_decision.rs b/crates/vb_runtime/src/shard/impl_parts/policy_decision.rs
+new file mode 100644
+index 000000000..f5629f86d
+--- /dev/null
++++ b/crates/vb_runtime/src/shard/impl_parts/policy_decision.rs
+@@ -0,0 +1,43 @@
++impl Shard {
++    /// Strict durable policy decision port.
++    ///
++    /// Checks pending ticket ownership, computes checked next sequence,
++    /// reserves map capacity, calls the journal's strict port, and advances
++    /// the per-run sequence only after success. On any failure the pending
++    /// state and next sequence are unchanged.
++    pub(crate) fn append_policy_decision_strict(
++        &mut self,
++        decision: vb_core::policy::DecisionRecord,
++    ) -> crate::RuntimeResult<()> {
++        let run = decision.ticket.run;
++
++        // Verify shard owns this pending ticket.
++        self.require_pending_action_ownership(decision.ticket)?;
++
++        // Get current sequence, compute checked next BEFORE append.
++        let seq = self.journal_sequence_for(run);
++        let next = Self::checked_next_seq(seq)?;
++
++        // Reserve map capacity before append.
++        self.reserve_journal_sequence_slot(run)?;
++
++        // Call the journal strict port.

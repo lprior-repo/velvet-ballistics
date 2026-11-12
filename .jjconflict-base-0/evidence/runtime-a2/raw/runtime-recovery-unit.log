@@ -1,0 +1,5 @@
+COMMAND: rtk cargo test -p vb_runtime recovery:: --lib --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a2
+cargo test: 23 passed, 1818 filtered out (1 suite, 0.00s)
+
+EXIT_STATUS: 0

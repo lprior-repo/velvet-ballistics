@@ -10,13 +10,22 @@ use crate::workflow::{
 
 use super::replay_step;
 
-fn make_plan(
+fn make_plan_with_inputs(
+    inputs: &[u16],
     nodes: Vec<CompiledNode>,
     constants: Vec<ConstValue>,
 ) -> Result<CompiledWorkflow, CoreError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: inputs
+            .iter()
+            .map(|&slot| crate::workflow::CompiledInputSlot {
+                slot: SlotIdx::new(slot),
+                kind: crate::workflow::InputSlotKind::Any,
+                constraint: crate::workflow::CompiledInputConstraint::required(),
+            })
+            .collect(),
         name: "test_primitive_replay".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into(),
@@ -87,7 +96,8 @@ fn finish_node(step: u16) -> CompiledNode {
 
 #[test]
 fn replay_for_each_start_binds_first_and_routes_body() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -140,7 +150,8 @@ fn replay_for_each_start_binds_first_and_routes_body() -> Result<(), CoreError> 
 
 #[test]
 fn replay_for_each_start_empty_routes_done() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -191,7 +202,8 @@ fn replay_for_each_start_empty_routes_done() -> Result<(), CoreError> {
 
 #[test]
 fn replay_for_each_start_limit_exceeded_errors() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -232,7 +244,8 @@ fn replay_for_each_start_limit_exceeded_errors() -> Result<(), CoreError> {
 }
 
 fn for_each_loop_plan() -> Result<CompiledWorkflow, CoreError> {
-    make_plan(
+    make_plan_with_inputs(
+        &[0, 4],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -342,7 +355,8 @@ fn replay_for_each_next_empty_state_routes_done() -> Result<(), CoreError> {
 
 #[test]
 fn replay_for_each_join_materializes_results() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0, 3],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -385,7 +399,8 @@ fn replay_for_each_join_materializes_results() -> Result<(), CoreError> {
 
 #[test]
 fn replay_together_start_creates_accumulator_and_forks() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -435,12 +450,13 @@ fn replay_together_start_creates_accumulator_and_forks() -> Result<(), CoreError
 
 #[test]
 fn replay_together_start_empty_branches_errors() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::TogetherStart {
-                    branches: Box::from([]),
+                    branches: Box::from([StepIdx::new(1)]),
                     join: StepIdx::new(1),
                 },
                 Some(SlotIdx::new(7)),
@@ -453,7 +469,29 @@ fn replay_together_start_empty_branches_errors() -> Result<(), CoreError> {
     let mut run = new_run(&plan)?;
     let mut store = ValueStore::new();
 
-    let result = replay_step(node_at(&plan, 0)?, &mut run, &mut store, &plan);
+    let mut malformed_parts = plan.to_parts();
+    let malformed =
+        malformed_parts
+            .nodes
+            .first_mut()
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "test node missing".into(),
+            })?;
+    malformed.kind = CompiledNodeKind::TogetherStart {
+        branches: Box::from([]),
+        join: StepIdx::new(1),
+    };
+    let malformed = malformed.clone();
+    assert!(matches!(
+        CompiledWorkflow::try_from_parts(malformed_parts),
+        Err(crate::WorkflowError::SlotFlow(
+            crate::workflow::SlotFlowError {
+                reason: crate::workflow::SlotFlowFailure::InvalidReference,
+                ..
+            }
+        ))
+    ));
+    let result = replay_step(&malformed, &mut run, &mut store, &plan);
     assert!(
         matches!(
             result,
@@ -470,7 +508,8 @@ fn replay_together_start_empty_branches_errors() -> Result<(), CoreError> {
 
 #[test]
 fn replay_together_branch_first_jumps_without_append() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -503,7 +542,8 @@ fn replay_together_branch_first_jumps_without_append() -> Result<(), CoreError> 
 
 #[test]
 fn replay_together_branch_appends_previous_result() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0, 6, 7],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -554,7 +594,8 @@ fn replay_together_branch_appends_previous_result() -> Result<(), CoreError> {
 
 #[test]
 fn replay_together_join_merges_last_result_and_releases() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0, 6, 7],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -607,7 +648,8 @@ fn replay_together_join_merges_last_result_and_releases() -> Result<(), CoreErro
 
 #[test]
 fn replay_together_join_list_result_keeps_accumulator() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0, 6, 7],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -643,11 +685,13 @@ fn replay_together_join_list_result_keeps_accumulator() -> Result<(), CoreError>
 // ---- ReduceStart ----
 
 fn reduce_head_plan() -> Result<CompiledWorkflow, CoreError> {
-    make_plan(
+    make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::ReduceStart {
+                    limit: 65_535,
                     input: SlotIdx::new(0),
                     accumulator: SlotIdx::new(3),
                     initial: ConstIdx::new(0),
@@ -733,11 +777,13 @@ fn replay_reduce_start_empty_routes_done() -> Result<(), CoreError> {
 
 #[test]
 fn replay_reduce_next_advances_then_exits() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::ReduceStart {
+                    limit: 65_535,
                     input: SlotIdx::new(0),
                     accumulator: SlotIdx::new(3),
                     initial: ConstIdx::new(0),
@@ -822,7 +868,8 @@ fn replay_reduce_next_advances_then_exits() -> Result<(), CoreError> {
 
 #[test]
 fn replay_reduce_finish_writes_accumulator() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_plan_with_inputs(
+        &[0, 3],
         vec![
             crate::workflow::node(
                 StepIdx::new(0),

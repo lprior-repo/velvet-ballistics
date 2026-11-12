@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-pxby2-local5090-verus-bridge",
+  "argv": [
+    "env",
+    "VERUS_EVIDENCE_DIR=.beads/vb-pxby2/evidence/coordinator-verus-raw",
+    "bash",
+    "scripts/verify-verus.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 11.787,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-pxby2/evidence/coordinator-full-registry"
+}

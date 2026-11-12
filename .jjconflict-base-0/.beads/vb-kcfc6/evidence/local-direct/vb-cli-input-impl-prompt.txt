@@ -1,0 +1,44 @@
+Implement ONE small Rust function below for vb-kcfc6. Return ONLY the entire replacement map_runtime_inputs function, no prose, no other functions, no tests yet. Preserve exact signature and existing kind mapping. Remove input_slots.is_empty() early-return so malformed nonempty input is decoded for zero-port workflows. Preserve input_data.is_empty()=>Ok(empty). Use postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data), map any error to DecodeFailed, reject !remainder.is_empty() as DecodeFailed BEFORE count/kind validation. Preserve count/kind errors and slot order. No new types, variants, warnings, allows, unsafe, unwrap, expect, unchecked operations. This is existing Velvet Ballistics Rust CLI, not Vibe or Hemlock.
+pub(crate) fn map_runtime_inputs(
+    compiled: &vb_core::CompiledWorkflow,
+    input_data: &[u8],
+) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+    let input_slots = compiled.input_slots();
+    if input_slots.is_empty() {
+        return Ok(Box::from([]));
+    }
+    if input_data.is_empty() {
+        return Ok(Box::from([]));
+    }
+    let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+        .map_err(|_| InputMappingError::DecodeFailed)?;
+    if values.len() > input_slots.len() {
+        return Err(InputMappingError::SlotCountExceeded);
+    }
+    input_slots
+        .iter()
+        .zip(values.iter())
+        .map(|(slot, value)| {
+            let value_kind = match value {
+                vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
+                vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+                vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+                vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+                vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+                vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
+                vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+                vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+                _ => return Err(InputMappingError::DecodeFailed),
+            };
+            if value_kind != slot.kind {
+                return Err(InputMappingError::KindMismatch {
+                    slot: slot.slot,
+                    expected_kind: slot.kind,
+                });
+            }
+            Ok((slot.slot, *value))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Vec::into_boxed_slice)
+}
+

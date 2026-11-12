@@ -265,6 +265,7 @@ fn make_minimal_workflow_parts(name: &str, entry: StepIdx, slot_count: u16) -> W
     let digest = WorkflowDigest::from_bytes([0u8; 32]);
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: name.into(),
         digest,
@@ -330,6 +331,7 @@ fn blake3_digest_differs_when_node_count_differs() {
     );
     let parts1 = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "test".into(),
         digest,
@@ -353,6 +355,7 @@ fn blake3_digest_differs_when_node_count_differs() {
     );
     let parts2 = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "test".into(),
         digest,
@@ -467,11 +470,35 @@ fn negative_length_bound_rejected() {
 }
 
 #[test]
-fn consistent_bounds_accepted() {
+fn consistent_bounds_accepted() -> Result<(), WorkflowError> {
     let mut constraint = CompiledInputConstraint::required();
     constraint.min = Some(-5);
     constraint.max = Some(5);
+    let expected = constraint.clone();
+    let workflow = CompiledWorkflow::try_from_parts(parts_with_constraint(constraint))?;
+    assert_eq!(
+        workflow
+            .input_slots()
+            .first()
+            .map(|input| &input.constraint),
+        Some(&expected)
+    );
+    let mut constraint = CompiledInputConstraint::required();
     constraint.min_length = Some(0);
     constraint.max_length = Some(8);
-    assert!(CompiledWorkflow::try_from_parts(parts_with_constraint(constraint)).is_ok());
+    let mut parts = parts_with_constraint(CompiledInputConstraint::required());
+    parts.input_slots = Box::from([CompiledInputSlot {
+        slot: SlotIdx::ZERO,
+        kind: InputSlotKind::Symbol,
+        constraint: constraint.clone(),
+    }]);
+    let workflow = CompiledWorkflow::try_from_parts(parts)?;
+    assert_eq!(
+        workflow
+            .input_slots()
+            .first()
+            .map(|input| &input.constraint),
+        Some(&constraint)
+    );
+    Ok(())
 }

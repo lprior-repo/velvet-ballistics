@@ -24,6 +24,7 @@ fn test_frame(step_count: u16, slot_count: u16) -> Result<crate::frame::RunFrame
 fn minimal_plan_with_const(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("node_helpers_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),

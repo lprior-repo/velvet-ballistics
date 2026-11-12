@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures",
+  "argv": [
+    "cargo",
+    "check",
+    "--tests",
+    "--workspace"
+  ],
+  "exit_code": 0,
+  "seconds": 4.23,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-3gthe/evidence/check_after_fixes",
+  "coordinator_message": "Coordinator: Keep mechanical migration strictly idempotent and error-guided. Broad regex over whole mixed production/test files must not alter production declarations/calls or already-updated calls. Only insert missing run_attempt field/argument at actual compiler error spans; preserve all prior fixture data, assertions and arbitrary inputs. Avoid non-idempotent repeated append of 1 or greedy patterns that consume unrelated calls. Root will inspect full diff and run merged tests. No production behavior edits."
+}

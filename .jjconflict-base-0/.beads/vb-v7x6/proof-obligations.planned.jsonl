@@ -1,0 +1,3 @@
+{"id":"PO-UI-1","requirement_id":"REQ-1","command":"rustup run nightly-2026-04-28 cargo test -p xtask --test ui_release_gates -- --nocapture && rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p xtask --test ui_release_gates","required":true,"owner_state":11,"rerun_from":11,"status":"planned"}
+{"id":"PO-DOC-1","requirement_id":"REQ-3","command":"env CARGO_TARGET_DIR=/home/lewis/.cache/go-skill-vb-v7x6-target moon run :doc","required":true,"owner_state":11,"rerun_from":11,"status":"planned"}
+{"id":"PO-CI-1","requirement_id":"REQ-3","command":"env CARGO_TARGET_DIR=/home/lewis/.cache/go-skill-vb-v7x6-target moon ci","required":true,"owner_state":11,"rerun_from":11,"status":"planned"}

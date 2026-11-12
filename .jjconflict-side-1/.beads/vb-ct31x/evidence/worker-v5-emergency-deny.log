@@ -1,0 +1,117 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-ct31x-v4/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.26s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-5316a31a59de0319)
+
+running 13 tests
+test journal::emergency_deny_tests::activate_returns_active_state ... ok
+test journal::emergency_deny_tests::malformed_marker_wrong_length_errors ... ok
+test journal::emergency_deny_tests::malformed_empty_marker_errors ... ok
+test journal::emergency_deny_tests::malformed_trailing_bytes_errors ... ok
+test journal::emergency_deny_tests::repeated_activation_is_idempotent ... ok
+test journal::emergency_deny_tests::precommit_batch_failure_returns_error_not_success ... ok
+test journal::emergency_deny_tests::new_store_is_inactive ... ok
+test journal::emergency_deny_tests::marker_persists_across_journal_close ... ok
+test journal::emergency_deny_tests::activation_does_not_corrupt_run_events ... ok
+test journal::emergency_deny_tests::unsupported_version_errors ... ok
+test journal::emergency_deny_tests::retry_after_injected_failure ... ok
+test journal::emergency_deny_tests::already_active_retry_performs_strict_persistence ... ok
+test journal::emergency_deny_tests::separate_stores_are_isolated ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 1617 filtered out; finished in 0.03s
+
+     Running tests/accepted_artifact_red_phase.rs (target/debug/deps/accepted_artifact_red_phase-3e2d515c277d4b5e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.00s
+
+     Running tests/manual_qa_smoke.rs (target/debug/deps/manual_qa_smoke-976d960edfc64255)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/policy_decision_full_record.rs (target/debug/deps/policy_decision_full_record-0ae0cad9e9c40cf1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+
+     Running tests/proptest_journal_error_codes.rs (target/debug/deps/proptest_journal_error_codes-a1ada90af05b0669)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out; finished in 0.00s
+
+     Running tests/proptest_journal_idempotency.rs (target/debug/deps/proptest_journal_idempotency-5d9d8554b3b5ae48)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_001.rs (target/debug/deps/proptest_vb_vzcuf_PS_001-9456f40881625a5f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_002.rs (target/debug/deps/proptest_vb_vzcuf_PS_002-639a133a16af3280)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_003.rs (target/debug/deps/proptest_vb_vzcuf_PS_003-137e494c749ef483)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_004.rs (target/debug/deps/proptest_vb_vzcuf_PS_004-e7dfb9805cc258c6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_005.rs (target/debug/deps/proptest_vb_vzcuf_PS_005-65f3cd5a2283e0db)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_006.rs (target/debug/deps/proptest_vb_vzcuf_PS_006-08bdc60df8a1f687)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_007.rs (target/debug/deps/proptest_vb_vzcuf_PS_007-9a161082313b9e11)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_008.rs (target/debug/deps/proptest_vb_vzcuf_PS_008-56c0226ce96d89dd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/proptest_vb_vzcuf_PS_009.rs (target/debug/deps/proptest_vb_vzcuf_PS_009-d38206d8e9f63f73)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/recovery_property_tests.rs (target/debug/deps/recovery_property_tests-52f101f762e15226)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/vb_core_atomic_admission_red.rs (target/debug/deps/vb_core_atomic_admission_red-aa4a96d915522209)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

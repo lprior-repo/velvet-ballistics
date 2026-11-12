@@ -1,0 +1,262 @@
+//! Issuance tests for executor catalog packed admission.
+//! Verifies seq issuance, counter persistence, mixed policies, close/reopen,
+//! pure prepare, and packed vs legacy behavior.
+
+use super::issuance_test_support::*;
+use crate::executor::{ExecutorCatalog, ExecutorError};
+use crate::{admission, FjallJournal};
+use vb_core::RuntimePolicy;
+
+/// Pure prepare_artifact returns seq 0 and does not mutate the counter or store.
+#[test]
+fn pure_prepare_returns_seq_zero_counter_absent() -> Result<(), Box<dyn std::error::Error>> {
+    // Given a catalog, journal, and action workflow
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let (_path, journal) = open_test_journal()?;
+    let workflow = action_workflow()?;
+    let contract = action_contract()?;
+    let scope = register_scope();
+
+    // When we prepare (do not submit)
+    let artifact = catalog.prepare_artifact(&workflow, RuntimePolicy::Relaxed, &[contract], &[])?;
+
+    // Then seq is 0, counter is absent, compiled IR is empty
+    assert_eq!(artifact.accepted_at_seq.get(), 0);
+    let counter = read_counter(&journal)?;
+    assert_eq!(counter, None);
+    let stored = journal.compiled_ir(artifact.digest)?;
+    assert_eq!(stored, None);
+    Ok(())
+}
+
+/// Submitting a packed artifact with Relaxed policy succeeds and returns seq 1.
+/// The counter is advanced, the artifact is persisted, and full readback
+/// verification passes with the original Relaxed policy.
+#[test]
+fn packed_relaxed_submission_persists_and_verifies() -> Result<(), Box<dyn std::error::Error>> {
+    // Given a catalog, journal, and action workflow
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let (_path, journal) = open_test_journal()?;
+    let workflow = action_workflow()?;
+    let contract = action_contract()?;
+    let scope = register_scope();
+    let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+
+    // When we submit with Relaxed policy
+    let artifact = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Relaxed,
+        &[contract],
+        &[pack],
+    )?;
+
+    // Then seq is 1, counter is 1, and full readback passes
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    let counter = read_counter(&journal)?;
+    assert_eq!(counter, Some(1));
+    verify_artifact_readback(&journal, artifact.digest, &artifact, RuntimePolicy::Relaxed)?;
+    Ok(())
+}
+
+/// Submitting a packed artifact with Journaled policy succeeds and returns seq 1.
+#[test]
+fn packed_journaled_submission_persists_and_verifies() -> Result<(), Box<dyn std::error::Error>> {
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let (_path, journal) = open_test_journal()?;
+    let workflow = action_workflow()?;
+    let contract = action_contract()?;
+    let scope = register_scope();
+    let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+
+    let artifact = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Journaled,
+        &[contract],
+        &[pack],
+    )?;
+
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    let counter = read_counter(&journal)?;
+    assert_eq!(counter, Some(1));
+    verify_artifact_readback(&journal, artifact.digest, &artifact, RuntimePolicy::Journaled)?;
+    Ok(())
+}
+
+/// Submitting a packed artifact with Strict policy succeeds and returns seq 1.
+#[test]
+fn packed_strict_submission_persists_and_verifies() -> Result<(), Box<dyn std::error::Error>> {
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let (_path, journal) = open_test_journal()?;
+    let workflow = action_workflow()?;
+    let contract = action_contract()?;
+    let scope = register_scope();
+    let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+
+    let artifact = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &[contract],
+        &[pack],
+    )?;
+
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    let counter = read_counter(&journal)?;
+    assert_eq!(counter, Some(1));
+    verify_artifact_readback(&journal, artifact.digest, &artifact, RuntimePolicy::Strict)?;
+    Ok(())
+}
+
+/// Submitting multiple artifacts with mixed admission policies works.
+/// Each submission uses Strict for helper storage durability regardless of
+/// the original admission policy, and each gets a unique seq and digest.
+#[test]
+fn mixed_policy_submissions_get_unique_seqs_and_digests() -> Result<(), Box<dyn std::error::Error>> {
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let (_path, journal) = open_test_journal()?;
+    let workflow = action_workflow()?;
+    let contract = action_contract()?;
+    let scope = register_scope();
+    let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+
+    // First submission: Relaxed
+    let art1 = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Relaxed,
+        &[contract],
+        &[pack],
+    )?;
+    assert_eq!(art1.accepted_at_seq.get(), 1);
+    verify_artifact_readback(&journal, art1.digest, &art1, RuntimePolicy::Relaxed)?;
+
+    // Second submission: Journaled
+    let art2 = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Journaled,
+        &[contract],
+        &[pack],
+    )?;
+    assert_eq!(art2.accepted_at_seq.get(), 2);
+    verify_artifact_readback(&journal, art2.digest, &art2, RuntimePolicy::Journaled)?;
+
+    // Third submission: Strict
+    let art3 = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &[contract],
+        &[pack],
+    )?;
+    assert_eq!(art3.accepted_at_seq.get(), 3);
+    verify_artifact_readback(&journal, art3.digest, &art3, RuntimePolicy::Strict)?;
+
+    // All digests are unique
+    assert_ne!(art1.digest, art2.digest);
+    assert_ne!(art2.digest, art3.digest);
+    assert_ne!(art1.digest, art3.digest);
+
+    // Counter is at 3
+    let counter = read_counter(&journal)?;
+    assert_eq!(counter, Some(3));
+
+    Ok(())
+}
+
+/// The counter persists across journal close and reopen.
+/// Artifacts submitted before reopen retain their seq values; subsequent
+/// submissions continue from the persisted counter value.
+#[test]
+fn counter_persists_across_close_and_reopen() -> Result<(), Box<dyn std::error::Error>> {
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let (path, journal1) = open_test_journal()?;
+    let workflow = action_workflow()?;
+    let contract = action_contract()?;
+    let scope = register_scope();
+    let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+
+    // Submit one artifact and close
+    let art1 = catalog.submit_artifact(
+        &journal1,
+        &workflow,
+        RuntimePolicy::Relaxed,
+        &[contract],
+        &[pack],
+    )?;
+    assert_eq!(art1.accepted_at_seq.get(), 1);
+    drop(journal1);
+
+    // Reopen and submit two more
+    let journal2 = FjallJournal::open(&path, None)?;
+    let art2 = catalog.submit_artifact(
+        &journal2,
+        &workflow,
+        RuntimePolicy::Journaled,
+        &[contract],
+        &[pack],
+    )?;
+    assert_eq!(art2.accepted_at_seq.get(), 2);
+    let art3 = catalog.submit_artifact(
+        &journal2,
+        &workflow,
+        RuntimePolicy::Strict,
+        &[contract],
+        &[pack],
+    )?;
+    assert_eq!(art3.accepted_at_seq.get(), 3);
+    drop(journal2);
+
+    // Reopen again and verify all artifacts
+    let journal3 = FjallJournal::open(&path, None)?;
+    verify_artifact_readback(&journal3, art1.digest, &art1, RuntimePolicy::Relaxed)?;
+    verify_artifact_readback(&journal3, art2.digest, &art2, RuntimePolicy::Journaled)?;
+    verify_artifact_readback(&journal3, art3.digest, &art3, RuntimePolicy::Strict)?;
+    let counter = read_counter(&journal3)?;
+    assert_eq!(counter, Some(3));
+    drop(journal3);
+
+    std::fs::remove_dir_all(path)?;
+    Ok(())
+}
+
+/// Legacy admission path (not packed) continues to work alongside packed
+/// submissions. Both share the same counter.
+#[test]
+fn legacy_and_packed_submissions_share_counter() -> Result<(), Box<dyn std::error::Error>> {
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let (_path, journal) = open_test_journal()?;
+    let workflow = action_workflow()?;
+    let contract = action_contract()?;
+    let scope = register_scope();
+    let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+
+    // Legacy submission
+    let legacy = admission::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        RuntimePolicy::Relaxed,
+        &[contract],
+    )?;
+    assert_eq!(legacy.accepted_at_seq.get(), 1);
+
+    // Packed submission
+    let packed = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Relaxed,
+        &[contract],
+        &[pack],
+    )?;
+    assert_eq!(packed.accepted_at_seq.get(), 2);
+
+    // Verify both
+    verify_artifact_readback(&journal, legacy.digest, &legacy, RuntimePolicy::Relaxed)?;
+    verify_artifact_readback(&journal, packed.digest, &packed, RuntimePolicy::Relaxed)?;
+
+    let counter = read_counter(&journal)?;
+    assert_eq!(counter, Some(2));
+    Ok(())
+}

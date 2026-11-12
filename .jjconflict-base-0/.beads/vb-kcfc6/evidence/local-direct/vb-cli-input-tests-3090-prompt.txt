@@ -1,0 +1,23 @@
+TEST WRITER. Output ONLY valid Rust file, no fences/prose. Use the exact fixture provided unchanged, then add13tests as specified, allResult-returning, no unwrap/expect/panic/allow/ignore/unsafe/index/casts. assert_eq on ENTIRE Result maps using Ok(Box::from([...])) or Err(...) avoids indexing and unwrap_err. SlotIdx::new(2) and (3), not rawintegers. Actual function target map_runtime_inputs accepts compiled and byte slice. It returns Result<Box<[(SlotIdx,SlotValue)]>,InputMappingError> and InputMappingError notstdError so assert_eq directly not ?. Serialize with postcard::to_allocvec(&Box::<[SlotValue]>::from([...]))?; .push() trailingbyte. Fixture supplied below.
+13independent named#[test]fn()->Result<(),Box<dynError>>: zeroportsrawempty=>Okempty; zeroportsencodedempty=>Okempty; zeroportsmalformed[255]=>DecodeFailed; zeroportsoneI64=>SlotCountExceeded; zeroportsencodedempty+255=>DecodeFailed; withI64portemptyraw=>Okempty; slot2I64mappingI64(42)=>exactslot2; slots2I64/3Boolpartial1maps2; full2correctorder; I64portBool=>KindMismatch{slot2,I64};2valuesfor1=>SlotCountExceeded; ports[255]=>DecodeFailed; valid1+255=>DecodeFailed. No silent returns, assertionsconcrete.
+use super::{map_runtime_inputs, InputMappingError};
+use std::error::Error;
+use vb_core::{SlotIdx, SlotValue};
+use vb_core::ids::{StepIdx, WorkflowDigest};
+use vb_core::workflow::{CompiledWorkflow, CompiledNode, CompiledNodeKind, CompiledInputSlot, InputSlotKind, WorkflowParts, ResourceContract};
+type TestResult<T> = Result<T, Box<dyn Error>>;
+fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
+    let node = CompiledNode {
+        id: StepIdx::ZERO, output: None, next: None, on_error: None, error_slot: None,
+        kind: CompiledNodeKind::Finish { result: SlotIdx::new(2) },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("input-mapping"), digest: WorkflowDigest::from_bytes([1;32]),
+        nodes: Box::from([node]), expressions: Box::from([]), accessors: Box::from([]),
+        constants: Box::from([]), slot_count: 4, symbols_count: 0, entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT, step_names: Box::from([]), input_slots,
+    };
+    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string().into())
+}
+fn i64_port() -> CompiledInputSlot { CompiledInputSlot { slot: SlotIdx::new(2), kind: InputSlotKind::I64 } }
+fn bool_port() -> CompiledInputSlot { CompiledInputSlot { slot: SlotIdx::new(3), kind: InputSlotKind::Bool } }

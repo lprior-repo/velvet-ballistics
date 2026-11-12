@@ -1,0 +1,58 @@
+SelfTest:delete: PASS expected=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")] actual=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:delete: exit expected=1 actual=1
+SelfTest:ignore: PASS expected=[("IgnoredOrSkippedTest", "crates/workspace_tests/tests/behavior.rs")] actual=[("IgnoredOrSkippedTest", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:ignore: exit expected=1 actual=1
+SelfTest:weaken: PASS expected=[("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")] actual=[("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:weaken: exit expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:strengthen: PASS expected=[] actual=[]
+SelfTest:strengthen: exit expected=0 actual=0
+SelfTest:silent-return: PASS expected=[("IgnoredOrSkippedTest", "crates/workspace_tests/tests/behavior.rs")] actual=[("IgnoredOrSkippedTest", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:silent-return: exit expected=1 actual=1
+SelfTest:module-rs-delete: PASS expected=[("DeletedTestDeclaration", "crates/vb_runtime/src/action/tests.rs"), ("DeletedTestFile", "crates/vb_runtime/src/action/tests.rs"), ("WeakenedAssertion", "crates/vb_runtime/src/action/tests.rs")] actual=[("DeletedTestDeclaration", "crates/vb_runtime/src/action/tests.rs"), ("DeletedTestFile", "crates/vb_runtime/src/action/tests.rs"), ("WeakenedAssertion", "crates/vb_runtime/src/action/tests.rs")]
+SelfTest:module-rs-delete: exit expected=1 actual=1
+SelfTest:module-dir-weaken: PASS expected=[("WeakenedAssertion", "crates/vb_runtime/src/action/tests/behavior.rs")] actual=[("WeakenedAssertion", "crates/vb_runtime/src/action/tests/behavior.rs")]
+SelfTest:module-dir-weaken: exit expected=1 actual=1
+SelfTest:rename-out: PASS expected=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")] actual=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:rename-out: exit expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:relocate-identical: PASS expected=[] actual=[]
+SelfTest:relocate-identical: exit expected=0 actual=0
+test integrity: PASS base=HEAD
+SelfTest:relocate-modified-retained: PASS expected=[] actual=[]
+SelfTest:relocate-modified-retained: exit expected=0 actual=0
+SelfTest:relocate-weakened: PASS expected=[("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")] actual=[("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:relocate-weakened: exit expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:relocate-spaces: PASS expected=[] actual=[]
+SelfTest:relocate-spaces: exit expected=0 actual=0
+SelfTest:relocate-invalid-utf8: PASS expected=[("NonUtf8TestFile", "crates/workspace_tests/tests/behavior.rs")] actual=[("NonUtf8TestFile", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:relocate-invalid-utf8: exit expected=1 actual=1
+SelfTest:space-delete: PASS expected=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior with spaces.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior with spaces.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior with spaces.rs")] actual=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior with spaces.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior with spaces.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior with spaces.rs")]
+SelfTest:space-delete: exit expected=1 actual=1
+SelfTest:non-utf8-relevant: PASS expected=[("NonUtf8TestFile", "crates/workspace_tests/tests/behavior.rs")] actual=[("NonUtf8TestFile", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:non-utf8-relevant: exit expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:unrelated-binary-passes: PASS expected=[] actual=[]
+SelfTest:unrelated-binary-passes: exit expected=0 actual=0
+SelfTest:binary-with-test-delete: PASS expected=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")] actual=[("DeletedTestDeclaration", "crates/workspace_tests/tests/behavior.rs"), ("DeletedTestFile", "crates/workspace_tests/tests/behavior.rs"), ("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")]
+SelfTest:binary-with-test-delete: exit expected=1 actual=1
+SelfTest:justify-pre: PASS expected=[("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")] actual=[("WeakenedAssertion", "crates/workspace_tests/tests/behavior.rs")]
+JUSTIFIED|WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1|bead=vb-test-fixture
+test integrity: PASS base=HEAD
+SelfTest:justify-valid: PASS expected=0 actual=0
+SelfTest:justify-stale-test: PASS expected=1 actual=1
+SelfTest:justify-stale-base: PASS expected=1 actual=1
+SelfTest:justify-stale-replacement: PASS expected=1 actual=1
+SelfTest:justify-stale-review: PASS expected=1 actual=1
+SelfTest:justify-wrong-base: PASS expected=1 actual=1
+SelfTest:justify-unknown-path: PASS expected=2 actual=2
+SelfTest:justify-forbidden-nonutf8: PASS expected=2 actual=2
+SelfTest:justify-malformed: PASS expected=2 actual=2
+SelfTest:justify-duplicate: PASS expected=2 actual=2
+SelfTest:justify-forbidden-skip: PASS expected=2 actual=2
+SelfTest:bypass-unrelated: PASS expected=1 actual=1
+SelfTest:bypass-absent: PASS expected=1 actual=1
+SelfTest:bypass-changed: PASS expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:lifecycle-clean: PASS expected=0 actual=0

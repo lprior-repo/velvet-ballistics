@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 10,
+  "sublane": "implementation-and-test-repair-after-state11-local-failures",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/machine-gate-report.md",
+    ".beads/vb-kyyf/implementation.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "attempt": 3,
+  "repair_route": "State 10 repair for vb_codegen parity, acceptance catalog expectation, and dead-code cleanup after State 11 rejection"
+}

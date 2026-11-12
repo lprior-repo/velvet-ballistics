@@ -1,0 +1,12 @@
+
+running 7 tests
+test lanes::tests::test_flux_command_package_metacharacters_retained_as_one_argv ... ok
+test lanes::tests::test_flux_command_uses_wrapper_script ... ok
+test lanes::tests::test_flux_command_workspace_root_with_spaces ... ok
+test lanes::tests::test_flux_command_workspace_root_with_metacharacters ... ok
+test lanes::tests::test_lane_command_test ... ok
+test lanes::tests::test_lane_command_clippy ... ok
+test lanes::tests::test_required_lanes_always_available ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 64 filtered out; finished in 0.20s
+

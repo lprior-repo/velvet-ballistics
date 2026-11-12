@@ -9,6 +9,17 @@ use crate::workflow::{
     ResourceContract,
 };
 
+#[path = "kani_workflow_budget_borrowed_domain.rs"]
+mod borrowed_domain;
+pub(crate) use borrowed_domain::focused_slice_domain;
+
+#[path = "kani_workflow_budget_partition/mod.rs"]
+mod compute_partition;
+
+#[path = "kani_workflow_budget_focused_visit.rs"]
+mod focused_visit;
+use focused_visit::kind_is_focused;
+
 pub(crate) struct BudgetWorkflowInputs {
     nodes: BudgetNodes,
     entry: StepIdx,
@@ -18,6 +29,13 @@ pub(crate) struct BudgetWorkflowInputs {
 impl BudgetWorkflowInputs {
     pub(crate) fn nodes(&self) -> &[CompiledNode] {
         self.nodes.as_slice()
+    }
+
+    pub(crate) fn with_nodes(
+        self,
+        visit: impl FnOnce(&[CompiledNode], StepIdx, &ResourceContract),
+    ) {
+        focused_visit::with_nodes(self.nodes.as_slice(), self.entry, &self.contract, visit);
     }
 
     pub(crate) const fn node_count(&self) -> usize {
@@ -153,18 +171,6 @@ fn step_is_valid(step: StepIdx, node_count: usize) -> bool {
     step.as_usize() < node_count
 }
 
-fn kind_is_focused(kind: &CompiledNodeKind) -> bool {
-    matches!(
-        kind,
-        CompiledNodeKind::Nop
-            | CompiledNodeKind::Do { .. }
-            | CompiledNodeKind::WaitUntil { .. }
-            | CompiledNodeKind::WaitEvent { .. }
-            | CompiledNodeKind::Ask { .. }
-            | CompiledNodeKind::Finish { .. }
-    )
-}
-
 pub(crate) fn budget_workflow_inputs() -> BudgetWorkflowInputs {
     let nodes = budget_nodes();
     BudgetWorkflowInputs {
@@ -193,6 +199,7 @@ fn entry_for_nodes(nodes: &BudgetNodes) -> StepIdx {
 
 fn budget_node(position: u16, node_count: usize) -> CompiledNode {
     CompiledNode {
+        retry: None,
         id: StepIdx::new(position),
         output: NodeOutput::from(maybe_slot()),
         routing: NodeRouting {

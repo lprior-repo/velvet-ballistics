@@ -2,6 +2,18 @@
 //! Resource contract limit validation (declared versus hard limit).
 
 use super::{ContractResource, ExprProgram, ResourceContract, WorkflowError, WorkflowParts};
+
+pub(super) fn validate_reduce_limit(limit: u32) -> Result<(), WorkflowError> {
+    let limit = usize::try_from(limit).map_err(|_| WorkflowError::ResourceContractExceeded {
+        resource: ContractResource::ListItems,
+    })?;
+    if limit > crate::limits::MAX_LIST_ITEMS_PER_VALUE {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: ContractResource::ListItems,
+        });
+    }
+    Ok(())
+}
 use crate::limits::{
     MAX_ACCESSORS, MAX_BLOB_BYTES, MAX_COLLECT_ITEMS, MAX_CONSTANTS, MAX_EXPRESSION_STACK,
     MAX_EXPRESSIONS, MAX_FANOUT, MAX_INPUT_BYTES, MAX_IPC_PAYLOAD_BYTES, MAX_JOURNAL_BATCH_BYTES,

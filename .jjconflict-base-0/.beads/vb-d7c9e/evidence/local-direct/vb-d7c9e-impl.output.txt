@@ -1,0 +1,14 @@
+```json
+[
+  {
+    "path": "fuzz/fuzz_targets/kind_validation.rs",
+    "old": "            assert_eq!(\n                vb_storage::codec::is_known_record_kind(kind),\n                true,\n                \"validate_known_kind Ok but is_known_record_kind false for kind {}\",\n                kind\n            );",
+    "new": "            assert!(\n                vb_storage::codec::is_known_record_kind(kind),\n                \"validate_known_kind Ok but is_known_record_kind false for kind {}\",\n                kind\n            );"
+  },
+  {
+    "path": "fuzz/fuzz_targets/kind_validation.rs",
+    "old": "            assert_eq!(\n                accepted_by_production,\n                true,\n                \"validate_record_kind_family accepted ({magic:#010x}, {kind}) but RecordKind rejected it\"\n            );",
+    "new": "            assert!(\n                accepted_by_production,\n                \"validate_record_kind_family accepted ({magic:#010x}, {kind}) but RecordKind rejected it\"\n            );"
+  }
+]
+```

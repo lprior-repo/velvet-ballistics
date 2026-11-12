@@ -1,0 +1,17 @@
+{
+  "reason": "Inherited local-model test runner artifacts are not product sources or trusted root execution evidence. Exact bytes preserved as text, removed from production crate. All actual gate runs use root-owned /tmp/vb-run-gate.py with direct argv and raw logs. No Rust source changes.",
+  "files": [
+    {
+      "path": "crates/vb_runtime/cargo_test_strict.py",
+      "preserved_as_nonexecutable_text": ".beads/vb-z7ky4/quarantine/cargo_test_strict.py.txt",
+      "sha256": "9c898fe43a2ad4278d755e6278c83ddc3e37a5629e7d1de1b7d112ddc9f270f2",
+      "executed_by_root": false
+    },
+    {
+      "path": "crates/vb_runtime/run_cargo.py",
+      "preserved_as_nonexecutable_text": ".beads/vb-z7ky4/quarantine/run_cargo.py.txt",
+      "sha256": "1ae8446b83daecd9bf18bb5adb92fba815ad88cf1ead086d18a05aebc8f0504f",
+      "executed_by_root": false
+    }
+  ]
+}

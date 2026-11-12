@@ -1,0 +1,25 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 4,
+  "sublane": "proof-planning-after-state3-mode-repair",
+  "delegate": "proof-planner",
+  "attempt": 3,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 3 canonical proof-obligations.jsonl changed PRE-001/INV-002 mode to review-artifact; rerun State 4 downstream plan artifacts",
+  "input_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/traceability-matrix.jsonl",
+    ".beads/vb-vt2f/proof-strategy.md",
+    ".beads/vb-vt2f/proof-plan-review-input.md",
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/proof-strategy.md",
+    ".beads/vb-vt2f/proof-plan-review-input.md",
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl"
+  ],
+  "status": "QUEUED"
+}

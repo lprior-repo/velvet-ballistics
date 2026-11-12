@@ -19,6 +19,11 @@ pub enum EvidenceEvent {
         /// Output slot written, if any (Nop/Jump have no output).
         output: Option<SlotIdx>,
     },
+    /// Step failed before entering its error handler.
+    StepFailed {
+        /// Failed step.
+        step: StepIdx,
+    },
     /// A slot was written during step execution.
     SlotWritten {
         /// Slot index.
@@ -107,6 +112,21 @@ impl EvidenceCollector {
         }
         self.events
             .push(EvidenceEvent::StepSucceeded { step, output });
+        Ok(())
+    }
+
+    /// Records a failed deterministic step before handler dispatch.
+    pub fn push_step_failed(&mut self, step: StepIdx) -> Result<(), EngineError> {
+        if self.events.len() >= self.capacity {
+            return Err(EngineError::EvidenceCapacityExceeded {
+                step,
+                slot: SlotIdx::ZERO,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: "step_failed",
+            });
+        }
+        self.events.push(EvidenceEvent::StepFailed { step });
         Ok(())
     }
 

@@ -1,0 +1,33 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 9,
+  "sublane": "review-state8-final-repair-attempt7",
+  "delegate": "test-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+    "crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md"
+  ],
+  "attempt": 7,
+  "cap_warning": "attempt 7 failure blocks landing and preserves workspace as evidence",
+  "required_review_focus": [
+    "State 9 attempt 6 Repair A: all DEFECT-003 corrupt/digest cases named with both attempts and exact typed error/blocker",
+    "State 9 attempt 6 Repair B: generated parity no longer accepts synthesized constants; exact generated durable replay blocker is exposed",
+    "All prior State 12 defects remain covered"
+  ]
+}

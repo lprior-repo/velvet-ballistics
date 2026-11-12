@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "contract-verification-review",
+  "delegate": "contract-verification-reviewer",
+  "attempt": 4,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "Independently review whether new TLA/Kani proof work covers contract obligations after runtime/shard/admission changes",
+  "input_artifacts": [".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/verification-layers.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/traceability-matrix.jsonl", ".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md", "verification/tla/Vt2fRuntimeLifecycle.tla", "verification/tla/Vt2fStrictAdmission.tla", "verification/kani/vt2f_runtime_facade.rs", "verification/kani/vt2f_shard_lower_semantics.rs"],
+  "output_artifacts": [".beads/vb-vt2f/contract-verification-review.md"],
+  "status": "QUEUED"
+}

@@ -1,73 +1,16 @@
-//! Leaf and nested-container call implementations for body lowering.
-//!
-//! Companion `impl` block for [`BranchBindings`]: leaves bind value slots
-//! here, and nested `repeat`/`choose` containers delegate to their top-level
-//! lowering entry points.
+//! Leaf calls preserve ancestor reads before publishing the local binding.
 
-use super::super::*;
-use super::BranchBindings;
 use super::*;
-use crate::mod_compile_lowering::part_02::resolve_slot_reference_scoped;
-use crate::mod_compile_lowering::part_04::{RepeatLowering, lower_canonical_repeat};
-use crate::mod_compile_lowering::part_14::{ChooseScope, lower_canonical_choose_in_scope};
 use vb_core::ActionId;
 
-impl<'a> BranchBindings<'a> {
-    pub(super) fn lower_nested_repeat(
-        &mut self,
-        max_attempts: u16,
-        body: &[crate::StepAst],
-        id: StepIdx,
-        next: StepIdx,
-        builder: &mut SlotCompiler,
-    ) -> Result<SlotIdx, CompileErrors> {
-        lower_canonical_repeat(
-            self.ctx.index,
-            id,
-            RepeatLowering {
-                max_attempts,
-                body,
-                next: Some(next),
-                scope: self.view(),
-                inputs: self.ctx.inputs,
-                step_names: self.ctx.step_names,
-                depth: self.ctx.depth,
-            },
-            builder,
-        )
-    }
-
-    pub(super) fn lower_nested_choose(
-        &mut self,
-        branches: &[crate::ChooseBranch],
-        otherwise: Option<&str>,
-        id: StepIdx,
-        next: StepIdx,
-        builder: &mut SlotCompiler,
-    ) -> Result<(), CompileErrors> {
-        lower_canonical_choose_in_scope(
-            id,
-            branches,
-            otherwise,
-            Some(next),
-            ChooseScope {
-                index: self.ctx.index,
-                names: self.ctx.step_names,
-                bindings: self.view(),
-                inputs: self.ctx.inputs,
-                depth: self.ctx.depth,
-            },
-            builder,
-        )
-    }
-
+impl BranchBindings<'_> {
     pub(super) fn lower_set(
         &mut self,
         output: &str,
         value: &str,
         target: BodyTarget,
         builder: &mut SlotCompiler,
-    ) -> Result<ExprType, CompileErrors> {
+    ) -> Result<(), CompileErrors> {
         validate_output_alias(output).map_err(|e| CompileErrors(vec![e]))?;
         if !self.local_outputs.insert(output.to_owned()) {
             return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
@@ -87,7 +30,7 @@ impl<'a> BranchBindings<'a> {
         )?;
         self.outputs.insert(output.to_owned(), target.slot);
         self.types.insert(target.slot, inferred);
-        Ok(inferred)
+        Ok(())
     }
 
     pub(super) fn lower_do(
@@ -104,7 +47,6 @@ impl<'a> BranchBindings<'a> {
                 expected: "numeric action ID (u16)",
             }])
         })?;
-        // Borrowed scope lookup: walks overlay then parent chain.
         let input = resolve_slot_reference_scoped(input, self.view())
             .map_err(|e| CompileErrors(vec![e]))?;
         let node = lower_do(

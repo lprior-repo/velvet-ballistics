@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hrvix-local3090-input-validation",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--check"
+  ],
+  "exit_code": 0,
+  "seconds": 14.142,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hrvix/evidence/fmt-check"
+}

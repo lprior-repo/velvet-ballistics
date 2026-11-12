@@ -1,0 +1,9 @@
+
+running 4 tests
+test recovery::tests::terminal_gate_explicitly_retried_active_run_is_not_terminal ... ok
+test recovery::tests::terminal_gate_failed_run_with_checkpoint_is_terminal ... ok
+test recovery::tests::terminal_gate_suspended_run_without_terminal_is_not_terminal ... ok
+test recovery::tests::terminal_gate_finished_run_is_terminal ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1934 filtered out; finished in 0.00s
+

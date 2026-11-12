@@ -1,0 +1,22 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 10,
+  "sublane": "implementation-repair-stale-ask-immediate-runnotfound",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/test-writer-report.md",
+    "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/implementation.md"
+  ],
+  "attempt": 1,
+  "repair_route": "State 10 implementation after approved stale ask proof/test oracle repair"
+}

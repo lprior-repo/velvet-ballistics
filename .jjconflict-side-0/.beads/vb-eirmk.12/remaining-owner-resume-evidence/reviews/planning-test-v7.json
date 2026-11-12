@@ -1,0 +1,148 @@
+{
+  "verdict": "PASS",
+  "proposal_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/remaining-owner-proposals/normalized-v7.json",
+  "review_kind": "Independent bounded nine-owner V7 planning TEST/control rereview",
+  "predecessor_sha256": "7a20dcc9f3d4caa8c5e32b681e550a807c7fdd1f1410a864e0d85d29a3ee157c",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "findings": [],
+  "resolved_findings": [
+    {
+      "id": "V6-R1",
+      "disposition": "fixed_with_evidence",
+      "evidence": "All three authoritative reuse stage1 inline rows now equal full retained parent rows, not old12-key projections. Full-row exact-equality keys remain, complete13 checks are unchanged, and reversal of exactly the three nested snapshot repairs plus version/provenance fields recovers V6."
+    }
+  ],
+  "checks": {
+    "proposal_sha256": true,
+    "predecessor_sha256": true,
+    "retained_raw_receipt_sha256": true,
+    "retained_design_sha256": true,
+    "190_false_null": true,
+    "function:24:1:full_top_row_exact": true,
+    "function:24:1:13_check_payload_preservation": true,
+    "function:28:2:full_top_row_exact": true,
+    "function:28:2:13_check_payload_preservation": true,
+    "function:28:2:full_nested_row_exact": true,
+    "function:28:2:strict_full_guard_same_key": true,
+    "function:29:3:full_top_row_exact": true,
+    "function:29:3:13_check_payload_preservation": true,
+    "function:29:6:full_top_row_exact": true,
+    "function:29:6:13_check_payload_preservation": true,
+    "function:29:8:full_top_row_exact": true,
+    "function:29:8:13_check_payload_preservation": true,
+    "function:31:4:full_top_row_exact": true,
+    "function:31:4:13_check_payload_preservation": true,
+    "function:31:4:full_nested_row_exact": true,
+    "function:31:4:strict_full_guard_same_key": true,
+    "77.17:full_top_row_exact": true,
+    "77.17:13_check_payload_preservation": true,
+    "77.10:full_top_row_exact": true,
+    "77.10:13_check_payload_preservation": true,
+    "master44.16:full_top_row_exact": true,
+    "master44.16:13_check_payload_preservation": true,
+    "master44.16:full_nested_row_exact": true,
+    "master44.16:strict_full_guard_same_key": true,
+    "exact_12_row_locations": true,
+    "exact_13_owned_checks": true,
+    "only_nested_snapshot_and_version_provenance_delta": true,
+    "four_create_TASK_payloads_unchanged": true,
+    "reuse_order_business_timestamp_controls_unchanged": true
+  },
+  "row_snapshot_locations": [
+    {
+      "requirement_id": "function:24:1",
+      "location": "live_row_before",
+      "keys": 24,
+      "exact": true
+    },
+    {
+      "requirement_id": "function:28:2",
+      "location": "live_row_before",
+      "keys": 22,
+      "exact": true
+    },
+    {
+      "requirement_id": "function:28:2",
+      "location": "reuse_task_readback.lifecycle_guards.1_before_any_reuse_task_mutation.verify_old_live_row_and_full_check_objects_exactly_equal",
+      "keys": 22,
+      "exact": true
+    },
+    {
+      "requirement_id": "function:29:3",
+      "location": "live_row_before",
+      "keys": 24,
+      "exact": true
+    },
+    {
+      "requirement_id": "function:29:6",
+      "location": "live_row_before",
+      "keys": 24,
+      "exact": true
+    },
+    {
+      "requirement_id": "function:29:8",
+      "location": "live_row_before",
+      "keys": 22,
+      "exact": true
+    },
+    {
+      "requirement_id": "function:31:4",
+      "location": "live_row_before",
+      "keys": 22,
+      "exact": true
+    },
+    {
+      "requirement_id": "function:31:4",
+      "location": "reuse_task_readback.lifecycle_guards.1_before_any_reuse_task_mutation.verify_old_live_row_and_full_check_objects_exactly_equal",
+      "keys": 22,
+      "exact": true
+    },
+    {
+      "requirement_id": "77.17",
+      "location": "live_row_before",
+      "keys": 22,
+      "exact": true
+    },
+    {
+      "requirement_id": "77.10",
+      "location": "live_row_before",
+      "keys": 24,
+      "exact": true
+    },
+    {
+      "requirement_id": "master44.16",
+      "location": "live_row_before",
+      "keys": 22,
+      "exact": true
+    },
+    {
+      "requirement_id": "master44.16",
+      "location": "reuse_task_readback.lifecycle_guards.1_before_any_reuse_task_mutation.verify_old_live_row_and_full_check_objects_exactly_equal",
+      "keys": 22,
+      "exact": true
+    }
+  ],
+  "scope": {
+    "rows": 9,
+    "exact_snapshot_locations": 12,
+    "owned_checks": 13,
+    "new_TASK_payloads": 4,
+    "reuse_targets": [
+      "vb-eirmk.53",
+      "vb-eirmk.24"
+    ],
+    "allowlisted_canonical_scalar_paths": 53
+  },
+  "retained_control_assessment": [
+    "Successful actual new-task creation receipt plus exact open TASK/business/metadata/root-parent readback precedes canonical remap and final11 blocking edge. Proposal keys/epochs/EPICs are not new IDs; existing133 dependency records must all survive.",
+    "Reuse53 and24 require approved semantic updates, actual BD response.updated_at and matching fresh readback; only updated_at excluded from old-value invariance. Other governed fields remain exact; no fake new creation receipt for reuse.",
+    "Before-task, post-task/pre-ledger, allowlisted scalar update and post-remap byte/metadata/graph readbacks remain ordered and strict; no common-fields-only or projection fallback."
+  ],
+  "readiness": "READY for separately authorized apply only if fresh full preconditions still match; no application performed or authorized by this report.",
+  "limits": [
+    "No DB access, builds/native, source/gate/tracker edits, new agents or application. Comparison used actual retained raw parent export, not its audit booleans.",
+    "All190false/null, check assertion/status/reason, historicalclosed and nativeunknown fields remain preservation requirements. No full-plan, implementation, behavior/proof/fuzz/benchmark/fullCI acceptance.",
+    "After future actual creation/metadata/remap, independent post-apply evidence must verify actual IDs, root parent-child relations, blocking edges, all133 prior dependencies, exact token changes/outside bytes and graph cycles. Stop on fresh-state drift rather than weakening equality."
+  ]
+}

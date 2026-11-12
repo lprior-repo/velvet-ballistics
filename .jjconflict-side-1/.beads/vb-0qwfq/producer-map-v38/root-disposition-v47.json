@@ -1,0 +1,15 @@
+{
+  "scope": "Actual producer source research only; no implementation/review acceptance. Useful proposed registered path routed to live child vb-ct9lz, dependent on qz default landing.",
+  "corrections": [
+    "Fivepaths/threepure/one/two opening arithmetic is wrong; 2pure helpers, 3 submission routes, rawstorage separately.",
+    "vb-qz2yn not completed at time of research: default candidate fullcanonical V36 failed stale integration assertion, fixed/reviewed rerun pending.",
+    "CLI actual prepare source line80, not90; other source line anchors approximate and must recheck actual files.",
+    "Global artifact issuance sequence and per-run RunAccepted0/RunAdmission1 distinct; never rewrite latter.",
+    "Raw put then persist_strict are separate calls, not single transaction by themselves.",
+    "Existing packed strict durability applies allallowedadmissionprofiles; replacement must preserve it.",
+    "Injected precommit failure checks can show unchanged writes; arbitrary IO/readback errors do not promise rollback.",
+    "Use no unsupported all-path-complete claim from this bounded research."
+  ],
+  "actual_semantics": "Counterhelper only reads policy for batchdurability, so Strict can preserve existing packed storageguarantee without changing alreadychecked originaladmissionevidence. Actual catalog verifier normalizes proof.digest only after checked_envelope validates actualcanonicaldigest. Confirm in bounded contract/behavior tests before implementation acceptance.",
+  "deferred": "RunSubmission requires stampedartifact, retainedinputartifactdigest and admissionevent binding in same multirecord counter batch; separate child, not solved by rawinsert."
+}

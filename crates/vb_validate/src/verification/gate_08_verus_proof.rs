@@ -146,6 +146,7 @@ mod verus_unit_tests {
     ) -> WorkflowParts {
         WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("verus_test"),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: Box::new([node(

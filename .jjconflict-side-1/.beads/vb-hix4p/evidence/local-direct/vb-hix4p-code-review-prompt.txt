@@ -1,0 +1,169 @@
+Independent code review vb-hix4p. Narrow legacy fixture compatibility repair: exactly two new input_slots: Box::new([]) fields; no production behavior or existing assertions changed. All tests use no external inputs. Policy make_parts controls many intentionally invalid validation inputs; IPC trace chain Nop then Finish uses internal slot0. Review minimal actual diff and actual executed logs; return APPROVE/REJECT with actionable issues. Existing expects/arithmetic are preexisting; no new such code introduced.
+diff --git a/crates/vb_ipc/src/server/trace.rs b/crates/vb_ipc/src/server/trace.rs
+index 47b8c43ef..dbe14ef5c 100644
+--- a/crates/vb_ipc/src/server/trace.rs
++++ b/crates/vb_ipc/src/server/trace.rs
+@@ -208,6 +208,7 @@ mod tests {
+             symbols_count: 0,
+             entry: StepIdx::ZERO,
+             step_names: Box::from([]),
++            input_slots: Box::new([]),
+             resource_contract: ResourceContract::DEFAULT,
+         };
+         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("valid workflow")
+diff --git a/crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs b/crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs
+index d6b3f070a..6d8d26fa5 100644
+--- a/crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs
++++ b/crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs
+@@ -43,6 +43,7 @@ fn make_parts(
+         entry: StepIdx::new(0),
+         resource_contract: ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::new([]),
+     }
+ }
+ 
+
+RAW policy.log
+
+running 42 tests
+..........................................
+test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+RAW ipc-lib.log
+
+running 531 tests
+....................................................................................... 87/531
+....................................................................................... 174/531
+....................................................................................... 261/531
+....................................................................................... 348/531
+....................................................................................... 435/531
+....................................................................................... 522/531
+.........
+test result: ok. 531 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+
+FILE crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs
+#![forbid(unsafe_code)]
+//! Behavior tests for vb_validate policy enforcement.
+//!
+//! Tests the enforcement behavior of validation gates:
+//! - Policy rule evaluation behavior
+//! - Enforcement action behavior
+//! - Policy bypass attempts and rejection
+//! - Exact violation reporting
+//!
+//! These are behavior tests that prove the observable behavior of the
+//! validation pipeline against constructed WorkflowParts inputs.
+
+use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, SymbolId};
+use vb_core::value::ConstValue;
+use vb_core::workflow::{
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
+    ResourceContract, WorkflowParts,
+};
+use vb_validate::ValidationError;
+use vb_validate::shared::{ValidationPipeline, validate};
+
+// ---------------------------------------------------------------------------
+// Test fixtures
+// ---------------------------------------------------------------------------
+
+fn make_parts(
+    nodes: Vec<CompiledNode>,
+    slot_count: u16,
+    symbols_count: u32,
+    expressions: Vec<ExprProgram>,
+    accessors: Vec<AccessorProgram>,
+    constants: Vec<ConstValue>,
+) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("test"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: expressions.into_boxed_slice(),
+        accessors: accessors.into_boxed_slice(),
+        constants: constants.into_boxed_slice(),
+        slot_count,
+        symbols_count,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+        input_slots: Box::new([]),
+    }
+}
+
+fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(result_slot),
+        },
+    }
+}
+
+fn validate_gate_11_only(parts: &WorkflowParts) -> Result<(), ValidationError> {
+    ValidationPipeline {
+        gate_11_loop_body_graph: true,
+FILE crates/vb_ipc/src/server/trace.rs
+        };
+        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+        Runtime::new_for_tests_and_benchmarks_only(NonZeroUsize::MIN, config)
+    }
+
+    fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {
+        use vb_core::WorkflowDigest;
+        use vb_core::ids::{SlotIdx, StepIdx};
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+        let mut nodes = Vec::new();
+        for i in 0..10 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: Some(StepIdx::new(i + 1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            });
+        }
+        nodes.push(CompiledNode {
+            id: StepIdx::new(10),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        });
+        let parts = WorkflowParts {
+            name: Box::from("chain"),
+            digest: WorkflowDigest::from_bytes([4; 32]),
+            nodes: Box::from(nodes),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            input_slots: Box::new([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("valid workflow")
+    }
+
+    fn submit_and_tick(runtime: &mut Runtime, run_id: RunId) {
+        runtime
+            .submit_direct(run_id, chain_workflow())
+            .expect("submit");
+        runtime.tick_all().expect("tick");
+    }
+
+    fn encode_drain_trace(run_id: RunId, max_records: u32) -> Vec<u8> {

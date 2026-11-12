@@ -26,6 +26,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -37,7 +38,11 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("suspended_workflow"))
 }
@@ -61,6 +66,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -90,6 +96,7 @@ fn wait_workflow_no_next() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("wait_no_next"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: Box::from([wait]),
@@ -101,7 +108,11 @@ fn wait_workflow_no_next() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_workflow_no_next"))
 }
@@ -148,6 +159,7 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("wait_event_timeout"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([wait_event, resume]),
@@ -159,7 +171,18 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([
+            vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(0),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            },
+            vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(1),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            },
+        ]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -208,6 +231,7 @@ fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ask_with_timeout"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: Box::from([ask, resume, finish]),
@@ -219,7 +243,18 @@ fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([
+            vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(0),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            },
+            vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(1),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            },
+        ]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -260,6 +295,7 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ask_no_timeout"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: Box::from([ask, resume]),
@@ -271,7 +307,11 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -598,6 +638,7 @@ fn seed_input_slots_rejects_out_of_bounds_slot() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -609,10 +650,19 @@ fn seed_input_slots_rejects_out_of_bounds_slot() {
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: vb_core::ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
     let result = seed_input_slots(&mut frame, &inputs, &workflow);
-    assert_eq!(result, Err(RuntimeError::InvalidRecoveryHydration));
+    assert_eq!(
+        result,
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "input_schema_mismatch"
+        })
+    );
 }
 

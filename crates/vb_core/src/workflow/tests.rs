@@ -13,6 +13,14 @@ use crate::workflow::{
 };
 use std::fmt::Debug;
 
+fn external_input(kind: InputSlotKind) -> Box<[CompiledInputSlot]> {
+    Box::new([CompiledInputSlot {
+        slot: SlotIdx::new(0),
+        kind,
+        constraint: CompiledInputConstraint::required(),
+    }])
+}
+
 include!("tests/expr_and_parts.rs");
 
 include!("tests/slots_and_errors.rs");

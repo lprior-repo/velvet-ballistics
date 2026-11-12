@@ -1,0 +1,55 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/crates/vb_storage)
+error: unused import: `minimal_workflow`
+ --> crates/vb_storage/src/executor/issuance_tests.rs:5:32
+  |
+5 |     PackedFixture, TestResult, minimal_workflow, open_test_journal, read_counter,
+  |                                ^^^^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused variable: `journal`
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:17:16
+   |
+17 |     let (_dir, journal) = open_test_journal()?;
+   |                ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_journal`
+   |
+   = note: `-D unused-variables` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+error[E0594]: cannot assign to `expected.accepted_at_seq`, as `expected` is not declared as mutable
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:107:5
+    |
+107 |     expected.accepted_at_seq = crate::EventSeq::new(1);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot assign
+    |
+help: consider changing this to be mutable
+    |
+106 |     let mut expected = fixture.prepare(RuntimePolicy::Strict)?;
+    |         +++
+
+error[E0594]: cannot assign to `expected.digest`, as `expected` is not declared as mutable
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:108:5
+    |
+108 |     expected.digest = crate::admission::accepted_artifact_digest(&expected)?;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot assign
+    |
+help: consider changing this to be mutable
+    |
+106 |     let mut expected = fixture.prepare(RuntimePolicy::Strict)?;
+    |         +++
+
+error[E0594]: cannot assign to `expected.verification.digest`, as `expected` is not declared as mutable
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:109:5
+    |
+109 |     expected.verification.digest = expected.digest;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot assign
+    |
+help: consider changing this to be mutable
+    |
+106 |     let mut expected = fixture.prepare(RuntimePolicy::Strict)?;
+    |         +++
+
+For more information about this error, try `rustc --explain E0594`.
+error: could not compile `vb_storage` (lib test) due to 5 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

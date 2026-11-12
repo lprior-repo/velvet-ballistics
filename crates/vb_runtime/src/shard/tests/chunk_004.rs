@@ -98,7 +98,8 @@ fn shard_submit_records_run_submitted_trace_event() {
     let run = super::RunId::new(20);
     // When submitting a run
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

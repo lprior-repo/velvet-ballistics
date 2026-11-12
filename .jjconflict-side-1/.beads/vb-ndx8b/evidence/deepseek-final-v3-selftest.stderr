@@ -1,0 +1,75 @@
+test integrity: FAIL
+DeletedTestDeclaration|crates/workspace_tests/tests/behavior.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestFile|crates/workspace_tests/tests/behavior.rs|deleted file contained tests or test assertions
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+IgnoredOrSkippedTest|crates/workspace_tests/tests/behavior.rs|#[ignore]
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+IgnoredOrSkippedTest|crates/workspace_tests/tests/behavior.rs|return;
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+DeletedTestDeclaration|crates/vb_runtime/src/action/tests.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/vb_runtime/src/action/tests.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestFile|crates/vb_runtime/src/action/tests.rs|deleted file contained tests or test assertions
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/vb_runtime/src/action/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+DeletedTestFile|crates/workspace_tests/tests/behavior.rs|deleted file contained tests or test assertions
+DeletedTestDeclaration|crates/workspace_tests/tests/behavior.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+NonUtf8TestFile|crates/workspace_tests/tests/behavior.rs|relevant test file contains non-UTF8 bytes
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+DeletedTestDeclaration|crates/workspace_tests/tests/behavior with spaces.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/behavior with spaces.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestFile|crates/workspace_tests/tests/behavior with spaces.rs|deleted file contained tests or test assertions
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+NonUtf8TestFile|crates/workspace_tests/tests/behavior.rs|relevant test file contains non-UTF8 bytes
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+DeletedTestDeclaration|crates/workspace_tests/tests/behavior.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestFile|crates/workspace_tests/tests/behavior.rs|deleted file contained tests or test assertions
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:justify-unknown-path: rejected with: stale justification records reference no matching finding: WeakenedAssertion|crates/workspace_tests/tests/other.rs|removed_exact=1 added_exact=0 added_weak=1
+SelfTest:justify-forbidden-nonutf8: rejected with: justification record 1: NonUtf8TestFile findings cannot be justified
+SelfTest:justify-malformed: rejected with: justification record 1: expected 11 tab-separated columns, got 3
+SelfTest:justify-duplicate: rejected with: justification record 2: duplicate record for WeakenedAssertion|crates/workspace_tests/tests/behavior.rs
+SelfTest:justify-forbidden-skip: rejected with: justification record 1: code-level IgnoredOrSkippedTest requires replacement coverage binding
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.

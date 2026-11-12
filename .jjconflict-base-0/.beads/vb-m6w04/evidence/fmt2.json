@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review",
+  "argv": [
+    "rustfmt",
+    "--edition",
+    "2024",
+    "--check",
+    "crates/vb_compile/tests/v1_primitive_lowering.rs",
+    "crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 0.025,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-m6w04/evidence/fmt2"
+}

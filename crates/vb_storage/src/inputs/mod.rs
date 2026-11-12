@@ -13,6 +13,14 @@ pub use owned::{OwnedInputError, OwnedRunInputsRecordV1, RetainedRunInputs};
 pub use submission::RunSubmission;
 use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
 
+/// Validate scalar admission values and fill defaults before any run effects.
+pub fn prepare_scalar_inputs(
+    workflow: &CompiledWorkflow,
+    inputs: &[(SlotIdx, SlotValue)],
+) -> Result<Vec<(SlotIdx, SlotValue)>, JournalError> {
+    validation::prepare_inputs(workflow, inputs)
+}
+
 /// Immutable input mapping and its run, artifact, workflow and source identities.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RunInputsRecord {

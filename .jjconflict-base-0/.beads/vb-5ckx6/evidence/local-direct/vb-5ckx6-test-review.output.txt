@@ -1,0 +1,3 @@
+STATUS: REJECTED
+
+Finding: Contract requires Standard profile with budget compute error to record no "budget_computation" or "boundedness_policy" check. The implementation is correct (handle_budget_computation_failure returns Ok(()) without adding checks), but no test verifies the checks list for this case. The existing test `budget_error_warning_in_standard_profile` only asserts the warning message, not the absence of budget-related check names. Add a test that runs the full `run_verification` pipeline with a budget compute error in Standard profile and asserts the checks list contains only ["yaml_parse", "compilation", "ir_validation"].

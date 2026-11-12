@@ -1,0 +1,3 @@
+=== compile evidence: vb_rpch_hydrate_snapshot_tail_fuzz ===
+-rwxr-xr-x 2 lewis lewis 2543688 Oct 22 17:18 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_hydrate_snapshot_tail_fuzz
+OK: binary present

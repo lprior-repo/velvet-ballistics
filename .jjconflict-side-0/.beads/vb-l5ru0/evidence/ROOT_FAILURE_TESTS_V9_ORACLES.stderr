@@ -1,0 +1,46 @@
+error[E0277]: can't compare `&Vec<&DecisionRecord>` with `Vec<&DecisionRecord>`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:203:5
+    |
+203 | /     assert_eq!(
+204 | |         &decision_events,
+205 | |         vec![&expected],
+206 | |         "stored decision event must exactly match expected full record"
+207 | |     );
+    | |_____^ no implementation for `&Vec<&DecisionRecord> == Vec<&DecisionRecord>`
+    |
+    = help: the trait `PartialEq<Vec<&DecisionRecord>>` is not implemented for `&Vec<&DecisionRecord>`
+    = help: the following other types implement trait `PartialEq<Rhs>`:
+              `Vec<T, A1>` implements `PartialEq<Vec<U, A2>>`
+              `Vec<T, A>` implements `PartialEq<&[U; N]>`
+              `Vec<T, A>` implements `PartialEq<&[U]>`
+              `Vec<T, A>` implements `PartialEq<&mut [U]>`
+              `Vec<T, A>` implements `PartialEq<[U; N]>`
+              `Vec<T, A>` implements `PartialEq<[U]>`
+              `Vec<u8>` implements `PartialEq<ByteStr>`
+              `Vec<u8>` implements `PartialEq<ByteString>`
+            and 2 others
+
+error[E0277]: can't compare `&Vec<&DecisionRecord>` with `Vec<&DecisionRecord>`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:471:5
+    |
+471 | /     assert_eq!(
+472 | |         &decision_events,
+473 | |         vec![&expected_first, &expected_second],
+474 | |         "stored decision events must exactly match expected records in order"
+475 | |     );
+    | |_____^ no implementation for `&Vec<&DecisionRecord> == Vec<&DecisionRecord>`
+    |
+    = help: the trait `PartialEq<Vec<&DecisionRecord>>` is not implemented for `&Vec<&DecisionRecord>`
+    = help: the following other types implement trait `PartialEq<Rhs>`:
+              `Vec<T, A1>` implements `PartialEq<Vec<U, A2>>`
+              `Vec<T, A>` implements `PartialEq<&[U; N]>`
+              `Vec<T, A>` implements `PartialEq<&[U]>`
+              `Vec<T, A>` implements `PartialEq<&mut [U]>`
+              `Vec<T, A>` implements `PartialEq<[U; N]>`
+              `Vec<T, A>` implements `PartialEq<[U]>`
+              `Vec<u8>` implements `PartialEq<ByteStr>`
+              `Vec<u8>` implements `PartialEq<ByteString>`
+            and 2 others
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_policy_dispatch_fail_closed") due to 2 previous errors

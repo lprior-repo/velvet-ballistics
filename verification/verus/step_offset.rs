@@ -9,7 +9,7 @@
 // ============================================================================
 //
 // This file is bound to the production arithmetic primitive
-// `StepIdx::checked_add` at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`
+// `StepIdx::checked_add` at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219`
 // and to the production wrapper `checked_step_offset` at
 // `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`
 // through the companion extern surface
@@ -53,7 +53,7 @@
 //                                         crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::checked_add`          <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
+//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219)
 //   - `SpecCompileError`              <- extern_step_offset.rs
 //                                         (mirror of
 //                                         crates/vb_compile/src/mod_compile_errors/kind.rs:141)
@@ -122,7 +122,7 @@ pub open spec fn u16_max() -> int {
 // Bridge: `StepIdx::checked_add` matches u16 arithmetic.
 // --------------------------------------------------------------------------
 // Mirrors production `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`:
+// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219`:
 //
 //     pub const fn checked_add(self, rhs: u16) -> Option<Self> {
 //         match self.0.checked_add(rhs) {
@@ -286,7 +286,7 @@ pub open spec fn spec_offset_ok(id: production::StepIdx, offset: int) -> bool {
 /// `u16::MAX - offset` headroom.
 ///
 /// Production call sites (collect offsets 1, 2, 3) live at:
-///   - crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:121-125
+///   - crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:100-104
 ///   - crates/vb_compile/src/mod_compile_lowering/part_10.rs:182-183 (reduce offsets 1, 2)
 pub proof fn lemma_collect_offsets(id: production::StepIdx)
     requires

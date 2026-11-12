@@ -1,0 +1,55 @@
+COMMAND: cargo test -p vb_runtime --test recovery_hydration_tests --all-features
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/recovery_hydration_tests.rs (target/debug/deps/recovery_hydration_tests-35143c3e9f97c0e2)
+
+running 44 tests
+test crash_child_marker ... ignored, marker for crash-replay parent's Command::new invocation; not run directly
+test corrupt_snapshot_missing_taint_for_non_empty_slots_fails_closed ... ok
+test corrupt_snapshot_run_mismatch_rejected ... ok
+test hydration_from_events_rejects_frame_only_missing_slot_payload ... ok
+test hydration_reconstructs_failed_terminal_state ... ok
+test hydration_returns_no_recovery_data_for_empty_events ... ok
+test hydration_rejects_sequence_gap_in_events ... ok
+test incremental_recovery_snapshot_plus_tail_applies_only_events_after_watermark ... ok
+test incremental_recovery_rejects_tail_event_before_watermark ... ok
+test multiple_noncontiguous_slot_writes_derive_correct_slot_count ... ok
+test runtime_boundary_exposes_supported_pending_actions_state ... ok
+test runtime_boundary_exposes_unsupported_state ... ok
+test retry_scheduled_event_reconstructed_in_hydration ... ok
+test snapshot_empty_slots_empty_taint_hydrates_successfully ... ok
+test recovery_idempotency_snapshot_tail_hydrated_twice_identical ... ok
+test slot_written_with_none_value_is_rejected_typed ... ok
+test checkpoint_snapshot_plus_tail_hydrates_using_snapshot_watermark ... ok
+test checkpoint_snapshot_roundtrip_preserves_all_fields ... ok
+test clean_shutdown_recovery_reads_all_events_in_exact_order ... ok
+test clean_shutdown_recovery_reconstructs_exact_summary_counts ... ok
+test hydration_reconstructs_waiting_and_asking_step_states ... ok
+test crash_recovery_reads_partial_events_written_before_crash ... ok
+test hydration_from_frame_seed_reconstructs_slot_values_and_taint ... ok
+test max_size_journal_near_max_seq_events_recoverable ... ok
+test non_idempotent_action_rescheduled_after_completion_is_blocked ... ok
+test pending_action_persisted_restart_via_appends_with_syncall ... ok
+test recovery_across_multiple_runs_is_isolated ... ok
+test slot_written_presence_counted_in_summary_even_with_none_value ... ok
+test verify_digests_workflow_and_ir_level_detects_ir_mismatch ... ok
+test verify_digests_workflow_source_only_level_passes ... ok
+test action_scheduled_then_completed_is_resolved_after_recovery ... ok
+test crash_recovery_run_accepted_only_returns_minimal_summary ... ok
+test empty_journal_returns_no_recovery_data_for_any_run ... ok
+test max_size_journal_many_events_recoverable_in_order ... ok
+
+running 1 test
+test pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_resume ... ok
+test recovery_idempotency_full_journal_replayed_twice_identical ... ok
+test recovery_idempotency_summary_recovered_twice_identical ... ok
+test hydration_returns_no_recovery_data_for_wrong_run ... ok
+test recover_runtime_summary_with_expected_terminal_mismatch ... ok
+test run_admission_metadata_preserved_in_summary ... ok
+test crash_recovery_detects_no_terminal_state_for_incomplete_run ... ok
+test run_cancelled_produces_cancelled_terminal_state ... ok
+test recover_runtime_summary_with_expected_terminal_matches ... ok
+test clean_shutdown_recovery_is_deterministic_across_reopens ... ok
+
+test result: ok. 43 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.24s
+
+STATUS: 0

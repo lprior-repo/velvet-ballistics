@@ -1,0 +1,10 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running tests/aggregate_resource_budget_snapshot_red.rs (target/debug/deps/aggregate_resource_budget_snapshot_red-a686021a85b055b2)
+
+running 2 tests
+test runtime_admission_error_shape_snapshot_matches_contract ... ok
+test aggregate_budget_error_shape_snapshot_matches_contract ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

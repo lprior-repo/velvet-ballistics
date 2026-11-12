@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-assembly-v8",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--test",
+    "proptest_journal_error_codes"
+  ],
+  "exit_code": 0,
+  "seconds": 2.376,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/ASSEMBLY_V8_proptest_journal"
+}

@@ -1,0 +1,11 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-module-guard-5090/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.65s
+   Doc-tests vb_compile
+
+running 2 tests
+test crates/vb_compile/src/lib.rs - (line 11) ... ok
+test crates/vb_compile/src/expression.rs - expression::parse_expression (line 158) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.12s; merged doctests compilation took 0.11s

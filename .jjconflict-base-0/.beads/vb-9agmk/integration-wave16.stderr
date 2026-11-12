@@ -1,0 +1,6 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.45s
+     Running tests/vb_wave16_mqa.rs (target/debug/deps/vb_wave16_mqa-3c36b208ba07749e)

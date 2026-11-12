@@ -1,0 +1,162 @@
+
+running 18 tests
+..................
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 76 tests
+......... 9/76
+vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing --- FAILED
+.. 19/76
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied --- FAILED
+..... 25/76
+vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind --- FAILED
+.......... 36/76
+vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen --- FAILED
+....... 44/76
+vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated --- FAILED
+......... 54/76
+vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen --- FAILED
+......... 64/76
+vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file --- FAILED
+...........
+failures:
+
+---- vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded' (1793770) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:35:5:
+assertion `left == right` failed
+  left: "vb_cli"
+ right: "velvet_ballistics"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required' (1793775) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:179:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "canonical kind count one above required: duplicate language_version" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required' (1793776) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:148:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "canonical kind count one below required: bead_database missing" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing' (1793774) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:120:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for bead_database: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "missing canonical kind: crate_module" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated' (1793777) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:162:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "duplicate canonical kind: product" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing' (1793779) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:106:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "missing canonical kind: product" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied' (1793780) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:83:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Ok(ScanConfig { canonical_table: CanonicalSpellingTable { product: "velvet-ballistics", binary: "velvet-ballistics", package: "velvet-ballistics", bead_rig: "velvet-ballistics", crate_module: "velvet_ballistics", bead_database: "velvet_ballistics", language_version: "velvet-ballistics/v1" }, allowlist_policy: Exact([RepositoryPath { path: "https://github.com/priorlewis43/Velvet-Ballastics" }, MigrationReference { label: "MIGRATION-REFERENCE", artifact: "external-preexisting-artifact", legacy_text: "velvet-ballastics" }]), scan_patterns: ["velvet-ballastics", "Velvet-Ballastics", "velvet_ballistics", "velvet-ballastics/v1"], excluded_path_rules: [".git/**", "target/**", ".beads/dolt/**", ".beads/backup/**", ".beads/embeddeddolt/**"], config_fingerprint: "vb-37lc-maximum-bounded-config", report_destination: Some("target/naming-scan.txt") })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing' (1793778) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:134:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "missing canonical kind: language_version" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied' (1793781) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:53:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Ok(ScanConfig { canonical_table: CanonicalSpellingTable { product: "velvet-ballistics", binary: "velvet-ballistics", package: "velvet-ballistics", bead_rig: "velvet-ballistics", crate_module: "velvet_ballistics", bead_database: "velvet_ballistics", language_version: "velvet-ballistics/v1" }, allowlist_policy: Exact([RepositoryPath { path: "https://github.com/priorlewis43/Velvet-Ballastics" }, MigrationReference { label: "MIGRATION-REFERENCE", artifact: "external-preexisting-artifact", legacy_text: "velvet-ballastics" }]), scan_patterns: ["velvet-ballastics", "Velvet-Ballastics"], excluded_path_rules: [".git/**", "target/**"], config_fingerprint: "vb-37lc-minimum-config", report_destination: None })
+
+---- vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind' (1793789) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_02.rs:10:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "contradictory token for bead_database: not_the_database" })
+
+---- vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen' (1793800) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:115:5:
+assertion `left == right` failed
+  left: Ok(CanonicalCrateModule { canonical: "velvet_ballistics", kind: CrateModule })
+ right: Ok(InvalidLegacy { spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" })
+
+---- vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated' (1793808) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:226:5:
+assertion `left == right` failed
+  left: Ok([])
+ right: Ok([NamingFinding { path: RepoPath("docs/bad.md"), line: LineNumber(1), column: ColumnNumber(8), spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" }])
+
+---- vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen' (1793818) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs:21:5:
+assertion `left == right` failed
+  left: Ok([])
+ right: Ok([NamingFinding { path: RepoPath("crates/legacy/src/lib.rs"), line: LineNumber(1), column: ColumnNumber(9), spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" }])
+
+---- vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file' (1793822) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common_part_01.rs:199:5:
+assertion `left == right` failed
+  left: Ok(ScanReport { root: RepoRoot("/tmp/.tmpeNXw96"), config_fingerprint: "vb-37lc-maximum-bounded-config", selected_input_count: 1, scanned_text_input_count: 1, findings: [], report_destination: Some("target/naming-scan.txt") })
+ right: Err(InvalidCanonicalSpelling { findings: [NamingFinding { path: RepoPath("crates/legacy/src/lib.rs"), line: LineNumber(1), column: ColumnNumber(9), spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" }] })
+
+
+failures:
+    vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied
+    vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind
+    vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen
+    vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated
+    vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen
+    vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file
+
+test result: FAILED. 62 passed; 14 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_37lc_canonical_spelling_red`
+
+running 13 tests
+.............
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 48 tests
+................................................
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: 1 target failed:
+    `-p velvet-ballistics-workspace-tests --test vb_37lc_canonical_spelling_red`

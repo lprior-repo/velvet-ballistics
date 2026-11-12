@@ -139,7 +139,8 @@ fn copy_slot_preserves_random_taint() -> Result<(), String> {
 fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: "resume_random".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![

@@ -131,7 +131,7 @@ fn shard_submit_after_full_cancel_resets_capacity() {
             workflow: wf3,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+            inputs: Box::from([])
         }),
         Ok(())
     );

@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ynp2k-deepseek-mirror-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_core",
+    "--lib",
+    "input_slot",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "seconds": 11.058,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ynp2k/evidence/actual-input-slot-tests"
+}

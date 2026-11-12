@@ -1,0 +1,106 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/frame_pool.rs
+1: #![forbid(unsafe_code)]
+2: 
+3: //! Bounded frame pool for RunFrame reuse.
+4: 
+5: use vb_core::errors::CoreResult;
+6: use vb_core::frame::RunFrame;
+7: use vb_core::ids::{RunId, StepIdx};
+8: 
+9: /// Maximum number of frames a pool can hold.
+10: const MAX_POOL_CAPACITY: usize = 4_096;
+11: 
+12: /// Bounded pool of reusable RunFrame instances.
+13: ///
+14: /// Frames are allocated with a fixed step_count and slot_count derived from
+15: /// the workflow's resource contract. Callers take frames for exclusive use
+16: /// and release them back when the run completes or is cancelled.
+17: #[derive(Debug)]
+18: pub struct FramePool {
+19:     frames: Vec<RunFrame>,
+20:     step_count: u16,
+21:     slot_count: u16,
+22:     capacity: usize,
+23: }
+24: 
+25: impl FramePool {
+26:     /// Creates a new frame pool with the given dimensions and capacity.
+27:     /// All frames are pre-allocated at construction so `take` never falls back
+28:     /// to fresh allocation on the runtime hot path.
+29:     pub fn new(step_count: u16, slot_count: u16, capacity: usize) -> CoreResult<Self> {
+30:         if capacity == 0 || capacity > MAX_POOL_CAPACITY {
+31:             return Err(vb_core::errors::CoreError::ResourceLimitExceeded {
+32:                 resource: "frame_pool_capacity",
+33:             });
+34:         }
+35:         let mut frames = Vec::with_capacity(capacity);
+36:         for _ in 0..capacity {
+37:             match RunFrame::new(RunId::ZERO, StepIdx::ZERO, step_count, slot_count) {
+38:                 Ok(frame) => frames.push(frame),
+39:                 Err(_) => {
+40:                     return Err(vb_core::errors::CoreError::InvalidCompiledWorkflow {
+41:                         reason: "step_count_zero",
+42:                     });
+43:                 }
+44:             }
+45:         }
+46:         Ok(Self {
+47:             frames,
+48:             step_count,
+49:             slot_count,
+50:             capacity,
+51:         })
+52:     }
+53: 
+54:     /// Takes a frame from the pre-allocated pool.
+55:     /// Returns an error if the pool is exhausted (all `capacity` frames are in use).
+56:     /// This replaces the previous behavior of falling back to fresh allocation
+57:     /// on the runtime hot path, which violated determinism and budget guarantees.
+58:     pub fn take(&mut self, run_id: RunId, first_step: StepIdx) -> CoreResult<RunFrame> {
+59:         let mut frame = self
+60:             .frames
+61:             .pop()
+62:             .ok_or(vb_core::errors::CoreError::AllocationFailed)?;
+63:         frame.reinitialize(run_id, first_step, self.step_count, self.slot_count)?;
+64:         Ok(frame)
+65:     }
+66: 
+67:     /// Returns a frame to the pool for reuse. Drops the frame if dimensions
+68:     /// don't match or if the pool is unexpectedly at capacity.
+69:     /// Since the pool is pre-allocated at `capacity` frames, this is normally
+70:     /// a no-op push (the pool holds exactly `capacity` frames).
+71:     pub fn release(&mut self, frame: RunFrame) {
+72:         if frame.step_count() != self.step_count || frame.slot_count() != self.slot_count {
+73:             // Mismatched dimensions: silently drop.
+74:             return;
+75:         }
+76:         if self.frames.len() >= self.capacity {
+77:             // Pool is at capacity: silently drop (should not happen in practice
+78:             // since pre-allocation guarantees pool size matches capacity).
+79:             return;
+80:         }
+81:         self.frames.push(frame);
+82:     }
+83: 
+84:     /// Number of frames currently available in the pool.
+85:     #[must_use]
+86:     pub fn available(&self) -> usize {
+87:         self.frames.len()
+88:     }
+89: 
+90:     /// Returns true when the pool is empty.
+91:     #[must_use]
+92:     pub fn is_empty(&self) -> bool {
+93:         self.frames.is_empty()
+94:     }
+95: 
+96:     /// Returns the pool's configured capacity.
+97:     #[must_use]
+98:     pub const fn capacity(&self) -> usize {
+99:         self.capacity
+100:     }
+101: }
+102: 
+103: #[cfg(test)]
+104: #[path = "frame_pool/tests.rs"]
+105: mod tests;

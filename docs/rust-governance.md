@@ -58,7 +58,7 @@ Holzmann bounds are mandatory:
 
 ## Profiles
 
-`release` is optimized for normal release builds. `hardened` inherits release settings but enables debug assertions, overflow checks, and debug info for verification builds. `maxperf` keeps fat LTO and one codegen unit for benchmarked performance builds.
+`release` is optimized for normal release builds. `hardened` inherits release settings but enables debug assertions, overflow checks, and unstripped debug information for verification builds. `bench` inherits release optimization. Generated-workflow `maxperf` acceptance is outside the current backend milestone.
 
 ## Required Gates
 
@@ -82,8 +82,8 @@ Governance and deeper verification are represented as Moon tasks. A represented 
 - `bench-build`: compiles benchmarks.
 - `benchmark-regression-policy`: validates `contracts/perf-budget.yaml` and `evidence/benchmark-evidence.jsonl` so every speed claim has baseline/result/raw-log evidence, explicit thresholds, and current-milestone `ir-interpreter` scope.
 - `benchmark-proof`: records a Criterion baseline named `vb-current` when real benchmarks exist; it is not itself acceptance evidence until paired with `benchmark-regression-policy` metadata.
-- `pgo-instrument-build`: builds with `-Cprofile-generate=target/pgo/profiles`.
-- `pgo-optimized-build`: builds with `-Cprofile-use=target/pgo/merged.profdata` after profile merge.
+- `pgo-instrument-build`: historical instrumentation task outside current backend acceptance.
+- `pgo-optimized-build`: historical profile-guided build task outside current backend acceptance.
 
 PGO collection requires running representative workloads between instrumented build and optimized build, then merging raw profiles into `target/pgo/merged.profdata` with `llvm-profdata` from the pinned toolchain.
 

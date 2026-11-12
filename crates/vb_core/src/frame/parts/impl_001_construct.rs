@@ -25,7 +25,10 @@ impl RunFrame {
             max_parallel_in_flight: u16::MAX,
             parallel_in_flight: 0,
             states: vec![StepState::Pending; states_len].into_boxed_slice(),
-            cells: vec![crate::value::SlotCell::empty(); slots_len].into_boxed_slice(),
+            cells: core::iter::repeat_with(crate::value::SlotCell::empty)
+                .take(slots_len)
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
         })
     }
 

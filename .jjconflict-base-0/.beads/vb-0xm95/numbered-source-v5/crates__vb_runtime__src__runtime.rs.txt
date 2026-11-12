@@ -1,0 +1,1541 @@
+1: #![forbid(unsafe_code)]
+2: //! Multi-shard runtime routing commands to correct shards.
+3: 
+4: use std::num::NonZeroUsize;
+5: use vb_core::action::{ActionContract, ActionFailure, ActionOutputReady, ActionTicket};
+6: use vb_core::capability::CapabilitySet;
+7: use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
+8: use vb_core::value::SlotValue;
+9: use vb_core::workflow::CompiledWorkflow;
+10: 
+11: use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot, ShardMetricsSnapshot};
+12: use crate::journal::SharedRuntimeJournal;
+13: use crate::shard::timer_wheel::TimerEntry;
+14: use crate::shard::{
+15:     AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig, ShardDirective,
+16:     ShardPendingBoundarySnapshot,
+17: };
+18: use crate::trace::TraceEvent;
+19: use crate::{RuntimeError, RuntimeResult};
+20: 
+21: mod shutdown;
+22: pub use shutdown::{ShutdownFailure, ShutdownPhase, ShutdownReport};
+23: 
+24: struct RecoveryArtifactWorkflow {
+25:     artifact: vb_storage::admission::AcceptedArtifact,
+26:     workflow: CompiledWorkflow,
+27: }
+28: 
+29: struct RecoveryPrefixEvidence {
+30:     events: Vec<vb_storage::JournalEvent>,
+31:     admission: crate::admission::RunAdmission,
+32:     workflow_digest: WorkflowDigest,
+33:     next_seq: vb_storage::EventSeq,
+34: }
+35: 
+36: struct RecoveredSeedProductContext {
+37:     run: RunId,
+38:     prefix: RecoveryPrefixEvidence,
+39:     /// Typed frame-seed product. The storage-side cannot-resume witness is
+40:     /// carried on `seed.cannot_resume_state()` and survives through the
+41:     /// runtime classification step (`product_from_recovered_context` →
+42:     /// `RuntimeRecoveryProduct::CannotResume`). Holding the typed product
+43:     /// here is what closes the FINDING-002 typestate bypass: the raw
+44:     /// `RecoveryFrameSeed` DTO no longer leaks into the runtime flow.
+45:     seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+46:     boundary: crate::recovery::RecoveredRunBoundary,
+47: }
+48: 
+49: /// Lossless conversion of a `u32` integer to its exact `f32` representation.
+50: ///
+51: /// `From<u32> for f32` is NOT implemented by the Rust standard library
+52: /// (only `From<u8>`, `From<u16>`, `From<i8>`, `From<i16>` exist for `f32`).
+53: /// For values in `[0, 2^24)` — which includes the full RA-003 trace-ring
+54: /// domain (`cap <= 2^20`, `len <= cap`) — the IEEE-754 single-precision
+55: /// encoding fits the integer exactly, so this helper produces a result
+56: /// bit-identical to `(n as f32)` without using an `as`-cast and without
+57: /// tripping `clippy::as_conversions`. All integer arithmetic uses
+58: /// `u32::checked_*` / `u32::saturating_*` so `clippy::arithmetic_side_effects`
+59: /// is also satisfied.
+60: fn u32_to_f32_exact(n: u32) -> f32 {
+61:     if n == 0 {
+62:         return 0.0_f32;
+63:     }
+64:     // `e = floor(log2(n))`. For n in [1, 2^32), `leading_zeros` is in [0, 31],
+65:     // so `e` is in [0, 31]. The `31 - ...` formula is the bit-width (32) minus
+66:     // 1 (for the implicit leading one) minus `leading_zeros`.
+67:     let e = u32::checked_sub(31, n.leading_zeros()).unwrap_or(0);
+68:     let biased_exp = u32::saturating_add(e, 127);
+69:     let power = 1_u32.checked_shl(e).unwrap_or(1);
+70:     let mantissa = u32::checked_sub(n, power)
+71:         .unwrap_or(0)
+72:         .checked_shl(23_u32.saturating_sub(e))
+73:         .unwrap_or(0);
+74:     f32::from_bits((biased_exp << 23) | mantissa)
+75: }
+76: 
+77: /// Summary of an active run on a shard.
+78: #[derive(Debug, Clone, PartialEq, Eq)]
+79: pub struct ActiveRunSummary {
+80:     /// Run identifier.
+81:     pub run_id: RunId,
+82:     /// Compiled workflow digest.
+83:     pub workflow: vb_core::WorkflowDigest,
+84:     /// Number of steps in the workflow.
+85:     pub step_count: u16,
+86:     /// Steps that reached a terminal state (Succeeded, Failed, Skipped, or Cancelled).
+87:     pub steps_completed: u16,
+88: }
+89: 
+90: #[derive(Debug, Clone, PartialEq, Eq)]
+91: pub struct RuntimePendingBoundarySnapshot {
+92:     shards: Box<[ShardPendingBoundarySnapshot]>,
+93:     command_queue_depth: usize,
+94:     active_run_count: usize,
+95:     pending_timer_count: usize,
+96:     pending_action_count: usize,
+97:     pending_ask_count: usize,
+98:     truncated: bool,
+99: }
+100: 
+101: impl RuntimePendingBoundarySnapshot {
+102:     fn new(
+103:         shards: Box<[ShardPendingBoundarySnapshot]>,
+104:         totals: RuntimePendingBoundaryTotals,
+105:     ) -> Self {
+106:         Self {
+107:             shards,
+108:             command_queue_depth: totals.command_queue_depth,
+109:             active_run_count: totals.active_run_count,
+110:             pending_timer_count: totals.pending_timer_count,
+111:             pending_action_count: totals.pending_action_count,
+112:             pending_ask_count: totals.pending_ask_count,
+113:             truncated: totals.truncated,
+114:         }
+115:     }
+116: 
+117:     #[must_use]
+118:     pub fn shards(&self) -> &[ShardPendingBoundarySnapshot] {
+119:         &self.shards
+120:     }
+121: 
+122:     #[must_use]
+123:     pub const fn command_queue_depth(&self) -> usize {
+124:         self.command_queue_depth
+125:     }
+126: 
+127:     #[must_use]
+128:     pub const fn active_run_count(&self) -> usize {
+129:         self.active_run_count
+130:     }
+131: 
+132:     #[must_use]
+133:     pub const fn pending_timer_count(&self) -> usize {
+134:         self.pending_timer_count
+135:     }
+136: 
+137:     #[must_use]
+138:     pub const fn pending_action_count(&self) -> usize {
+139:         self.pending_action_count
+140:     }
+141: 
+142:     #[must_use]
+143:     pub const fn pending_ask_count(&self) -> usize {
+144:         self.pending_ask_count
+145:     }
+146: 
+147:     #[must_use]
+148:     pub const fn truncated(&self) -> bool {
+149:         self.truncated
+150:     }
+151: }
+152: 
+153: #[derive(Default)]
+154: struct RuntimePendingBoundaryTotals {
+155:     command_queue_depth: usize,
+156:     active_run_count: usize,
+157:     pending_timer_count: usize,
+158:     pending_action_count: usize,
+159:     pending_ask_count: usize,
+160:     truncated: bool,
+161: }
+162: 
+163: impl RuntimePendingBoundaryTotals {
+164:     fn add_shard(&mut self, shard: &ShardPendingBoundarySnapshot) {
+165:         self.command_queue_depth = self
+166:             .command_queue_depth
+167:             .saturating_add(shard.command_queue_depth());
+168:         self.active_run_count = self
+169:             .active_run_count
+170:             .saturating_add(shard.active_run_count());
+171:         self.pending_timer_count = self
+172:             .pending_timer_count
+173:             .saturating_add(shard.pending_timer_count());
+174:         self.pending_action_count = self
+175:             .pending_action_count
+176:             .saturating_add(shard.pending_action_count());
+177:         self.pending_ask_count = self
+178:             .pending_ask_count
+179:             .saturating_add(shard.pending_ask_count());
+180:         self.truncated |= shard.truncated();
+181:     }
+182: }
+183: 
+184: fn shard_id_from_index(index: usize) -> u32 {
+185:     u32::try_from(index).map_or(u32::MAX, core::convert::identity)
+186: }
+187: 
+188: /// Multi-shard runtime.
+189: pub struct Runtime {
+190:     shards: Vec<Shard>,
+191:     shard_count: usize,
+192:     journal: SharedRuntimeJournal,
+193:     policy: vb_core::policy::RuntimePolicy,
+194:     live_policy: crate::policy::LivePolicy,
+195: }
+196: 
+197: impl Runtime {
+198:     /// Creates a new runtime with the given number of shards, per-shard configuration, and
+199:     /// explicit [`SharedRuntimeJournal`].
+200:     ///
+201:     /// The journal argument is **required**: this constructor will not silently pick a
+202:     /// non-durable default. Master §18 requires Fjall-backed persistence for recovery,
+203:     /// so production callers must wire a [`crate::journal::StorageRuntimeJournal`] (strict
+204:     /// barrier) or [`crate::journal::QueuedStorageRuntimeJournal`] (group-committed).
+205:     /// Tests and benchmarks that do not need durability should pass
+206:     /// [`crate::journal::VolatileRuntimeJournal::shared`] or
+207:     /// [`crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks`] so the
+208:     /// call site documents the non-durable intent.
+209:     #[must_use]
+210:     pub fn new(
+211:         shard_count: NonZeroUsize,
+212:         config: ShardConfig,
+213:         journal: SharedRuntimeJournal,
+214:     ) -> Self {
+215:         let count = shard_count.get();
+216:         let mut shards = Vec::with_capacity(count);
+217:         let mut index = 0usize;
+218:         while index < count {
+219:             shards.push(Shard::new_with_journal(config, journal.clone()));
+220:             index = index.saturating_add(1);
+221:         }
+222:         Self {
+223:             shards,
+224:             shard_count: count,
+225:             journal,
+226:             policy: config.policy,
+227:             live_policy: crate::policy::LivePolicy::new(),
+228:         }
+229:     }
+230: 
+231:     /// Creates a new runtime whose journal events survive only until process exit.
+232:     ///
+233:     /// This is the **test/benchmark-only** non-durable path. It is intentionally named
+234:     /// long and explicit so every call site self-documents the trade-off. Production
+235:     /// callers must use [`Runtime::new`] with a storage-backed
+236:     /// [`SharedRuntimeJournal`].
+237:     #[must_use]
+238:     pub fn new_for_tests_and_benchmarks_only(
+239:         shard_count: NonZeroUsize,
+240:         config: ShardConfig,
+241:     ) -> Self {
+242:         Self::new(
+243:             shard_count,
+244:             config,
+245:             crate::journal::VolatileRuntimeJournal::shared(),
+246:         )
+247:     }
+248: 
+249:     /// Configures the live policy with a verified artifact and rule.
+250:     ///
+251:     /// Updates actor-owned runtime state; does not persist to durable storage.
+252:     pub fn configure_live_policy(
+253:         &mut self,
+254:         digest: vb_core::policy::PolicyDigest,
+255:         rule: vb_core::policy::PolicyRule,
+256:     ) -> RuntimeResult<()> {
+257:         self.configure_live_policy_helper(digest, rule);
+258:         Ok(())
+259:     }
+260: 
+261:     /// Activates the emergency deny overlay with strict durability.
+262:     ///
+263:     /// Persists the emergency marker, verifies the returned state is Active,
+264:     /// then mirrors into owned live policy state. Fails on corruption or
+265:     /// unsupported marker versions.
+266:     pub fn activate_emergency_deny(&mut self) -> RuntimeResult<()> {
+267:         self.activate_emergency_deny_helper()
+268:     }
+269: 
+270:     /// Submits a run using a compiled workflow.
+271:     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
+272:         self.submit_direct_with_grants(run, workflow, CapabilitySet::empty())
+273:     }
+274: 
+275:     /// Submits a run using a compiled workflow and explicit caller grants.
+276:     pub fn submit_direct_with_grants(
+277:         &self,
+278:         run: RunId,
+279:         workflow: CompiledWorkflow,
+280:         caps: CapabilitySet,
+281:     ) -> RuntimeResult<()> {
+282:         let shard = self.shard_for(run)?;
+283:         shard.validate_submit_admission(run, &workflow, caps.clone())?;
+284:         shard.enqueue(ShardCommand::Submit {
+285:             run,
+286:             workflow,
+287:             caps,
+288:         })
+289:     }
+290: 
+291:     /// Submits a run with explicit caller grants and validated action contracts.
+292:     pub fn submit_direct_with_grants_and_contracts(
+293:         &self,
+294:         run: RunId,
+295:         workflow: CompiledWorkflow,
+296:         caps: CapabilitySet,
+297:         action_contracts: Box<[ActionContract]>,
+298:     ) -> RuntimeResult<()> {
+299:         let shard = self.shard_for(run)?;
+300:         shard.validate_submit_admission_with_contracts(
+301:             run,
+302:             &workflow,
+303:             caps.clone(),
+304:             &action_contracts,
+305:         )?;
+306:         shard.enqueue(ShardCommand::SubmitWithContracts {
+307:             run,
+308:             workflow,
+309:             caps,
+310:             action_contracts,
+311:         })
+312:     }
+313: 
+314:     /// Submits a run with pre-mapped input slots, explicit caller grants, and validated action contracts.
+315:     pub fn submit_direct_with_inputs_grants_and_contracts(
+316:         &self,
+317:         run: RunId,
+318:         workflow: CompiledWorkflow,
+319:         inputs: Box<[(SlotIdx, SlotValue)]>,
+320:         caps: CapabilitySet,
+321:         action_contracts: Box<[ActionContract]>,
+322:     ) -> RuntimeResult<()> {
+323:         let shard = self.shard_for(run)?;
+324:         shard.validate_submit_admission_with_contracts(
+325:             run,
+326:             &workflow,
+327:             caps.clone(),
+328:             &action_contracts,
+329:         )?;
+330:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+331:             run,
+332:             workflow,
+333:             inputs,
+334:             caps,
+335:             action_contracts,
+336:         })
+337:     }
+338: 
+339:     /// Submits a run with inline workflow (same as submit_direct for now).
+340:     pub fn submit_compiled(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
+341:         self.submit_direct(run, workflow)
+342:     }
+343: 
+344:     /// Submits a compiled run with explicit caller grants.
+345:     pub fn submit_compiled_with_grants(
+346:         &self,
+347:         run: RunId,
+348:         workflow: CompiledWorkflow,
+349:         caps: CapabilitySet,
+350:     ) -> RuntimeResult<()> {
+351:         self.submit_direct_with_grants(run, workflow, caps)
+352:     }
+353: 
+354:     /// Submits a run with pre-mapped runtime input slots.
+355:     pub fn submit_compiled_with_inputs(
+356:         &self,
+357:         run: RunId,
+358:         workflow: CompiledWorkflow,
+359:         inputs: Box<[(SlotIdx, SlotValue)]>,
+360:     ) -> RuntimeResult<()> {
+361:         self.submit_compiled_with_inputs_and_grants(run, workflow, inputs, CapabilitySet::empty())
+362:     }
+363: 
+364:     /// Submits a run with pre-mapped runtime input slots and explicit caller grants.
+365:     pub fn submit_compiled_with_inputs_and_grants(
+366:         &self,
+367:         run: RunId,
+368:         workflow: CompiledWorkflow,
+369:         inputs: Box<[(SlotIdx, SlotValue)]>,
+370:         caps: CapabilitySet,
+371:     ) -> RuntimeResult<()> {
+372:         let shard = self.shard_for(run)?;
+373:         shard.validate_submit_admission(run, &workflow, caps.clone())?;
+374:         shard.enqueue(ShardCommand::SubmitWithInputs {
+375:             run,
+376:             workflow,
+377:             inputs,
+378:             caps,
+379:         })
+380:     }
+381: 
+382:     /// Cancels a run.
+383:     pub fn cancel_run(&self, run: RunId) -> RuntimeResult<()> {
+384:         let shard = self.shard_for(run)?;
+385:         shard.enqueue(ShardCommand::Cancel { run, reason: None })
+386:     }
+387: 
+388:     /// Kills a run unconditionally.
+389:     pub fn kill_run(&self, run: RunId) -> RuntimeResult<()> {
+390:         let shard = self.shard_for(run)?;
+391:         shard.enqueue(ShardCommand::Kill { run, reason: None })
+392:     }
+393: 
+394:     /// Resumes a suspended run from its current program counter.
+395:     pub fn resume_run(&self, run: RunId) -> RuntimeResult<()> {
+396:         let shard = self.shard_for(run)?;
+397:         shard.enqueue(ShardCommand::Resume { run })
+398:     }
+399:     /// Recovers a run from durable Fjall journal evidence and enqueues it for resumption.
+400:     ///
+401:     /// This is the end-to-end recovery entry point: it reads the journal,
+402:     /// replays events to reconstruct a typed `RecoveryFrameSeedProduct`,
+403:     /// hydrates the recoverable live-frame portion, restores durable
+404:     /// pending-action authority when present, and enqueues
+405:     /// `ShardCommand::Recover` on the owning shard.
+406:     ///
+407:     /// Recovery crosses the bead `vb-w25-runtime-a2` FINDING-001/FINDING-002
+408:     /// typestate boundary: the storage layer never hands back a raw
+409:     /// `RecoveryFrameSeed`. It returns the typed
+410:     /// `vb_storage::recovery::RecoveryFrameSeedProduct` (the storage
+411:     /// cannot-resume/resumable witness, FINDING-002), which
+412:     /// `recover_product` classifies through the parallel runtime boundary
+413:     /// into a `crate::recovery::RuntimeRecoveryProduct`
+414:     /// (`SummaryOnly` / `CannotResume { reason }` / `Resumable`,
+415:     /// FINDING-001). `recover_and_resume` enqueues only the `Resumable`
+416:     /// product and rejects the rest with a typed error.
+417:     ///
+418:     /// Returns `RuntimeError::RecoveryNotAvailable` when the runtime's
+419:     /// journal is not storage-backed (noop or volatile journals cannot
+420:     /// be replayed for crash recovery).
+421:     ///
+422:     /// Returns `RuntimeError::Recovery` when the recovery operation fails
+423:     /// the journal replay fails (missing data, corrupt snapshot, digest
+424:     /// mismatch, or unsupported recovery state).
+425:     pub fn recover_and_resume(&self, run: RunId) -> RuntimeResult<()> {
+426:         match self.recover_product(run)? {
+427:             crate::recovery::RuntimeRecoveryProduct::Resumable(product) => {
+428:                 self.enqueue_recovered_product(*product)
+429:             }
+430:             other => Err(Self::rejected_recovery_product_error(other)),
+431:         }
+432:     }
+433: 
+434:     /// Recovers a failed run from a validated retry checkpoint.
+435:     ///
+436:     /// Unlike [`Runtime::recover_and_resume`], this path uses the full
+437:     /// [`crate::run_checkpoint::RunCheckpointV1`] captured at the failure boundary,
+438:     /// rather than a legacy resumable frame seed. The checkpoint identity is checked
+439:     /// against the run before the recovery command is enqueued; `handle_recover`
+440:     /// re-validates the checkpoint against the independently loaded accepted artifact
+441:     /// (artifact digest, workflow digest, policy, ABI grant authority, frame/store/collect
+442:     /// integrity) before any runtime state mutation.
+443:     pub fn recover_retry(
+444:         &self,
+445:         run: RunId,
+446:         checkpoint: crate::run_checkpoint::RunCheckpointV1,
+447:         next_seq: vb_storage::EventSeq,
+448:     ) -> RuntimeResult<()> {
+449:         if checkpoint.run_id != run {
+450:             return Err(RuntimeError::Recovery {
+451:                 error: "retry checkpoint run identity mismatch".to_string(),
+452:             });
+453:         }
+454:         // Bind the caller-supplied checkpoint and next_seq to the actual durable chain
+455:         // (latest accepted RetryCheckpoint + its preceding RunFailed event). A legacy,
+456:         // missing, tampered, stale, or cross-run checkpoint fails closed here, before any
+457:         // state or journal mutation. The CLI boundary is digest-protected, but this public
+458:         // raw API must not trust caller-supplied run-attempt / prior-seq / next-seq authority.
+459:         self.validate_retry_checkpoint_against_durable_chain(run, &checkpoint, next_seq)?;
+460:         let command = crate::shard::types::RecoverRunCommand::for_retry(checkpoint, next_seq)?;
+461:         let shard = self.shard_for(run)?;
+462:         shard.enqueue(ShardCommand::Recover {
+463:             command: Box::new(command),
+464:         })
+465:     }
+466: 
+467:     /// Validates a caller-supplied retry checkpoint against the run's durable journal.
+468:     ///
+469:     /// The durable failure boundary ends in `RunFailedEvent { seq: S, attempt: A }` followed by
+470:     /// `RetryCheckpoint { seq: S+1, attempt: A+1 }`. The supplied checkpoint must decode to the
+471:     /// exact latest durable `RetryCheckpoint` payload (binding run/step/attempt/prior_seq/
+472:     /// artifact/workflow/policy/grants/frame/store/collect/contracts), its `prior_seq` must name
+473:     /// the immediately preceding `RunFailedEvent` sequence, and `next_seq` must be the sequence
+474:     /// immediately after the checkpoint. Checked arithmetic throughout; every rejection is
+475:     /// fail-closed with no state or journal mutation.
+476:     fn validate_retry_checkpoint_against_durable_chain(
+477:         &self,
+478:         run: RunId,
+479:         checkpoint: &crate::run_checkpoint::RunCheckpointV1,
+480:         next_seq: vb_storage::EventSeq,
+481:     ) -> RuntimeResult<()> {
+482:         let journal = self.recovery_storage_journal()?;
+483:         let events = journal
+484:             .events_for_run_full(run)
+485:             .map_err(|error| RuntimeError::Recovery {
+486:                 error: format!("retry journal read failed: {error}"),
+487:             })?;
+488: 
+489:         let durable = events.iter().rev().find(|event| {
+490:             matches!(
+491:                 event,
+492:                 vb_storage::JournalEvent::RetryCheckpoint { run: r, .. } if *r == run
+493:             )
+494:         });
+495:         let vb_storage::JournalEvent::RetryCheckpoint {
+496:             run: durable_run,
+497:             seq: durable_seq,
+498:             attempt: durable_attempt,
+499:             payload_digest: durable_payload_digest,
+500:             payload: durable_payload,
+501:             ..
+502:         } = durable.ok_or_else(|| RuntimeError::Recovery {
+503:             error: "run has no durable retry checkpoint".to_string(),
+504:         })?
+505:         else {
+506:             return Err(RuntimeError::Recovery {
+507:                 error: "run has no durable retry checkpoint".to_string(),
+508:             });
+509:         };
+510: 
+511:         // Integrity of the durable record itself.
+512:         let observed_digest = *blake3::hash(durable_payload).as_bytes();
+513:         if observed_digest != *durable_payload_digest {
+514:             return Err(RuntimeError::Recovery {
+515:                 error: "durable retry checkpoint payload digest mismatch".to_string(),
+516:             });
+517:         }
+518: 
+519:         // The supplied checkpoint must decode to the exact durable checkpoint value.
+520:         // Use the version-aware decoder to reject historical version 1 payloads
+521:         // that lack the policy_pin field in RunAdmission.
+522:         let durable_checkpoint = crate::run_checkpoint::decode_checkpoint_payload(durable_payload)
+523:             .map_err(|error| RuntimeError::Recovery {
+524:                 error: format!("durable retry checkpoint decode failed: {error}"),
+525:             })?;
+526:         if durable_checkpoint != *checkpoint {
+527:             return Err(RuntimeError::Recovery {
+528:                 error: "retry checkpoint does not match durable RetryCheckpoint evidence"
+529:                     .to_string(),
+530:             });
+531:         }
+532: 
+533:         // run_attempt / step authority (also covered by the value equality above, but these
+534:         // yield clearer diagnostics and double as a defense-in-depth binding).
+535:         if *durable_run != run {
+536:             return Err(RuntimeError::Recovery {
+537:                 error: "durable retry checkpoint belongs to a different run".to_string(),
+538:             });
+539:         }
+540:         if checkpoint.run_attempt.get() != *durable_attempt {
+541:             return Err(RuntimeError::Recovery {
+542:                 error: "retry checkpoint run attempt does not match durable RetryCheckpoint"
+543:                     .to_string(),
+544:             });
+545:         }
+546: 
+547:         // prior_seq must be the sequence immediately before the durable checkpoint.
+548:         let expected_checkpoint_seq =
+549:             checkpoint
+550:                 .prior_seq
+551:                 .checked_add(1)
+552:                 .ok_or_else(|| RuntimeError::Recovery {
+553:                     error: "retry checkpoint prior_seq overflow".to_string(),
+554:                 })?;
+555:         if durable_seq.get() != expected_checkpoint_seq {
+556:             return Err(RuntimeError::Recovery {
+557:                 error: "retry checkpoint prior_seq does not match durable RetryCheckpoint position"
+558:                     .to_string(),
+559:             });
+560:         }
+561: 
+562:         // next_seq must be the sequence immediately after the durable checkpoint.
+563:         let expected_next_seq =
+564:             durable_seq
+565:                 .get()
+566:                 .checked_add(1)
+567:                 .ok_or_else(|| RuntimeError::Recovery {
+568:                     error: "retry checkpoint next_seq overflow".to_string(),
+569:                 })?;
+570:         if next_seq.get() != expected_next_seq {
+571:             return Err(RuntimeError::Recovery {
+572:                 error: "retry next_seq does not match durable RetryCheckpoint position".to_string(),
+573:             });
+574:         }
+575: 
+576:         // The checkpoint must be the journal head. An explicit retry that already consumed
+577:         // this checkpoint appends StepStarted / ActionScheduled / RunFinished AFTER it, so a
+578:         // checkpoint that is no longer the last event is already-consumed and must be rejected
+579:         // (a stale `next_seq` alone cannot be trusted to detect this).
+580:         let checkpoint_is_head = events
+581:             .last()
+582:             .is_some_and(|event| event.seq().get() == durable_seq.get());
+583:         if !checkpoint_is_head {
+584:             return Err(RuntimeError::Recovery {
+585:                 error: "retry checkpoint has already been consumed (journal advanced past it)"
+586:                     .to_string(),
+587:             });
+588:         }
+589: 
+590:         // The event immediately preceding the checkpoint must be the run's own RunFailed
+591:         // event for the attempt immediately before the checkpoint's run_attempt.
+592:         let expected_failed_attempt =
+593:             checkpoint
+594:                 .run_attempt
+595:                 .get()
+596:                 .checked_sub(1)
+597:                 .ok_or_else(|| RuntimeError::Recovery {
+598:                     error: "retry checkpoint run_attempt underflow".to_string(),
+599:                 })?;
+600:         let preceding_failed = events.iter().find(|event| {
+601:             event.seq().get() == checkpoint.prior_seq
+602:                 && matches!(
+603:                     event,
+604:                     vb_storage::JournalEvent::RunFailedEvent { run: r, .. } if *r == run
+605:                 )
+606:         });
+607:         match preceding_failed {
+608:             Some(vb_storage::JournalEvent::RunFailedEvent { attempt, .. })
+609:                 if *attempt == expected_failed_attempt =>
+610:             {
+611:                 Ok(())
+612:             }
+613:             _ => Err(RuntimeError::Recovery {
+614:                 error: "retry checkpoint does not follow the run's own durable RunFailed event"
+615:                     .to_string(),
+616:             }),
+617:         }
+618:     }
+619: 
+620:     fn rejected_recovery_product_error(
+621:         product: crate::recovery::RuntimeRecoveryProduct,
+622:     ) -> RuntimeError {
+623:         match product {
+624:             crate::recovery::RuntimeRecoveryProduct::CannotResume(product) => {
+625:                 RuntimeError::RecoveryCannotResume {
+626:                     reason: String::from(product.reason()),
+627:                 }
+628:             }
+629:             crate::recovery::RuntimeRecoveryProduct::SummaryOnly(_)
+630:             | crate::recovery::RuntimeRecoveryProduct::Resumable(_) => {
+631:                 RuntimeError::UnsupportedFullRecoveryHydration
+632:             }
+633:         }
+634:     }
+635: 
+636:     /// Builds a typed durable recovery product without mutating shard state.
+637:     pub fn recover_product(
+638:         &self,
+639:         run: RunId,
+640:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+641:         let fjall_journal = self.recovery_storage_journal()?;
+642:         let prefix = Self::load_recovery_prefix_evidence(fjall_journal.as_ref(), run)?;
+643:         let recovered = self.load_recovery_artifact_and_workflow(
+644:             std::sync::Arc::clone(&fjall_journal),
+645:             prefix.admission.artifact_digest(),
+646:         )?;
+647:         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
+648:         let retained_inputs = Self::load_retained_inputs_for_recovery(
+649:             &prefix,
+650:             &recovered,
+651:             fjall_journal.as_ref(),
+652:             run,
+653:         )?;
+654:         self.build_runtime_recovery_product(run, prefix, recovered, retained_inputs)
+655:     }
+656: 
+657:     /// Loads and validates retained typed inputs for cold startup recovery.
+658:     fn load_retained_inputs_for_recovery(
+659:         prefix: &RecoveryPrefixEvidence,
+660:         recovered: &RecoveryArtifactWorkflow,
+661:         journal: &vb_storage::FjallJournal,
+662:         run: RunId,
+663:     ) -> RuntimeResult<Option<vb_storage::RunInputsRecord>> {
+664:         // Check if this admission is new-bound (has input digest) or legacy
+665:         let admission_event = prefix
+666:             .events
+667:             .iter()
+668:             .find(|e| matches!(e, vb_storage::JournalEvent::RunAdmission { .. }))
+669:             .ok_or(RuntimeError::Recovery {
+670:                 error: "recovery: admission event not found in journal events".to_string(),
+671:             })?;
+672: 
+673:         if !crate::recovery::admission_is_new_bound(admission_event) {
+674:             // Legacy unbound admission - no retained inputs expected
+675:             return Ok(None);
+676:         }
+677: 
+678:         // New-bound admission - retained inputs required
+679:         let record = journal.run_inputs(run)?.ok_or(RuntimeError::Recovery {
+680:             error: format!(
+681:                 "recovery: retained input record missing for new-bound run {:?}",
+682:                 run
+683:             ),
+684:         })?;
+685: 
+686:         crate::recovery::validate_input_record_binding(&record, run, admission_event)?;
+687:         crate::recovery::validate_input_record_artifact(
+688:             &record,
+689:             prefix.admission.artifact_digest(),
+690:         )?;
+691:         crate::recovery::validate_input_record_workflow(&record, &recovered.workflow)?;
+692: 
+693:         Ok(Some(record))
+694:     }
+695: 
+696:     fn recovery_storage_journal(&self) -> RuntimeResult<std::sync::Arc<vb_storage::FjallJournal>> {
+697:         self.journal
+698:             .storage_journal()
+699:             .ok_or(RuntimeError::RecoveryNotAvailable)
+700:     }
+701: 
+702:     fn load_recovery_prefix_evidence(
+703:         journal: &vb_storage::FjallJournal,
+704:         run: RunId,
+705:     ) -> RuntimeResult<RecoveryPrefixEvidence> {
+706:         let events = Self::load_recovery_events(journal, run)?;
+707:         let seed = Self::recover_frame_seed_from_events(&events)?;
+708:         let workflow_digest = Self::recovery_workflow_digest(&seed)?;
+709:         let next_seq = Self::next_recovery_sequence(&seed.summary())?;
+710:         let admission = crate::recovery::hydrate_run_admission_from_events(&events).ok_or(
+711:             RuntimeError::RecoveryCannotResume {
+712:                 reason: String::from("admission_missing"),
+713:             },
+714:         )?;
+715:         Ok(RecoveryPrefixEvidence {
+716:             events,
+717:             admission,
+718:             workflow_digest,
+719:             next_seq,
+720:         })
+721:     }
+722: 
+723:     fn load_recovery_events(
+724:         journal: &vb_storage::FjallJournal,
+725:         run: RunId,
+726:     ) -> RuntimeResult<Vec<vb_storage::JournalEvent>> {
+727:         journal
+728:             .events_for_run_full(run)
+729:             .map_err(|error| RuntimeError::Recovery {
+730:                 error: error.to_string(),
+731:             })
+732:     }
+733: 
+734:     /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+735:     /// from the durable event slice.
+736:     ///
+737:     /// **FINDING-002 typestate closure.** This helper no longer accepts
+738:     /// the raw [`vb_storage::recovery::RecoveryFrameSeed`] DTO. It threads
+739:     /// the storage-classified typestate product into the runtime
+740:     /// `RecoveredSeedProductContext`, so the storage
+741:     /// `RecoveryCannotResumeState` witness survives into
+742:     /// `RuntimeRecoveryProduct::CannotResume { reason }` without being
+743:     /// erased by a raw-DTO roundtrip. The internal call uses
+744:     /// `recover_runtime_frame_seed_from_events` (the non-`_raw_` entry
+745:     /// point) so the storage layer performs the cannot-resume/resumable
+746:     /// classification once and the runtime reuses that classification.
+747:     fn recover_frame_seed_from_events(
+748:         events: &[vb_storage::JournalEvent],
+749:     ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
+750:         vb_storage::recovery::recover_runtime_frame_seed_from_events(events).map_err(|error| {
+751:             RuntimeError::Recovery {
+752:                 error: error.to_string(),
+753:             }
+754:         })
+755:     }
+756: 
+757:     fn recovery_workflow_digest(
+758:         seed: &vb_storage::recovery::RecoveryFrameSeedProduct,
+759:     ) -> RuntimeResult<WorkflowDigest> {
+760:         seed.summary()
+761:             .workflow
+762:             .ok_or(RuntimeError::RecoveryCannotResume {
+763:                 reason: String::from("workflow_digest_missing_from_recovery_summary"),
+764:             })
+765:     }
+766: 
+767:     fn next_recovery_sequence(
+768:         summary: &vb_storage::recovery::RecoveryRuntimeSummary,
+769:     ) -> RuntimeResult<vb_storage::EventSeq> {
+770:         summary
+771:             .last_seq
+772:             .get()
+773:             .checked_add(1)
+774:             .map(vb_storage::EventSeq::new)
+775:             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+776:     }
+777: 
+778:     fn validate_recovery_admission(
+779:         run: RunId,
+780:         runtime_policy: vb_core::RuntimePolicy,
+781:         prefix: &RecoveryPrefixEvidence,
+782:         recovered: &RecoveryArtifactWorkflow,
+783:     ) -> RuntimeResult<()> {
+784:         crate::recovery::validate_recovered_admission_evidence(
+785:             crate::recovery::RecoveredAdmissionEvidence {
+786:                 context: crate::recovery::RecoveredAdmissionContext {
+787:                     run,
+788:                     expected_workflow: prefix.workflow_digest,
+789:                     runtime_policy,
+790:                 },
+791:                 admission: &prefix.admission,
+792:                 artifact: &recovered.artifact,
+793:                 workflow: &recovered.workflow,
+794:             },
+795:         )
+796:     }
+797: 
+798:     fn build_runtime_recovery_product(
+799:         &self,
+800:         run: RunId,
+801:         prefix: RecoveryPrefixEvidence,
+802:         recovered: RecoveryArtifactWorkflow,
+803:         retained_inputs: Option<vb_storage::RunInputsRecord>,
+804:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+805:         let expected = crate::recovery::action_abi_digests_from_contracts(
+806:             &recovered.artifact.action_contracts,
+807:         )?;
+808:         let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
+809:         let boundary = Self::recovered_boundary_from_events(
+810:             &seed,
+811:             &prefix.events,
+812:             &recovered.workflow,
+813:             &expected,
+814:         )?;
+815:         // Enforce receipt-only reconciliation for recovered registered actions:
+816:         // a pending registered action must be reconciliable from the durable
+817:         // receipt before the run is allowed to resume (no live re-execution).
+818:         self.validate_registered_recovery(&recovered.artifact, boundary)?;
+819:         Self::product_from_recovered_seed(run, prefix, seed, boundary, retained_inputs)
+820:     }
+821: 
+822:     /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+823:     /// for a workflow-aware replay path.
+824:     ///
+825:     /// **FINDING-002 typestate closure.** Uses the typed entry point
+826:     /// `recover_runtime_frame_seed_from_events_with_workflow` so the
+827:     /// storage-classified cannot-resume/resumable product is the source
+828:     /// of truth; the runtime never sees the raw DTO.
+829:     fn recover_seed_for_loaded_workflow(
+830:         events: &[vb_storage::JournalEvent],
+831:         workflow: &CompiledWorkflow,
+832:     ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
+833:         vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(events, workflow)
+834:             .map_err(|error| RuntimeError::Recovery {
+835:                 error: error.to_string(),
+836:             })
+837:     }
+838: 
+839:     /// Builds the recovered live-run boundary from the typed seed product.
+840:     ///
+841:     /// Takes the typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+842:     /// and deref-coerces to `&RecoveryFrameSeed` for the legacy
+843:     /// `pending_action_ticket_from_events` / `recovered_run_boundary_from_seed`
+844:     /// helpers, which still consume the raw DTO shape. The typed witness
+845:     /// survives in the context for `product_from_recovered_context`.
+846:     fn recovered_boundary_from_events(
+847:         seed: &vb_storage::recovery::RecoveryFrameSeedProduct,
+848:         events: &[vb_storage::JournalEvent],
+849:         workflow: &CompiledWorkflow,
+850:         expected: &[(vb_core::ActionId, WorkflowDigest)],
+851:     ) -> RuntimeResult<crate::recovery::RecoveredRunBoundary> {
+852:         let pending_action = crate::recovery::pending_action_ticket_from_events(
+853:             seed.seed(),
+854:             events,
+855:             workflow,
+856:             expected,
+857:         )?;
+858:         Ok(crate::recovery::recovered_run_boundary_from_seed(
+859:             seed.seed(),
+860:             pending_action,
+861:             workflow,
+862:             events,
+863:         ))
+864:     }
+865: 
+866:     fn product_from_recovered_seed(
+867:         run: RunId,
+868:         prefix: RecoveryPrefixEvidence,
+869:         seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+870:         boundary: crate::recovery::RecoveredRunBoundary,
+871:         retained_inputs: Option<vb_storage::RunInputsRecord>,
+872:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+873:         let context = RecoveredSeedProductContext {
+874:             run,
+875:             prefix,
+876:             seed,
+877:             boundary,
+878:         };
+879:         Self::product_from_recovered_context(context, retained_inputs)
+880:     }
+881: 
+882:     fn product_from_recovered_context(
+883:         context: RecoveredSeedProductContext,
+884:         retained_inputs: Option<vb_storage::RunInputsRecord>,
+885:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+886:         let cannot_resume =
+887:             crate::recovery::classify_full_recovery_resume(context.seed.seed(), context.boundary);
+888:         if !cannot_resume.is_resumable() {
+889:             return Ok(crate::recovery::RuntimeRecoveryProduct::cannot_resume(
+890:                 context.seed.summary(),
+891:                 cannot_resume,
+892:             ));
+893:         }
+894:         // Terminal-lifecycle gate: a run whose latest terminal evidence (RunFailed /
+895:         // RunFinished / RunCancelled / RunKilled) belongs to its current attempt must not be
+896:         // silently re-driven by automatic cold recovery. The next-attempt RetryCheckpoint is
+897:         // evidence only until an explicit `retry` drives `recover_retry` (a separate path).
+898:         if crate::recovery::run_is_currently_terminal(&context.prefix.events) {
+899:             return Ok(
+900:                 crate::recovery::RuntimeRecoveryProduct::cannot_resume_terminal(
+901:                     context.seed.summary(),
+902:                 ),
+903:             );
+904:         }
+905:         Self::resumable_product_from_recovered_context(context, retained_inputs)
+906:     }
+907: 
+908:     fn resumable_product_from_recovered_context(
+909:         context: RecoveredSeedProductContext,
+910:         retained_inputs: Option<vb_storage::RunInputsRecord>,
+911:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+912:         let initial_inputs = retained_inputs
+913:             .as_ref()
+914:             .map(|record| record.inputs().to_vec());
+915:         let frame = crate::recovery::hydrate_frame_for_full_recovery_with_inputs(
+916:             context.seed.seed(),
+917:             context.boundary,
+918:             initial_inputs,
+919:         )?;
+920:         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
+921:         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
+922:             crate::recovery::ResumableRecoveryProduct::new(
+923:                 crate::recovery::ResumableRecoveryParts {
+924:                     run: context.run,
+925:                     summary: context.seed.summary(),
+926:                     frame,
+927:                     artifact_digest: context.prefix.admission.artifact_digest(),
+928:                     workflow_digest: context.prefix.workflow_digest,
+929:                     next_seq: context.prefix.next_seq,
+930:                     collect_states,
+931:                     boundary: context.boundary,
+932:                     admission: context.prefix.admission.clone(),
+933:                 },
+934:             ),
+935:         ))
+936:     }
+937: 
+938:     fn hydrate_recovered_collect_states(
+939:         events: &[vb_storage::JournalEvent],
+940:     ) -> RuntimeResult<crate::primitives::collect::CollectStates> {
+941:         crate::primitives::collect::hydrate_collect_states_from_recovered_journal(events).map_err(
+942:             |_| RuntimeError::RecoveryCannotResume {
+943:                 reason: String::from("collect_states_missing"),
+944:             },
+945:         )
+946:     }
+947: 
+948:     fn enqueue_recovered_product(
+949:         &self,
+950:         product: crate::recovery::ResumableRecoveryProduct,
+951:     ) -> RuntimeResult<()> {
+952:         let run = product.run_id();
+953:         let command = product.into_recover_command();
+954:         let shard = self.shard_for(run)?;
+955:         shard.enqueue(ShardCommand::Recover {
+956:             command: Box::new(command),
+957:         })
+958:     }
+959: 
+960:     fn load_recovery_artifact_and_workflow(
+961:         &self,
+962:         journal: std::sync::Arc<vb_storage::FjallJournal>,
+963:         artifact_digest: WorkflowDigest,
+964:     ) -> RuntimeResult<RecoveryArtifactWorkflow> {
+965:         use crate::admission::AcceptedArtifactStore;
+966: 
+967:         let store = crate::admission::StorageArtifactStore::with_catalog(
+968:             journal,
+969:             self.journal.executor_catalog(),
+970:         );
+971:         let artifact = store
+972:             .load_accepted_artifact(artifact_digest)
+973:             .map_err(|error| RuntimeError::RecoveryCannotResume {
+974:                 reason: match error {
+975:                     crate::admission::ArtifactEnvelopeError::ArtifactNotFound { .. } => {
+976:                         String::from("artifact_missing")
+977:                     }
+978:                     _ => String::from("artifact_decode_failed"),
+979:                 },
+980:             })?;
+981:         let parts = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
+982:             .map_err(|error| RuntimeError::Recovery {
+983:                 error: error.to_string(),
+984:             })?;
+985:         let workflow =
+986:             CompiledWorkflow::try_from_parts(parts).map_err(|error| RuntimeError::Recovery {
+987:                 error: error.to_string(),
+988:             })?;
+989:         Ok(RecoveryArtifactWorkflow { artifact, workflow })
+990:     }
+991: 
+992:     /// Inspects run state.
+993:     pub fn inspect_run(&self, run: RunId, correlation: u64) -> RuntimeResult<()> {
+994:         let shard = self.shard_for(run)?;
+995:         shard.enqueue(ShardCommand::Inspect { run, correlation })
+996:     }
+997: 
+998:     /// Returns a direct, non-queued run snapshot from the owning shard.
+999:     pub fn snapshot_run(&self, run: RunId, correlation: u64) -> RuntimeResult<InspectResponse> {
+1000:         let shard = self.shard_for(run)?;
+1001:         Ok(shard.snapshot_run(run, correlation))
+1002:     }
+1003: 
+1004:     #[must_use]
+1005:     pub fn pending_boundary_snapshot(
+1006:         &self,
+1007:         max_items_per_shard: usize,
+1008:     ) -> RuntimePendingBoundarySnapshot {
+1009:         let mut shards = Vec::with_capacity(self.shards.len());
+1010:         let mut totals = RuntimePendingBoundaryTotals::default();
+1011:         for (index, shard) in self.shards.iter().enumerate() {
+1012:             let snapshot =
+1013:                 shard.pending_boundary_snapshot(shard_id_from_index(index), max_items_per_shard);
+1014:             totals.add_shard(&snapshot);
+1015:             shards.push(snapshot);
+1016:         }
+1017:         RuntimePendingBoundarySnapshot::new(shards.into_boxed_slice(), totals)
+1018:     }
+1019: 
+1020:     /// Processes one command on each shard. Returns false if any shard is shutting down.
+1021:     pub fn tick_all(&mut self) -> RuntimeResult<bool> {
+1022:         let mut alive = true;
+1023:         for shard in &mut self.shards {
+1024:             if !shard.tick()? {
+1025:                 alive = false;
+1026:             }
+1027:         }
+1028:         Ok(alive)
+1029:     }
+1030: 
+1031:     /// Processes one tick on a specific shard with the given directive.
+1032:     ///
+1033:     /// This method directs a single shard's behavior for one tick. The directive
+1034:     /// determines what work the shard performs:
+1035:     ///
+1036:     /// - `Continue`: Process one command from the queue normally.
+1037:     /// - `Suspend`: Skip command processing; preserve queue depth.
+1038:     /// - `Migrate { target }`: Transfer all pending commands to the target shard.
+1039:     /// - `Shutdown`: Drain all remaining commands and shut down the shard.
+1040:     ///
+1041:     /// Returns `Ok(true)` if the shard is alive (continuing), `Ok(false)` if the
+1042:     /// shard has shut down, or an error if the shard index is invalid or migration
+1043:     /// failed.
+1044:     pub fn tick_shard(
+1045:         &mut self,
+1046:         shard_index: u32,
+1047:         directive: ShardDirective,
+1048:     ) -> RuntimeResult<bool> {
+1049:         let shard_index_usize = usize::try_from(shard_index)
+1050:             .map_err(|_| RuntimeError::ShardNotFound { shard: shard_index })?;
+1051: 
+1052:         // Validate source shard exists first
+1053:         if self.shards.get(shard_index_usize).is_none() {
+1054:             return Err(RuntimeError::ShardNotFound { shard: shard_index });
+1055:         }
+1056: 
+1057:         match directive {
+1058:             ShardDirective::Continue => {
+1059:                 let shard = self
+1060:                     .shards
+1061:                     .get_mut(shard_index_usize)
+1062:                     .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
+1063:                 shard.tick()
+1064:             }
+1065:             ShardDirective::Suspend => {
+1066:                 // Suspend: skip processing, preserve queue, return alive
+1067:                 Ok(true)
+1068:             }
+1069:             ShardDirective::Migrate { target } => self.migrate_shard(shard_index_usize, target),
+1070:             ShardDirective::Shutdown => {
+1071:                 let shard = self
+1072:                     .shards
+1073:                     .get_mut(shard_index_usize)
+1074:                     .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
+1075:                 shard.drain_pending_and_shutdown()?;
+1076:                 Ok(false)
+1077:             }
+1078:             ShardDirective::Cancel => Err(RuntimeError::UnsupportedOperation {
+1079:                 operation: "tick_shard_cancel",
+1080:             }),
+1081:             ShardDirective::Barrier => Err(RuntimeError::UnsupportedOperation {
+1082:                 operation: "tick_shard_barrier",
+1083:             }),
+1084:         }
+1085:     }
+1086: 
+1087:     /// Migrates all commands from source shard to target shard.
+1088:     ///
+1089:     /// Returns `Ok(true)` if the source shard is still alive (has runs or pending commands),
+1090:     /// `Ok(false)` if the source shard is empty and can be shut down.
+1091:     fn migrate_shard(&mut self, source_idx: usize, target: u32) -> RuntimeResult<bool> {
+1092:         let target_usize =
+1093:             usize::try_from(target).map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
+1094: 
+1095:         // Self-migrate check (already validated in caller, but double-check for safety)
+1096:         let source_u32 =
+1097:             u32::try_from(source_idx).map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
+1098:         if target == source_u32 {
+1099:             return Err(RuntimeError::MigrateSelf);
+1100:         }
+1101: 
+1102:         // Validate target shard exists (already validated in caller, but double-check)
+1103:         if self.shards.get(target_usize).is_none() {
+1104:             return Err(RuntimeError::ShardNotFound { shard: target });
+1105:         }
+1106: 
+1107:         // Collect all commands from source shard
+1108:         let commands: Vec<ShardCommand> = {
+1109:             let shard = self
+1110:                 .shards
+1111:                 .get_mut(source_idx)
+1112:                 .ok_or(RuntimeError::ShardNotFound { shard: source_u32 })?;
+1113:             let mut cmds = Vec::new();
+1114:             while let Some(cmd) = shard.command_queue.pop() {
+1115:                 cmds.push(cmd);
+1116:             }
+1117:             cmds
+1118:         };
+1119: 
+1120:         // Push all commands to target shard
+1121:         {
+1122:             let target_shard = self
+1123:                 .shards
+1124:                 .get_mut(target_usize)
+1125:                 .ok_or(RuntimeError::ShardNotFound { shard: target })?;
+1126:             for cmd in commands {
+1127:                 target_shard.enqueue(cmd)?;
+1128:             }
+1129:         }
+1130: 
+1131:         // Return true if source shard still has runs (alive)
+1132:         let shard = self
+1133:             .shards
+1134:             .get_mut(source_idx)
+1135:             .ok_or(RuntimeError::ShardNotFound { shard: source_u32 })?;
+1136:         let alive = shard.active_run_count() > 0 || !shard.command_queue.is_empty();
+1137:         Ok(alive)
+1138:     }
+1139: 
+1140:     /// Completes an action for a run.
+1141:     pub fn complete_action(&self, run: RunId, step: StepIdx) -> RuntimeResult<()> {
+1142:         let shard = self.shard_for(run)?;
+1143:         if let Some(ticket) = self.lookup_pending_action_ticket(run, u64::from(step.get())) {
+1144:             shard.reject_unregistered_completion(ticket)?;
+1145:         }
+1146:         shard.enqueue(ShardCommand::ActionCompletedLegacy { run, step })
+1147:     }
+1148: 
+1149:     /// Completes an action for a run with its typed output payload.
+1150:     ///
+1151:     /// Validates the ticket against the current run state before enqueuing.
+1152:     /// Returns `InvalidActionCompletion` if the ticket is invalid (wrong action,
+1153:     /// non-running step, or stale attempt).
+1154:     pub fn complete_action_with_output(
+1155:         &mut self,
+1156:         ticket: ActionTicket,
+1157:         output: ActionOutputReady,
+1158:     ) -> RuntimeResult<()> {
+1159:         let shard = self.shard_for_mut(ticket.run)?;
+1160:         shard.reject_unregistered_completion(ticket)?;
+1161:         // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
+1162:         // if the ticket doesn't match the current run state.
+1163:         if let Some(state) = shard.run_state_get(ticket.run) {
+1164:             crate::shard::lifecycle::preflight_action_completion(state, ticket, output)?;
+1165:         }
+1166:         shard.enqueue(ShardCommand::ActionCompleted { ticket, output })
+1167:     }
+1168: 
+1169:     /// Fails an action with a typed failure payload.
+1170:     pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
+1171:         let shard = self.shard_for(ticket.run)?;
+1172:         shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
+1173:     }
+1174: 
+1175:     /// Looks up the canonical in-flight action ticket for `run`.
+1176:     ///
+1177:     /// IPC handlers receive only a `(run_id, ticket: u64)` wire pair. The wire
+1178:     /// `ticket` encodes only the lower-16-bit step index and does not carry the
+1179:     /// real `seq`, `action`, `attempt`, `idempotency_key`, or `capacity`
+1180:     /// values. The canonical ticket is held by the shard's `pending_actions`
+1181:     /// index and is the only authoritative source of those fields.
+1182:     ///
+1183:     /// Returns `None` if:
+1184:     /// - the run is not found,
+1185:     /// - the run has no in-flight action ticket,
+1186:     /// - the wire `ticket`'s lower 16 bits do not match the canonical step.
+1187:     ///
+1188:     /// This lookup is the boundary that prevents the IPC layer from
+1189:     /// fabricating dummy `seq`/`action`/`idempotency_key`/`capacity` fields
+1190:     /// (see bead vb-xb62s). Callers must fail closed if this returns `None`
+1191:     /// and must never invent fields the wire did not carry.
+1192:     #[must_use]
+1193:     pub fn lookup_pending_action_ticket(
+1194:         &self,
+1195:         run: RunId,
+1196:         ticket_wire: u64,
+1197:     ) -> Option<vb_core::action::ActionTicket> {
+1198:         let shard = self.shard_for_run(run).ok()?;
+1199:         let canonical = shard.pending_action_get(run)?;
+1200:         let wire_step = u16::try_from(ticket_wire).ok()?;
+1201:         if canonical.step.get() != wire_step {
+1202:             return None;
+1203:         }
+1204:         Some(canonical)
+1205:     }
+1206: 
+1207:     /// Looks up the opaque authority for the run's currently suspended Ask boundary.
+1208:     ///
+1209:     /// The ticket is issued only from the shard's current Asking state and its
+1210:     /// journal-backed AskScheduled boundary. A stale or unknown boundary returns
+1211:     /// `None`; callers must not construct or alter ticket fields themselves.
+1212:     #[must_use]
+1213:     pub fn lookup_pending_ask_ticket(
+1214:         &self,
+1215:         run: RunId,
+1216:         ask_step: vb_core::ids::StepIdx,
+1217:     ) -> Option<crate::shard::AskTicket> {
+1218:         self.shard_for_run(run)
+1219:             .ok()?
+1220:             .pending_ask_ticket(run, ask_step)
+1221:     }
+1222: 
+1223:     /// Lists trace events for a run without draining the shard trace ring.
+1224:     ///
+1225:     /// RA-030 wave-15 (vb-sxkz6): a run may have been migrated to a shard
+1226:     /// other than the home shard selected by the hash of `RunId`. Scan all
+1227:     /// shards so the trace ring of the owning shard is read.
+1228:     pub fn list_events(&self, run: RunId) -> RuntimeResult<Vec<TraceEvent>> {
+1229:         let shard = self.shard_for_run(run)?;
+1230:         let limit = shard.trace_ring().capacity();
+1231:         Ok(shard.trace_ring().snapshot_for_run(run, limit))
+1232:     }
+1233: 
+1234:     /// Answers an ask with an explicit typed payload and resume ticket.
+1235:     ///
+1236:     /// RA-030: a run may have been migrated to a shard other than the home
+1237:     /// shard selected by the hash of `RunId` (see `migrate_shard` / RA-021).
+1238:     /// Test the home shard first as a fast path, then scan the remaining
+1239:     /// shards for active or terminal ownership so the answer is routed to
+1240:     /// whichever shard actually holds the run state.
+1241:     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
+1242:         let run = answer.ticket.run();
+1243:         let shard = self.shard_for_run(run)?;
+1244:         shard.validate_pending_ask_answer(answer)?;
+1245:         shard.enqueue(ShardCommand::AskAnswered { answer })
+1246:     }
+1247: 
+1248:     /// Legacy run-only timer delivery is fail-closed because it carries no authority.
+1249:     pub fn timer_fired(&self, run: RunId) -> RuntimeResult<()> {
+1250:         let _shard = self.shard_for_run(run)?;
+1251:         Err(RuntimeError::InvalidTimerFire)
+1252:     }
+1253: 
+1254:     /// Captures the current timer authority for tests and typed scheduler handoff.
+1255:     ///
+1256:     /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run's timer entry.
+1257:     /// Returns `Err(RuntimeError::RunNotFound)` if no shard owns the run.
+1258:     /// Returns `Err(RuntimeError::InvalidTimerFire)` when the owner shard has
+1259:     /// no live timer entry for the run.
+1260:     pub fn capture_timer_entry(&self, run: RunId) -> RuntimeResult<TimerEntry> {
+1261:         let shard = self.shard_for_run(run)?;
+1262:         shard.timer_entry(run).ok_or(RuntimeError::InvalidTimerFire)
+1263:     }
+1264: 
+1265:     /// Advances a run from a timer-wheel-captured authority entry.
+1266:     ///
+1267:     /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run owner.
+1268:     pub fn timer_entry_fired(&self, entry: TimerEntry) -> RuntimeResult<()> {
+1269:         let shard = self.shard_for_run(entry.run)?;
+1270:         shard.enqueue(ShardCommand::TimerFired {
+1271:             run: entry.run,
+1272:             generation: entry.generation,
+1273:             deadline: entry.deadline,
+1274:             kind: entry.kind,
+1275:         })
+1276:     }
+1277: 
+1278:     /// Takes the latest inspect response from the run's shard.
+1279:     ///
+1280:     /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run owner.
+1281:     pub fn take_inspect_response(&mut self, run: RunId) -> RuntimeResult<Option<InspectResponse>> {
+1282:         let shard = self.shard_for_run_mut(run)?;
+1283:         Ok(shard.take_inspect_response())
+1284:     }
+1285: 
+1286:     /// Drains all trace events from all shards.
+1287:     pub fn drain_trace(&mut self) -> Vec<TraceEvent> {
+1288:         let mut events = Vec::new();
+1289:         for shard in &mut self.shards {
+1290:             let capacity = shard.trace_ring_mut().capacity();
+1291:             shard.trace_ring_mut().drain_into(capacity, &mut events);
+1292:         }
+1293:         events
+1294:     }
+1295: 
+1296:     /// Collects runtime metrics from all shards.
+1297:     pub fn collect_metrics(&self) -> RuntimeMetricsSnapshot {
+1298:         let mut shards = Vec::with_capacity(self.shard_count);
+1299:         let mut runs_active = 0u32;
+1300:         let mut runs_waiting = 0u32;
+1301:         let mut runs_failed_total = 0u64;
+1302:         let mut runs_finished_total = 0u64;
+1303:         let mut steps_total = 0u64;
+1304: 
+1305:         for (index, shard) in self.shards.iter().enumerate() {
+1306:             let counters = shard.counters().snapshot();
+1307:             let active_runs = u32::try_from(shard.active_run_count()).unwrap_or(u32::MAX);
+1308:             let queue_depth = u32::try_from(shard.command_queue_len()).unwrap_or(u32::MAX);
+1309:             let queue_remaining = u32::try_from(shard.remaining_capacity()).unwrap_or(u32::MAX);
+1310:             let pending_timers = u32::try_from(shard.pending_timer_count()).unwrap_or(u32::MAX);
+1311:             let (fp_free, fp_total) = shard.frame_pool_metrics();
+1312:             let frame_pool_free = u32::try_from(fp_free).unwrap_or(u32::MAX);
+1313:             let frame_pool_total = u32::try_from(fp_total).unwrap_or(u32::MAX);
+1314:             let trace_capacity = shard.trace_ring().capacity();
+1315:             let trace_len = shard.trace_ring().pending_len();
+1316:             let trace_ring_fill_pct = if trace_capacity > 0 {
+1317:                 // Bounded narrowing mirrors the six sibling metric lines at runtime.rs:571-577.
+1318:                 // TraceRing::new clamps capacity to >= 1 (RA-003 cap bound 2^20 << 2^24), so the
+1319:                 // unwrap_or(0) fallback is unreachable in production. Fallback value is 0 (not
+1320:                 // u32::MAX) to preserve the sentinel intent of the outer zero-denominator guard.
+1321:                 //
+1322:                 // DEVIATION FROM CONTRACT INV-004: `f32::from(u32)` is NOT implemented in
+1323:                 // Rust (only `From<u8|u16|i8|i16>` exist for f32). See `u32_to_f32_exact`
+1324:                 // above for the bit-equivalent IEEE-754 manual encoding; equivalence to
+1325:                 // `(n as f32)` is verified in `.beads/vb-oul6u/evidence/ieee-754-bit-equivalence.log`
+1326:                 // and pinned by the RA-003 corpus (`trace_ring_fill_pct` tests, 3/3 pass).
+1327:                 let cap_u32 = u32::try_from(trace_capacity).unwrap_or(0);
+1328:                 let len_u32 = u32::try_from(trace_len).unwrap_or(0);
+1329:                 let len_f32 = u32_to_f32_exact(len_u32);
+1330:                 let cap_f32 = u32_to_f32_exact(cap_u32);
+1331:                 (len_f32 / cap_f32) * 100.0
+1332:             } else {
+1333:                 0.0
+1334:             };
+1335: 
+1336:             runs_active = runs_active.saturating_add(active_runs);
+1337:             runs_waiting = runs_waiting.saturating_add(pending_timers);
+1338:             runs_failed_total = runs_failed_total.saturating_add(counters.runs_failed);
+1339:             runs_finished_total = runs_finished_total.saturating_add(counters.runs_completed);
+1340:             steps_total = steps_total.saturating_add(counters.steps_executed);
+1341: 
+1342:             let shard_id = u32::try_from(index).unwrap_or(u32::MAX);
+1343:             shards.push(ShardMetricsSnapshot {
+1344:                 shard_id,
+1345:                 active_runs,
+1346:                 command_queue_depth: queue_depth,
+1347:                 command_queue_remaining: queue_remaining,
+1348:                 pending_timers,
+1349:                 frame_pool_free,
+1350:                 frame_pool_total,
+1351:                 trace_ring_fill_pct,
+1352:                 counters,
+1353:             });
+1354:         }
+1355: 
+1356:         RuntimeMetricsSnapshot {
+1357:             shards,
+1358:             runs_active,
+1359:             runs_waiting,
+1360:             runs_failed_total,
+1361:             runs_finished_total,
+1362:             steps_total,
+1363:         }
+1364:     }
+1365: 
+1366:     /// Returns aggregated counter snapshots from all shards.
+1367:     pub fn counters_snapshot(&self) -> CounterSnapshot {
+1368:         let mut total = CounterSnapshot {
+1369:             runs_submitted: 0,
+1370:             runs_completed: 0,
+1371:             runs_failed: 0,
+1372:             steps_executed: 0,
+1373:         };
+1374:         for shard in &self.shards {
+1375:             let snap = shard.counters().snapshot();
+1376:             total.runs_submitted = total.runs_submitted.saturating_add(snap.runs_submitted);
+1377:             total.runs_completed = total.runs_completed.saturating_add(snap.runs_completed);
+1378:             total.runs_failed = total.runs_failed.saturating_add(snap.runs_failed);
+1379:             total.steps_executed = total.steps_executed.saturating_add(snap.steps_executed);
+1380:         }
+1381:         total
+1382:     }
+1383: 
+1384:     /// Lists active run summaries across all shards, up to `limit` entries.
+1385:     ///
+1386:     /// If `workflow_filter` is provided, only runs matching that digest are included.
+1387:     /// Returns summaries sorted by run id ascending.
+1388:     pub fn list_active_runs(
+1389:         &self,
+1390:         limit: u32,
+1391:         workflow_filter: Option<vb_core::WorkflowDigest>,
+1392:     ) -> Vec<ActiveRunSummary> {
+1393:         let max = match usize::try_from(limit) {
+1394:             Ok(value) => value,
+1395:             Err(_) => usize::MAX,
+1396:         };
+1397:         let mut summaries = Vec::new();
+1398:         for shard in &self.shards {
+1399:             for (run_id, state) in shard.active_runs_iter() {
+1400:                 if summaries.len() >= max {
+1401:                     break;
+1402:                 }
+1403:                 let digest = state.workflow.digest();
+1404:                 if let Some(filter) = workflow_filter
+1405:                     && digest != filter
+1406:                 {
+1407:                     continue;
+1408:                 }
+1409:                 let step_count = state.workflow.node_count();
+1410:                 let mut steps_completed: u16 = 0;
+1411:                 let mut step_index = 0u16;
+1412:                 while step_index < step_count {
+1413:                     let step = vb_core::ids::StepIdx::new(step_index);
+1414:                     match state.frame.step_state(step) {
+1415:                         Ok(
+1416:                             vb_core::frame::StepState::Succeeded
+1417:                             | vb_core::frame::StepState::Failed
+1418:                             | vb_core::frame::StepState::Skipped
+1419:                             | vb_core::frame::StepState::Cancelled,
+1420:                         ) => {
+1421:                             steps_completed = steps_completed.saturating_add(1);
+1422:                         }
+1423:                         Ok(_) => {}
+1424:                         Err(_) => {
+1425:                             step_index = step_index.saturating_add(1);
+1426:                             continue;
+1427:                         }
+1428:                     }
+1429:                     step_index = step_index.saturating_add(1);
+1430:                 }
+1431:                 summaries.push(ActiveRunSummary {
+1432:                     run_id: *run_id,
+1433:                     workflow: digest,
+1434:                     step_count,
+1435:                     steps_completed,
+1436:                 });
+1437:             }
+1438:         }
+1439:         summaries.sort_by_key(|s| s.run_id);
+1440:         summaries.truncate(max);
+1441:         summaries
+1442:     }
+1443: 
+1444:     /// Stops command processing and durably drains the owned journal.
+1445:     ///
+1446:     /// Suspended runs remain owned by their shards. The report preserves their
+1447:     /// boundary authorities before timer registrations are released. On failure
+1448:     /// those registrations remain available for inspection and retry.
+1449:     pub fn shutdown_graceful(&mut self) -> Result<ShutdownReport, ShutdownFailure> {
+1450:         shutdown::shutdown(self)
+1451:     }
+1452: 
+1453:     fn shard_index(&self, run: RunId) -> usize {
+1454:         let hash = run.get();
+1455:         let Ok(count) = u64::try_from(self.shard_count) else {
+1456:             return 0;
+1457:         };
+1458:         let Some(remainder) = hash.checked_rem(count) else {
+1459:             return 0;
+1460:         };
+1461:         let Ok(index) = usize::try_from(remainder) else {
+1462:             return 0;
+1463:         };
+1464:         index
+1465:     }
+1466: 
+1467:     fn shard_for(&self, run: RunId) -> Result<&Shard, RuntimeError> {
+1468:         let index = self.shard_index(run);
+1469:         self.shards.get(index).ok_or(RuntimeError::RunNotFound)
+1470:     }
+1471: 
+1472:     fn shard_for_mut(&mut self, run: RunId) -> Result<&mut Shard, RuntimeError> {
+1473:         let index = self.shard_index(run);
+1474:         self.shards.get_mut(index).ok_or(RuntimeError::RunNotFound)
+1475:     }
+1476: 
+1477:     /// Returns the shard that currently owns `run`, scanning all shards.
+1478:     ///
+1479:     /// RA-030 wave-15 (vb-sxkz6): the hash-based `shard_index(run)` returns
+1480:     /// the home shard which may differ from the owner after `migrate_shard`
+1481:     /// transfers a run's commands and run-state to a different shard. We
+1482:     /// check the home shard first as a fast path; on miss we scan the
+1483:     /// remaining shards in deterministic slice order.
+1484:     ///
+1485:     /// Returns `Err(RuntimeError::RunNotFound)` if `run` is not in any
+1486:     /// shard's `run_state` or `terminal_runs` set.
+1487:     fn shard_for_run(&self, run: RunId) -> Result<&Shard, RuntimeError> {
+1488:         let home_index = self.shard_index(run);
+1489:         if let Some(shard) = self.shards.get(home_index)
+1490:             && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+1491:         {
+1492:             return Ok(shard);
+1493:         }
+1494:         self.shards
+1495:             .iter()
+1496:             .enumerate()
+1497:             .find(|(idx, shard)| {
+1498:                 *idx != home_index
+1499:                     && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+1500:             })
+1501:             .map(|(_, shard)| shard)
+1502:             .ok_or(RuntimeError::RunNotFound)
+1503:     }
+1504: 
+1505:     /// Mutable variant of `shard_for_run` for `take_inspect_response`.
+1506:     fn shard_for_run_mut(&mut self, run: RunId) -> Result<&mut Shard, RuntimeError> {
+1507:         // Mirror the home-fast-path + scan-fallback logic on immutable borrow,
+1508:         // then re-index after borrow ends to get the mutable shard.
+1509:         let home_index = self.shard_index(run);
+1510:         let owner_index = {
+1511:             if let Some(shard) = self.shards.get(home_index)
+1512:                 && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+1513:             {
+1514:                 home_index
+1515:             } else {
+1516:                 self.shards
+1517:                     .iter()
+1518:                     .position(|shard| {
+1519:                         shard.run_state_contains(run) || shard.terminal_runs_contains(run)
+1520:                     })
+1521:                     .ok_or(RuntimeError::RunNotFound)?
+1522:             }
+1523:         };
+1524:         self.shards
+1525:             .get_mut(owner_index)
+1526:             .ok_or(RuntimeError::RunNotFound)
+1527:     }
+1528: }
+1529: 
+1530: #[path = "runtime/live_policy_dispatch.rs"]
+1531: mod live_policy_dispatch;
+1532: #[path = "runtime/registered_executor.rs"]
+1533: mod registered_executor;
+1534: #[cfg(test)]
+1535: #[path = "runtime_tests.rs"]
+1536: mod tests;
+1537: pub use registered_executor::RegisteredExecutionError;
+1538: 
+1539: #[cfg(test)]
+1540: #[path = "runtime/shutdown_tests.rs"]
+1541: mod shutdown_tests;

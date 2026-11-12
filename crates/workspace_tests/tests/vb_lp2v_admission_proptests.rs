@@ -30,6 +30,7 @@ use vb_storage::admission::submit_artifact;
 fn minimal_workflow(value: i64) -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("pi_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -310,6 +311,7 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
     // Build a structurally-valid workflow with an incorrect digest.
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("tampered"),
         digest: WorkflowDigest::from_bytes([0xFFu8; 32]), // intentionally wrong

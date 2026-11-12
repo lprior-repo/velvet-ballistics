@@ -38,16 +38,19 @@ fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
         &mut shard,
         RunId::new(0),
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     submit_run(
         &mut shard,
         RunId::new(1),
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     assert_eq!(shard.active_run_count(), 2);
     let wf = require_workflow("suspended", suspended_workflow())?;
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: RunId::new(99),
             workflow: wf,
             caps: CapabilitySet::empty(),

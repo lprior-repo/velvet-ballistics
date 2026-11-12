@@ -1,0 +1,2 @@
+{"requirement_id":"R1","contract":"scanner reports no ignored fallible results","files":["crates/vb_storage/src/kani_recovery_hydrate.rs"],"proofs":["PO-vb-ybi5-001"],"tests":["scripts/check-ignored-fallible-results.sh","moon run :verify-standard"],"status":"PASS"}
+{"requirement_id":"R2","contract":"unexpected fallible recovery errors are explicit assertion failures","files":["crates/vb_storage/src/kani_recovery_hydrate.rs"],"proofs":["PO-vb-ybi5-002"],"tests":["review diff","moon run :verify-standard"],"status":"PASS"}

@@ -17,6 +17,7 @@ fn crash_lab_minimal_parts(digest: WorkflowDigest) -> WorkflowParts {
         None,
     );
     WorkflowParts {
+        source_metadata: None,
         semantic_source_identity: None,
         name: Box::from("crash-lab-minimal"),
         digest,
@@ -29,7 +30,11 @@ fn crash_lab_minimal_parts(digest: WorkflowDigest) -> WorkflowParts {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     }
 }
 
@@ -146,7 +151,12 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard =
         Shard::new_with_journal_and_artifact_store(small_config(), shared, store.clone());
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     assert_eq!(shard.tick(), Ok(true));
     let ticket = shard
         .pending_action_get(run)
@@ -182,6 +192,7 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
         frame.step_state(StepIdx::ZERO),
         Ok(vb_core::frame::StepState::Running)
     );
+    assert_eq!(frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(0)));
     drop(shard);
     let post_crash = require_snapshot(&journal)?;
     assert_eq!(post_crash, pre_crash);

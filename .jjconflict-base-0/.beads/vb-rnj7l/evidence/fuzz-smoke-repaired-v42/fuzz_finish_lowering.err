@@ -1,0 +1,19 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2376111560
+INFO: Loaded 1 modules   (515 inline 8-bit counters): 515 [0x55b3ae47b410, 0x55b3ae47b613), 
+INFO: Loaded 1 PC tables (515 PCs): 515 [0x55b3ae47b618,0x55b3ae47d648), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_finish_lowering
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED exec/s: 0 rss: 37Mb
+WARNING: no interesting inputs were found so far. Is the code instrumented for coverage?
+This may also happen if the target rejected all inputs we tried so far
+	NEW_FUNC[1/14]: 0x55b3ae3d5400  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_finish_lowering+0x118400) (BuildId: fcabb598077f88164dc6446f16b2ef2987ea051b)
+	NEW_FUNC[2/14]: 0x55b3ae3dabf0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_finish_lowering+0x11dbf0) (BuildId: fcabb598077f88164dc6446f16b2ef2987ea051b)
+#10	NEW    cov: 72 ft: 73 corp: 2/5b lim: 4 exec/s: 0 rss: 38Mb L: 4/4 MS: 3 CopyPart-CMP-CopyPart- DE: "\001\000"-
+#21	NEW    cov: 73 ft: 74 corp: 3/9b lim: 4 exec/s: 0 rss: 38Mb L: 4/4 MS: 1 CopyPart-
+#2007186	DONE   cov: 73 ft: 74 corp: 3/9b lim: 4096 exec/s: 1003593 rss: 186Mb
+###### Recommended dictionary. ######
+"\001\000" # Uses: 186159
+###### End of recommended dictionary. ######
+Done 2007186 runs in 2 second(s)

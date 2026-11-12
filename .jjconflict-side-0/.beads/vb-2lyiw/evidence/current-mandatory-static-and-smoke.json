@@ -1,0 +1,30 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+  "argv": [
+    "moon",
+    "ci",
+    ":check",
+    ":lint-src",
+    ":source-length",
+    ":banned-token-gates",
+    ":nightly-feature-gate",
+    ":nightly-feature-cargo-probe",
+    ":feature-powerset",
+    ":miri",
+    ":coverage",
+    ":mutants-smoke",
+    ":bench-build",
+    ":benchmark-regression-policy",
+    "--force",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 124,
+  "seconds": 1200.167,
+  "timeout_seconds": 1200,
+  "timed_out": true,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/current-mandatory-static-and-smoke"
+}

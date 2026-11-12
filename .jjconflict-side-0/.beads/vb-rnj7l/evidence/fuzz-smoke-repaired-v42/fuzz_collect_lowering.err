@@ -1,0 +1,17 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2626102177
+INFO: Loaded 1 modules   (902 inline 8-bit counters): 902 [0x5571cca1ed50, 0x5571cca1f0d6), 
+INFO: Loaded 1 PC tables (902 PCs): 902 [0x5571cca1f0d8,0x5571cca22938), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_collect_lowering
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED exec/s: 0 rss: 37Mb
+WARNING: no interesting inputs were found so far. Is the code instrumented for coverage?
+This may also happen if the target rejected all inputs we tried so far
+	NEW_FUNC[1/15]: 0x5571cc9750c0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_collect_lowering+0x11b0c0) (BuildId: 80983945922315c796213b1bb5942eb6f11046e8)
+	NEW_FUNC[2/15]: 0x5571cc975400  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_collect_lowering+0x11b400) (BuildId: 80983945922315c796213b1bb5942eb6f11046e8)
+#1328	NEW    cov: 116 ft: 117 corp: 2/17b lim: 17 exec/s: 0 rss: 39Mb L: 16/16 MS: 1 InsertRepeatedBytes-
+#1334	NEW    cov: 117 ft: 118 corp: 3/34b lim: 17 exec/s: 0 rss: 39Mb L: 17/17 MS: 1 CrossOver-
+#1459	REDUCE cov: 117 ft: 118 corp: 3/33b lim: 17 exec/s: 0 rss: 39Mb L: 16/16 MS: 5 ShuffleBytes-ChangeByte-EraseBytes-ChangeByte-InsertByte-
+#1134539	DONE   cov: 117 ft: 118 corp: 3/33b lim: 4096 exec/s: 567269 rss: 361Mb
+Done 1134539 runs in 2 second(s)

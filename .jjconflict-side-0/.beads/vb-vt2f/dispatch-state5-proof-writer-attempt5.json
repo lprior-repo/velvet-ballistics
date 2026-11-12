@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 5,
+  "sublane": "proof-write-after-replan",
+  "delegate": "proof-writer",
+  "attempt": 5,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 4 attempt 4 replaced void TLA/Verus waivers with executable TLA/Kani obligations after State 10 runtime/shard/admission changes",
+  "input_artifacts": [".beads/vb-vt2f/proof-strategy.md", ".beads/vb-vt2f/proof-plan-review-input.md", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/implementation.md", "crates/vb_runtime/src/runtime.rs", "crates/vb_runtime/src/shard/impl_parts/chunk_001.rs", "crates/vb_runtime/src/shard/lifecycle/chunk_001.rs", "crates/vb_runtime/src/shard/lifecycle/chunk_002.rs", "crates/vb_runtime/src/primitives/wait_ask.rs"],
+  "output_artifacts": [".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md", "verification/tla/Vt2fRuntimeLifecycle.tla", "verification/tla/Vt2fRuntimeLifecycle.cfg", "verification/tla/Vt2fStrictAdmission.tla", "verification/tla/Vt2fStrictAdmission.cfg", "verification/kani/vt2f_runtime_facade.rs", "verification/kani/vt2f_shard_lower_semantics.rs"],
+  "status": "QUEUED"
+}

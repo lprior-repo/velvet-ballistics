@@ -1,0 +1,81 @@
+
+running 23 tests
+test all_prefixes_distinct_unit ... ok
+test declared_keyspaces_count ... ok
+test declared_keyspaces_contains_required_names ... ok
+test encode_determinism_compiled_ir ... ok
+test encode_determinism_index_action ... ok
+test declared_keyspaces_no_duplicates ... ok
+test encode_determinism_blob ... ok
+test encode_determinism_run_event ... ok
+test encode_determinism_run_header ... ok
+test encode_determinism_workflow_source ... ok
+test encode_exact_length_compiled_ir ... ok
+test encode_exact_length_blob ... ok
+test encode_exact_length_index_action ... ok
+test encode_exact_length_run_event ... ok
+test encode_exact_length_run_header ... ok
+test encode_exact_length_workflow_source ... ok
+test max_sequence_ordering ... ok
+test smoke_test_module_loads ... ok
+test bigendian_u64_ordering ... ok
+test run_event_ordering ... ok
+test index_action_ordering ... ok
+test prefix_distinctness ... ok
+test cross_keyspace_non_collision ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 48 tests
+test decode_blob_key ... ok
+test decode_compiled_ir_key ... ok
+test decode_index_action_key ... ok
+test decode_index_workflow_key ... ok
+test decode_index_status_key ... ok
+test decode_index_status_key_other_state ... ok
+test decode_run_event_key ... ok
+test decode_run_event_key_large_values ... ok
+test decode_run_header_key ... ok
+test decode_run_header_key_max_run_id ... ok
+test decode_run_snapshot_key ... ok
+test decode_storage_key_key_decode_error_is_debug_and_partial_eq ... ok
+test decode_storage_key_returns_empty_key_error_for_empty_slice ... ok
+test decode_storage_key_returns_invalid_run_id_for_zero_index_status_run ... ok
+test decode_storage_key_returns_invalid_run_id_for_zero_run_event ... ok
+test decode_storage_key_returns_invalid_run_id_for_zero_run_header ... ok
+test decode_storage_key_returns_length_mismatch_for_each_prefix_variant ... ok
+test decode_storage_key_returns_length_mismatch_for_oversized_key ... ok
+test decode_storage_key_returns_length_mismatch_for_short_key ... ok
+test decode_storage_key_returns_reserved_seq_sentinel_for_max_seq ... ok
+test decode_storage_key_returns_unknown_prefix_for_invalid_first_byte ... ok
+test decode_storage_key_returns_unknown_prefix_for_zero_byte ... ok
+test decode_workflow_source_key ... ok
+test decoded_preview_struct_fields_are_cold_path ... ok
+test encode_then_decode_roundtrip_all_key_variants ... ok
+test key_prefix_to_u8_roundtrip_with_try_key_prefix ... ok
+test preview_config_accepts_valid_limits ... ok
+test preview_config_max_bytes_u32_max_is_valid ... ok
+test preview_config_max_records_nonzero_usize ... ok
+test preview_config_max_records_one ... ok
+test preview_config_rejects_zero_max_records ... ok
+test preview_config_returns_exact_max_bytes ... ok
+test preview_config_returns_exact_max_records ... ok
+test preview_config_zero_max_bytes_is_valid ... ok
+test preview_keyspace_bounded_by_max_bytes ... ok
+test preview_keyspace_bounded_by_max_records ... ok
+test preview_keyspace_empty_entries ... ok
+test preview_keyspace_skips_corrupt_keys_silently ... ok
+test preview_payload_is_raw_variant_only ... ok
+test readonly_journal_declared_keyspaces_returns_ten ... ok
+test readonly_journal_does_not_expose_write_methods ... ok
+test readonly_journal_is_debug ... ok
+test readonly_journal_read_methods_are_accessible ... ok
+test try_key_prefix_longer_input_uses_first_byte ... ok
+test try_key_prefix_prefix_u8_roundtrip ... ok
+test try_key_prefix_rejects_empty_input ... ok
+test try_key_prefix_returns_known_prefix_for_each_valid_byte ... ok
+test try_key_prefix_rejects_all_247_unknown_bytes ... ok
+
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

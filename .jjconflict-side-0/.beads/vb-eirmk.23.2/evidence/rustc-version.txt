@@ -1,0 +1,7 @@
+rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+binary: rustc
+commit-hash: 52b6e2c208b73276ccb36ec0b68456913a801c96
+commit-date: 2026-04-27
+host: x86_64-unknown-linux-gnu
+release: 1.97.0-nightly
+LLVM version: 22.1.2

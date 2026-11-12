@@ -1,0 +1,124 @@
+{
+  "bead": "vb-eirmk.12",
+  "review_kind": "Bounded independent PLANNING review only",
+  "verdict": "REJECT",
+  "dispositions": {
+    "four_new_qualification_parent_rationale": "JUSTIFIED; no inspected full-scope open substitute found",
+    "proposal_creation_readiness": "CORRECTION_REQUIRED",
+    "metadata_fix_vb_eirmk_11_1": "PASS",
+    "metadata_fix_vb_eirmk_11_7": "PASS"
+  },
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "clean": true,
+    "mode": "Read-only source and live bd show/list; no database or source updates."
+  },
+  "input": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair/qualification-owner-proposals.json",
+    "sha256": "d8353f84d3949a875902db7edabfc15c0f4c46b4b1736508e0a9f33bd5b9652a",
+    "source_commit_in_proposals": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+    "canonical_record": "Live vb-eirmk.12 design.normalized_current_190_ownership.requirements; 190 rows. Only four proposed phase rows and the seven requirement IDs mapped to the two metadata fixes were inspected.",
+    "manifest_hash_limit": "Proposal's source_manifest_sha256 retained as an author field; original serialized manifest bytes were not supplied in the allowed home folder, so that digest was not independently reproduced."
+  },
+  "findings": [
+    {
+      "id": "P1",
+      "severity": "high",
+      "path": "qualification-owner-proposals.json",
+      "lines": [
+        21,
+        43,
+        65,
+        87
+      ],
+      "title": "Identical generic acceptance does not make the four epic qualifiers creation-ready",
+      "detail": "Each proposal repeats the same map-every-clause/review/final-CI checklist. None gives phase-specific qualification dispositions or requires retained separate primitive-family child/reuse assignments. supporting_owners is only a list. This permits an empty umbrella owner with no accountable bounded family work, despite preserving full-phase nouns in scope.",
+      "correction": "Add concrete per-phase acceptance described below and an explicit child/reuse allocation requirement. Enumerate current obligations and actual existing owners before scheduling repairs; create bounded evidence/test/repair children only for demonstrated gaps. Keep the new parents qualification-only. Do not reopen historical implementation beads or presume code is absent."
+    },
+    {
+      "id": "P2",
+      "severity": "medium",
+      "path": "qualification-owner-proposals.json",
+      "lines": [
+        27,
+        49,
+        71,
+        93
+      ],
+      "title": "Creation and canonical remapping controls are not specified",
+      "detail": "The graph_change text gives the correct blocking direction but no creation receipt, actual-ID substitution contract, unresolved-check update allowlist, or invariant check. proposal_key cannot become the canonical accountable bead ID. The intended metadata/open status and preservation of unrelated canonical rows should be explicit in a creation-ready plan.",
+      "correction": "For each proposal, require actual bd-create ID receipt, open qualification-only metadata with the exact phase requirement ID, root parent, and vb-eirmk.11 depends-on new-ID edge. Update only that row's canonical_qualification_owner_id/current-owner association and its owned qualify:phase:N accountable_bead_id/proposal resolution fields; preserve full scope/assertions, other rows/checks, historical/support IDs, false completion and unknown implementation_missing. Verify exact edit footprint and no dependency cycle. No tracker changes performed in this review."
+    }
+  ],
+  "confirmed": {
+    "historical_owners": {
+      "phase:4": "vb-core-yaml-ast closed",
+      "phase:17": "vb-tzsfr closed",
+      "phase:20": "vb-2bbo closed",
+      "phase:21": "vb-heqb closed"
+    },
+    "canonical_issue": "All four inspected rows retain unresolved qualify:phase:N checks accountable to those closed owners and completion_verified=false. Proposal scopes exactly equal the canonical required_surface_or_delivery and master phase-table lines1441/1454/1457/1458.",
+    "duplicate_search": "Live bd list --all --limit0, filtered in memory: no nonclosed issue declares any of these four exact master_requirement_ids. Additional title search found no evident full-phase qualifier. Metadata/title search is not absolute proof against an untagged owner; creation should recheck immediately before allocating IDs.",
+    "partial_support": "vb-eirmk.9 covers journal-driven suspension/retry/error recovery, not all snapshot-format/recovery/corruption or live retry/handler qualification. vb-eirmk.4.6 covers scoped Wait/Ask/error-retry controls; status open, with open/in-progress blocking prerequisites. Neither substitutes for a full-phase owner.",
+    "support_statuses": {
+      "vb-xvu": "closed",
+      "vb-0dg1": "closed",
+      "vb-sfhyj": "in_progress",
+      "vb-ekkau": "closed"
+    },
+    "graph_direction": "Proposed new qualifiers are root children; final vb-eirmk.11 depends on their completion. Correct direction in all four proposals; not yet applied or cycle-validated.",
+    "historical_protection": "No proposal requests source/API/schema/dependency/gate changes or historical reopening. Retain closed statuses and prior implementation/support records."
+  },
+  "metadata_fixes": {
+    "vb-eirmk.11.1": {
+      "verdict": "PASS",
+      "exact_master_requirement_ids": [
+        "master44.1",
+        "master44.2",
+        "phase:-1"
+      ],
+      "assessment": "Live current record versus retained full before record differs only by metadata and updated_at. Added qualification_only=true; IDs exactly equal canonical assignments. Existing explicit current naming qualifier remains open, with identical description/acceptance/dependencies."
+    },
+    "vb-eirmk.11.7": {
+      "verdict": "PASS",
+      "exact_master_requirement_ids": [
+        "gate:test",
+        "master44.20",
+        "master44.21",
+        "phase:0"
+      ],
+      "assessment": "Live current record versus retained full before record differs only by metadata and updated_at. Added qualification_only=true; IDs exactly equal canonical assignments. Existing explicit current Moon/toolchain qualifier remains open; no scope/status/dependency changes."
+    }
+  },
+  "concrete_creation_ready_criteria": {
+    "common": [
+      "Require status=open, issue_type=epic, root parent, qualification_only=true and exact master_requirement_ids; retain proposal-to-actual-ID receipt.",
+      "Require a clause-to-existing-owner allocation for each phase domain, with distinct primitive-family child/accountable work preserved rather than flattened into the umbrella. Reuse vb-eirmk.9, vb-eirmk.4.6 and actual existing primitive owners for their scoped obligations without relabeling them full-phase owners.",
+      "Before any new implementation child, inspect current implementation and evidence. Record qualified, unresolved evidence gap, or demonstrated defect for each clause. Missing receipts do not establish missing implementation.",
+      "Require production source pin, exact registered checks and meaningful asserted outcomes for closure; same-revision independent CODE and separate TEST where applicable. Existing required formal mandates remain required; no Go/full proof-planning stage added.",
+      "Use Rust contract -> implementation -> tests -> CODE -> independent TEST for actual Rust repair children. This planning review and evidence-only parents do not require invented implementation or behavior boilerplate."
+    ],
+    "phase:4": [
+      "Individually account for typed workflow, trigger, step, each active primitive family, expression and result AST; inventory actual current variants/representations and canonical parser-validator-compiler handoff ownership.",
+      "Closure requires positive typed-shape preservation and rejected invalid shapes/references for each named domain, plus explicit family-level mappings; constructor/API-only coverage cannot qualify all source primitives."
+    ],
+    "phase:17": [
+      "Separate snapshot envelope/format, snapshot-plus-tail public recovery and corruption refusal; reuse vb-0dg1/vb-tzsfr plus scoped public recovery work rather than assigning all duties to vb-eirmk.9.",
+      "Closure requires actual persist/drop/reopen recovery parity with full journal, source-bound format/version/length/checksum-digest handling, malformed/truncated input outcomes and no duplicate external effect; bind each to current APIs/errors without inventing them."
+    ],
+    "phase:20": [
+      "Enumerate actual retry policies and RetrySafety restrictions, attempt bounds, delay/deadline state and exhausted outcome/routing. Reuse vb-sfhyj, scoped vb-eirmk.4.6 and recorded recovery work for their precise portions.",
+      "Closure must cover initial attempt, delayed retry, last permitted attempt/exhaustion, invalid/boundary policies and no unsafe duplicate external redrive. Bind exact counters, deadlines and terminal/error routing to current contract/check identities; historical retry receipt alone is insufficient."
+    ],
+    "phase:21": [
+      "Separate on_error dispatch, typed error-slot identity/value/taint, then/successor forward transitions and handler outcome propagation. Reuse vb-ekkau and scoped compiler/recovery work where applicable.",
+      "Closure must distinguish handled versus unhandled failure, correct handler/continuation selection and exact error-slot/routing state, including relevant invalid-handler/transition boundaries; preserve separate primitive-family ownership rather than using one broad recovery suite as all-phase proof."
+    ]
+  },
+  "limits": [
+    "No creation, canonical remapping or graph modification performed or authorized by this report. Corrected proposals need bounded re-review before claiming creation-ready acceptance.",
+    "No wider118-owner audit, acceptance of uninspected canonical rows, full190 reconciliation or full-plan approval. Canonical validation still says native_obligation_mapping_complete=false and full_plan_accepted=false; unmapped native obligations are not accepted.",
+    "No Rust implementation, native/proof/CI execution, source/gate changes, tracker writes or additional agents. Historical embedded path strings were treated as data; forbidden historical artifact paths were not accessed."
+  ]
+}

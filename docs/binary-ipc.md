@@ -54,4 +54,4 @@ unbounded channels
 blocking producer admission
 ```
 
-Future transports include Unix domain sockets and shared-memory rings, using the same bounded binary frame contract.
+Unix domain sockets provide local process integration through `IpcServer` and the CLI IPC server. Shared-memory rings remain a future transport using the same bounded binary frame contract.

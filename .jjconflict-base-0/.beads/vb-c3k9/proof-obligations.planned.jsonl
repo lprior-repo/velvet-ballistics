@@ -1,0 +1,3 @@
+{"id":"PO-vb-c3k9-1","command":"rtk cargo test -p velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan","required":true,"owner_state":11,"rerun_from":8,"status":"PASS"}
+{"id":"PO-vb-c3k9-2","command":"rtk cargo clippy -p velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan -- -D warnings -D clippy::unwrap_used -D clippy::panic -D clippy::expect_used","required":true,"owner_state":11,"rerun_from":8,"status":"PASS"}
+{"id":"PO-vb-c3k9-3","command":"moon ci --force","required":true,"owner_state":11,"rerun_from":10,"status":"PASS"}

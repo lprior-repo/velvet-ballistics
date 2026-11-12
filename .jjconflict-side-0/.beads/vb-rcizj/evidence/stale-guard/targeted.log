@@ -1,0 +1,44 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+error[E0027]: pattern does not mention field `output`
+   --> crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs:920:13
+    |
+920 | /             RuntimeJournalEvent::StepSucceeded {
+921 | |                 run: r,
+922 | |                 step,
+923 | |                 attempt
+924 | |             } if *r == run && *step == StepIdx::ZERO && *attempt == 1
+    | |_____________^ missing field `output`
+    |
+help: include the missing field in the pattern
+    |
+923 |                 attempt, output } if *r == run && *step == StepIdx::ZERO && *attempt == 1
+    |                        ~~~~~~~~~~
+help: if you don't care about this missing field, you can explicitly ignore it
+    |
+923 |                 attempt, output: _ } if *r == run && *step == StepIdx::ZERO && *attempt == 1
+    |                        ~~~~~~~~~~~~~
+help: or always ignore missing fields here
+    |
+923 |                 attempt, .. } if *r == run && *step == StepIdx::ZERO && *attempt == 1
+    |                        ~~~~~~
+
+For more information about this error, try `rustc --explain E0027`.
+error: could not compile `vb_runtime` (test "vb_jggy_lifecycle_tests") due to 1 previous error

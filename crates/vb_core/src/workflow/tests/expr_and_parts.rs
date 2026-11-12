@@ -501,7 +501,14 @@ fn construction_parts_with_symbols(
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: (0..slot_count)
+            .map(|slot| CompiledInputSlot {
+                slot: SlotIdx::new(slot),
+                kind: InputSlotKind::Any,
+                constraint: CompiledInputConstraint::required(),
+            })
+            .collect(),
         name: Box::<str>::from("construction_validation"),
         digest: WorkflowDigest::from_bytes([0x42; 32]),
         nodes: vec![crate::workflow::node(
@@ -549,6 +556,7 @@ fn finish_const_parts_with(
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("resource_case"),
         digest: WorkflowDigest::from_bytes([3; 32]),
@@ -573,6 +581,7 @@ fn finish_const_parts_with(
 fn workflow_input_slots_accept_valid_increasing_indices() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
@@ -619,6 +628,7 @@ fn workflow_input_slots_accept_valid_increasing_indices() -> Result<(), String> 
 fn workflow_input_slots_accept_empty() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("input_slot_empty"),
         digest: WorkflowDigest::from_bytes([6; 32]),
@@ -649,6 +659,7 @@ fn workflow_input_slots_accept_empty() -> Result<(), String> {
 fn workflow_input_slots_reject_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([CompiledInputSlot {
             slot: SlotIdx::new(5),
             kind: InputSlotKind::I64,
@@ -683,6 +694,7 @@ fn workflow_input_slots_reject_out_of_bounds() -> Result<(), String> {
 fn workflow_input_slots_reject_duplicate() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
@@ -724,6 +736,7 @@ fn workflow_input_slots_reject_duplicate() -> Result<(), String> {
 fn workflow_input_slots_reject_non_canonical_order() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([
             CompiledInputSlot {
                 slot: SlotIdx::new(1),

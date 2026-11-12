@@ -308,7 +308,7 @@ fn replay_choose_expr_i64_max_boundary_expression() -> Result<(), CoreError> {
         ]
         .into(),
     )?;
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -388,7 +388,7 @@ fn replay_choose_expr_i64_min_boundary_expression() -> Result<(), CoreError> {
         ]
         .into(),
     )?;
-    let plan = make_plan(
+    let plan = make_plan_with_second_input(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),

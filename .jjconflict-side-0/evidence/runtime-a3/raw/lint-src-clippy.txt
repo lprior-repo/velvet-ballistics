@@ -1,0 +1,39 @@
+# command: moon run :lint-src
+[ WARN 2026-07-09 06:24:11.605] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 06:24:11.606] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 06:24:11.606] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:unsafe-audit (cached, e61319b2)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+velvet-ballistics:panic-surface | CommitSHA: c190b285f3414b0c92a6ba649aaf1cc5ac861ba7
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (cached, 5e74cdb1)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (cached, 994401ec)
+[ WARN 06:24:11.676] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:lint-src (b7294d49)
+▮▮▮▮ velvet-ballistics:lint-src (105ms, b7294d49)
+
+Tasks: 4 completed (3 cached)
+ Time: 268ms
+
+
+# exit_status=0

@@ -1,5 +1,5 @@
 use super::step_once;
-use super::test_support::{ensure_equal, nop_then_finish_workflow, test_frame};
+use super::test_support::{ensure_equal, external_input, nop_then_finish_workflow, test_frame};
 use crate::EngineSignal;
 use crate::frame::StepState;
 use crate::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
@@ -44,7 +44,8 @@ fn step_once_finish_returns_finished_with_value_and_taint() -> Result<(), String
 fn step_once_do_returns_awaiting_action() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from("do_test"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
         nodes: vec![node(
@@ -103,7 +104,8 @@ fn step_once_ask_returns_awaiting_ask() -> Result<(), String> {
 fn step_once_jump_advances_pc_to_target() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from("jump_test"),
         digest: WorkflowDigest::from_bytes([0x55; 32]),
         nodes: vec![
@@ -172,7 +174,8 @@ fn single_node_workflow(
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
         nodes: vec![node(StepIdx::new(0), kind, None, None)].into_boxed_slice(),

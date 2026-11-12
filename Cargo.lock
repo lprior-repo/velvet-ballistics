@@ -2113,6 +2113,7 @@ dependencies = [
  "postcard",
  "proptest",
  "rand",
+ "reference",
  "rtrb",
  "saphyr",
  "serde",

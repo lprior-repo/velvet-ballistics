@@ -1,0 +1,39 @@
+2026-10-21T18:09:19.735855Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-21T18:09:19.735884Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-21T18:09:19.737923Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T18:09:19.738119Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T18:09:19.738441Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T18:09:19.738777Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T18:09:19.739029Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T18:09:19.739222Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T18:09:20.337756Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:20.351970Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-21T18:09:20.351985Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-21T18:09:26.159699Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:26.922005Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:27.567533Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:31.896106Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:32.637846Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:33.469227Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:34.127014Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:35.279604Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:35.841658Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:37.123799Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:37.743373Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:38.774436Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:39.559440Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:40.698556Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:41.426552Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:09:45.824368Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:06.021005Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:07.141425Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:07.852160Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:19.724803Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:20.833888Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:21.571452Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:23.375182Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:24.066550Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:24.882458Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:26.731339Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:27.607345Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T18:10:29.306673Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090

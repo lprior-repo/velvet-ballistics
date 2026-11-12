@@ -1,0 +1,32 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 13,
+  "sublane": "owner-authorized-substitute-evidence-packaging",
+  "delegate": "general",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/truth-serum-report.md",
+    ".beads/vb-vt2f/assurance-bundle.md",
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/traceability-matrix.jsonl",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/test-review.md",
+    ".beads/vb-vt2f/implementation.md",
+    ".beads/vb-vt2f/machine-gate-report.md",
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl",
+    ".beads/vb-vt2f/black-hat-review.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/assurance-bundle.md",
+    ".beads/vb-vt2f/final-evidence-decision.md",
+    ".beads/vb-vt2f/state13-provenance-waiver.md"
+  ],
+  "attempt": "owner-authorized-substitute-1",
+  "owner_authorization": "User explicitly stated no evidence-package agent is required and instructed femdation to use subagents and resolve the provenance differences. Substitute packaging by a direct general subagent is authorized for this State 13 lane.",
+  "must_disclose": "The assurance bundle must disclose the original fallback/default-agent issue and this owner-authorized substitute-packaging waiver so truth-serum can audit provenance without laundering."
+}

@@ -1,0 +1,7 @@
+Edit complete. The actual diff for `chunk_001.rs`:
+
+- **Added** `validate_submit_admission_with_contracts` call at the top of `handle_submit_with_contracts` (before delegating to core)
+- **Added** same validation call at the top of `handle_submit_with_inputs_and_contracts` (before delegating to core)
+- **Removed** the validation call (and its comment) from `handle_submit_with_inputs_contracts_and_header_mode`
+
+No-contract callers (the other functions in the file that call the core handler) are unchanged and retain existing behavior. Workspace verified: both git root and jj root resolve to the isolated worktree.

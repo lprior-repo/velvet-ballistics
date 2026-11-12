@@ -1,0 +1,28 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-integration-v18",
+  "argv": [
+    "env",
+    "NEXTEST_TEST_THREADS=16",
+    "TMPDIR=/home/lewis/src/isoloated/vb-policy-integration-v18/target/tmp",
+    "RUSTC_WRAPPER=",
+    "RUSTFLAGS=-Dwarnings",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "nextest",
+    "run",
+    "--cargo-quiet",
+    "--workspace",
+    "--all-features",
+    "--no-fail-fast"
+  ],
+  "exit_code": 100,
+  "seconds": 364.697,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ny068/evidence/V20_ALL_TEST_DIAGNOSTIC"
+}

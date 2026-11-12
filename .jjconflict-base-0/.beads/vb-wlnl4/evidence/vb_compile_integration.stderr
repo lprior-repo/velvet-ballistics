@@ -1,0 +1,23 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-integration-local5090-20261021/crates/vb_compile)
+error[E0432]: unresolved import `vb_compile::WorkflowSourceParts`
+  --> crates/vb_compile/tests/proptest_digest_ask_ordering.rs:18:70
+   |
+18 | use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+   |                                                                      ^^^^^^^^^^^^^^^^^^^ no `WorkflowSourceParts` in the root
+   |
+note: found an item that was configured out
+  --> crates/vb_compile/src/lib.rs:62:18
+   |
+61 | #[cfg(any(test, feature = "test-util"))]
+   |          ----------------------------- the item is gated here
+62 | pub use vb_yaml::WorkflowSourceParts;
+   |                  ^^^^^^^^^^^^^^^^^^^
+help: a similar name exists in the module
+   |
+18 - use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+18 + use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSource};
+   |
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `vb_compile` (test "proptest_digest_ask_ordering") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

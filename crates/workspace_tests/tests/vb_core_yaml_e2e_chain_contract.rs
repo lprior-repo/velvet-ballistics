@@ -448,7 +448,12 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
     // Build workflow with a Do node for the action
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::<str>::from("cap_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([]),

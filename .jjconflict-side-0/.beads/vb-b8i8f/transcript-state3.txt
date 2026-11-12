@@ -1,0 +1,31 @@
+State 3 rust-contract transcript summary for vb-b8i8f.
+
+Inputs read:
+- .beads/vb-b8i8f/codebase-map.md
+- .beads/vb-b8i8f/delivery-scope.jsonl
+- .beads/vb-b8i8f/baseline-report.md
+- velvet-ballistics-MASTER.md relevant sections
+- crates/vb_runtime/src/runtime.rs
+- crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+- crates/vb_runtime/src/shard/types.rs
+- crates/vb_runtime/src/journal/chunk_001.rs
+- crates/vb_runtime/src/journal/chunk_002.rs
+- crates/vb_runtime/src/error/mod.rs
+- crates/vb_storage/src/codec/validation.rs
+- crates/vb_storage/src/records.rs
+
+Actions:
+- Loaded rust-contract skill as required.
+- Produced domain/type/workflow/error/boundary/hazard/contract artifacts.
+- Produced proof seeds only, not proof obligations or verifier artifacts.
+- Did not edit production Rust, tests, manifests, or verifier files.
+
+Key domain decisions:
+- Public Runtime::kill_run is required.
+- Missing and already-terminal cancel/kill must be typed errors, not silent Ok.
+- Exactly one terminal journal event may exist per run.
+- Cancel/kill must invalidate stale action/timer/ask/resume authority.
+- Storage journal family must admit RunKilled kind 28 on encode and decode.
+
+Validator attempt:
+- See final response for raw command output.

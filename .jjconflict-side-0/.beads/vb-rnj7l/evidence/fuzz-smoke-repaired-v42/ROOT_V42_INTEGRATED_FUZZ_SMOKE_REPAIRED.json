@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+  "argv": [
+    "moon",
+    "run",
+    ":fuzz-smoke",
+    "--force"
+  ],
+  "exit_code": 0,
+  "seconds": 628.668,
+  "timeout_seconds": 1200,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_V42_INTEGRATED_FUZZ_SMOKE_REPAIRED"
+}

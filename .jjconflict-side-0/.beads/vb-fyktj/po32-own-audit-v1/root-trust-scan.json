@@ -1,0 +1,780 @@
+{
+  "marker_count": 86,
+  "markers": [
+    {
+      "column": 17,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+      "kind": "external_type_specification",
+      "line": 35,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 40,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+      "kind": "verifier_external",
+      "line": 60,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+      "kind": "verifier_external",
+      "line": 64,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 18,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+      "kind": "assume_specification",
+      "line": 65,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+      "kind": "external_type_specification",
+      "line": 85,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 48,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+      "kind": "verifier_external",
+      "line": 88,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 9,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+      "kind": "assume_specification",
+      "line": 91,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 49,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "external_type_specification",
+      "line": 11,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 49,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 19,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 13,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "assume_specification",
+      "line": 24,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 43,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 35,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external_body",
+      "line": 38,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external_body]"
+    },
+    {
+      "column": 31,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "assume_specification",
+      "line": 39,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 18,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "external_type_specification",
+      "line": 98,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 27,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 101,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 40,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "external_type_specification",
+      "line": 102,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 1,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 106,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 10,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "external_type_specification",
+      "line": 111,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 14,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "assume_specification",
+      "line": 123,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 26,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 124,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 42,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "assume_specification",
+      "line": 127,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 128,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 10,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "assume_specification",
+      "line": 141,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 143,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 159,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 6,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 173,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 6,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "assume_specification",
+      "line": 175,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 1,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+      "kind": "verifier_external",
+      "line": 182,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 52,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "assume_specification",
+      "line": 5,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 21,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "external_type_specification",
+      "line": 19,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 26,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "verifier_external",
+      "line": 21,
+      "scan": "token-tree",
+      "scope": "changed",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 9,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "assume_specification",
+      "line": 31,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 13,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "external_type_specification",
+      "line": 61,
+      "scan": "text",
+      "scope": "changed",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 4,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "assume_specification",
+      "line": 93,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "assume_specification",
+      "line": 99,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+      "kind": "assume_specification",
+      "line": 119,
+      "scan": "text",
+      "scope": "changed",
+      "text": "assume_specification"
+    },
+    {
+      "column": 15,
+      "file": "crates/vb_core/src/engine/signals.rs",
+      "kind": "assume",
+      "line": 567,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume("
+    },
+    {
+      "column": 15,
+      "file": "crates/vb_core/src/engine/signals.rs",
+      "kind": "assume",
+      "line": 596,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume("
+    },
+    {
+      "column": 17,
+      "file": "verification/verus/extern_signals_invariant.rs",
+      "kind": "external_type_specification",
+      "line": 35,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/extern_signals_invariant.rs",
+      "kind": "verifier_external",
+      "line": 61,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 18,
+      "file": "verification/verus/extern_signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 62,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/extern_signals_invariant.rs",
+      "kind": "external_type_specification",
+      "line": 82,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 48,
+      "file": "verification/verus/extern_signals_invariant.rs",
+      "kind": "verifier_external",
+      "line": 85,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 9,
+      "file": "verification/verus/extern_signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 88,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 49,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "external_type_specification",
+      "line": 11,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 10,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external_body",
+      "line": 19,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external_body]"
+    },
+    {
+      "column": 43,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external",
+      "line": 33,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external_body",
+      "line": 36,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external_body]"
+    },
+    {
+      "column": 31,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "assume_specification",
+      "line": 37,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 18,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "external_type_specification",
+      "line": 96,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 27,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external",
+      "line": 99,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 40,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "external_type_specification",
+      "line": 100,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 1,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external",
+      "line": 104,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 10,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "external_type_specification",
+      "line": 109,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 14,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "assume_specification",
+      "line": 121,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 26,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external",
+      "line": 122,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 42,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "assume_specification",
+      "line": 125,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external",
+      "line": 126,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 10,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "assume_specification",
+      "line": 139,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external",
+      "line": 141,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external",
+      "line": 157,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 43,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external_body",
+      "line": 169,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external_body]"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "kind": "verifier_external_body",
+      "line": 175,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external_body]"
+    },
+    {
+      "column": 40,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "external_type_specification",
+      "line": 18,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 48,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "verifier_external",
+      "line": 26,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 9,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 28,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 9,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 31,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 37,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "external_type_specification",
+      "line": 34,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 10,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "verifier_external",
+      "line": 37,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 22,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "external_type_specification",
+      "line": 69,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 47,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "verifier_external",
+      "line": 73,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 27,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 75,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 16,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "verifier_external",
+      "line": 87,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 18,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "external_type_specification",
+      "line": 88,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 13,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "external_type_specification",
+      "line": 90,
+      "scan": "text",
+      "scope": "closure",
+      "text": "external_type_specification"
+    },
+    {
+      "column": 59,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 108,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 43,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 127,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 4,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 144,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 10,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 147,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 33,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "verifier_external",
+      "line": 151,
+      "scan": "token-tree",
+      "scope": "closure",
+      "text": "#[verifier::external]"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 161,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 184,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 5,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 209,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 28,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 354,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 37,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 372,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    },
+    {
+      "column": 9,
+      "file": "verification/verus/signals_invariant.rs",
+      "kind": "assume_specification",
+      "line": 391,
+      "scan": "text",
+      "scope": "closure",
+      "text": "assume_specification"
+    }
+  ],
+  "ok": false
+}

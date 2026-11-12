@@ -1,0 +1,29 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 12,
+  "sublane": "black-hat-review-after-terminal-tombstone-formal-approval",
+  "delegate": "black-hat-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/test-review.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/implementation.md",
+    ".beads/vb-vt2f/machine-gate-report.md",
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl",
+    "crates/vb_runtime/src/shard/types.rs",
+    "crates/vb_runtime/src/runtime.rs",
+    "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/black-hat-review.md",
+    ".beads/vb-vt2f/defects.md"
+  ],
+  "attempt": 3,
+  "repair_route": "State 12 rerun after terminal tombstone implementation and State 11 approval"
+}

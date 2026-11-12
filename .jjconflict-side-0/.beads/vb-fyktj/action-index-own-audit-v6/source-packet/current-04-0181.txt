@@ -1,0 +1,112 @@
+ACTUALCURRENT crates/vb_storage/src/batch/putters.rs
+181:     pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
+182:         if let Err(e) = crate::journal::verify_content_digest(&record.bytes, &record.digest) {
+183:             self.aborted = true;
+184:             return Err(e);
+185:         }
+186:         let key = match blob_key(record.digest) {
+187:             Ok(k) => k,
+188:             Err(e) => {
+189:                 self.aborted = true;
+190:                 return Err(e);
+191:             }
+192:         };
+193:         let value = match encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES) {
+194:             Ok(v) => v,
+195:             Err(e) => {
+196:                 self.aborted = true;
+197:                 return Err(e);
+198:             }
+199:         };
+200:         self.inner.insert(&self.journal.blob, key, value);
+201:         Ok(())
+202:     }
+203: 
+204:     /// Inserts a status index marker into the batch.
+205:     ///
+206:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+207:     /// and [`Self::put_blob`]: every fallible step sets
+208:     /// `self.aborted = true` before propagating the typed error, so a
+209:     /// subsequent `commit()` cannot persist a partial batch.
+210:     pub fn put_status_index(
+211:         &mut self,
+212:         state: crate::types::IndexStatusState,
+213:         timestamp: u64,
+214:         run: vb_core::RunId,
+215:     ) -> Result<(), JournalError> {
+216:         let key = match index_status_key(state, timestamp, run) {
+217:             Ok(k) => k,
+218:             Err(e) => {
+219:                 self.aborted = true;
+220:                 return Err(e);
+221:             }
+222:         };
+223:         self.inner
+224:             .insert(&self.journal.index_status, key, Vec::<u8>::new());
+225:         Ok(())
+226:     }
+227: 
+228:     /// Inserts a workflow index marker into the batch.
+229:     ///
+230:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+231:     /// and [`Self::put_blob`]: every fallible step sets
+232:     /// `self.aborted = true` before propagating the typed error, so a
+233:     /// subsequent `commit()` cannot persist a partial batch.
+234:     pub fn put_workflow_index(
+235:         &mut self,
+236:         workflow: vb_core::WorkflowId,
+237:         run: vb_core::RunId,
+238:     ) -> Result<(), JournalError> {
+239:         let key = match index_workflow_key(workflow, run) {
+240:             Ok(k) => k,
+241:             Err(e) => {
+242:                 self.aborted = true;
+243:                 return Err(e);
+244:             }
+245:         };
+246:         self.inner
+247:             .insert(&self.journal.index_workflow, key, Vec::<u8>::new());
+248:         Ok(())
+249:     }
+250: 
+251:     /// Inserts an action index marker into the batch.
+252:     ///
+253:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+254:     /// and [`Self::put_blob`]: every fallible step sets
+255:     /// `self.aborted = true` before propagating the typed error, so a
+256:     /// subsequent `commit()` cannot persist a partial batch.
+257:     pub fn put_action_index(
+258:         &mut self,
+259:         action: vb_core::ActionId,
+260:         run: vb_core::RunId,
+261:         step: vb_core::StepIdx,
+262:     ) -> Result<(), JournalError> {
+263:         let key = match index_action_key(action, run, step) {
+264:             Ok(k) => k,
+265:             Err(e) => {
+266:                 self.aborted = true;
+267:                 return Err(e);
+268:             }
+269:         };
+270:         self.inner
+271:             .insert(&self.journal.index_action, key, Vec::<u8>::new());
+272:         Ok(())
+273:     }
+274: 
+275:     /// Stages a tombstone for the action index marker into the batch.
+276:     ///
+277:     /// The tombstone is part of the same atomic batch as the surrounding
+278:     /// event writes; a successful `commit()` removes the index entry
+279:     /// exactly when the corresponding terminal event (completion,
+280:     /// failure, or abandonment) becomes durable.
+281:     pub fn delete_action_index(
+282:         &mut self,
+283:         action: vb_core::ActionId,
+284:         run: vb_core::RunId,
+285:         step: vb_core::StepIdx,
+286:     ) -> Result<(), JournalError> {
+287:         let key = index_action_key(action, run, step)?;
+288:         self.inner.remove(&self.journal.index_action, key);
+289:         Ok(())
+290:     }
+291: }

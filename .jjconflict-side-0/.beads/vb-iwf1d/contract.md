@@ -1,0 +1,3 @@
+# Typed incident fixture contract
+
+Current JournalEvent::RunFinished requires run,seq,result:SlotIdx,attempt. Existing completed-run incident fixture must provide an explicit result slot (SlotIdx::ZERO), retain all prior event ordering and exact report assertions, and remain a completed non-incident. This repairs test schema compilation only; production analyzer/event/wire behavior unchanged. Scope commands_incident.rs completed-run test one added typed field. Tests:13new mapper cases and existing incident tests must actually run nonzero; independent code/test review before closure. Tiny coordinator schema glue discovered by actual compilerE0063, not autonomous local implementation claim.

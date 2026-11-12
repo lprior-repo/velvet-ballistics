@@ -1,0 +1,229 @@
+{
+  "historical_own_commit": "0f71f398cf66a3c8acb881826683aa36f6d7c850",
+  "current_frozen_source": "0dd55b94cbdd05c21951e6e239313d393816a99d",
+  "audit_date": "2026-10-22",
+  "unified_hunk_count": 23,
+  "hunk_breakdown_by_file": {
+    "crates/vb_runtime/src/frame_pool.rs": 1,
+    "crates/vb_runtime/src/frame_pool/tests.rs": 16,
+    "crates/vb_runtime/src/shard/tests/chunk_003.rs": 3,
+    "crates/vb_runtime/src/shard/tests/chunk_010.rs": 1,
+    "crates/vb_runtime/src/shard/tests/chunk_017.rs": 1,
+    "crates/vb_runtime/src/shard/tests/chunk_024.rs": 1
+  },
+  "summary": {
+    "total_unified_hunks": 23,
+    "exact_present": 22,
+    "semantically_present": 1,
+    "superseded_with_replacement": 0,
+    "missing_useful": 0,
+    "obsolete": 0,
+    "unresolved": 0
+  },
+  "conclusion": "All 23 own unified hunks from commit 0f71f398 are present in the current frozen source. One test hunk (tests.rs hunk 3) is semantically present with identical assertion values but differs in line wrapping (4 non-empty added lines not byte-identical to historical). The production file frame_pool.rs is whole-file byte-identical to the historical commit. No hunks were lost, superseded, or drifted.",
+  "notes": [
+    "Frame pool production implementation (frame_pool.rs) is whole-file exact equal to historical commit.",
+    "Test files are not whole-file exact due to 4 non-empty added lines in tests.rs hunk 3 that differ only in line wrapping/formatting; assertion values and behavior are identical.",
+    "The existing frame pool no-allocation cycle test (frame_pool_no_runtime_allocation_after_construction) does not measure actual allocator state; it only verifies available() remains at capacity. This is an existing test weakness, not a missing hunk restoration need.",
+    "Several historical tests used early-return on setup failure (e.g., Err(_) => return) rather than panic; this pattern remains and is an existing test quality limitation, not a missing hunk."
+  ],
+  "files": [
+    {
+      "path": "crates/vb_runtime/src/frame_pool.rs",
+      "unified_hunks": 1,
+      "hunks": [
+        {
+          "id": "FP-H1",
+          "unified_hunk": "@@ -24,45 +24,61 @@ pub struct FramePool",
+          "change": "Pre-allocate all frames at construction; take() no fresh allocation fallback; release() dimension + capacity checks",
+          "status": "exact_present",
+          "evidence": "Lines 29-87: all three method implementations match historical; whole file byte-identical to historical commit"
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "unified_hunks": 16,
+      "hunks": [
+        {
+          "id": "T-H1",
+          "unified_hunk": "@@ -41,7 +41,7 @@ fn pool_rejects_excessive_capacity",
+          "change": "Rename take_allocates_when_empty -> take_returns_preallocated_frame",
+          "status": "exact_present",
+          "evidence": "Line 44: exact name and body match"
+        },
+        {
+          "id": "T-H2",
+          "unified_hunk": "@@ -57,7 +57,7 @@ fn release_and_reuse_frame",
+          "change": "available() == 4 after release (was 1)",
+          "status": "exact_present",
+          "evidence": "Line 60: assert_eq!(pool.available(), 4)"
+        },
+        {
+          "id": "T-H3",
+          "unified_hunk": "@@ -68,45 +68,85 @@ fn release_drops_when_at_capacity",
+          "change": "Multiple test changes: release_drops_when_at_capacity (second take fails), is_empty_returns_false_for_new_pool, is_empty_returns_true_after_taking_all, capacity_returns_configured_value (add available check), plus 3 new tests (frame_pool_new_preallocates_capacity_frames, frame_pool_no_runtime_allocation_after_construction, frame_pool_exhausted_take_returns_error)",
+          "status": "semantically_present",
+          "evidence": "Lines 67-162: all 7 logical changes present with identical assertion values; 4 non-empty added lines differ only in line wrapping (pool.is_empty() false assertion, pool.available() 8 assertion, expect(\"first take\"), expect(\"second take\"))"
+        },
+        {
+          "id": "T-H4",
+          "unified_hunk": "@@ -114,9 +154,9 @@ fn frame_pool_new_creates_pool_with_capacity",
+          "change": "available() == 8 (was 0)",
+          "status": "exact_present",
+          "evidence": "Line 171: assert_eq!(pool.available(), 8)"
+        },
+        {
+          "id": "T-H5",
+          "unified_hunk": "@@ -141,7 +181,7 @@ fn frame_pool_release_returns_frame_to_pool",
+          "change": "available() == 4 after release (was 1)",
+          "status": "exact_present",
+          "evidence": "Line 196: assert_eq!(pool.available(), 4)"
+        },
+        {
+          "id": "T-H6",
+          "unified_hunk": "@@ -153,7 +193,7 @@ fn frame_pool_is_empty_when_all_acquired",
+          "change": "Comment change only",
+          "status": "exact_present",
+          "evidence": "Line 209: exact comment"
+        },
+        {
+          "id": "T-H7",
+          "unified_hunk": "@@ -176,7 +216,7 @@ fn frame_pool_is_not_empty_after_release",
+          "change": "available() == 4 (was 1)",
+          "status": "exact_present",
+          "evidence": "Line 231: assert_eq!(pool.available(), 4)"
+        },
+        {
+          "id": "T-H8",
+          "unified_hunk": "@@ -238,11 +278,11 @@ fn frame_pool_multiple_release_and_take_cycle",
+          "change": "available() == 4 then 3 (was 2 then 1)",
+          "status": "exact_present",
+          "evidence": "Lines 293, 297: assert_eq!(pool.available(), 4) and assert_eq!(pool.available(), 3)"
+        },
+        {
+          "id": "T-H9",
+          "unified_hunk": "@@ -275,13 +315,13 @@ fn frame_pool_new_with_different_slot_counts",
+          "change": "Rename frame_pool_take_allocates_fresh_when_no_recycled -> frame_pool_take_returns_preallocated_frame_when_no_recycled; available() == 4 (was 0)",
+          "status": "exact_present",
+          "evidence": "Line 330: exact name; line 333: assert_eq!(pool.available(), 4)"
+        },
+        {
+          "id": "T-H10",
+          "unified_hunk": "@@ -420,12 +460,12 @@ fn frame_pool_reused_frame_clears_prior_state",
+          "change": "Rename frame_pool_available_starts_at_zero -> frame_pool_available_starts_at_capacity; available() == 4 (was 0)",
+          "status": "exact_present",
+          "evidence": "Line 475: exact name; line 480: assert_eq!(pool.available(), 4)"
+        },
+        {
+          "id": "T-H11",
+          "unified_hunk": "@@ -442,33 +482,42 @@ fn frame_pool_capacity_is_const",
+          "change": "Rename frame_pool_exhaust_then_take_still_succeeds_via_fresh_alloc -> frame_pool_exhausted_take_returns_error_no_fresh_alloc; f3 fails with AllocationFailed (was succeeds); also changes to frame_pool_release_wrong_dimension_frame_is_silently_dropped with available() checks",
+          "status": "exact_present",
+          "evidence": "Lines 497-513: exact test body for frame_pool_exhausted_take_returns_error_no_fresh_alloc; lines 516-543: exact test body for frame_pool_release_wrong_dimension_frame_is_silently_dropped with available() checks"
+        },
+        {
+          "id": "T-H12",
+          "unified_hunk": "@@ -488,23 +537,21 @@ fn frame_pool_release_never_panics_or_overflows_capacity",
+          "change": "Rename frame_pool_zero_step_count_rejects_frame_creation -> frame_pool_zero_step_count_rejects_construction; construction itself fails (was take failing)",
+          "status": "exact_present",
+          "evidence": "Lines 552-569: exact test body; FramePool::new(0, 1, 4) returns InvalidCompiledWorkflow with reason step_count_zero"
+        },
+        {
+          "id": "T-H13",
+          "unified_hunk": "@@ -572,13 +619,14 @@ fn frame_pool_take_release_take_preserves_pool_consistency_under_rapid_cycle",
+          "change": "frame_pool_release_after_release_at_capacity_drops_all_extras: only 2 frames exist (was 5)",
+          "status": "exact_present",
+          "evidence": "Lines 633-648: exact test body; frames.len() == 2, pool.available() == 2 after release"
+        },
+        {
+          "id": "T-H14",
+          "unified_hunk": "@@ -608,7 +656,7 @@ fn frame_pool_large_capacity_at_boundary_succeeds",
+          "change": "available() == 4096 (was 0)",
+          "status": "exact_present",
+          "evidence": "Line 671: assert_eq!(pool.available(), 4096, \"all frames pre-allocated\")"
+        },
+        {
+          "id": "T-H15",
+          "unified_hunk": "@@ -633,24 +681,27 @@ fn frame_pool_reused_frame_step_count_matches_pool_config",
+          "change": "frame_pool_concurrent_dimension_pools_do_not_interfere: available() == 4 (was 0)",
+          "status": "exact_present",
+          "evidence": "Lines 697-714: exact test body with available() checks at lines 699, 701, 707, 711, 714"
+        },
+        {
+          "id": "T-H16",
+          "unified_hunk": "@@ -658,20 +709,18 @@ fn frame_pool_concurrent_dimension_pools_do_not_interfere",
+          "change": "Rename frame_pool_take_always_produces_usable_frame_even_when_exhausted -> frame_pool_take_returns_error_when_exhausted; second take fails with AllocationFailed (was 20 takes succeeding)",
+          "status": "exact_present",
+          "evidence": "Lines 724-736: exact test body; second take returns AllocationFailed"
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+      "unified_hunks": 3,
+      "hunks": [
+        {
+          "id": "C3-H1",
+          "unified_hunk": "@@ -107,7 +107,8 @@ fn finished_run_releases_frame_to_dimension_pool",
+          "change": "available() == Some(4) (was Some(1))",
+          "status": "exact_present",
+          "evidence": "Line 113: assert_eq!(available, Some(4))"
+        },
+        {
+          "id": "C3-H2",
+          "unified_hunk": "@@ -129,7 +130,8 @@ fn cancelled_run_releases_frame_to_dimension_pool",
+          "change": "First assertion: available() == Some(3) (was Some(0))",
+          "status": "exact_present",
+          "evidence": "Line 134: Some(3)"
+        },
+        {
+          "id": "C3-H3",
+          "unified_hunk": "@@ -139,7 +141,8 @@ fn cancelled_run_releases_frame_to_dimension_pool",
+          "change": "Second assertion: available() == Some(4) (was Some(1))",
+          "status": "exact_present",
+          "evidence": "Line 145: Some(4)"
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_010.rs",
+      "unified_hunks": 1,
+      "hunks": [
+        {
+          "id": "C10-H1",
+          "unified_hunk": "@@ -30,11 +30,12 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish",
+          "change": "available() == Some(4) (was Some(1))",
+          "status": "exact_present",
+          "evidence": "Line 38: Some(4)"
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_017.rs",
+      "unified_hunks": 1,
+      "hunks": [
+        {
+          "id": "C17-H1",
+          "unified_hunk": "@@ -194,21 +194,23 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation",
+          "change": "Rename bh_shd_07_frame_pool_allocates_beyond_pool_capacity -> bh_shd_07_frame_pool_bounded_no_fresh_alloc; f3 fails with AllocationFailed (was succeeds beyond capacity)",
+          "status": "exact_present",
+          "evidence": "Lines 208-222: exact test body; f3 matches Err(AllocationFailed) at line 220"
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_024.rs",
+      "unified_hunks": 1,
+      "hunks": [
+        {
+          "id": "C24-H1",
+          "unified_hunk": "@@ -174,16 +174,18 @@ fn vb1u88_cancel_removes_run_and_releases_frame",
+          "change": "First assertion: available() == Some(3) (was Some(0)); second assertion: available() == Some(4) (was Some(1))",
+          "status": "exact_present",
+          "evidence": "Lines 192-194: Some(3); lines 199-201: Some(4)"
+        }
+      ]
+    }
+  ]
+}

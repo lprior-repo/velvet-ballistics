@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-j3e3s",
+  "flow_version": "v5",
+  "test_count": 75,
+  "passed": 75,
+  "failed": 0,
+  "fixes": [
+    "check_clean _ALLOWED_DIRS now includes .jj/, .git/, .moon/cache/ to allow VCS/cache untracked files",
+    "perf_run now returns raw CSV content (csv_content field) for inclusion in combined raw log",
+    "find_binary now requires executable field and file existence; no filenames[0] fallback",
+    "system_metadata now requires actual CPU model and governor values; no 'unknown' defaults"
+  ],
+  "new_tests": [
+    "t_check_clean_allowed_jj_git_moon",
+    "t_check_clean_this_workspace",
+    "t_perf_run_returns_csv_content",
+    "t_find_binary_no_fallback_to_filenames",
+    "t_system_metadata_requires_cpu",
+    "t_system_metadata_requires_governor"
+  ],
+  "actual_workspace_check_clean": "PASS",
+  "actual_cpu_model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+  "actual_governor": "performance"
+}

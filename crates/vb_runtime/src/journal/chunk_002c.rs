@@ -15,7 +15,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunKilled { .. }
             | RuntimeJournalEvent::Resumed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. } => {
+            | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::StepFailed { .. } => {
                 Self::run_storage_event(clone_for_dispatch(&event), seq)
             }
             RuntimeJournalEvent::ActionScheduled { .. }
@@ -26,7 +27,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionAbandoned { .. } => {
                 Ok(Self::action_storage_event(clone_for_dispatch(&event), seq))
             }
-            RuntimeJournalEvent::WaitScheduled { .. }
+            RuntimeJournalEvent::RetryTimerScheduled { .. }
+            | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }

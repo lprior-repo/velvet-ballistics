@@ -1,0 +1,159 @@
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:765:13
+    |
+765 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:348:13
+    |
+348 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:387:13
+    |
+387 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:155:9
+    |
+155 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:167:9
+    |
+167 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:185:9
+    |
+185 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:204:9
+    |
+204 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:234:9
+    |
+234 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:262:9
+    |
+262 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:312:9
+    |
+312 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:323:9
+    |
+323 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:392:9
+    |
+392 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:404:9
+    |
+404 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:423:9
+    |
+423 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:438:9
+    |
+438 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:460:9
+    |
+460 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib test) generated 17 warnings (run `cargo fix --lib -p vb_runtime --tests` to apply 16 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-44a6b870dcba4c37)
+
+running 4 tests
+test shard::lifecycle::tests::shard_boundary_validates_fabricated_id_with_inputs_before_admission ... ok
+test shard::lifecycle::tests::shard_boundary_validates_fabricated_id_before_admission ... ok
+test shard::lifecycle::tests::shard_boundary_accepts_valid_contract_with_seeded_input ... ok
+test shard::lifecycle::tests::shard_boundary_accepts_valid_contract_and_executes_do ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1905 filtered out; finished in 0.00s
+

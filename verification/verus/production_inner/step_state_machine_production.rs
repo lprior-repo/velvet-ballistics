@@ -74,7 +74,7 @@ pub enum SpecSlotValue {
 }
 
 /// Mirror of `Taint` discriminant set at
-/// `crates/vb_core/src/value.rs:14-25`.
+/// `crates/vb_core/src/value/taint.rs:10-21`.
 #[derive(Clone, Copy)]
 pub enum SpecTaint {
     Clean,
@@ -92,8 +92,8 @@ pub enum SpecTaint {
 // ::StepCounterOverflow)`. We mirror only the variants exercised by
 // signals.rs to keep the binding narrow.
 /// Mirror of `EngineError::StepCounterOverflow` and `EngineError
-/// ::BudgetParse { reason }` from `crates/vb_core/src/errors.rs:241` and
-/// `:396`.
+/// ::BudgetParse { reason }` from `crates/vb_core/src/errors.rs:473` and
+/// `:633`.
 #[derive(Clone)]
 pub enum SpecEngineError {
     StepCounterOverflow,

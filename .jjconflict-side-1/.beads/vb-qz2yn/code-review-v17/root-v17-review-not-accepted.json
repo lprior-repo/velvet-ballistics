@@ -1,0 +1,10 @@
+{
+  "status": "REJECTED AS REVIEW EVIDENCE; source itself unchanged",
+  "reasons": [
+    "Claims checkedFjall3.1.10 but Cargo.lock and actualcompiler use3.1.4; wrongdependencyversion.",
+    "Claims nonexistent JournalError::CompiledIrReadback; actual readbackhook gives ArtifactMalformed.",
+    "Claims newmodule198lines and ownforbidattribute; actualsource differs, usepacketfullsource.",
+    "Counts33requirements but reporttablecountnotbound, do not fabricate totals."
+  ],
+  "next": "Independent reviewer must reread actual source packet and actual pinned dependency before verdict."
+}

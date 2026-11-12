@@ -1,0 +1,4 @@
+COMMAND: cargo fmt --check
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+(no diff output emitted; formatter produced no changes)
+EXIT_STATUS=0

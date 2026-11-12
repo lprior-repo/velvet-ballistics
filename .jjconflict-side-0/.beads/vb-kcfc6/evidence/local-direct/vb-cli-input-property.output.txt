@@ -1,0 +1,20 @@
+```rust
+proptest::proptest! {
+    #[test]
+    fn typed_i64_mapping_and_trailing_rejection(value in proptest::num::i64::ANY, junk in proptest::collection::vec(proptest::num::u8::ANY, 1..17)) {
+        let wf = fixture(Box::from([i64_port()]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        let bytes = postcard::to_alloc_vec(&Box::<[SlotValue]>::from([SlotValue::I64(value)]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(value))]))
+        );
+        bytes.extend(junk);
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Err(InputMappingError::DecodeFailed)
+        );
+    }
+}
+```

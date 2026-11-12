@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--check",
+    "--",
+    "crates/vb_core/src/policy.rs",
+    "crates/vb_core/src/policy/new_tests.rs",
+    "crates/vb_runtime/src/policy.rs",
+    "crates/vb_runtime/src/policy/ticket_field_variation_tests.rs",
+    "crates/vb_runtime/src/policy/taint_tests.rs",
+    "crates/vb_runtime/src/policy/emergency_and_admission_tests.rs"
+  ],
+  "exit_code": 1,
+  "seconds": 1.394,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tphef/evidence/V5-FMT",
+  "coordinator_message": "Also split policy/new_tests.rs (>400lines) into focused <=300line files. Replace NEW tests/test_digest bytes[0]/bytes[31] assignments with a direct nonzero [0xAB;32] literal; no uncheckedindex additions. Preserve exact original7RuntimePolicytests.\nCOORDINATOR FINAL SOURCE REVIEW: New compute_input_digest Vec::with_capacity(256) copies arbitrary input then allocates/grows and is REJECTED. Restore streaming blake3::Hasher::new()/update(input_bytes) approach, split helper push_ticket_parts to accept &mut Hasher and .update fixed byteparts. This avoids unbounded payloadcopy and allocations; no optimization/performanceclaim. Do not change record schema again. Core encode_taint_canonical in samecrate can exhaustive-match actualTaint with no fallback; futurevariant addition forcescompilefix. Do not collapse unknowns to255. evaluate still>25logical: compute outcome/layer/influence first then ONE recordstructliteral, overlay branch feedsoutcome notduplicatedrecord. Tests must coverall8identityfieldmutations+value+all5taints. Preserve original7tests and no newallow/unwrap/panic/index/casts. Everygate newuniqueprefix; finalstrictlint/fmt/scopedtests rawevidence, foundationonly.\n"
+}

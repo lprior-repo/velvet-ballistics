@@ -1,0 +1,235 @@
+#[test]
+fn shard_rejects_active_run_capacity_overflow() {
+    let config = ShardConfig {
+        command_queue_capacity: 4,
+        trace_capacity: 4,
+        step_budget_per_tick: 4,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+
+    let first = shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+        run: super::RunId::new(1),
+        workflow: workflow.clone(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    });
+    assert_eq!(first, Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    let second = shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+        run: super::RunId::new(2),
+        workflow: workflow,
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+            vb_core::ActionId::new(0),
+        ),
+    });
+    assert_eq!(second, Ok(()));
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
+    );
+}
+
+#[test]
+fn inspect_command_stores_retrievable_snapshot() {
+    let config = ShardConfig {
+        command_queue_capacity: 4,
+        trace_capacity: 4,
+        step_budget_per_tick: 4,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(7);
+
+    let submitted = shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+        run: run,
+        workflow: workflow,
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    });
+    assert_eq!(submitted, Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    let inspected = shard.enqueue(ShardCommand::Inspect {
+        run,
+        correlation: 99,
+    });
+    assert_eq!(inspected, Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+
+    match shard.take_inspect_response() {
+        Some(InspectResponse::Found(snapshot)) => {
+            assert_eq!(snapshot.run, run);
+            assert_eq!(snapshot.correlation, 99);
+        }
+        other => assert_eq!(other, None),
+    }
+}
+
+#[test]
+fn enqueue_shutdown_sets_shutting_down_flag() {
+    let config = ShardConfig {
+        command_queue_capacity: 4,
+        trace_capacity: 4,
+        step_budget_per_tick: 4,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.is_shutting_down(), false);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn tick_returns_true_when_queue_is_empty() {
+    let config = ShardConfig::default();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.tick(), Ok(true));
+}
+
+#[test]
+fn cancel_nonexistent_run_returns_run_not_found() {
+    let config = ShardConfig::default();
+    let mut shard = Shard::new(config);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: super::RunId::new(999),
+            reason: None
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+#[test]
+fn counters_reflect_submitted_after_submit_tick() {
+    let config = ShardConfig {
+        command_queue_capacity: 4,
+        trace_capacity: 4,
+        step_budget_per_tick: 4,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+}
+
+#[test]
+fn inspect_nonexistent_run_returns_not_found() {
+    let config = ShardConfig {
+        command_queue_capacity: 4,
+        trace_capacity: 4,
+        step_budget_per_tick: 4,
+        max_active_runs: 1,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run: super::RunId::new(999),
+            correlation: 42,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard.take_inspect_response(),
+        Some(InspectResponse::NotFound {
+            run: super::RunId::new(999),
+            correlation: 42,
+        })
+    );
+}
+
+// Helper: workflow that finishes immediately (SetConst -> Finish).
+fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_const = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(vb_core::ids::StepIdx::new(1)));
+    let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        source_metadata: None,
+        name: Box::from("finished"),
+        digest: WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([set_const, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([vb_core::value::ConstValue::Bool(true)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn input_result_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let mut parts = finished_workflow()?.to_parts();
+    parts.nodes = Box::from([vb_core::workflow::node(
+        vb_core::StepIdx::ZERO,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+        None,
+        None,
+    )]);
+    parts.input_slots = Box::from([vb_core::CompiledInputSlot {
+        slot: vb_core::SlotIdx::ZERO,
+        kind: vb_core::InputSlotKind::Any,
+        constraint: vb_core::CompiledInputConstraint::required(),
+    }]);
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_deadline = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(vb_core::ids::StepIdx::new(1)));
+    let wait = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::ZERO, }, None, Some(vb_core::ids::StepIdx::new(2)));
+    let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        source_metadata: None,
+        name: Box::from("timed_wait_then_finish"),
+        digest: WorkflowDigest::from_bytes([4; 32]),
+        nodes: Box::from([set_deadline, wait, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([vb_core::value::ConstValue::I64(10)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}

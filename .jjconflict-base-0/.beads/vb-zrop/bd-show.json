@@ -1,0 +1,51 @@
+[
+  {
+    "id": "vb-zrop",
+    "title": "quality: fix verify-standard ignored fallible result gate",
+    "description": "State 11 for vb-qi37.23 failed moon run :verify-standard at GATE-IGNORED-FALLIBLE-RESULTS. Raw log: /home/lewis/src/go-skill-vb-qi37-23-current/target/vb-qi37.23-evidence/verify-standard.log. Violations include production paths crates/vb_storage/src/admission.rs:512, crates/vb_cli/src/app_impl.rs:4916, crates/vb_cli/src/commands_ai_context.rs:635, crates/vb_ipc/src/client.rs:370, crates/vb_ipc/src/server/dispatch.rs:89 plus test-scope scanner findings. Repair nearest owning implementation/state, rerun verify-standard, then resume vb-qi37.23 from State 11.",
+    "acceptance_criteria": "moon run :verify-standard passes with GATE-IGNORED-FALLIBLE-RESULTS clean or justified by narrow documented exceptions; vb-qi37.23 can resume State 11.",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-18T20:36:11Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-18T20:38:59Z",
+    "labels": [
+      "follow-up",
+      "quality",
+      "release-blocker",
+      "verification"
+    ],
+    "dependents": [
+      {
+        "id": "vb-qi37.23",
+        "title": "quality: Full gate evidence refresh",
+        "description": "Cover the explicit full-gate-evidence-refresh gap. Re-run and record current evidence for moon ci plus required fuzz, Miri, coverage, mutants, sanitizer, supply-chain, benchmark, public API, and bloat gates.",
+        "acceptance_criteria": "Evidence bundle records exact command, timestamp, commit, environment, and result for each required gate; failures become child beads; no represented or placeholder task counts as evidence; final master-doc DoD evidence is traceable to bead closure.",
+        "notes": "State 11 blocked after vb-qi37.25 clearance. moon ci passed, but moon run :verify-standard failed GATE-IGNORED-FALLIBLE-RESULTS. Classification BLOCK_RELEASE/REQUIRED_OBLIGATION_FAIL. Artifacts in /home/lewis/src/go-skill-vb-qi37-23-current/.beads/vb-qi37.23. Follow-up blocker bead vb-zrop created and linked; resume vb-qi37.23 from State 11 after vb-zrop lands.",
+        "status": "blocked",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-09T06:37:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-18T20:37:32Z",
+        "labels": [
+          "ci",
+          "evidence",
+          "master-gap",
+          "mvp-post-feature-evidence",
+          "performance",
+          "quality",
+          "release-blocker",
+          "release-plan",
+          "testing"
+        ],
+        "dependency_type": "blocks"
+      }
+    ]
+  }
+]

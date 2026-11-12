@@ -1,0 +1,9 @@
+{
+  "code_review": "0eb0452279a9696517f8c27054b8664d0766df7c",
+  "test_review_v19": "fc0614f72ae89b148f4e4b90b3c65781cc5da337",
+  "deny_code": "c4b5ffaa8ccebe16031ccd138bc30a64e9a7945d",
+  "deny_test": "8f8995954447484fae74cb047c30a124de0f61ad",
+  "production_code_delta_from_v19": false,
+  "all_v19_inputs_match": true,
+  "test_delta_requires_independent_addendum": true
+}

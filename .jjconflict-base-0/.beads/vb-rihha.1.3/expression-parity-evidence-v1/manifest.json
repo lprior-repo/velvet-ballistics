@@ -1,0 +1,171 @@
+{
+  "source_pin": "5cf6915b16338cd0ec051f5bbca32e25768740d7",
+  "base_pin": "0e106f6182aa631d61cd79ef4bc514712022cd75",
+  "selected_moon": {
+    "passed": 16613,
+    "skipped": 7,
+    "tasks": 12,
+    "exit": 0
+  },
+  "canonical_moon_ci": "NOT_RUN",
+  "remaining": [
+    "test-integrity live gate FAIL; protected ledger unchanged",
+    "nightly probe protected config uses prohibited /tmp; unchanged",
+    "Has literal text lowering unresolved; feature not closed",
+    "Timer acceptance scenarios still in progress",
+    "No Git commit or source push performed"
+  ],
+  "source_paths": [
+    "crates/vb_compile/src/type_taint_expr.rs",
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/contains_hot_parity_tests.rs",
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/contains_list_parity_tests.rs",
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+    "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+    "crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs",
+    "crates/vb_core/src/replay/helpers.rs",
+    "crates/vb_core/src/replay/ops/contains_replay_parity_tests.rs",
+    "crates/vb_core/src/replay/ops/contains_replay_workflow_tests.rs",
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_hot_tests.rs",
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_replay_tests.rs",
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_tests.rs",
+    "crates/vb_core/src/replay/ops/tests.rs",
+    "crates/vb_core/src/replay/ops/tests_expr.rs",
+    "crates/vb_expr/src/expr_eval/helper_store.rs",
+    "crates/vb_expr/src/expr_eval/helper_store_values.rs",
+    "crates/vb_expr/src/expr_eval_tests_core.rs",
+    "crates/vb_expr/src/expr_eval_tests_store.rs",
+    "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs",
+    "crates/vb_expr/src/expr_typecheck/tests/contains_argument_types.rs",
+    "crates/vb_expr/src/expr_typecheck/tests.rs",
+    "crates/workspace_tests/tests/contains_compound_identity.rs",
+    "crates/workspace_tests/tests/contains_direct_helper_edges.rs",
+    "crates/workspace_tests/tests/contains_list_store_parity.rs",
+    "crates/workspace_tests/tests/contains_route_edges.rs",
+    "crates/workspace_tests/tests/contains_static_cold_guards.rs",
+    "crates/workspace_tests/tests/has_store_bytecode_boundaries.rs",
+    "crates/workspace_tests/tests/helper_bytecode_argument_order.rs",
+    "crates/workspace_tests/tests/support/contains_three_routes.rs"
+  ],
+  "inputs": [
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v4.log",
+      "file": "moon-selected-v4.log.gz",
+      "source_bytes": 3029507,
+      "source_sha256": "da2bfd80f80363c4a9f5e0161259e5fa7c371bb23fb79e08cc0771bac128080f",
+      "archived_sha256": "4ac4acacddf200c469574dfb33ca5cc6e31fa3f479f2ae27f20dc0bcbc3967dc",
+      "gzip": true
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v4.exit",
+      "file": "moon-selected-v4.exit",
+      "source_bytes": 12,
+      "source_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "archived_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-test-integrity-live.log",
+      "file": "test-integrity-live.log",
+      "source_bytes": 727,
+      "source_sha256": "1f3017e87384c6f429a95bd468acaf4f7542b92d3c246be8ec917eb05aa401d8",
+      "archived_sha256": "1f3017e87384c6f429a95bd468acaf4f7542b92d3c246be8ec917eb05aa401d8",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-test-integrity-live.exit",
+      "file": "test-integrity-live.exit",
+      "source_bytes": 22,
+      "source_sha256": "d67339beb4bf7b4e7dab9149e109e5cd5f050b162f5c9c1ee572b6369fe6b34b",
+      "archived_sha256": "d67339beb4bf7b4e7dab9149e109e5cd5f050b162f5c9c1ee572b6369fe6b34b",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-rihha.1.3/contains-parity-contract-proposal-v6.md",
+      "file": "contains-contract-v6.md",
+      "source_bytes": 9019,
+      "source_sha256": "4b5f05df3803dc88504425e9c2700922f9a3cec31c847fee21d4bf7c492f5477",
+      "archived_sha256": "4b5f05df3803dc88504425e9c2700922f9a3cec31c847fee21d4bf7c492f5477",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md",
+      "file": "has-contract-v3.md",
+      "source_bytes": 13180,
+      "source_sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860",
+      "archived_sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/.beads/vb-eirmk.42.1/has-bytecode-contract-clarification-v5.md",
+      "file": "has-bytecode-contract-v5.md",
+      "source_bytes": 5644,
+      "source_sha256": "b97207da41fcdc3369fe4706f7e6099283de684010f528962a99639903334b51",
+      "archived_sha256": "b97207da41fcdc3369fe4706f7e6099283de684010f528962a99639903334b51",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/contains-has-composition-code-review-v2.json",
+      "file": "combined-code-review-v2.json",
+      "source_bytes": 6247,
+      "source_sha256": "71a7c3bc5975ae4900b772b1477f717edf098c2e5a76275832ca5d2190a16d47",
+      "archived_sha256": "71a7c3bc5975ae4900b772b1477f717edf098c2e5a76275832ca5d2190a16d47",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/contains-has-composition-test-review-v2.json",
+      "file": "combined-test-review-v2-REJECT.json",
+      "source_bytes": 46757,
+      "source_sha256": "f65e748740243895f2ae3e203846c5c09061a2f0ea454c71825221ceca1c1ad2",
+      "archived_sha256": "f65e748740243895f2ae3e203846c5c09061a2f0ea454c71825221ceca1c1ad2",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/contains-has-composition-test-review-v3.json",
+      "file": "combined-test-review-v3.json",
+      "source_bytes": 10133,
+      "source_sha256": "8cfc5628d4031a56e8dac8684e94d8fa4afb70d2555f2324ef2042770caa1ad6",
+      "archived_sha256": "8cfc5628d4031a56e8dac8684e94d8fa4afb70d2555f2324ef2042770caa1ad6",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/helper-bytecode-operand-order-code-review-v3.json",
+      "file": "helper-operand-code-review-v3.json",
+      "source_bytes": 7806,
+      "source_sha256": "1122a4e44726b37a868b736ae29690cddc00b262910371f84489f6255f339f04",
+      "archived_sha256": "1122a4e44726b37a868b736ae29690cddc00b262910371f84489f6255f339f04",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/helper-bytecode-operand-order-test-review-v3.json",
+      "file": "helper-operand-test-review-v3.json",
+      "source_bytes": 14526,
+      "source_sha256": "c00b4a40d15d1baa474788b59c964270f655a721dcb4a098a3c3eb63fcc77219",
+      "archived_sha256": "c00b4a40d15d1baa474788b59c964270f655a721dcb4a098a3c3eb63fcc77219",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/has-bytecode-boundary-test-review-v3.json",
+      "file": "has-bytecode-test-review-v3.json",
+      "source_bytes": 12223,
+      "source_sha256": "6e0aaee2c36ea67c56cc69d35126d9bd9ff9e060a27675e7b892ccf74b3a7a8c",
+      "archived_sha256": "6e0aaee2c36ea67c56cc69d35126d9bd9ff9e060a27675e7b892ccf74b3a7a8c",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/contains-remaining-raw-native.log",
+      "file": "remaining-raw-native.log",
+      "source_bytes": 1503,
+      "source_sha256": "40b46aee80faf79d42bc00154e7bcbb018975118bdcae4256fe72f364c9dea8f",
+      "archived_sha256": "40b46aee80faf79d42bc00154e7bcbb018975118bdcae4256fe72f364c9dea8f",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/contains-remaining-raw-native.exit",
+      "file": "remaining-raw-native.exit",
+      "source_bytes": 14,
+      "source_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "archived_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "gzip": false
+    }
+  ]
+}

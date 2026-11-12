@@ -1,0 +1,116 @@
+```python
+#!/usr/bin/env python3
+"""
+Repair script for Rust E0063: missing `input_slots` field in WorkflowParts initializers.
+
+Reads evidence/missing-input-slot-spans.json, validates each span, and inserts
+`input_slots: Box::new([]),` immediately after the opening brace of each
+WorkflowParts struct literal.
+
+Safety: operates only on test fixtures under crates/vb_core that internally
+seed slots; no production behavior or assertions are changed.
+"""
+
+import json
+import os
+import sys
+from collections import defaultdict
+
+EVIDENCE_PATH = "evidence/missing-input-slot-spans.json"
+EXPECTED_EDITS = 115
+
+def main():
+    # Guard: must be at repo root
+    if not os.path.isdir("crates/vb_core"):
+        sys.exit("error: not at repository root (crates/vb_core not found)")
+
+    # Guard: not on main branch (git or jj)
+    try:
+        import subprocess
+        r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip() == "main":
+            sys.exit("error: on git branch 'main'; check out a feature branch")
+    except FileNotFoundError:
+        pass  # git not available; try jj
+
+    try:
+        import subprocess
+        r = subprocess.run(["jj", "branch", "show"],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and "main" in r.stdout.split():
+            sys.exit("error: on jj branch 'main'; check out a feature branch")
+    except FileNotFoundError:
+        pass  # neither git nor jj available
+
+    # Load evidence
+    with open(EVIDENCE_PATH, "r") as f:
+        spans = json.load(f)
+
+    if len(spans) != EXPECTED_EDITS:
+        sys.exit(f"error: expected {EXPECTED_EDITS} spans, got {len(spans)}")
+
+    # Group by file
+    by_file = defaultdict(list)
+    for s in spans:
+        by_file[s["file"]].append(s)
+
+    edits_made = 0
+
+    for filepath, file_spans in by_file.items():
+        # Sort descending by byte_start so earlier edits don't shift later offsets
+        file_spans.sort(key=lambda s: s["byte_start"], reverse=True)
+
+        with open(filepath, "rb") as f:
+            data = bytearray(f.read())
+
+        for s in file_spans:
+            start = s["byte_start"]
+            end = s["byte_end"]
+            span_bytes = data[start:end]
+
+            # Validate: span must contain "WorkflowParts"
+            if b"WorkflowParts" not in span_bytes:
+                sys.exit(f"error: span at {filepath}:{start} does not contain 'WorkflowParts'")
+
+            # Find the opening brace of the struct literal
+            # The span starts at "WorkflowParts"; the brace follows after whitespace
+            brace_pos = -1
+            for i in range(start, len(data)):
+                if data[i:i+1] == b"{":
+                    brace_pos = i
+                    break
+            if brace_pos == -1:
+                sys.exit(f"error: no opening brace found after {filepath}:{start}")
+
+            # Determine indentation: look at the line containing the brace
+            line_start = data.rfind(b"\n", 0, brace_pos) + 1
+            line_end = data.find(b"\n", brace_pos)
+            if line_end == -1:
+                line_end = len(data)
+            line = data[line_start:line_end]
+
+            # Count leading whitespace
+            indent = b""
+            for b in line:
+                if b in (b" ", b"\t"):
+                    indent += bytes([b])
+                else:
+                    break
+
+            # Insert after the brace: newline + indent + 4 spaces + field + comma
+            insert = (b"\n" + indent + b"    input_slots: Box::new([]),")
+            data[brace_pos+1:brace_pos+1] = insert
+            edits_made += 1
+
+        with open(filepath, "wb") as f:
+            f.write(data)
+
+    if edits_made != EXPECTED_EDITS:
+        sys.exit(f"error: expected {EXPECTED_EDITS} edits, made {edits_made}")
+
+    print(f"repaired {edits_made} WorkflowParts initializers")
+
+if __name__ == "__main__":
+    main()
+```

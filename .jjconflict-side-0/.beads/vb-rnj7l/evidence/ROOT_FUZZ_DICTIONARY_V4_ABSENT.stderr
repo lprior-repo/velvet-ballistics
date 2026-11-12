@@ -1,0 +1,41 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4151183948
+INFO: Loaded 1 modules   (54287 inline 8-bit counters): 54287 [0x55cffad7c063, 0x55cffad89472), 
+INFO: Loaded 1 PC tables (54287 PCs): 54287 [0x55cffad89478,0x55cffae5d568), 
+INFO:        1 files found in /home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-validation/absent
+INFO: seed corpus: files: 1 min: 54b max: 54b total: 54b rss: 37Mb
+#2	INITED cov: 1488 ft: 1489 corp: 1/54b exec/s: 0 rss: 40Mb
+#3	NEW    cov: 1494 ft: 2011 corp: 2/82b lim: 54 exec/s: 0 rss: 41Mb L: 28/54 MS: 1 EraseBytes-
+	NEW_FUNC[1/4]: 0x55cffaa4c8d0  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f58d0) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+	NEW_FUNC[2/4]: 0x55cffac0e280  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x4b7280) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+#4	NEW    cov: 1544 ft: 2148 corp: 3/115b lim: 54 exec/s: 0 rss: 41Mb L: 33/54 MS: 1 CopyPart-
+#5	NEW    cov: 1549 ft: 2154 corp: 4/148b lim: 54 exec/s: 0 rss: 41Mb L: 33/54 MS: 1 ChangeByte-
+#8	NEW    cov: 1549 ft: 2162 corp: 5/198b lim: 54 exec/s: 0 rss: 42Mb L: 50/54 MS: 3 CrossOver-CopyPart-EraseBytes-
+#15	NEW    cov: 1552 ft: 2166 corp: 6/239b lim: 54 exec/s: 0 rss: 42Mb L: 41/54 MS: 2 ChangeBit-InsertRepeatedBytes-
+#16	NEW    cov: 1587 ft: 2219 corp: 7/289b lim: 54 exec/s: 0 rss: 43Mb L: 50/54 MS: 1 CopyPart-
+#20	NEW    cov: 1618 ft: 2402 corp: 8/343b lim: 54 exec/s: 0 rss: 43Mb L: 54/54 MS: 4 ChangeBit-ChangeASCIIInt-ChangeASCIIInt-ShuffleBytes-
+#22	NEW    cov: 1633 ft: 2816 corp: 9/370b lim: 54 exec/s: 0 rss: 44Mb L: 27/54 MS: 2 ChangeByte-EraseBytes-
+#39	NEW    cov: 1633 ft: 2829 corp: 10/424b lim: 54 exec/s: 0 rss: 44Mb L: 54/54 MS: 2 ShuffleBytes-ChangeByte-
+#45	NEW    cov: 1635 ft: 2857 corp: 11/452b lim: 54 exec/s: 0 rss: 44Mb L: 28/54 MS: 1 ChangeBit-
+#46	NEW    cov: 1649 ft: 3078 corp: 12/502b lim: 54 exec/s: 0 rss: 44Mb L: 50/54 MS: 1 CrossOver-
+#48	NEW    cov: 1653 ft: 3094 corp: 13/538b lim: 54 exec/s: 0 rss: 45Mb L: 36/54 MS: 2 ChangeByte-EraseBytes-
+	NEW_FUNC[1/1]: 0x55cffacebf90  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x594f90) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+#49	NEW    cov: 1656 ft: 3097 corp: 14/591b lim: 54 exec/s: 0 rss: 45Mb L: 53/54 MS: 1 CrossOver-
+#50	NEW    cov: 1669 ft: 3120 corp: 15/637b lim: 54 exec/s: 0 rss: 45Mb L: 46/54 MS: 1 CrossOver-
+#51	NEW    cov: 1677 ft: 3128 corp: 16/691b lim: 54 exec/s: 0 rss: 45Mb L: 54/54 MS: 1 ShuffleBytes-
+#52	NEW    cov: 1679 ft: 3130 corp: 17/741b lim: 54 exec/s: 0 rss: 45Mb L: 50/54 MS: 1 ChangeBinInt-
+#54	NEW    cov: 1679 ft: 3138 corp: 18/774b lim: 54 exec/s: 0 rss: 45Mb L: 33/54 MS: 2 ChangeBit-EraseBytes-
+#58	REDUCE cov: 1679 ft: 3138 corp: 18/762b lim: 54 exec/s: 0 rss: 45Mb L: 29/54 MS: 4 CopyPart-ShuffleBytes-CrossOver-EraseBytes-
+#62	NEW    cov: 1679 ft: 3159 corp: 19/815b lim: 54 exec/s: 0 rss: 45Mb L: 53/54 MS: 4 CopyPart-ChangeBinInt-ChangeBinInt-CMP- DE: "false"-
+#73	NEW    cov: 1679 ft: 3171 corp: 20/865b lim: 54 exec/s: 0 rss: 46Mb L: 50/54 MS: 1 CopyPart-
+#84	REDUCE cov: 1679 ft: 3171 corp: 20/862b lim: 54 exec/s: 0 rss: 46Mb L: 51/54 MS: 1 EraseBytes-
+#90	NEW    cov: 1682 ft: 3220 corp: 21/879b lim: 54 exec/s: 0 rss: 46Mb L: 17/54 MS: 1 EraseBytes-
+#91	NEW    cov: 1687 ft: 3264 corp: 22/933b lim: 54 exec/s: 0 rss: 46Mb L: 54/54 MS: 1 ShuffleBytes-
+#92	NEW    cov: 1718 ft: 3502 corp: 23/950b lim: 54 exec/s: 0 rss: 46Mb L: 17/54 MS: 1 ShuffleBytes-
+#93	NEW    cov: 1718 ft: 3522 corp: 24/1003b lim: 54 exec/s: 0 rss: 46Mb L: 53/54 MS: 1 ChangeBit-
+#99	NEW    cov: 1723 ft: 3535 corp: 25/1016b lim: 54 exec/s: 0 rss: 46Mb L: 13/54 MS: 1 EraseBytes-
+#100	DONE   cov: 1723 ft: 3535 corp: 25/1016b lim: 54 exec/s: 0 rss: 46Mb
+###### Recommended dictionary. ######
+"false" # Uses: 3
+###### End of recommended dictionary. ######
+Done 100 runs in 0 second(s)

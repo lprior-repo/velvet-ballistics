@@ -1,0 +1,15 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "-j",
+    "2"
+  ],
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol",
+  "exit": 0,
+  "duration_seconds": 2.4232358932495117,
+  "cargo_build_jobs": 2
+}

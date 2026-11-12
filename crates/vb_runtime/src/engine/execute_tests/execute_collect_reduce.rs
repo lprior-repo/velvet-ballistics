@@ -32,6 +32,7 @@ fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String
         vec![start, node1, node2, node3],
         8,
         Box::from([vb_core::value::ConstValue::I64(42)]),
+        &[1],
     );
     let mut run = make_run(8, 4);
     run.set_pc(StepIdx::new(2))
@@ -78,7 +79,7 @@ fn execute_collect_finish_errors_on_uninitialized_collector() {
         Some(SlotIdx::new(0)),
         None,
     );
-    let wf = make_workflow(vec![node0], 4);
+    let wf = make_workflow(vec![node0], 4, &[0]);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -117,20 +118,21 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
     let node0 = vb_core::workflow::node(
         StepIdx::new(0),
         CompiledNodeKind::ReduceStart {
+            limit: 65_535,
             input: SlotIdx::new(5),
             accumulator: SlotIdx::new(6),
             initial: ConstIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-        None,
+        Some(SlotIdx::new(7)),
         None,
     );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let constants: Box<[vb_core::value::ConstValue]> =
         Box::from([vb_core::value::ConstValue::I64(0)]);
-    let wf = make_workflow_with_constants(vec![node0, node1, node2], 8, constants);
+    let wf = make_workflow_with_constants(vec![node0, node1, node2], 8, constants, &[0, 5]);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -169,6 +171,7 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> 
     let start = vb_core::workflow::node(
         StepIdx::new(0),
         CompiledNodeKind::ReduceStart {
+            limit: 65_535,
             input: SlotIdx::new(2),
             accumulator: SlotIdx::new(1),
             initial: ConstIdx::new(0),
@@ -187,14 +190,15 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> 
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-        None,
+        Some(SlotIdx::new(3)),
         None,
     );
-    let node3 = finish_node(3, 0);
+    let node3 = finish_node(3, 1);
     let wf = make_workflow_with_constants(
         vec![start, node1, node2, node3],
         8,
         Box::from([vb_core::value::ConstValue::I64(42)]),
+        &[2],
     );
     let mut run = make_run(8, 4);
     run.set_pc(StepIdx::new(2))
@@ -241,7 +245,7 @@ fn execute_reduce_finish_errors_on_missing_next_step() {
         Some(SlotIdx::new(0)),
         None,
     );
-    let wf = make_workflow(vec![node0], 4);
+    let wf = make_workflow(vec![node0], 4, &[0]);
     let mut run = make_run(4, 1);
     if let Err(e) = run.write_slot(SlotIdx::new(0), SlotValue::I64(42)) {
         let msg = format!("write_slot failed: {e}");
@@ -274,4 +278,3 @@ fn execute_reduce_finish_errors_on_missing_next_step() {
         "expected error for missing next step, got {result:?}"
     );
 }
-

@@ -314,6 +314,7 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
         node(
             StepIdx::new(0),
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),

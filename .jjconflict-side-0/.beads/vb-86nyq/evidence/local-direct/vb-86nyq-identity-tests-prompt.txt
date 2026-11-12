@@ -1,0 +1,19 @@
+Generate JSON array {file,old,new} EXACT3 substitutions for tests below, no others. Contract compiled digest binds actual emitted IR bytes; canonical_digest(AST) retains authoring spelling sensitivity. NumericIR tests must additionally compare full to_parts() equality for consistentrenames. Keep ALL constantvalue/branchcount/finishslot/finishposition sensitivity assertions unchanged. Earlier recommendation to change passing finish_position is REJECTED because actual IR contains top-level step_names, not all names disappear. Only actual erasures testedbelow. Do not add unwrap/expect/allow.
+1 file crates/vb_compile/src/tests/error_variant_tests.rs OLD:
+    assert_ne!(
+        wf_la.digest(),
+        wf_lb.digest(),
+        "different branch labels must produce different digests"
+    );
+NEW: assert_eq fullwfparts + assert_eq digest, plus assert_ne!(crate::canonical_digest(&source_la), crate::canonical_digest(&source_lb)) exactsourceidentity successful parsedfixtures already; avoid comparing errors masqueradingsuccess by call canonical_digest(...).map_err? existingfnreturns() so use match(Ok(a),Ok(b)) withassertne else explicit test assert? Existing tests have expect but do NOT add newexpect. Better assert matches!((canonical_digest(&source_la),canonical_digest(&source_lb)),(Ok(a),Ok(b)) if a!=b), noResult-error falsepositive.
+2 samefile OLD:
+    assert_ne!(
+        wf_ida.digest(),
+        wf_idb.digest(),
+        "different sub-step IDs must produce different digests"
+    );
+NEW same paired checks usingwf_ida,wf_idb source_ida,source_idb.
+3 file crates/vb_compile/src/proptest_finish_digest.rs OLD:
+        prop_assert_ne!(da, db,
+            "different Finish result output names must produce different digests");
+NEW prop_assert_eq!(da,db,"consistent output renames preserve compiled IR digest"); parse yaml_a/yaml_b and canonical_digest each using map_err(TestCaseError::fail(format!(...)))?; prop_assert_ne!(source_a,source_b,"authoring digest preserves output spelling"); compileboth compare .to_parts exact withmaperr? duplicatecompileacceptable small. Rename property function by fourthsubstitutionoptional requestedonly3 avoidrename now descriptivecommentlater. No loosecomparisonsis_ok, no removingtests.

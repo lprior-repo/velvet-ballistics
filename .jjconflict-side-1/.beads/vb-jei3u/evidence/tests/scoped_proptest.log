@@ -1,0 +1,25 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_compile)
+warning: unused import: `crate::expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:13
+    |
+117 |         use crate::expr_proofs;
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_compile` (lib test) generated 1 warning (run `cargo fix --lib -p vb_compile --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.71s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-774085096e2424b3)
+
+running 8 tests
+test proptest_finish_digest::slot_at_max_minus_one_compiles ... ok
+test proptest_finish_digest::slot_at_max_plus_one_fails_with_max_slots_error ... ok
+test proptest_finish_digest::slot_at_max_fails_with_max_slots_error ... ok
+test proptest_finish_digest::slot_5000_fails_with_max_slots_error ... ok
+test proptest_finish_digest::canonical_digest_is_deterministic ... ok
+test proptest_finish_digest::finish_result_change_changes_digest_integer ... ok
+test proptest_finish_digest::finish_position_change_changes_digest ... ok
+test proptest_finish_digest::finish_result_change_changes_digest_string ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.08s
+

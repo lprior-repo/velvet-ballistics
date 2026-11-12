@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "artifact_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "verdict": "PASS",
+  "creation_remap_ready": true,
+  "review_kind": "independent_bounded_PLANNING",
+  "artifact": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/remaining-owner-proposals/normalized-v7.json",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "roots_verified": {
+    "git": true,
+    "jj": true
+  },
+  "scope": {
+    "requirement_rows": 9,
+    "full_row_snapshot_locations": 12,
+    "full_owned_checks": 13,
+    "create_TASK_payloads": 4,
+    "reuse_TASK_ids": [
+      "vb-eirmk.24",
+      "vb-eirmk.53"
+    ]
+  },
+  "raw_preflight_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-v3-preflight-live12.json",
+  "raw_preflight_sha256": "551cc6ba494b889b2142332f6b0b3ff6bc02db69eba77569157ec352b856a696",
+  "design_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+  "findings": [],
+  "resolved_findings": [
+    {
+      "id": "V6-C1",
+      "status": "RESOLVED",
+      "evidence": "All three authoritative stage-1 nested before-row expectations now equal the entire corresponding raw row and primary live_row_before. Together with the nine primary snapshots, all twelve full-object equality locations match the hash-bound parent snapshot exactly. Nested check maps also match complete unresolved_checks by check_id."
+    }
+  ],
+  "verification": [
+    "V7 artifact and parent raw export SHA256 match requested identities; parsed design SHA matches 0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1.",
+    "All nine primary full-row snapshots, three nested full-row expectations and thirteen complete check payloads compare equal to the preserved raw Beads export. No selected-field equality was substituted.",
+    "Reversing only the three nested snapshot replacements, removing v6_preservation/nested_snapshot_repair_provenance and restoring V6 verdict makes the entire V7 JSON equal V6. No other scope, criteria, task payload, receipt, allowlist or lifecycle semantics changed.",
+    "Four open root-parent TASK payloads, grouped storage qualification and existing full-scope .53 slot/.24 eleven-handler reuse remain intact. No fabricated IDs; actual successful creation receipts and exact open-TASK readbacks precede canonical mapping and .11 depends_on actual TASK IDs.",
+    "Reuse stages retain exact before snapshots, authorized metadata/scope unions, successful-response-to-fresh-readback updated_at binding, then allowlisted canonical updates and post-remap checks.",
+    "Three canonical row fields and two fields per unresolved_checks[check_id] remain the only permitted manifest changes. Historical closed owners, check statuses/assertions/reasons, unrelated row fields/bytes and existing dependencies are preserved by the plan.",
+    "All 190 entries in the hash-bound raw snapshot remain completion_verified=false and implementation_missing=null.",
+    "Prior V5 PASS and V6 REJECT reports preserved. V5 validated selected common fields rather than full-row equality; V7 now supplies complete primary and duplicate expectations."
+  ],
+  "limits": [
+    "PASS is readiness of this frozen nine-row planning proposal, conditional on fresh before-write preflight matching actual live design, full row/check objects, task records and dependency graph. No apply performed.",
+    "Actual IDs, update-response timestamps, exact task/dependency readbacks, raw token reversal, historical-state preservation and no-cycle/self-edge post-audit remain required.",
+    "No DB access or live-current assertion beyond the supplied hash-bound raw export. No builds/native/proof execution, source changes, agents, JJ snapshots, cleanup, commits or pushes.",
+    "Only requested own-workspace report written via apply_patch; every shell command used TMPDIR=/run/user/1000/vbs.",
+    "No full190 plan, product, implementation, gate, formal or independent TEST acceptance."
+  ]
+}

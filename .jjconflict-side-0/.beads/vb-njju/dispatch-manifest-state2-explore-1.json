@@ -1,0 +1,18 @@
+{
+  "bead_id": "vb-njju",
+  "state": 2,
+  "sublane": "explore-and-scope",
+  "delegate": "explore",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/STATE.md",
+    ".beads/vb-njju/baseline-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/codebase-map.md",
+    ".beads/vb-njju/delivery-scope.jsonl"
+  ],
+  "attempt": "1-of-7",
+  "reason": "Start go-skill State 2 for BDD mutation/fuzz/property coverage closure scenarios in an isolated workspace."
+}

@@ -1,0 +1,18 @@
+{
+  "proposal_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "proposal_key": "qualify-v1min-version-compatibility-algebra",
+  "payload": {
+    "title": "Qualify V1-min version compatibility algebra",
+    "issue_type": "task",
+    "status": "open",
+    "parent": "vb-eirmk",
+    "metadata": {
+      "master_requirement_ids": [
+        "77.17"
+      ],
+      "qualification_only": true
+    },
+    "description": "Qualification only for the six compatibility classes across every master 77.17 version surface. Assert independent exact boundary outcomes and journaled class/rule digest/old-new digests/decision code for admission, replay and live dispatch. Negative: unknown fails closed, ReplayOnly cannot authorize live effects, MigrationRequired never silently defaults. Preserve strict-profile/target/deferred exclusions.",
+    "acceptance_criteria": "Qualification only for the six compatibility classes across every master 77.17 version surface. Assert independent exact boundary outcomes and journaled class/rule digest/old-new digests/decision code for admission, replay and live dispatch. Negative: unknown fails closed, ReplayOnly cannot authorize live effects, MigrationRequired never silently defaults. Preserve strict-profile/target/deferred exclusions. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition."
+  }
+}

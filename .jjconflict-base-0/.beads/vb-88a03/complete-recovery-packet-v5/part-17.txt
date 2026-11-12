@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:870:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:871:     assert_eq!(runtime.counters_snapshot(), counters_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:872:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:873: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:874: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:875: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:876: fn test_direct_api_list_events_and_drain_trace_have_exact_semantics() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:877:     // Given: SCN-VT2F-007 two runs that each emitted distinguishable trace events.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:878:     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:879:     let run_a = RunId::new(1007);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:880:     let run_b = RunId::new(2007);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:881:     assert_eq!(runtime.submit_direct(run_a, finished_workflow()?), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:882:     assert_eq!(runtime.submit_direct(run_b, finished_workflow()?), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:883:     // tick_all processes one command per shard per tick; two ticks are
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:884:     // required to drain both submits on a 1-shard runtime so that
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:885:     // list_events can locate both runs on the owning shard.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:886:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:887:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:888: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:889:     // When: list_events is repeated, then drain_trace is called twice.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:890:     let first_a = trace_events(&runtime, run_a)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:891:     let second_a = trace_events(&runtime, run_a)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:892:     let first_b = trace_events(&runtime, run_b)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:893:     let drained = runtime.drain_trace();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:894:     let post_drain = runtime.drain_trace();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:895: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:896:     // Then: list is non-destructive and per-run, while drain is aggregate and destructive.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:897:     assert_eq!(first_a, second_a);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:898:     assert_eq!(first_a.iter().all(|event| event.run_id() == run_a), true);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:899:     assert_eq!(first_b.iter().all(|event| event.run_id() == run_b), true);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:900:     assert_eq!(count_events_for_run(&drained, run_a), first_a.len());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:901:     assert_eq!(count_events_for_run(&drained, run_b), first_b.len());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:902:     assert_eq!(post_drain, Vec::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:903:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:904: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:905: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:906: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:907: fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:908:     // Given: SCN-VT2F-008 an active runtime with queued work.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:909:     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:910:     let run = RunId::new(1008);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:911:     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:912:     let pre_metrics = runtime.collect_metrics();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:913: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:914:     // When: graceful shutdown is requested and post-shutdown operations are probed.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:915:     assert_eq!(pre_metrics.runs_active, 0);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:916:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:917:         pre_metrics
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:918:             .shards
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:919:             .first()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:920:             .map(|shard| shard.command_queue_depth),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:921:         Some(1)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:922:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:923:     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:924: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:925:     // Then: queued work drains exactly once and further deterministic progress is inactive.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:926:     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:927:     assert_eq!(runtime.tick_all(), Ok(false));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:928:     assert_eq!(runtime.tick_all(), Ok(false));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:929:     // Post-shutdown submissions are rejected at the shard boundary with a
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:930:     // typed `ShutdownInProgress` error so callers see the runtime is no
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:931:     // longer accepting work instead of a phantom enqueue.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:932:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:933:         runtime.submit_direct(RunId::new(9008), finished_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:934:         Err(RuntimeError::ShutdownInProgress)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:935:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:936:     assert_eq!(runtime.tick_all(), Ok(false));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:937:     assert_eq!(runtime.counters_snapshot().runs_submitted, 1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:938:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:939: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:940: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:941: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:942: fn test_direct_api_rejects_submission_when_accepted_artifact_required() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:943:     // Given: SCN-VT2F-009 strict/admission-required policy with no accepted artifact record.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:944:     let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, strict_config());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:945:     let workflow = finished_workflow()?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:946:     let digest = workflow.digest();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:947:     let run = RunId::new(1009);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:948: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:949:     // When: raw direct submission is attempted without an accepted artifact.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:950:     let submission = runtime.submit_direct(run, workflow);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:951: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:952:     // Then: failing-first drift evidence expects a typed admission rejection at the submit boundary.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:953:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:954:         submission,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:955:         Err(RuntimeError::AdmissionArtifactNotFound { digest }),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:956:         "SCN-VT2F-009 master/code drift: master lines 3310-3345 require AdmissionRequired-equivalent rejection before raw direct execution; current public submit_direct must not accept run {run:?} without accepted artifact"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:957:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:958:     assert_eq!(runtime.list_active_runs(8, None), Vec::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:959:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:960: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:961: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:962: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:963: fn test_direct_api_evidence_target_constant_matches_catalog_contract() {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:964:     // Given/When/Then: SCN-VT2F-010 direct API target path is stable for catalog closure.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:965:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:966:         DIRECT_API_TARGET,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:967:         "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:968:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:969: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:970: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:971: #[path = "vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs"]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:972: mod wrong_run_ask;
+FILE crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs SHA256 69e1d162dd4d609c6ce7cc28d470a8239cf02908430dc70fd02cf7979f60db28
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:1: use super::*;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:2: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:3: /// SCN-VT2F-006 / ERR-003: an ask ticket issued by a separate issuer runtime is rejected when
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:4: /// submitted to an unrelated receiver runtime. The receiver's suspended run must be untouched.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:5: ///
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:6: /// This test proves that AskTicket is not a cross-runtime forgery vector: the genuine ticket
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:7: /// from the issuer cannot be answered on a different receiver that has never seen the
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:8: /// issuing run. The answer_ask boundary check short-circuits before any mutation.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:9: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:10: fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:11: -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:12:     // Given: SCN-VT2F-006 / ERR-003 an issuer runtime with a suspended ask run and a
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:13:     // separate receiver runtime with an unrelated suspended ask run.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:14:     let issuer_journal = Arc::new(VolatileRuntimeJournal::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:15:     let receiver_journal = Arc::new(VolatileRuntimeJournal::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:16:     let mut issuer = Runtime::new(shard_count(1)?, relaxed_config(), issuer_journal.clone());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:17:     let mut receiver = Runtime::new(shard_count(1)?, relaxed_config(), receiver_journal.clone());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:18:     let issuer_run = RunId::new(1606);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:19:     let receiver_run = RunId::new(2606);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:20: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:21:     // Issuer submits and suspends on ask, generating a genuine runtime-issued ticket.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:22:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:23:         issuer.submit_direct(issuer_run, ask_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:24:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:25:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:26:     run_one_tick(&mut issuer)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:27:     let ticket = issuer
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:28:         .lookup_pending_ask_ticket(issuer_run, StepIdx::new(2))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:29:         .ok_or("issuer suspended ask must have a runtime-issued ticket")?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:30: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:31:     // Receiver submits and suspends on an unrelated ask workflow.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:32:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:33:         receiver.submit_direct(receiver_run, ask_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:34:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:35:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:36:     run_one_tick(&mut receiver)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:37:     let receiver_ticket_before = receiver
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:38:         .lookup_pending_ask_ticket(receiver_run, StepIdx::new(2))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:39:         .ok_or("receiver must have genuine ask ticket before rejection")?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:40: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:41:     // Capture receiver observable state before the cross-runtime answer attempt.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:42:     let receiver_before = receiver.snapshot_run(receiver_run, 607);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:43:     let receiver_events_before = trace_events(&receiver, receiver_run)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:44:     let receiver_active_before = receiver
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:45:         .list_active_runs(8, None)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:46:         .iter()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:47:         .map(|summary| summary.run_id)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:48:         .collect::<Vec<_>>();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:49:     let receiver_counters_before = receiver.counters_snapshot();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:50:     let receiver_boundary_before = receiver.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:51: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:52:     // Capture issuer observable state before the cross-runtime answer attempt.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:53:     let issuer_before = issuer.snapshot_run(issuer_run, 606);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:54:     let issuer_events_before = trace_events(&issuer, issuer_run)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:55:     let issuer_active_before = issuer
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:56:         .list_active_runs(8, None)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:57:         .iter()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:58:         .map(|summary| summary.run_id)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:59:         .collect::<Vec<_>>();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:60:     let issuer_counters_before = issuer.counters_snapshot();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:61:     let issuer_boundary_before = issuer.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:62: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:63:     // Capture full journal state before the cross-runtime answer attempt.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:64:     let receiver_journal_before = receiver_journal.snapshot().map_err(|e| e.to_string())?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:65:     let issuer_journal_before = issuer_journal.snapshot().map_err(|e| e.to_string())?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:66: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:67:     // When: the issuer's genuine ticket is answered on the receiver runtime.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:68:     let answer = ask_answer(ticket, SlotValue::I64(42), Taint::Clean);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:69:     let answer_result = receiver.answer_ask(answer);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:70: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:71:     // Then: the receiver rejects with RunNotFound because the issuing run is not
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:72:     // known to it. The issuer's ticket is valid, but the receiver's boundary check
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:73:     // prevents cross-runtime mutation.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:74:     assert_eq!(answer_result, Err(RuntimeError::RunNotFound));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:75: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:76:     // Full journal equality: rejected cross-runtime answer must leave both journals unchanged.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:77:     let receiver_journal_after = receiver_journal.snapshot().map_err(|e| e.to_string())?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:78:     let issuer_journal_after = issuer_journal.snapshot().map_err(|e| e.to_string())?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:79:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:80:         receiver_journal_after, receiver_journal_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:81:         "receiver journal must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:82:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:83:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:84:         issuer_journal_after, issuer_journal_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:85:         "issuer journal must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:86:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:87: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:88:     // Receiver: the unrelated suspended run is completely unchanged.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:89:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:90:         receiver.snapshot_run(receiver_run, 607),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:91:         receiver_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:92:         "receiver snapshot must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:93:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:94:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:95:         trace_events(&receiver, receiver_run)?,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:96:         receiver_events_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:97:         "receiver trace must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:98:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:99:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:100:         receiver
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:101:             .list_active_runs(8, None)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:102:             .iter()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:103:             .map(|summary| summary.run_id)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:104:             .collect::<Vec<_>>(),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:105:         receiver_active_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:106:         "receiver active list must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:107:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:108:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:109:         receiver.counters_snapshot(),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:110:         receiver_counters_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:111:         "receiver counters must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:112:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:113:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:114:         receiver.pending_boundary_snapshot(8),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:115:         receiver_boundary_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:116:         "receiver pending boundary must be unchanged after rejected wrong-run answer"

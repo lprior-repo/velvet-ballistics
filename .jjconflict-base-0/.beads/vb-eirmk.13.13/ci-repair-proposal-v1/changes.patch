@@ -1,0 +1,40 @@
+--- a/.moon/tasks/all.yml
++++ b/.moon/tasks/all.yml
+@@ -157,10 +157,11 @@
+     script: |
+       bash -c '
+         set -euo pipefail
++        mkdir -p target/nightly-feature-cargo-probe
+         rustup run nightly-2026-04-28 cargo tree -p velvet-ballistics -e features \
+-          --all-features --format "{p} {f}" > /tmp/opencode/nightly-features.txt
++          --all-features --format "{p} {f}" > target/nightly-feature-cargo-probe/nightly-features.txt
+         rustup run nightly-2026-04-28 cargo metadata --format-version 1 \
+-          --all-features > /tmp/opencode/nightly-features-metadata.json
++          --all-features > target/nightly-feature-cargo-probe/nightly-features-metadata.json
+         echo "[nightly-feature-cargo-probe] OK: cargo-driven feature enumeration complete."
+       '
+     toolchains:
+--- a/scripts/check-panic-surface.sh
++++ b/scripts/check-panic-surface.sh
+@@ -42,6 +42,13 @@
+     if [[ "$file" == *"_tests.rs" ]] || [[ "$file" == *"tests.rs" ]] || [[ "$file" == *"test/"* ]]; then
+       continue
+     fi
++    if awk '
++      /^[[:space:]]*($|\/\/)/ { next }
++      { found = ($0 ~ /^[[:space:]]*#!\[cfg\(test\)\][[:space:]]*$/); exit }
++      END { exit(found ? 0 : 1) }
++    ' "$file"; then
++      continue
++    fi
+     before_count=$(sed -n "1,${linenum}p" "$file" | grep -cE '^\s*#\[(cfg\(test\)|test)\]' || true)
+     after_count=$(sed -n "1,${linenum}p" "$file" | grep -cE '^\s*#\[kani::proof\]' || true)
+     if [[ "$before_count" -gt 0 ]] || [[ "$after_count" -gt 0 ]]; then
+--- a/scripts/test-integrity-justifications.tsv
++++ b/scripts/test-integrity-justifications.tsv
+@@ -56,3 +56,5 @@
+ 7bf934bfa7cf2b78fb4a8f6888c44e38fdc15d3b	crates/vb_core/src/engine/tests/integration_workflow.rs	0c9485cfc05cb6fd0c9ab7363bca0fefc5236685	crates/vb_core/src/engine/tests/integration_workflow.rs	60baa6a790a1b8e6d7a39809d062c07f6c86c002	DeletedTestDeclaration	removed_declarations=2 added_declarations=0	crates/vb_core/src/engine/tests/integration_workflow.rs:60baa6a790a1b8e6d7a39809d062c07f6c86c002;crates/vb_core/src/engine/tests/mod.rs:5bb39252efea7e0b1c3df4063e357940cf0b75c2	.beads/vb-u6v64/hoist-review.md	8004bb5f26323d27eea6298a0e2caca470fd47be	vb-u6v64
+ 7bf934bfa7cf2b78fb4a8f6888c44e38fdc15d3b	crates/vb_core/src/engine/tests/integration_taint_propagation.rs	6a80189207c056193621640a15a0c2ded60e0e77	crates/vb_core/src/engine/tests/integration_taint_propagation.rs	191e700f728931dde1d45f1c28f8a3d25bab688e	DeletedTestDeclaration	removed_declarations=1 added_declarations=0	crates/vb_core/src/engine/tests/integration_taint_propagation.rs:191e700f728931dde1d45f1c28f8a3d25bab688e;crates/vb_core/src/engine/tests/mod.rs:5bb39252efea7e0b1c3df4063e357940cf0b75c2	.beads/vb-u6v64/hoist-review.md	8004bb5f26323d27eea6298a0e2caca470fd47be	vb-u6v64
+ 7f505d498fa35acb5b70b083ac6f02cd40f3a891	crates/vb_runtime/src/engine/drive/tests/cat_nested_activation.rs	3cd9fcac38bd65bb7c171c4b2e09a0c2e889dabe	crates/vb_runtime/src/engine/drive/tests/cat_nested_activation.rs	77258307d89f911deb1090da483ad2847d5f9171	WeakenedAssertion	removed_exact=9 added_exact=28 added_weak=3	crates/vb_runtime/src/engine/drive/tests/cat_nested_activation.rs:77258307d89f911deb1090da483ad2847d5f9171;crates/vb_compile/src/mod_compile_lowering/nested_body_tests.rs:e2fb1462b693ccd407c8cef70af48be03db56e2f;crates/workspace_tests/tests/nested_composition.rs:1233c43972c5420acc9aaf60050f247ec33bca04	.beads/vb-hkvsh/test-integrity-review.md	815ce873ffa8dd0baa85737a7a9f16facdc32696	vb-hkvsh
++69bcabd8fba0250d2f6dbd3953fb2604a8ba1178	crates/vb_core/src/replay/ops/tests.rs	6178f772bbca4f510f386f71172165ce430531b1	crates/vb_core/src/replay/ops/tests.rs	1ee4c0c6c8a57387d466f2ca085a41940afd8c38	DeletedTestDeclaration	removed_declarations=90 added_declarations=0	crates/vb_core/src/replay/ops/tests_stack.rs:99cc11f167ddbe5e0b424d3bdce36281c54a051f;crates/vb_core/src/replay/ops/tests_expr.rs:ff4078edd5fda6cb47c5adbfeb316c90772e559b;crates/vb_core/src/replay/ops/tests_ce003.rs:acb8a177acf3e0c04e34f8c0da9a64053d942165	.beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md	be5acdfb8520dc666747986cbc3d7379adc72805	vb-eirmk.13.3
++69bcabd8fba0250d2f6dbd3953fb2604a8ba1178	crates/vb_core/src/replay/ops/tests.rs	6178f772bbca4f510f386f71172165ce430531b1	crates/vb_core/src/replay/ops/tests.rs	1ee4c0c6c8a57387d466f2ca085a41940afd8c38	WeakenedAssertion	removed_exact=4 added_exact=0 added_weak=0	crates/vb_core/src/replay/ops/tests_stack.rs:99cc11f167ddbe5e0b424d3bdce36281c54a051f;crates/vb_core/src/replay/ops/tests_expr.rs:ff4078edd5fda6cb47c5adbfeb316c90772e559b	.beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md	be5acdfb8520dc666747986cbc3d7379adc72805	vb-eirmk.13.3

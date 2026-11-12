@@ -1,0 +1,14 @@
+1: #![forbid(unsafe_code)]
+2: //! Shard construction, queue operations, and core tick processing.
+3: 
+4: include!("impl_parts/chunk_004.rs");
+5: include!("impl_parts/chunk_001.rs");
+6: include!("impl_parts/chunk_002.rs");
+7: include!("impl_parts/chunk_003.rs");
+8: include!("impl_parts/policy_decision.rs");
+9: 
+10: #[cfg(test)]
+11: mod tests {
+12:     include!("impl_tests/chunk_001.rs");
+13:     include!("impl_tests/chunk_002.rs");
+14: }

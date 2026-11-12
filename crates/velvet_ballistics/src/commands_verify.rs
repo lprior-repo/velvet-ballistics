@@ -109,6 +109,14 @@ pub(crate) fn run_verification(
         record_budget_result(profile, budget_result, &mut checks, &mut warnings)?;
     }
 
+    let source = vb_compile::parse_workflow_source(text)
+        .map_err(|error| VerifyError::YamlParse(error.to_string()))?;
+    if !source.examples().is_empty() {
+        crate::workflow_examples::verify(&source, &compiled)
+            .map_err(|error| VerifyError::Compile(vec![error]))?;
+        checks.push("examples");
+    }
+
     Ok(VerifyOk {
         digest_hex,
         node_count: compiled.node_count(),

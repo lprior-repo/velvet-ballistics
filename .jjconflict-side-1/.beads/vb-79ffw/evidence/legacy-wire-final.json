@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review",
+  "argv": [
+    ".beads/vb-79ffw/evidence/legacy-wire-final-strict"
+  ],
+  "exit_code": 0,
+  "seconds": 0.275,
+  "timeout_seconds": 200,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-79ffw/evidence/legacy-wire-final",
+  "coordinator_message": "Current scope LEGACY ONLY. Another5090 owns runtime probe in separate vb-2b170 workspace. Don't modify callback probe here except remove rejected new workspace_tests draft. Use rustfmt --edition 2024 crates/workspace_tests/tests/legacy_wire_decoder.rs ONLY, not cargo fmt across workspace. Old golden outcomes actualall5pass, strengthen precise postcard inner enum and portable tracked lookup. Old stale notice superseded. Finish scoped5tests and truthful handoff, then freeze promptly.\n"
+}

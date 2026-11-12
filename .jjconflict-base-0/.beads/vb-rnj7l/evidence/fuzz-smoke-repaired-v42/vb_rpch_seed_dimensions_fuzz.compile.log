@@ -1,0 +1,3 @@
+=== compile evidence: vb_rpch_seed_dimensions_fuzz ===
+-rwxr-xr-x 2 lewis lewis 2152224 Oct 22 17:16 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_seed_dimensions_fuzz
+OK: binary present

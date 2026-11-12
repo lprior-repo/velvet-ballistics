@@ -30,6 +30,7 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
     let node1 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("set_finish"),
         digest,
         input_slots: Box::from([]),
@@ -63,9 +64,14 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
     let node1 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("do_action"),
         digest,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::I64,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
         nodes: Box::from([node0, node1]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -95,9 +101,14 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
     let node1 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("taint_expr"),
         digest,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::I64,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
         nodes: Box::from([node0, node1]),
         expressions: Box::from([expr_program]),
         accessors: Box::from([]),

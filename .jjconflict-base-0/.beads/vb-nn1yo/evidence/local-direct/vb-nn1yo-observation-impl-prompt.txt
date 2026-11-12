@@ -1,0 +1,3 @@
+Rust implementation exact JSON {old,new} ONLY. Insert one match arm JournalEvent::StepFailed { step, .. } => (last_successful, Some(step.get())), immediately after exact old arm. old must equal EXACT supplied line including indentation, new must preserve old plus newline+newarm.
+EXACTOLD:
+            JournalEvent::StepStarted { step, .. } => (last_successful, Some(step.get())),

@@ -1,0 +1,3 @@
+No actionable findings. The diff updates shard tests to use explicit `SubmitWithInputsAndContracts`/`SubmitWithContracts` variants with concrete capability grants, inputs, and action contracts, replacing implicit `CapabilitySet::empty()` defaults. Test expectations (Ok/Err outcomes, counter assertions, tick behavior) remain unchanged. The two retained bare `Submit` calls use `finished_workflow()` which completes immediately without requiring capabilities, consistent with the "NoDo fixtures can retain bare Submit" guidance. No security weakening, fabricated grants, altered negative expectations, or new panics/unsafe casts introduced.
+
+STATUS: APPROVED

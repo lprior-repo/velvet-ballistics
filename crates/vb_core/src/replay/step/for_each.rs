@@ -6,7 +6,8 @@ use crate::workflow::CompiledNode;
 
 use super::super::{ReplayError, engine_to_replay_err};
 use super::iter::{
-    advance_cursor, build_iterator_state, decode_iterator_state, expect_list_value, replay_output,
+    advance_cursor, build_iterator_state, decode_iterator_state, expect_list_value,
+    preflight_writes, replay_output,
 };
 use super::nodes::{advance_to_next, replay_jump};
 use super::types::ReplayAction;
@@ -41,6 +42,7 @@ pub(super) fn replay_for_each_start(
     }
     let iter_output = replay_output(node, "ForEachStart node missing output slot")?;
     if item_count == 0 {
+        preflight_writes(run, &[iter_output], done)?;
         let empty = store
             .insert_list(Box::from([]))
             .map_err(|_| ReplayError::Internal {
@@ -53,14 +55,22 @@ pub(super) fn replay_for_each_start(
     let first = items.first().copied().ok_or(ReplayError::Internal {
         reason: "for_each items checked nonempty during replay",
     })?;
-    run.write_slot_with_taint(item_slot, first, input_taint)
-        .map_err(engine_to_replay_err)?;
+    let item_taint = crate::value::join_taint(
+        input_taint,
+        store
+            .list_item_with_taint(list_id, 0)
+            .map_err(engine_to_replay_err)?
+            .1,
+    );
+    preflight_writes(run, &[item_slot, iter_output], body)?;
     let state = build_iterator_state(list_id, 1)?;
     let state_id = store
         .insert_list(state)
         .map_err(|_| ReplayError::Internal {
             reason: "insert for_each iterator state failed during replay",
         })?;
+    run.write_slot_with_taint(item_slot, first, item_taint)
+        .map_err(engine_to_replay_err)?;
     run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)
         .map_err(engine_to_replay_err)?;
     replay_jump(run, body)
@@ -98,8 +108,19 @@ pub(super) fn replay_for_each_next(
     let item = source.get(cursor).copied().ok_or(ReplayError::Internal {
         reason: "for_each cursor bounds-checked above during replay",
     })?;
-    run.write_slot_with_taint(item_output, item, iter_taint)
-        .map_err(engine_to_replay_err)?;
+    let item_taint = crate::value::join_taint(
+        iter_taint,
+        store
+            .list_item_with_taint(
+                source_id,
+                u32::try_from(cursor).map_err(|_| ReplayError::Internal {
+                    reason: "iterator cursor exceeds u32",
+                })?,
+            )
+            .map_err(engine_to_replay_err)?
+            .1,
+    );
+    preflight_writes(run, &[item_output, iterator_slot], body)?;
     let next_cursor = advance_cursor(cursor)?;
     let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store
@@ -107,6 +128,8 @@ pub(super) fn replay_for_each_next(
         .map_err(|_| ReplayError::Internal {
             reason: "insert for_each iterator state failed during replay",
         })?;
+    run.write_slot_with_taint(item_output, item, item_taint)
+        .map_err(engine_to_replay_err)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)
         .map_err(engine_to_replay_err)?;
     replay_jump(run, body)

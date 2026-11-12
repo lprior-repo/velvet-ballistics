@@ -1,0 +1,13 @@
+**Findings:**
+
+1. **Contract compliance verified.** Implementation parses operand as i64 before lookup (`parse_i64_field`), only reuses entries with matching values (`*entry == ConstValue::I64(constant)`), uses checked u16 conversion (`u16::try_from`), and propagates typed errors. All invariants satisfied.
+
+2. **Test coverage complete against contract requirements.** Distinct values → separate entries (basic test). Equal values reuse when enabled (reuse test). Malformed input rejected with non-empty pool (parse_errors test). Out-of-range values rejected (i64 overflow strings in parse_errors). Numeric boundaries covered (extremes test with i64::MIN/MAX/0). Pool content assertions verify correct operand values.
+
+3. **Edge cases thoroughly tested.** u16 index overflow (65536-entry pool). Full pool with matching value (reuse_when_full). Reuse disabled mode (no_reuse test). Property-based testing over full i64 range including negatives.
+
+4. **Mutation sensitivity confirmed.** Restoring original first-entry bug caused 7 of 8 tests to fail, demonstrating the suite detects the specific defect. Only reuse_when_full passed because it tests value-matching reuse, not the buggy first-entry behavior.
+
+5. **No ignored returns, sleeps, or unverified assumptions.** All Result values checked. Pool state verified after operations. Error messages match expected CompileErrors variants.
+
+**STATUS: APPROVED**

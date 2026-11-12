@@ -1,0 +1,6 @@
+{"requirement_id":"R1","artifact":"scripts/check-workspace-assertions.py","test":"vb_8ma2_workspace_assertions::unexpected_workspace_member_fails_exact_gate","status":"PASS"}
+{"requirement_id":"R2","artifact":"scripts/check-workspace-assertions.py","test":"vb_qi37_25_quality_gates::package_name_drift_reports_exact_member_and_expected_name","status":"PASS"}
+{"requirement_id":"R3","artifact":"scripts/check-workspace-assertions.py","test":"vb_qi37_25_quality_gates::binary_alias_reports_exact_allowed_binary_set","status":"PASS"}
+{"requirement_id":"R4","artifact":"scripts/check-workspace-assertions.py","test":"vb_qi37_25_quality_gates::feature_drift_reports_exact_expected_feature_set","status":"PASS"}
+{"requirement_id":"R5","artifact":"scripts/check-workspace-assertions.py","test":"vb_8ma2_workspace_assertions::*forbidden*dependency*","status":"PASS"}
+{"requirement_id":"R6","artifact":"vb_cli::naming_scan","test":"vb_qi37_25_quality_gates::{spelling_gate_rejects_legacy_spelling_outside_exact_allowlist,broad_substring_allowlist_is_configuration_error}","status":"PASS"}

@@ -106,6 +106,8 @@ pub enum RecordKind {
     GateOpened = 48,
     /// Tenant-scoped admission receipt (§77.18); appended, no old ordinal moved.
     TenantAdmission = 49,
+    /// Versioned action-failure checkpoint and retry deadline.
+    RetryTimerScheduled = 51,
 }
 
 impl RecordKind {
@@ -156,6 +158,7 @@ impl RecordKind {
             Self::RunAdmissionBudget => 47,
             Self::GateOpened => 48,
             Self::TenantAdmission => 49,
+            Self::RetryTimerScheduled => 51,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -208,6 +211,7 @@ impl RecordKind {
             47 => Some(Self::RunAdmissionBudget),
             48 => Some(Self::GateOpened),
             49 => Some(Self::TenantAdmission),
+            51 => Some(Self::RetryTimerScheduled),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -254,6 +258,7 @@ impl RecordKind {
             | Self::RunAdmissionBudget
             | Self::GateOpened
             | Self::TenantAdmission
+            | Self::RetryTimerScheduled
             | Self::RunContinuation => true,
             Self::WorkflowSource
             | Self::CompiledIr

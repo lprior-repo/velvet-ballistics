@@ -1,0 +1,321 @@
+Independent test review, second pass. Return STATUS: APPROVED only when no findings remain; else concrete REJECTED findings. Prior rejection four cases now added and real12tests pass PROPTEST_CASES256. Review contract+tests+logs, no tool execution claim. CLI integration separately being generated; no claim CLI exposes values.
+
+.beads/vb-cu3ax/contract.md
+**Contract: Declared Input Resolution for Terminal Finish**
+
+The cold compiler resolves declared inputs by binding exact `$input.name` references to numeric ports in declaration order. Inputs are represented as bounded slices of `SlotValue` via Postcard serialization. The schema shorthand accepts `number` or `{is:number}`.
+
+During lowering, the compiler processes preceding internal nodes first. Before allocating input ports, it reserves the non-input terminal `Finish` slot using the existing `canonical_finish_slot` and `builder.record_slot` mechanisms. This reservation prevents integer slot collisions between the `Finish` node and input ports. Input ports are then bound after the largest internal index, and the `Finish` node is lowered last. This sequence ensures that the `Finish` node's internal read is reserved before input port allocation, avoiding aliasing at the numeric boundary.
+
+If no `Finish` node is present, input ports are allocated after all nodes are processed. The layout preserves the existing internal-first port numbering scheme without renumbering. All index arithmetic uses checked addition and u16 conversion. The public `allocate_input_slots` signature remains unchanged.
+
+At runtime, an I64 input value must produce the exact input value for the `Finish` node and any preceding save fixture. Unknown input references produce the existing `CompileError::UnknownOutputName` error with the literal `$input.missing` name. Duplicate input validation continues to run as before.
+
+The deterministic digest and roundtrip properties are preserved. Non-finish consumers of inputs remain explicitly unsupported. This contract does not claim full v1 input support or required input defaults. Broader input use cases remain open under parent issue vb-3ruqy.
+Clarification: preceding save writes its own slot; only Finish returns the external input. This child covers terminal Finish; parent vb-3ruqy remains open for non-Finish consumers.
+
+crates/workspace_tests/tests/finish_input_binding.rs
+use vb_compile::{CompileError, CompileErrors, compile_source, parse_workflow_source};
+use vb_core::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
+use vb_core::value_store::ValueStore;
+use vb_core::{
+    CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind, RunId, SlotIdx,
+    SlotValue, Taint, WorkflowParts,
+};
+
+fn compile(yaml: &str) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    Ok(compile_source(&parse_workflow_source(yaml)?)?)
+}
+
+fn run(
+    workflow: &CompiledWorkflow,
+    values: &[i64],
+) -> Result<EngineSignal, Box<dyn std::error::Error>> {
+    let mut frame = new_run_frame(RunId::new(1), workflow)?;
+    for (port, value) in workflow.input_slots().iter().zip(values.iter()) {
+        frame.write_slot_with_taint(port.slot, SlotValue::I64(*value), Taint::Secret)?;
+    }
+    Ok(run_until_blocked(
+        workflow,
+        &mut frame,
+        StepBudget::MAX,
+        &mut ValueStore::new(),
+    )?)
+}
+
+const BASE: &str = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: done\n    finish:\n      result: $input.count\n";
+
+#[test]
+fn test_compile_base() -> Result<(), Box<dyn std::error::Error>> {
+    let workflow = compile(BASE)?;
+    assert_eq!(
+        workflow.input_slots(),
+        &[CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: InputSlotKind::I64
+        }]
+    );
+    for value in [i64::MIN, -1, 0, 42, i64::MAX] {
+        let signal = run(&workflow, &[value])?;
+        assert_eq!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(value), Taint::Secret)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn test_save_before_finish() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: write_internal\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: $input.count\n";
+    let workflow = compile(yaml)?;
+    assert_eq!(
+        workflow.input_slots(),
+        &[CompiledInputSlot {
+            slot: SlotIdx::new(1),
+            kind: InputSlotKind::I64
+        }]
+    );
+    let signal = run(&workflow, &[99])?;
+    assert_eq!(
+        signal,
+        EngineSignal::Finished(SlotValue::I64(99), Taint::Secret)
+    );
+    Ok(())
+}
+
+#[test]
+fn test_two_inputs() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  first: number\n  second: number\nsteps:\n  - id: done\n    finish:\n      result: $input.second\n";
+    let workflow = compile(yaml)?;
+    assert_eq!(
+        workflow.input_slots(),
+        &[
+            CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::I64
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(1),
+                kind: InputSlotKind::I64
+            }
+        ]
+    );
+    let signal = run(&workflow, &[11, 99])?;
+    assert_eq!(
+        signal,
+        EngineSignal::Finished(SlotValue::I64(99), Taint::Secret)
+    );
+    Ok(())
+}
+
+#[test]
+fn test_unknown_ref() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = BASE.replace("$input.count", "$input.missing");
+    let parsed = parse_workflow_source(&yaml)?;
+    match compile_source(&parsed) {
+        Err(errors) => {
+            assert_eq!(
+                errors,
+                CompileErrors(vec![CompileError::UnknownOutputName {
+                    name: Box::from("$input.missing")
+                }])
+            );
+        }
+        Ok(_) => return Err("expected UnknownOutputName".into()),
+    }
+    Ok(())
+}
+
+#[test]
+fn test_named_internal_finish() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: write_internal\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+    let workflow = compile(yaml)?;
+    assert_eq!(
+        workflow.input_slots(),
+        &[CompiledInputSlot {
+            slot: SlotIdx::new(1),
+            kind: InputSlotKind::I64
+        }]
+    );
+    let signal = run(&workflow, &[999])?;
+    assert_eq!(
+        signal,
+        EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+    );
+    Ok(())
+}
+
+#[test]
+fn test_numeric_slot_finish() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: write_internal\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: 3\n";
+    let workflow = compile(yaml)?;
+    assert_eq!(
+        workflow.input_slots(),
+        &[CompiledInputSlot {
+            slot: SlotIdx::new(4),
+            kind: InputSlotKind::I64
+        }]
+    );
+    let parts = workflow.to_parts();
+    let terminal = parts.nodes.last().ok_or("missing terminal")?;
+    assert_eq!(
+        terminal.kind,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(3)
+        }
+    );
+    Ok(())
+}
+
+#[test]
+fn test_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
+    let workflow = compile(BASE)?;
+    let parts = workflow.to_parts();
+    let serialized = postcard::to_allocvec(&parts)?;
+    let restored_parts: WorkflowParts = postcard::from_bytes(&serialized)?;
+    assert_eq!(parts, restored_parts);
+    let recompiled = compile(BASE)?;
+    assert_eq!(parts, recompiled.to_parts());
+    let restored_workflow = CompiledWorkflow::try_from_parts(restored_parts)?;
+    let signal = run(&restored_workflow, &[42])?;
+    assert_eq!(
+        signal,
+        EngineSignal::Finished(SlotValue::I64(42), Taint::Secret)
+    );
+    Ok(())
+}
+
+#[path = "finish_input_binding/extra.rs"]
+mod extra;
+
+crates/workspace_tests/tests/finish_input_binding/extra.rs
+use super::*;
+
+#[test]
+fn test_longform_schema() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = BASE.replace("count: number", "count: {is: number}");
+    let workflow = compile(&yaml)?;
+    assert_eq!(
+        workflow.input_slots(),
+        &[CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: InputSlotKind::I64
+        }]
+    );
+    let signal = run(&workflow, &[123])?;
+    assert_eq!(
+        signal,
+        EngineSignal::Finished(SlotValue::I64(123), Taint::Secret)
+    );
+    Ok(())
+}
+
+#[test]
+fn test_duplicate_input_names() -> Result<(), Box<dyn std::error::Error>> {
+    let s = parse_workflow_source(BASE)?;
+    let mut inputs = s.inputs().to_vec();
+    inputs.extend_from_slice(s.inputs());
+    let duplicate = vb_compile::WorkflowSource::new(vb_compile::WorkflowSourceParts {
+        version: s.version().to_owned(),
+        name: s.name().to_owned(),
+        trigger: s.trigger().clone(),
+        inputs,
+        vars: s.vars().to_vec(),
+        secrets: s.secrets().to_vec(),
+        steps: s.steps().to_vec(),
+        result: s.result().cloned(),
+        examples: s.examples().to_vec(),
+    });
+    match compile_source(&duplicate) {
+        Err(errors) => {
+            assert_eq!(
+                errors,
+                CompileErrors(vec![CompileError::DuplicateInputName {
+                    name: Box::from("count")
+                }])
+            );
+        }
+        Ok(_) => return Err("expected DuplicateInputName".into()),
+    }
+    Ok(())
+}
+
+#[test]
+fn test_no_finish_compile_fallback() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: save\n    save:\n      output: saved\n      value: '42'\n";
+    let workflow = compile(yaml)?;
+    assert_eq!(
+        workflow.input_slots(),
+        &[CompiledInputSlot {
+            slot: SlotIdx::new(1),
+            kind: InputSlotKind::I64
+        }]
+    );
+    Ok(())
+}
+
+#[test]
+fn test_unsupported_nonfinish_consumer() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: save\n    save:\n      output: saved\n      value: '$input.count'\n  - id: done\n    finish:\n      result: saved\n";
+    let parsed = parse_workflow_source(yaml)?;
+    match compile_source(&parsed) {
+        Err(errors) => {
+            assert_eq!(
+                errors,
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: 0,
+                    field: "set.value",
+                    expected: "integer string"
+                }])
+            );
+        }
+        Ok(_) => return Err("expected StepFieldShape".into()),
+    }
+    Ok(())
+}
+
+proptest::proptest! {
+    #[test]
+    fn arbitrary_input_value_survives(value: i64) {
+        let workflow = compile(BASE).map_err(|e| proptest::test_runner::TestCaseError::fail(e.to_string()))?;
+        let actual = run(&workflow, &[value]).map_err(|e| proptest::test_runner::TestCaseError::fail(e.to_string()))?;
+        proptest::prop_assert_eq!(actual, EngineSignal::Finished(SlotValue::I64(value), Taint::Secret));
+    }
+}
+
+.beads/vb-cu3ax/evidence/finish-input-tests-v3.log
+
+running 12 tests
+............
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+crates/vb_compile/src/mod_compile_lowering/finish_inputs.rs
+use super::*;
+
+pub(super) fn prepare_finish_input_slots(
+    source: &crate::WorkflowSource,
+    result: &crate::ScalarValue,
+    outputs: &mut std::collections::HashMap<String, vb_core::SlotIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if !matches!(result, crate::ScalarValue::String(name) if name.starts_with("$input.")) {
+        let internal = canonical_finish_slot(result, outputs)?;
+        builder.record_slot(internal);
+    }
+
+    allocate_input_slots(source.inputs(), builder).map_err(|e| CompileErrors(vec![e]))?;
+
+    for (input, port) in source.inputs().iter().zip(builder.input_slots.iter()) {
+        let name = format!("$input.{}", input.key);
+        if outputs.contains_key(&name) {
+            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
+                name: name.into_boxed_str(),
+            }]));
+        }
+        outputs.insert(name, port.slot);
+    }
+
+    Ok(())
+}

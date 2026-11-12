@@ -1,0 +1,3 @@
+=== compile evidence: structured_status_render_hostile ===
+-rwxr-xr-x 2 lewis lewis 1305608 Oct 22 17:19 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/structured_status_render_hostile
+OK: binary present
