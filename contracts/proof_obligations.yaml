@@ -349,6 +349,7 @@ obligations:
       property_tests: [whole_workflow_budget_within_policy]
     commands:
       - cargo kani --package vb_core --harness kani_resource_budget_bounded
+      - cargo nextest run -p vb_core whole_workflow_budget_within_policy
 
   # ============================================================
   # IPC DECODER (Section 18, 21, 50)

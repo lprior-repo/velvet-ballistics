@@ -2,6 +2,7 @@
 //! Command derivation for proof obligations.
 
 use super::{FuzzField, ProofObligation, kani_harness_filter};
+use crate::proof_commands::{crash_lab_command, diff_test_command, nextest_command};
 
 pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
     let mut cmds = Vec::new();
@@ -17,7 +18,13 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
         cmds.push(format!("verus {}", verus));
     }
     for test in &obl.required.tests {
-        cmds.push(format!("cargo nextest run -p {} {}", obl.crate_name, test));
+        cmds.push(nextest_command(&obl.crate_name, test));
+    }
+    for test in &obl.required.property_tests {
+        cmds.push(nextest_command(&obl.crate_name, test));
+    }
+    for test in &obl.required.differential_tests {
+        cmds.push(nextest_command(&obl.crate_name, test));
     }
     if let Some(ref fuzz) = obl.required.fuzz {
         match fuzz {
@@ -34,6 +41,12 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
     }
     if let Some(ref loom) = obl.required.loom {
         cmds.push(format!("cargo xtask loom --model {}", loom));
+    }
+    for entry in &obl.required.crash_lab {
+        cmds.push(crash_lab_command(entry));
+    }
+    for entry in &obl.required.diff_test {
+        cmds.push(diff_test_command(entry));
     }
 
     cmds

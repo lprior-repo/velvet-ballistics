@@ -47,6 +47,10 @@ pub struct RequiredProof {
     pub property_tests: Vec<String>,
     #[serde(default)]
     pub differential_tests: Vec<String>,
+    #[serde(default)]
+    pub crash_lab: Vec<String>,
+    #[serde(default)]
+    pub diff_test: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -265,6 +269,8 @@ mod tests {
                 loom: None,
                 property_tests: vec![],
                 differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
             },
             commands: vec![],
         };
@@ -292,6 +298,8 @@ mod tests {
                 loom: None,
                 property_tests: vec![],
                 differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
             },
             commands: vec![],
         };
