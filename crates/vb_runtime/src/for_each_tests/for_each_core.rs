@@ -193,7 +193,7 @@ fn for_each_start_returns_error_when_input_is_not_list() {
             assert_eq!(found, "number");
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            assert_for_each_type_mismatch_error(other, "number");
         }
     }
 }
@@ -383,7 +383,7 @@ fn for_each_next_returns_error_when_output_missing() -> Result<(), String> {
             assert_eq!(step, StepIdx::ZERO);
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            assert_for_each_missing_output_error(other);
         }
     }
     Ok(())
@@ -409,7 +409,7 @@ fn for_each_next_returns_error_when_iterator_is_not_list() {
             assert_eq!(found, "boolean");
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            assert_for_each_type_mismatch_error(other, "boolean");
         }
     }
 }
@@ -813,10 +813,7 @@ fn for_each_start_empty_list_does_not_modify_item_slot() {
 #[test]
 fn for_each_start_null_input_returns_type_mismatch() {
     // Given a frame with Null in the input slot
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let input = SlotIdx::new(0);
-    assert_eq!(run.write_slot(input, SlotValue::Null), Ok(()), "must write");
+    let (mut run, mut store, input) = for_each_null_input_fixture();
     // When calling for_each_start
     let result = for_each_start(
         &mut run,
@@ -835,7 +832,7 @@ fn for_each_start_null_input_returns_type_mismatch() {
             assert_eq!(found, "null");
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            assert_for_each_type_mismatch_error(other, "null");
         }
     }
 }
@@ -1122,4 +1119,34 @@ fn for_each_empty_input_fixture() -> (RunFrame, ValueStore, SlotIdx, SlotIdx, Sl
     );
     list_in_slot(&mut run, &mut store, input, vec![]);
     (run, store, input, item_slot, output_slot, done)
+}
+
+fn assert_for_each_type_mismatch_error(
+    result: Result<vb_core::EngineSignal, EngineError>,
+    found: &'static str,
+) {
+    assert_eq!(
+        result,
+        Err(EngineError::TypeMismatch {
+            expected: "list",
+            found,
+        })
+    );
+}
+
+fn assert_for_each_missing_output_error(result: Result<vb_core::EngineSignal, EngineError>) {
+    assert_eq!(
+        result,
+        Err(EngineError::MissingOutputSlot {
+            step: StepIdx::ZERO,
+        })
+    );
+}
+
+fn for_each_null_input_fixture() -> (RunFrame, ValueStore, SlotIdx) {
+    let mut run = fresh_frame();
+    let store = ValueStore::new();
+    let input = SlotIdx::new(0);
+    assert_eq!(run.write_slot(input, SlotValue::Null), Ok(()), "must write");
+    (run, store, input)
 }
