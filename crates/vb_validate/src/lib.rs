@@ -78,7 +78,6 @@ mod fact_table;
 #[cfg(test)]
 mod gate_07_stack;
 
-#[cfg(test)]
 mod gate_08_accessor;
 
 #[cfg(test)]
