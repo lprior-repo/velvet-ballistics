@@ -16,6 +16,15 @@ mod proptests {
 
     const RECOVERY_IO_PROPTEST_CASES: u32 = 64;
 
+    fn required_result<T, E: std::fmt::Debug>(
+        value: Result<T, E>,
+        operation: &str,
+    ) -> Result<T, proptest::test_runner::TestCaseError> {
+        value.map_err(|error| {
+            proptest::test_runner::TestCaseError::fail(format!("{operation}: {error:?}"))
+        })
+    }
+
     fn recovery_proptest_config() -> ProptestConfig {
         ProptestConfig {
             cases: RECOVERY_IO_PROPTEST_CASES,
@@ -30,8 +39,8 @@ mod proptests {
             let run = RunId::new(42);
             let key1 = run_event_key(run, EventSeq::new(seq1));
             let key2 = run_event_key(run, EventSeq::new(seq2));
-            let Ok(k1) = key1 else { return Ok(()) };
-            let Ok(k2) = key2 else { return Ok(()) };
+            let k1 = required_result(key1, "run_event_key(seq1)")?;
+            let k2 = required_result(key2, "run_event_key(seq2)")?;
             if seq1 < seq2 {
                 prop_assert!(k1 < k2);
             } else if seq1 > seq2 {
@@ -80,7 +89,7 @@ mod proptests {
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = required_result(encoded, "encode_record(JournalEvent)")?;
             let decoded = decode_record::<crate::JournalEvent>(
                 &encoded,
                 MAGIC_JOURNAL_EVENT,
@@ -92,7 +101,7 @@ mod proptests {
                     prop_assert_eq!(decoded_event, event);
                 }
                 // Mismatched kind must be rejected with RecordKindPayloadMismatch.
-                (Err(crate::JournalError::RecordKindPayloadMismatch { envelope_kind, payload_kind }), k) => {
+                (Err(crate::JournalError::RecordKindPayloadMismatch { envelope_kind, payload_kind }), k) if k != RecordKind::RunAccepted.id() => {
                     prop_assert_eq!(envelope_kind, k);
                     prop_assert_eq!(payload_kind, RecordKind::RunAccepted.id());
                 }
@@ -120,8 +129,8 @@ mod proptests {
             let seq = EventSeq::new(seq_val);
             let key1 = run_event_key(run, seq);
             let key2 = run_event_key(run, seq);
-            let Ok(k1) = key1 else { return Ok(()) };
-            let Ok(k2) = key2 else { return Ok(()) };
+            let k1 = required_result(key1, "run_event_key(first)")?;
+            let k2 = required_result(key2, "run_event_key(second)")?;
             prop_assert_eq!(k1, k2);
         }
 
@@ -181,56 +190,56 @@ mod proptests {
 
             let k1 = workflow_source_key(digest);
             let k2 = workflow_source_key(digest);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "workflow_source_key(first)")?;
+            let k2 = required_result(k2, "workflow_source_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = compiled_ir_key(digest);
             let k2 = compiled_ir_key(digest);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "compiled_ir_key(first)")?;
+            let k2 = required_result(k2, "compiled_ir_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = run_header_key(run);
             let k2 = run_header_key(run);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "run_header_key(first)")?;
+            let k2 = required_result(k2, "run_header_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = run_event_key(run, seq);
             let k2 = run_event_key(run, seq);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "run_event_key(first)")?;
+            let k2 = required_result(k2, "run_event_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = run_snapshot_key(run, seq);
             let k2 = run_snapshot_key(run, seq);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "run_snapshot_key(first)")?;
+            let k2 = required_result(k2, "run_snapshot_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = blob_key(digest);
             let k2 = blob_key(digest);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "blob_key(first)")?;
+            let k2 = required_result(k2, "blob_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = index_status_key(IndexStatusState::from_u8(state_val), ts_val, run);
             let k2 = index_status_key(IndexStatusState::from_u8(state_val), ts_val, run);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "index_status_key(first)")?;
+            let k2 = required_result(k2, "index_status_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = index_workflow_key(WorkflowId::new(wf_val), run);
             let k2 = index_workflow_key(WorkflowId::new(wf_val), run);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "index_workflow_key(first)")?;
+            let k2 = required_result(k2, "index_workflow_key(second)")?;
             prop_assert_eq!(k1, k2);
 
             let k1 = index_action_key(ActionId::new(action_val), run, StepIdx::new(step_val));
             let k2 = index_action_key(ActionId::new(action_val), run, StepIdx::new(step_val));
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = required_result(k1, "index_action_key(first)")?;
+            let k2 = required_result(k2, "index_action_key(second)")?;
             prop_assert_eq!(k1, k2);
         }
 
@@ -250,9 +259,9 @@ mod proptests {
                 &record,
                 65536,
             );
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = required_result(encoded, "encode_record(WorkflowSourceRecord)")?;
             let decoded = decode_record::<WorkflowSourceRecord>(&encoded, MAGIC_WORKFLOW_SOURCE, 65536);
-            let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
+            let (_env, decoded_record) = required_result(decoded, "decode_record(WorkflowSourceRecord)")?;
             prop_assert_eq!(decoded_record, record);
         }
 
@@ -266,9 +275,9 @@ mod proptests {
                 bytes: blob_bytes,
             };
             let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, 65536);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = required_result(encoded, "encode_record(BlobRecord)")?;
             let decoded = decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, 65536);
-            let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
+            let (_env, decoded_record) = required_result(decoded, "decode_record(BlobRecord)")?;
             prop_assert_eq!(decoded_record, record);
         }
     }
@@ -327,7 +336,10 @@ mod proptests {
             for event in &events {
                 journal1.append_strict(event).unwrap();
             }
-            let summary1 = recover_runtime_summary(&journal1, run).ok();
+            let summary1 = required_result(
+                recover_runtime_summary(&journal1, run),
+                "recover_runtime_summary(first)",
+            )?;
 
             let dir2 = TempDir::new().unwrap();
             let journal2 = crate::FjallJournal::open(dir2.path(), Some(crate::FjallConfig::default()))
@@ -335,18 +347,19 @@ mod proptests {
             for event in &events {
                 journal2.append_strict(event).unwrap();
             }
-            let summary2 = recover_runtime_summary(&journal2, run).ok();
+            let summary2 = required_result(
+                recover_runtime_summary(&journal2, run),
+                "recover_runtime_summary(second)",
+            )?;
 
-            prop_assert_eq!(summary1.is_some(), summary2.is_some());
-            if let (Some(s1), Some(s2)) = (summary1, summary2) {
-                let ss1 = s1.summary();
-                let ss2 = s2.summary();
-                prop_assert_eq!(ss1.run, ss2.run);
-                prop_assert_eq!(ss1.steps_started, ss2.steps_started);
-                prop_assert_eq!(ss1.steps_succeeded, ss2.steps_succeeded);
-                prop_assert_eq!(ss1.terminal, ss2.terminal);
-                prop_assert_eq!(ss1.slots_written, ss2.slots_written);
-            }
+            let ss1 = summary1.summary();
+            let ss2 = summary2.summary();
+            prop_assert_eq!(ss1.run, run);
+            prop_assert_eq!(ss1.run, ss2.run);
+            prop_assert_eq!(ss1.steps_started, ss2.steps_started);
+            prop_assert_eq!(ss1.steps_succeeded, ss2.steps_succeeded);
+            prop_assert_eq!(ss1.terminal, ss2.terminal);
+            prop_assert_eq!(ss1.slots_written, ss2.slots_written);
         }
 
         #[test]
