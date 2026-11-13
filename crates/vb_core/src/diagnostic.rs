@@ -249,7 +249,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         0x1315,
         CodeCategory::Accessor,
     ),
-    // ---- Runtime storage/journal errors (from RuntimeError): E20xx (0x2001–0x201E wave-15, plus 0x201F, 0x2026, 0x2029) ----
+    // ---- Runtime storage/journal errors (from RuntimeError): E20xx (0x2001–0x201E wave-15, plus 0x201F–0x2025, 0x2026, 0x2027–0x2029) ----
     active_code_entry("QUEUE_FULL", 0x2001, CodeCategory::Storage),
     active_code_entry("RUN_NOT_FOUND", 0x2002, CodeCategory::Storage),
     active_code_entry(
@@ -317,6 +317,30 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         0x201F,
         CodeCategory::Storage,
     ),
+    active_code_entry("ROLLBACK_FAILED", 0x2020, CodeCategory::Storage),
+    active_code_entry(
+        "ADMISSION_ACTION_REGISTRY_MISMATCH",
+        0x2021,
+        CodeCategory::Storage,
+    ),
+    active_code_entry(
+        "ADMISSION_ACTION_ABI_DIGEST_MISMATCH",
+        0x2022,
+        CodeCategory::Storage,
+    ),
+    active_code_entry(
+        "RETRY_BLOCKED_ON_UNDRAINED_JOURNAL",
+        0x2023,
+        CodeCategory::Storage,
+    ),
+    active_code_entry(
+        "PER_RUN_QUEUE_DEPTH_EXCEEDED",
+        0x2024,
+        CodeCategory::Storage,
+    ),
+    active_code_entry("COMPAT_GATE_BLOCKED", 0x2025, CodeCategory::Storage),
+    active_code_entry("OPEN_GATE_CAPACITY_EXCEEDED", 0x2027, CodeCategory::Storage),
+    active_code_entry("OPEN_GATE_CAPACITY_ZERO", 0x2028, CodeCategory::Storage),
     active_code_entry(
         "INTROSPECTION_EPOCH_EXHAUSTED",
         0x2029,

@@ -3,6 +3,7 @@ use std::error::Error;
 use std::str::FromStr;
 use std::sync::Arc;
 use vb_core::DiagnosticCode;
+use vb_core::ids::{ActionId, RunId, WorkflowDigest};
 
 #[cfg(test)]
 mod proptest_vb_edvbj_diagnostic_code;
@@ -194,6 +195,110 @@ fn post_wave15_runtime_diagnostic_codes_are_unique_and_pinned() {
             assert_ne!(left.code(), right.code());
         }
     }
+}
+
+#[test]
+fn registered_runtime_codes_resolve_to_symbolic_names() {
+    let cases: [(RuntimeError, u16, &str); 8] = [
+        (
+            RuntimeError::RollbackFailed {
+                operation: "op",
+                primary: Box::new(RuntimeError::QueueFull),
+                rollback: Box::new(RuntimeError::QueueFull),
+            },
+            0x2020,
+            "ROLLBACK_FAILED",
+        ),
+        (
+            RuntimeError::AdmissionActionRegistryMismatch {
+                digest: WorkflowDigest::from_bytes([0x42_u8; 32]),
+                expected_count: 3,
+                submitted_count: 4,
+            },
+            0x2021,
+            "ADMISSION_ACTION_REGISTRY_MISMATCH",
+        ),
+        (
+            RuntimeError::AdmissionActionAbiDigestMismatch {
+                action: ActionId::new(7),
+                expected: WorkflowDigest::from_bytes([0x42_u8; 32]),
+                submitted: WorkflowDigest::from_bytes([0x43_u8; 32]),
+            },
+            0x2022,
+            "ADMISSION_ACTION_ABI_DIGEST_MISMATCH",
+        ),
+        (
+            RuntimeError::RetryBlockedOnUndrainedJournal {
+                run: RunId::new(91_001),
+            },
+            0x2023,
+            "RETRY_BLOCKED_ON_UNDRAINED_JOURNAL",
+        ),
+        (
+            RuntimeError::PerRunQueueDepthExceeded {
+                run: RunId::new(91_001),
+                pending: 5,
+                limit: 4,
+            },
+            0x2024,
+            "PER_RUN_QUEUE_DEPTH_EXCEEDED",
+        ),
+        (
+            RuntimeError::CompatGateBlocked {
+                run: RunId::new(91_001),
+                source: vb_storage::compat::CompatError::ReplayOnlyLiveEffect {
+                    boundary: vb_storage::compat::CompatBoundary::IrVersion,
+                },
+            },
+            0x2025,
+            "COMPAT_GATE_BLOCKED",
+        ),
+        (
+            RuntimeError::OpenGateCapacityExceeded { capacity: 2 },
+            0x2027,
+            "OPEN_GATE_CAPACITY_EXCEEDED",
+        ),
+        (
+            RuntimeError::OpenGateCapacityZero,
+            0x2028,
+            "OPEN_GATE_CAPACITY_ZERO",
+        ),
+    ];
+    for (error, numeric, symbolic) in cases {
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(numeric));
+        assert_eq!(
+            error
+                .diagnostic_code()
+                .symbolic_code()
+                .map(|code| code.as_str()),
+            Some(symbolic)
+        );
+        assert_eq!(
+            DiagnosticCode::from_str(&format!("E{numeric:04X}")),
+            Ok(DiagnosticCode::new(numeric))
+        );
+    }
+    assert_eq!(
+        RuntimeError::AdmissionActionRegistryMismatch {
+            digest: WorkflowDigest::from_bytes([0x42_u8; 32]),
+            expected_count: 3,
+            submitted_count: 4,
+        }
+        .symbolic_code()
+        .as_str(),
+        "ADMISSION_ACTION_REGISTRY_MISMATCH"
+    );
+    assert_eq!(
+        RuntimeError::CompatGateBlocked {
+            run: RunId::new(91_001),
+            source: vb_storage::compat::CompatError::ReplayOnlyLiveEffect {
+                boundary: vb_storage::compat::CompatBoundary::IrVersion,
+            },
+        }
+        .symbolic_code()
+        .as_str(),
+        "COMPAT_GATE_BLOCKED"
+    );
 }
 
 #[test]
