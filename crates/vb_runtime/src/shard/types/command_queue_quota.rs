@@ -123,7 +123,7 @@ struct PendingQueuePush<'a> {
 
 struct PendingIndexUpdate {
     pending: Option<(RunId, u32)>,
-    submit_depth: Option<(RunId, u32)>,
+    admitted_depth: Option<(RunId, u32)>,
     submission: Option<(RunId, u32)>,
 }
 
@@ -137,9 +137,25 @@ impl PendingQueueIndexes<'_> {
     ) -> RuntimeResult<PendingIndexUpdate> {
         Ok(PendingIndexUpdate {
             pending: self.next_pending(run, limit, submit_depth)?,
-            submit_depth,
+            admitted_depth: self.next_admitted_depth(run, limit, submit_depth),
             submission: self.next_submission(submit_run)?,
         })
+    }
+
+    fn next_admitted_depth(
+        &self,
+        run: Option<RunId>,
+        limit: Option<u32>,
+        submit_depth: Option<(RunId, u32)>,
+    ) -> Option<(RunId, u32)> {
+        let run = run?;
+        let recorded = self.admitted.get(&run).copied();
+        let candidate = submit_depth.map(|(_, depth)| depth);
+        [limit, recorded, candidate]
+            .into_iter()
+            .flatten()
+            .min()
+            .map(|depth| (run, depth))
     }
 
     fn next_pending(
@@ -183,9 +199,8 @@ impl PendingQueueIndexes<'_> {
         if let Some((run, count)) = update.pending {
             let _previous = self.pending.insert(run, count);
         }
-        if let Some((run, depth)) = update.submit_depth {
-            let recorded = self.admitted.entry(run).or_insert(depth);
-            *recorded = (*recorded).min(depth);
+        if let Some((run, depth)) = update.admitted_depth {
+            let _previous = self.admitted.insert(run, depth);
         }
         if let Some((run, count)) = update.submission {
             let _previous = self.submissions.insert(run, count);

@@ -11,14 +11,35 @@ use crate::{RuntimeError, RuntimeResult};
 pub(crate) use prefix::validate_pristine_prefix_events;
 use vb_core::{RunId, RuntimePolicy, WorkflowDigest};
 
+pub(crate) struct VerifiedOwnedQueueDepth {
+    run: RunId,
+    source: WorkflowDigest,
+    depth: Option<u32>,
+}
+
+impl VerifiedOwnedQueueDepth {
+    pub(crate) fn matches(&self, run: RunId, source: WorkflowDigest) -> bool {
+        self.run == run && self.source == source
+    }
+
+    pub(crate) const fn depth(&self) -> Option<u32> {
+        self.depth
+    }
+}
+
 impl Shard {
     pub(crate) fn preflight_owned_activation(
         &self,
         run: RunId,
         source: WorkflowDigest,
-    ) -> RuntimeResult<()> {
+    ) -> RuntimeResult<VerifiedOwnedQueueDepth> {
         self.validate_owned_activation_capacity(run)?;
-        prefix::load(self, run, source).map(drop)
+        let prepared = prefix::load(self, run, source)?;
+        let depth = prepared
+            .admission
+            .budget()
+            .map(|budget| budget.max_queue_depth);
+        Ok(VerifiedOwnedQueueDepth { run, source, depth })
     }
 
     pub(crate) fn handle_owned_activation(

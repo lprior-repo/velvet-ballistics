@@ -26,9 +26,8 @@ pub struct ShardCommandQueue {
     /// Entries are removed when their count reaches zero, so the map is
     /// bounded by the number of distinct runs with pending commands.
     pending: std::sync::Mutex<IndexMap<RunId, u32>>,
-    /// Admitted per-run queue depth recorded from a pending submit, keyed
-    /// by run. A submit's workflow budget is the cap for commands that
-    /// arrive before the run has an attached admission in run state.
+    /// Tightest known per-run queue depth retained from pending commands,
+    /// keyed by run. It applies until that run's pending count reaches zero.
     /// Entries are removed when the run's pending count reaches zero, so
     /// the map is bounded by the number of distinct runs with pending
     /// commands.
@@ -99,8 +98,8 @@ impl ShardCommandQueue {
     /// the push, so concurrent enqueues cannot jointly exceed the cap. A
     /// rejected command is never pushed and never counted; a command that
     /// fails on shard-wide capacity is likewise never counted. When no cap
-    /// is given, a cap recorded from a pending submit for the same run
-    /// applies; a submit records its workflow budget on a successful push.
+    /// is given, the recorded bound for the same pending run applies; every
+    /// successful push records the tightest supplied bound.
     ///
     /// # Errors
     /// Returns `RuntimeError::PerRunQueueDepthExceeded` when the command's

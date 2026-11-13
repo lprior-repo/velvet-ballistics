@@ -9,6 +9,14 @@ impl Shard {
         if self.shutting_down {
             return Err(RuntimeError::ShutdownInProgress);
         }
+        if let ShardCommand::ActivateOwnedSubmission {
+            run,
+            expected_source_digest,
+        } = &cmd
+        {
+            let verified = self.preflight_owned_activation(*run, *expected_source_digest)?;
+            return self.enqueue_owned_activation(*run, *expected_source_digest, verified);
+        }
         self.validate_secret_submission(&cmd)?;
         match &cmd {
             ShardCommand::Submit { workflow, .. }
@@ -53,6 +61,29 @@ impl Shard {
             .enqueue_with_reservation(cmd, limit, quota, Some(&self.quota))
     }
 
+    pub(crate) fn enqueue_owned_activation(
+        &self,
+        run: vb_core::RunId,
+        source: vb_core::WorkflowDigest,
+        verified: crate::shard::lifecycle::owned_activation::VerifiedOwnedQueueDepth,
+    ) -> RuntimeResult<()> {
+        if !verified.matches(run, source) {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "owned_activation_queue_authority_mismatch",
+            });
+        }
+        let command = ShardCommand::ActivateOwnedSubmission {
+            run,
+            expected_source_digest: source,
+        };
+        let limit = minimum_queue_depth(
+            self.active_run_queue_depth(&command),
+            verified.depth(),
+        );
+        self.command_queue
+            .enqueue_with_reservation(command, limit, None, Some(&self.quota))
+    }
+
     /// Resolves the admitted per-run queue depth for a command, when one
     /// is available at enqueue time. An active run's attached budget
     /// governs; a submit variant's workflow budget is the budget that
@@ -72,7 +103,10 @@ impl Shard {
             | ShardCommand::SubmitTenantWithInputsAndContracts { workflow, .. } => {
                 self.workflow_queue_depth(cmd, workflow)
             }
-            ShardCommand::Recover { command } => Ok(command.admitted_queue_depth()),
+            ShardCommand::Recover { command } => Ok(minimum_queue_depth(
+                self.active_run_queue_depth(cmd),
+                command.admitted_queue_depth(),
+            )),
             _ => Ok(self.active_run_queue_depth(cmd)),
         }
     }
@@ -144,6 +178,14 @@ impl Shard {
 
     fn run_capacity_error(capacity: usize) -> RuntimeError {
         RuntimeError::ActiveRunCapacityExceeded { capacity }
+    }
+}
+
+fn minimum_queue_depth(active: Option<u32>, incoming: Option<u32>) -> Option<u32> {
+    match (active, incoming) {
+        (Some(active), Some(incoming)) => Some(active.min(incoming)),
+        (Some(depth), None) | (None, Some(depth)) => Some(depth),
+        (None, None) => None,
     }
 }
 
