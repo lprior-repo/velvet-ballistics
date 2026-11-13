@@ -1,35 +1,10 @@
 impl Shard {
-    /// Recovers a run from a pre-hydrated `RunFrame` by loading the compiled workflow
-    /// from the artifact store and constructing a full `RunState`.
+    /// Recovers a run from a pre-hydrated frame plus validated journal evidence.
     ///
-    /// The workflow digest comes from the journal recovery summary and is
-    /// used to look up the `AcceptedArtifact` whose `ir` field contains the
-    /// postcard-encoded `WorkflowParts`. The parts are deserialized and
-    /// validated via `CompiledWorkflow::try_from_parts`.
-    ///
-    /// Recovery differs from submit in three ways:
-    /// - No `prepare_run_slots` / `take_frame_for` — the frame is pre-hydrated.
-    /// - The artifact store is queried by digest rather than the workflow being
-    ///   passed directly.
-    /// - Admission is built with empty capabilities (caps are not persisted
-    ///   per-run in the journal; runs requiring non-empty caps will fail
-    ///   admission during recovery, which is the correct fail-closed behavior).
-    ///
-    /// Recovers a run from full recovery context provided by journal replay.
-    ///
-    /// The typed `RecoverRunCommand` carries all recovery evidence: artifact
-    /// digest for verification, workflow digest for identity validation,
-    /// journal sequence for sequencing, collect states for pagination
-    /// resumption, and boundary classification for suspended operations.
-    ///
-    /// Recovery flow:
-    /// 1. Load artifact by artifact_digest (verification)
-    /// 2. Deserialize and compile workflow from artifact IR
-    /// 3. Verify workflow identity matches command workflow_digest
-    /// 4. Seed journal sequence from command next_seq
-    /// 5. Build admission with artifact's required capabilities
-    /// 6. Construct RunState restoring collect_states
-    /// 7. Handle boundary (pending action / open ask / recovered timer)
+    /// The artifact is loaded by digest, the workflow is recompiled and checked
+    /// against the recorded digest, and admission is restored exactly rather
+    /// than rebuilt from current policy. Admission-derived accounting (origin,
+    /// counters) is restored before any boundary handling.
     pub(crate) fn handle_recover(
         &mut self,
         command: crate::shard::types::RecoverRunCommand,
@@ -44,6 +19,9 @@ impl Shard {
         let boundary = command.boundary;
         let admission = command.admission;
         let restored_store = command.restored_store;
+        let recovered_origin = command.run_started_millis;
+        let recovered_action_attempts = command.recovered_action_attempts;
+        let recovered_journal_bytes_written = command.recovered_journal_bytes_written;
 
         // Step 1: Load artifact by artifact_digest for verification
         let artifact = self
@@ -167,6 +145,10 @@ impl Shard {
             }
             state.registered_execution = registered_execution;
             self.restore_retry_boundary_frame(&mut state, boundary)?;
+            state.run_started_millis = crate::recovery::resolve_run_started_millis(
+                state.admission.as_ref(),
+                recovered_origin.or(state.run_started_millis),
+            )?;
             self.prepare_run_slots(run)?;
             state
         } else {
@@ -196,37 +178,40 @@ impl Shard {
                     unverified_admission
                 }
             };
-            let recovered_started = state_admission
-                .as_ref()
-                .and_then(crate::admission::RunAdmission::run_started_millis);
-            let budgeted = state_admission
-                .as_ref()
-                .is_some_and(|admission| admission.budget().is_some());
-            // A budgeted run recovered from evidence that predates the durable
-            // origin has no honest lifetime start. Treat it as already expired
-            // instead of restarting its clock.
-            let run_started_millis = match (recovered_started, budgeted) {
-                (Some(started), _) => Some(started),
-                (None, true) => Some(0),
-                (None, false) => None,
-            };
+            let run_started_millis = crate::recovery::resolve_run_started_millis(
+                state_admission.as_ref(),
+                recovered_origin,
+            )?;
             crate::shard::types::RunState {
                 registered_execution,
                 frame,
                 run_attempt: core::num::NonZeroU16::MIN,
                 workflow,
                 store,
-                action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+                action_attempts: recovered_action_attempts.unwrap_or_else(|| {
+                    crate::shard::helpers::new_action_attempts(frame_step_count)
+                }),
                 admission: state_admission,
                 run_started_millis,
                 collect_states,
-                journal_bytes_written: 0,
+                journal_bytes_written: recovered_journal_bytes_written.unwrap_or(0),
                 action_contracts: artifact.action_contracts.clone(),
             }
         };
 
         self.terminal_runs_remove(run);
         self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+        let recovered_quota = self
+            .run_state_get(run)
+            .and_then(|state| state.admission.as_ref())
+            .and_then(|admission| {
+                admission
+                    .budget()
+                    .map(|budget| (admission.tenant(), budget.max_cost_units))
+            });
+        if let Some((tenant, cost_units)) = recovered_quota {
+            self.charge_admission_quota(run, tenant, cost_units)?;
+        }
 
         // Step 7a: Restore reconstructed open gates before any boundary
         // handling. A gated run is suspended on its gate, never on another

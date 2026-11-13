@@ -67,12 +67,12 @@
         let recorded_start = actual
             .iter()
             .find_map(|event| match event {
-                RuntimeJournalEvent::RunAdmission { admission } => {
-                    admission.run_started_millis()
-                }
+                RuntimeJournalEvent::RunBudgetOrigin {
+                    started_millis, ..
+                } => Some(*started_millis),
                 _ => None,
             })
-            .ok_or_else(|| String::from("RunAdmission must record the run start"))?;
+            .ok_or_else(|| String::from("RunBudgetOrigin must record the run start"))?;
         assert_eq!(
             actual,
             vec![
@@ -87,8 +87,11 @@
                         CapabilitySet::empty(),
                         RuntimePolicy::Relaxed,
                     )
-                    .with_attached_budget(expected_budget)
-                    .with_run_started_millis(Some(recorded_start)),
+                    .with_attached_budget(expected_budget),
+                },
+                RuntimeJournalEvent::RunBudgetOrigin {
+                    run,
+                    started_millis: recorded_start,
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,

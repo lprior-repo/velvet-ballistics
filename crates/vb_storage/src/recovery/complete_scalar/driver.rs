@@ -88,6 +88,7 @@ pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<Ru
             E::RunContinuation { .. } if accepted && admitted && !started => {}
             E::CompatibilityDecisionEvent { .. }
             | E::TenantAdmissionEvent { .. }
+            | E::RunBudgetOriginEvent { .. }
             | E::PolicyDecisionEvent { .. }
                 if accepted => {}
             E::StepStarted { step, .. } if accepted && admitted => {

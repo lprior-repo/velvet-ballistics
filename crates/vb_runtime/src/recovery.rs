@@ -35,6 +35,12 @@ pub use input_binding::{
 use crate::{RuntimeError, RuntimeResult};
 use product::DurableFrameRecoveryProduct;
 
+mod accounting;
+pub(crate) use accounting::{
+    hydrate_run_budget_origin, recover_action_attempts, recover_journal_bytes_written,
+    resolve_run_started_millis,
+};
+
 /// Hydrates the latest run admission metadata from durable storage events.
 #[must_use]
 pub fn hydrate_run_admission_from_events(

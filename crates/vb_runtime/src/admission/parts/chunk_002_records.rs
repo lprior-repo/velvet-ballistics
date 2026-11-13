@@ -28,12 +28,6 @@ pub struct RunAdmission {
     /// `RunAdmission` past the large-variant lint threshold.
     #[serde(default)]
     ir_compat_decision: Option<Box<CompatDecision>>,
-    /// Wall-clock run origin in milliseconds since the UNIX epoch, recorded
-    /// when the admission header is journaled. Trailing `serde(default)` keeps
-    /// older admission bytes decodable; absence means the origin predates this
-    /// field and recovery must fail closed instead of restarting the clock.
-    #[serde(default)]
-    run_started_millis: Option<u64>,
 }
 
 /// Aggregate resource request plus policy used by runtime budget admission.
@@ -68,7 +62,6 @@ impl RunAdmission {
             tenant: None,
             idempotency_attested: Box::new([]),
             ir_compat_decision: None,
-            run_started_millis: None,
         }
     }
 
@@ -93,7 +86,6 @@ impl RunAdmission {
             tenant: None,
             idempotency_attested,
             ir_compat_decision: None,
-            run_started_millis: None,
         }
     }
 
@@ -118,7 +110,6 @@ impl RunAdmission {
             tenant: None,
             idempotency_attested: Box::new([]),
             ir_compat_decision: None,
-            run_started_millis: None,
         }
     }
 
@@ -151,18 +142,6 @@ impl RunAdmission {
     pub(crate) fn with_ir_compat_decision(mut self, decision: CompatDecision) -> Self {
         self.ir_compat_decision = Some(Box::new(decision));
         self
-    }
-
-    /// Records the durable wall-clock origin for this run's lifetime budget.
-    pub(crate) fn with_run_started_millis(mut self, run_started_millis: Option<u64>) -> Self {
-        self.run_started_millis = run_started_millis;
-        self
-    }
-
-    /// Returns the durable wall-clock origin, when it was recorded at admission.
-    #[must_use]
-    pub const fn run_started_millis(&self) -> Option<u64> {
-        self.run_started_millis
     }
 
     /// Returns the artifact digest for this admission.

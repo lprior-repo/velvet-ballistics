@@ -6,7 +6,7 @@
 //! instant instead of restarting the clock. Every conversion and addition is
 //! checked: an unbounded or overflowing declaration is rejected before use.
 
-use crate::budget::{AggregateResourceBudget, BudgetExhaustionOutcome};
+use crate::budget::AggregateResourceBudget;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -28,9 +28,9 @@ pub struct RunLifetimeBudget {
 /// Serialized form. Decoding revalidates the deadline invariant instead of
 /// trusting two independently supplied field values.
 #[derive(Serialize, Deserialize)]
-struct LifetimeBudgetWire {
-    started_millis: u64,
-    limit_millis: u64,
+pub(crate) struct LifetimeBudgetWire {
+    pub(crate) started_millis: u64,
+    pub(crate) limit_millis: u64,
 }
 
 /// Lifetime declaration or expiry failure.
@@ -59,15 +59,6 @@ pub enum LifetimeBudgetError {
         /// Absolute deadline in milliseconds since the UNIX epoch.
         deadline_millis: u64,
     },
-}
-
-impl LifetimeBudgetError {
-    /// Wall-clock exhaustion never replenishes within a run, so every lifetime
-    /// failure is terminal for the caller's policy.
-    #[must_use]
-    pub const fn outcome(&self) -> BudgetExhaustionOutcome {
-        BudgetExhaustionOutcome::Fail
-    }
 }
 
 impl RunLifetimeBudget {
@@ -105,41 +96,6 @@ impl RunLifetimeBudget {
             limit_millis,
             deadline_millis,
         })
-    }
-
-    /// Run start in milliseconds since the UNIX epoch.
-    #[must_use]
-    pub const fn started_millis(&self) -> u64 {
-        self.started_millis
-    }
-
-    /// Admitted lifetime limit in milliseconds.
-    #[must_use]
-    pub const fn limit_millis(&self) -> u64 {
-        self.limit_millis
-    }
-
-    /// Absolute deadline in milliseconds since the UNIX epoch.
-    #[must_use]
-    pub const fn deadline_millis(&self) -> u64 {
-        self.deadline_millis
-    }
-
-    /// Remaining lifetime at `now_millis`, floored at zero and capped at the
-    /// admitted limit so a backward clock observation cannot report more time
-    /// than the run was admitted.
-    #[must_use]
-    pub const fn remaining_millis(&self, now_millis: u64) -> u64 {
-        match self.deadline_millis.checked_sub(now_millis) {
-            Some(remaining) => {
-                if remaining > self.limit_millis {
-                    self.limit_millis
-                } else {
-                    remaining
-                }
-            }
-            None => 0,
-        }
     }
 
     /// Whether `now_millis` is past the deadline. The exact deadline is live.

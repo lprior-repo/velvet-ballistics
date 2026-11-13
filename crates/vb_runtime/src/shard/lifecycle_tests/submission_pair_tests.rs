@@ -111,7 +111,7 @@ fn submission_pair_one_free_queue_slot_publishes_neither_event() -> Result<(), S
 #[test]
 fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String> {
     let (journal, queue, adapter, shared) =
-        queued_journal_fixture("vb-submission-pair-flush-", 2, 1)?;
+        queued_journal_fixture("vb-submission-pair-flush-", 3, 1)?;
     let mut shard = Shard::new_with_journal_and_artifact_store(
         small_config(),
         shared,
@@ -131,20 +131,21 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
     assert!(matches!(
         result,
         Err(RuntimeError::StorageJournalAppend { source })
+            | Err(RuntimeError::AdmissionHeaderPersistenceFailed { source })
             if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
     ));
     assert_eq!(shard.active_run_count(), 1);
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(
         shard.journal_sequence_for(run),
-        vb_storage::EventSeq::new(2)
+        vb_storage::EventSeq::new(3)
     );
     assert_eq!(
         queue
             .pending_profile_counts()
             .map_err(|error| error.to_string())?
             .journaled,
-        2
+        3
     );
     assert!(
         journal
@@ -153,7 +154,7 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
             .is_empty()
     );
     let report = adapter.flush_batch().map_err(|error| error.to_string())?;
-    assert_eq!((report.drained, report.written), (2, 2));
+    assert_eq!((report.drained, report.written), (3, 3));
     let expected_admission = crate::journal::RuntimeJournal::convert_to_storage_event(
         adapter.as_ref(),
         RuntimeJournalEvent::RunAdmission {
@@ -162,6 +163,10 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
         vb_storage::EventSeq::new(1),
     )
     .map_err(|error| error.to_string())?;
+    let expected_started = shard
+        .run_state_get(run)
+        .and_then(|state| state.run_started_millis)
+        .ok_or("missing recorded run origin")?;
     assert_eq!(
         journal
             .events_for_run(run)
@@ -173,6 +178,11 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
                 workflow: workflow.digest(),
             },
             expected_admission,
+            vb_storage::JournalEvent::RunBudgetOriginEvent {
+                run,
+                seq: vb_storage::EventSeq::new(2),
+                started_millis: expected_started,
+            },
         ]
     );
     shard
@@ -184,18 +194,18 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
         .map_err(|error| error.to_string())?;
     assert_eq!(
         shard.journal_sequence_for(run),
-        vb_storage::EventSeq::new(3)
+        vb_storage::EventSeq::new(4)
     );
     let report = adapter.flush_batch().map_err(|error| error.to_string())?;
     assert_eq!((report.drained, report.written), (1, 1));
     let events = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 4);
     assert!(matches!(
         events.last(),
         Some(vb_storage::JournalEvent::RunCancelled { run: found, seq, .. })
-            if *found == run && *seq == vb_storage::EventSeq::new(2)
+            if *found == run && *seq == vb_storage::EventSeq::new(3)
     ));
     Ok(())
 }

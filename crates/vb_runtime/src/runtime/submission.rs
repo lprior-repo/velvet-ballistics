@@ -20,6 +20,24 @@ impl Runtime {
         })
     }
 
+    /// Submits a tenant-scoped run using a compiled workflow and explicit grants.
+    pub fn submit_direct_with_tenant(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+        tenant: vb_core::ids::TenantId,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        shard.validate_submit_admission(run, &workflow, caps.clone())?;
+        shard.enqueue(ShardCommand::SubmitTenantScoped {
+            run,
+            workflow,
+            caps,
+            tenant,
+        })
+    }
+
     /// Submits a run with explicit caller grants and validated action contracts.
     pub fn submit_direct_with_grants_and_contracts(
         &self,

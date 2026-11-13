@@ -1282,6 +1282,7 @@ mod tests {
                 JournalEvent::GateOpenedEvent { .. } => Ok(false),
                 JournalEvent::CompatibilityDecisionEvent { .. } => Ok(false),
                 JournalEvent::TenantAdmissionEvent { .. } => Ok(false),
+                JournalEvent::RunBudgetOriginEvent { .. } => Ok(false),
             }
         }
     };

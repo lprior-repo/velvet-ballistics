@@ -5,10 +5,6 @@
 #[test]
 fn lifetime_allows_exact_limit_and_rejects_limit_plus_one() {
     let lifetime = RunLifetimeBudget::try_new(1_000, 2).expect("two seconds fit");
-    assert_eq!(lifetime.started_millis(), 1_000);
-    assert_eq!(lifetime.limit_millis(), 2_000);
-    assert_eq!(lifetime.deadline_millis(), 3_000);
-    assert_eq!(lifetime.remaining_millis(3_000), 0);
     assert_eq!(lifetime.check(3_000), Ok(()));
     assert_eq!(
         lifetime.check(3_001),
@@ -22,7 +18,6 @@ fn lifetime_allows_exact_limit_and_rejects_limit_plus_one() {
 #[test]
 fn lifetime_zero_limit_admits_start_and_rejects_one_millisecond() {
     let lifetime = RunLifetimeBudget::try_new(50, 0).expect("zero is an explicit bound");
-    assert_eq!(lifetime.deadline_millis(), 50);
     assert_eq!(lifetime.check(50), Ok(()));
     assert_eq!(
         lifetime.check(51),
@@ -58,7 +53,6 @@ fn lifetime_rejects_deadline_overflow() {
 fn lifetime_expiry_is_typed_failure() {
     let lifetime = RunLifetimeBudget::try_new(0, 1).expect("one second fits");
     let error = lifetime.check(1_001).expect_err("one millisecond late");
-    assert_eq!(error.outcome(), BudgetExhaustionOutcome::Fail);
     assert_eq!(
         error,
         LifetimeBudgetError::Expired {
@@ -69,27 +63,14 @@ fn lifetime_expiry_is_typed_failure() {
 }
 
 #[test]
-fn lifetime_remaining_never_exceeds_limit_when_clock_goes_backward() {
-    let lifetime = RunLifetimeBudget::try_new(1_000, 2).expect("two seconds fit");
-    assert_eq!(lifetime.remaining_millis(1_000), 2_000);
-    assert_eq!(lifetime.remaining_millis(999), 2_000);
-    assert_eq!(lifetime.remaining_millis(0), 2_000);
-    assert_eq!(lifetime.remaining_millis(3_001), 0);
-}
-
-#[test]
 fn lifetime_is_stable_across_repeated_checks_and_replay() {
     let lifetime = RunLifetimeBudget::try_new(500, 60).expect("one minute fits");
-    let first_remaining = lifetime.remaining_millis(10_500);
-    assert_eq!(first_remaining, 50_000);
     assert_eq!(lifetime.check(20_500), Ok(()));
     assert_eq!(lifetime.check(10_500), Ok(()));
 
     let bytes = postcard::to_allocvec(&lifetime).expect("lifetime serializes");
     let restored: RunLifetimeBudget = postcard::from_bytes(&bytes).expect("lifetime decodes");
     assert_eq!(restored, lifetime);
-    assert_eq!(restored.deadline_millis(), 60_500);
-    assert_eq!(restored.remaining_millis(10_500), first_remaining);
     assert_eq!(
         restored.check(60_501),
         Err(LifetimeBudgetError::Expired {
@@ -122,5 +103,20 @@ fn lifetime_long_wait_expires_one_step_workflow() {
             deadline_millis: 1_000,
         }),
         "wall-clock suspension expires even when no instruction was consumed"
+    );
+}
+
+#[test]
+fn lifetime_wire_decode_rejects_deadline_overflow() {
+    let wire = crate::budget::lifetime::LifetimeBudgetWire {
+        started_millis: u64::MAX - 500,
+        limit_millis: 1_000,
+    };
+    assert_eq!(
+        RunLifetimeBudget::try_from(wire),
+        Err(LifetimeBudgetError::DeadlineOverflow {
+            started_millis: u64::MAX - 500,
+            limit_millis: 1_000,
+        })
     );
 }

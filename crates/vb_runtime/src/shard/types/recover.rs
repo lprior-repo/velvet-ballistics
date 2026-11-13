@@ -31,6 +31,12 @@ pub struct RecoverRunCommand {
     /// the run retained owned inputs. `None` on the raw and retry paths and
     /// for scalar runs, which restore the default empty store.
     pub(crate) restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+    /// Durable wall-clock origin from the admission-header batch.
+    pub(crate) run_started_millis: Option<u64>,
+    /// Reconstructed per-step action attempts from durable events.
+    pub(crate) recovered_action_attempts: Option<Box<[u16]>>,
+    /// Reconstructed cumulative journal bytes from durable events.
+    pub(crate) recovered_journal_bytes_written: Option<u64>,
 }
 
 impl RecoverRunCommand {
@@ -65,6 +71,9 @@ impl RecoverRunCommand {
                 artifact_digest,
             },
             restored_store: None,
+            run_started_millis: None,
+            recovered_action_attempts: None,
+            recovered_journal_bytes_written: None,
         }
     }
 
@@ -105,6 +114,20 @@ impl RecoverRunCommand {
         store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
     ) -> Self {
         self.restored_store = store;
+        self
+    }
+
+    /// Attaches durable run accounting reconstructed from the event stream.
+    #[must_use]
+    pub(crate) fn with_recovered_accounting(
+        mut self,
+        run_started_millis: Option<u64>,
+        action_attempts: Option<Box<[u16]>>,
+        journal_bytes_written: Option<u64>,
+    ) -> Self {
+        self.run_started_millis = run_started_millis;
+        self.recovered_action_attempts = action_attempts;
+        self.recovered_journal_bytes_written = journal_bytes_written;
         self
     }
 
@@ -184,6 +207,9 @@ impl RecoverRunCommand {
             open_gates: Vec::new(),
             admission,
             restored_store: None,
+            run_started_millis: None,
+            recovered_action_attempts: None,
+            recovered_journal_bytes_written: None,
         })
     }
 }
