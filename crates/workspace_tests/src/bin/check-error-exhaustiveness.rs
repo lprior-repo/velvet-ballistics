@@ -55,9 +55,9 @@ fn run() -> Result<i32, String> {
     let checks = CHECKS;
     let mut failures = Vec::new();
 
-    for check in &checks {
-        check_type(&root, check, &mut out, &mut failures)?;
-    }
+    checks
+        .iter()
+        .try_for_each(|check| check_type(&root, check, &mut out, &mut failures))?;
 
     report_results(&mut out, &failures)?;
     if failures.is_empty() { Ok(0) } else { Ok(1) }
@@ -82,11 +82,10 @@ fn check_type(
     };
 
     let mut ctx = CheckCtx { out, failures };
-    for oracle in check.oracles {
-        check_oracle(root, check, oracle, &variants, &mut ctx)?;
-    }
-
-    Ok(())
+    check
+        .oracles
+        .iter()
+        .try_for_each(|oracle| check_oracle(root, check, oracle, &variants, &mut ctx))
 }
 
 struct CheckCtx<'a> {
@@ -194,9 +193,9 @@ fn report_results(out: &mut impl Write, failures: &[String]) -> Result<(), Strin
         let mut err = stderr.lock();
         writeln!(err, "=== Error exhaustiveness failures ===")
             .map_err(|e| format!("write error: {}", e))?;
-        for failure in failures {
-            writeln!(err, "  {}", failure).map_err(|e| format!("write error: {}", e))?;
-        }
+        failures.iter().try_for_each(|failure| {
+            writeln!(err, "  {}", failure).map_err(|e| format!("write error: {}", e))
+        })?;
     }
     Ok(())
 }

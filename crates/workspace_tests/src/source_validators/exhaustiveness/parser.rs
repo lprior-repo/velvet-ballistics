@@ -106,23 +106,13 @@ fn brace_step(depth: u32, (offset, ch): (usize, char)) -> ControlFlow<Result<usi
 pub(crate) fn extract_enum_variants(body: &str) -> Result<Vec<String>, String> {
     let variant_re = Regex::new(r"^([A-Z][A-Za-z0-9_]*)\b(?:\s*[({,]|$)")
         .map_err(|e| format!("variant regex: {}", e))?;
-    let mut variants = Vec::new();
-
-    for line in body.lines() {
-        let stripped = line.trim();
-        if stripped.is_empty() || stripped.starts_with("#") {
-            continue;
-        }
-        if let Some(cap) = variant_re.captures(stripped)
-            && let Some(variant_cap) = cap.get(1)
-        {
-            let name = variant_cap.as_str().to_owned();
-            if !variants.contains(&name) {
-                variants.push(name);
-            }
-        }
-    }
-
+    let variants = body
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| variant_re.captures(line))
+        .filter_map(|cap| cap.get(1).map(|name| name.as_str().to_owned()))
+        .fold(Vec::new(), append_unique);
     Ok(variants)
 }
 
@@ -131,18 +121,18 @@ pub(crate) fn find_mentioned_variants(body: &str, type_name: &str) -> Result<Vec
     let escaped = regex::escape(type_name);
     let pattern = format!(r"\b{}::([A-Z][A-Za-z0-9_]*)\b", escaped);
     let re = Regex::new(&pattern).map_err(|e| format!("mention regex: {}", e))?;
-    let mut mentioned = Vec::new();
-
-    for cap in re.captures_iter(body) {
-        if let Some(variant_cap) = cap.get(1) {
-            let variant = variant_cap.as_str().to_owned();
-            if !mentioned.contains(&variant) {
-                mentioned.push(variant);
-            }
-        }
-    }
-
+    let mentioned = re
+        .captures_iter(body)
+        .filter_map(|cap| cap.get(1).map(|name| name.as_str().to_owned()))
+        .fold(Vec::new(), append_unique);
     Ok(mentioned)
+}
+
+fn append_unique(mut names: Vec<String>, name: String) -> Vec<String> {
+    if !names.contains(&name) {
+        names.push(name);
+    }
+    names
 }
 
 /// Check for graceful wildcard arms in the function body.
@@ -154,14 +144,15 @@ pub(crate) fn has_graceful_wildcard(body: &str) -> Result<bool, String> {
         r"_\s*=>\s*\(\s*\)",
     ];
 
-    for pattern in &patterns {
-        let re = Regex::new(pattern).map_err(|e| format!("wildcard regex: {}", e))?;
-        if re.is_match(body) {
-            return Ok(true);
+    patterns.iter().try_fold(false, |matched, pattern| {
+        if matched {
+            Ok(true)
+        } else {
+            Regex::new(pattern)
+                .map(|re| re.is_match(body))
+                .map_err(|e| format!("wildcard regex: {}", e))
         }
-    }
-
-    Ok(false)
+    })
 }
 
 #[cfg(test)]
