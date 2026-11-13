@@ -13,7 +13,7 @@ Benchmarks are part of the product contract. The first benchmark targets are:
 - replay from ordered journal events.
 - JSONL projection cost outside the hot loop.
 
-Current Criterion IDs implemented in `benches/velvet_ballistics.rs` include the cheap real engine, memory ingress, append, and replay surfaces named in `test-plan.md`. Deferred IDs are recorded there when the current runtime model or harness cannot yet report the required measurement honestly.
+Current Criterion IDs implemented in `crates/workspace_tests/benches/velvet_ballistics.rs` include the cheap real engine, memory ingress, append, and replay surfaces named in `test-plan.md`. Deferred IDs are recorded there when the current runtime model or harness cannot yet report the required measurement honestly.
 
 Acceptance rule: runtime changes that claim latency or throughput improvements must include before/after numbers on the affected benchmark.
 

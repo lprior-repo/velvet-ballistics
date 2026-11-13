@@ -1613,7 +1613,7 @@ Required proptest coverage areas:
 
 ## 39. Mandatory Benchmarks
 
-**Benchmark naming:** Exact benchmark names are not mandated. Benchmarks must exist covering the following areas. The authoritative benchmark list is `benches/velvet_ballistics.rs`.
+**Benchmark naming:** Exact benchmark names are not mandated. Benchmarks must exist covering the following areas. The authoritative benchmark list is `crates/workspace_tests/benches/velvet_ballistics.rs`.
 
 Required coverage areas:
 
