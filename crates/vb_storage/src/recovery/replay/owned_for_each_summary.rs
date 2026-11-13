@@ -119,7 +119,8 @@ pub(super) fn pending_actions(events: &[JournalEvent]) -> Vec<RecoveredPendingAc
 pub(super) fn unsupported_replay_event(event: &JournalEvent) -> bool {
     matches!(
         event,
-        JournalEvent::AskTimedOutEvent { .. }
+        JournalEvent::ActionScheduled { .. }
+            | JournalEvent::AskTimedOutEvent { .. }
             | JournalEvent::ActionCompletedEvent { .. }
             | JournalEvent::ActionAbandoned { .. }
             | JournalEvent::RetryTimerScheduled { .. }

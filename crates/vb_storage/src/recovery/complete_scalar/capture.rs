@@ -1,4 +1,5 @@
 use super::driver::Driver;
+use super::driver::OwnedCollectReplaySnapshot;
 use super::{TraceReplayMode, invalid};
 use crate::{
     recovery::RecoveryResult,
@@ -20,6 +21,8 @@ fn collect_frame_extra_slot(
 impl Driver<'_> {
     pub(super) fn capture(
         &mut self,
+        run: vb_core::RunId,
+        seq: crate::EventSeq,
         slot: SlotIdx,
         bytes: Option<&[u8]>,
         extra: Option<&[u8]>,
@@ -42,17 +45,29 @@ impl Driver<'_> {
         else {
             return Err(invalid(step, "unbound legacy taint capture"));
         };
+        let node = self
+            .plan
+            .node(step)
+            .ok_or_else(|| invalid(step, "captured node missing"))?;
+        let collect_slot = collect_frame_extra_slot(&node.kind, node.output.slot());
         if envelope.frame_extra.is_some() {
             // Runtime recovery separately validates the typed Collect state before resume.
-            let node = self
-                .plan
-                .node(step)
-                .ok_or_else(|| invalid(step, "captured node missing"))?;
-            let authorized = self.mode == TraceReplayMode::OwnedArena
-                && collect_frame_extra_slot(&node.kind, node.output.slot()) == Some(slot);
+            let authorized = self.mode == TraceReplayMode::OwnedArena && collect_slot == Some(slot);
             if !authorized {
                 return Err(invalid(step, "unproven scalar frame component"));
             }
+        }
+        if self.mode == TraceReplayMode::OwnedArena && collect_slot == Some(slot) {
+            self.collect_snapshots
+                .try_reserve(1)
+                .map_err(|_| invalid(step, "collect replay snapshot allocation failed"))?;
+            self.collect_snapshots.push(OwnedCollectReplaySnapshot {
+                seq,
+                run,
+                step,
+                slot,
+                state: self.collect.snapshot(slot),
+            });
         }
         if let Some((_, _, answer)) = self.ask {
             if slot != answer || self.answer.is_some() || self.answered {

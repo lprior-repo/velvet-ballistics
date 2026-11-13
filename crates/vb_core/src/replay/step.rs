@@ -13,7 +13,7 @@ mod together;
 mod types;
 
 pub use dispatch::{replay_step, replay_step_with_collect};
-pub use types::{ReplayAction, ReplayCollectStates, SuspensionKind};
+pub use types::{ReplayAction, ReplayCollectStateSnapshot, ReplayCollectStates, SuspensionKind};
 
 #[cfg(test)]
 use nodes::{replay_build_list, replay_build_object, replay_copy, replay_finish, replay_jump};

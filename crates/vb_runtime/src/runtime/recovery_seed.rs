@@ -2,32 +2,43 @@ impl Runtime {
     /// Reconstructs the typed recovery seed plus any replayed frame/store
     /// evidence for a loaded workflow.
     ///
-    /// Owned deterministic ForEach traces replay from the retained input
-    /// checkpoint (the same arena the live run started from), so later
-    /// `List` handles reconstruct exactly. Every other workflow keeps the
-    /// existing generic seed and scalar replay path unchanged.
+    /// Deterministic owned controls and source-only traces with retained
+    /// handles replay from the input checkpoint used by the live run. Other
+    /// workflows keep the generic seed and scalar replay path.
     fn recover_seed_evidence(
         events: &[vb_storage::JournalEvent],
         workflow: &CompiledWorkflow,
         retained_inputs: &crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<RecoveredSeedEvidence> {
-        if vb_storage::recovery::is_owned_for_each_contract(workflow) {
-            let input_store = retained_inputs.store_checkpoint();
-            if let Some(replay) = vb_storage::recovery::replay_owned_for_each(
-                events,
+        let input_store = retained_inputs.store_checkpoint();
+        if (vb_storage::recovery::is_owned_for_each_contract(workflow)
+            || vb_storage::recovery::is_owned_input_replay_contract(
                 workflow,
                 retained_inputs.initial_inputs(),
                 input_store.as_ref(),
-            )
-            .map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })? {
-                return Ok(RecoveredSeedEvidence {
-                    seed: replay.product,
-                    complete_frame: Some(replay.frame),
-                    recovered_store: Some(replay.store),
-                });
-            }
+            ))
+            && let Some(evidence) =
+                vb_storage::recovery::replay_owned_for_each_with_collect_snapshots(
+                    events,
+                    workflow,
+                    retained_inputs.initial_inputs(),
+                    input_store.as_ref(),
+                )
+                .map_err(|error| RuntimeError::Recovery {
+                    error: error.to_string(),
+                })?
+        {
+            Self::validate_replayed_collect_snapshots(
+                events,
+                workflow,
+                &evidence.collect_snapshots,
+            )?;
+            let replay = evidence.replay;
+            return Ok(RecoveredSeedEvidence {
+                seed: replay.product,
+                complete_frame: Some(replay.frame),
+                recovered_store: Some(replay.store),
+            });
         }
         let seed = Self::recover_seed_for_loaded_workflow(events, workflow)?;
         let complete_frame =

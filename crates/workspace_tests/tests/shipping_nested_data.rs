@@ -16,6 +16,8 @@ mod source;
 
 #[path = "shipping_nested_data/cells.rs"]
 mod cells;
+#[path = "shipping_nested_data/collect_corruption.rs"]
+mod collect_corruption;
 #[path = "shipping_nested_data/flow.rs"]
 mod flow;
 #[path = "shipping_nested_data/support.rs"]
