@@ -19,7 +19,10 @@ pub(super) struct TogetherSlots {
     result: SlotIdx,
 }
 
-fn check_nested_together(builder: &mut SlotCompiler, inner: StepIdx) -> Result<(), CompileErrors> {
+fn check_nested_together(
+    builder: &mut SlotCompiler,
+    inner: StepIdx,
+) -> Result<(), CompileErrors> {
     if let Some(&outer) = builder.together_stack.last() {
         return Err(CompileErrors(vec![CompileError::Workflow(
             WorkflowError::NestedTogether { outer, inner },
@@ -144,15 +147,7 @@ pub(super) fn emit_together_branches(
     let mut cursor = 1u16;
     for (branch_index, branch) in branches.iter().enumerate() {
         cursor = emit_one_together_branch(
-            base,
-            branch,
-            join,
-            slots,
-            diagnostic_step,
-            scope,
-            builder,
-            cursor,
-            branch_index,
+            base, branch, join, slots, diagnostic_step, scope, builder, cursor, branch_index,
         )?;
     }
     Ok(())
@@ -191,12 +186,13 @@ fn emit_one_together_branch(
             limit: usize::from(u16::MAX),
         }])
     })?;
-    let width = u16::try_from(body_width(&branch.steps, 2).map_err(|e| CompileErrors(vec![e]))?)
-        .map_err(|_| {
-            CompileErrors(vec![CompileError::StepIndexOutOfRange {
-                value: branch_index,
-            }])
-        })?;
+    let width =
+        u16::try_from(body_width(&branch.steps, 2).map_err(|e| CompileErrors(vec![e]))?)
+            .map_err(|_| {
+                CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                    value: branch_index,
+                }])
+            })?;
     let following_offset = cursor.checked_add(width).ok_or_else(|| {
         CompileErrors(vec![CompileError::StepIndexOutOfRange {
             value: branch_index,

@@ -19,8 +19,8 @@ use vb_storage::{
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const RUN: RunId = RunId::new(7_101);
-const SOURCE: &str = "version: velvet-ballistics/v1\nname: owned_attempt_binding\nwhen: {manual: {}}\ninputs: {items: {is: list, of: any, max: 2}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 2\n      steps:\n        - id: work\n          do: {action: '0', input: '$entry'}\n  - id: done\n    finish: {result: '$step.loop'}\n";
-const RETRY_SOURCE: &str = "version: velvet-ballistics/v1\nname: owned_attempt_capacity\nwhen: {manual: {}}\ninputs: {items: {is: list, of: any, max: 2}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 2\n      steps:\n        - id: work\n          try_again: {max_attempts: 2, delay: '0ms'}\n          do: {action: '0', input: '$entry'}\n  - id: done\n    finish: {result: '$step.loop'}\n";
+const SOURCE: &str = "version: velvet-ballistics/v1\nname: owned_attempt_binding\nwhen: {manual: {}}\ninputs: {items: {is: list, of: any, max: 2}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 1\n      steps:\n        - id: work\n          do: {action: '0', input: '$entry'}\n  - id: done\n    finish: {result: '$step.loop'}\n";
+const RETRY_SOURCE: &str = "version: velvet-ballistics/v1\nname: owned_attempt_capacity\nwhen: {manual: {}}\ninputs: {items: {is: list, of: any, max: 2}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 1\n      steps:\n        - id: work\n          try_again: {max_attempts: 2, delay: '0ms'}\n          do: {action: '0', input: '$entry'}\n  - id: done\n    finish: {result: '$step.loop'}\n";
 
 fn action_contracts() -> TestResult<Box<[ActionContract]>> {
     Ok(Box::from([ActionContract {

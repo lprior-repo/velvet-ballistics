@@ -17,6 +17,81 @@ use crate::engine::types::{
 };
 use crate::primitives::collect::CollectStates;
 
+use vb_core::frame::StepState;
+use vb_core::ids::StepIdx;
+use vb_core::value::{SlotValue, Taint};
+use vb_core::workflow::CompiledNodeKind;
+
+fn route_resumed_first_success_error(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    evidence: &mut EvidenceCollector,
+    step: StepIdx,
+    error: &RuntimeEngineError,
+) -> RuntimeEngineResult<bool> {
+    if !crate::engine::execute::handlers_concurrent::ordinary_lane_failure(plan, step, error) {
+        return Ok(false);
+    }
+    let mut candidate = None;
+    for raw in 0..plan.node_count() {
+        let owner = StepIdx::new(raw);
+        let Some(node) = plan.node(owner) else {
+            continue;
+        };
+        let CompiledNodeKind::FirstSuccessStart { branches, join } = &node.kind else {
+            continue;
+        };
+        if run.step_state(owner).map_err(RuntimeEngineError::Core)? != StepState::Waiting {
+            continue;
+        }
+        let Some(join_node) = plan.node(*join) else {
+            continue;
+        };
+        let Some(output) = join_node.output.slot() else {
+            continue;
+        };
+        let completed = match run.read_slot(output) {
+            Ok(SlotValue::List(list)) => store.list(*list).map_err(RuntimeEngineError::Core)?.len(),
+            _ => continue,
+        };
+        let Some((lane, _)) = branches.iter().enumerate().find(|(index, entry)| {
+            let next = index
+                .checked_add(1)
+                .and_then(|next| branches.get(next))
+                .copied()
+                .unwrap_or(*join);
+            completed == *index && **entry <= step && step < next
+        }) else {
+            continue;
+        };
+        if candidate.is_none_or(|(previous, _, _, _)| previous < owner) {
+            candidate = Some((owner, *join, output, lane));
+        }
+    }
+    let Some((owner, _join, output, _lane)) = candidate else {
+        return Ok(false);
+    };
+    let current = match run.read_slot(output) {
+        Ok(SlotValue::List(list)) => *list,
+        _ => return Ok(false),
+    };
+    let output_taint = run.read_taint(output).map_err(RuntimeEngineError::Core)?;
+    let (values, taints) = store
+        .prepare_list_append(current, Some((SlotValue::Null, Taint::Clean)))
+        .map_err(RuntimeEngineError::Core)?;
+    let list = store
+        .insert_list_with_taint(values, taints)
+        .map_err(RuntimeEngineError::Core)?;
+    run.mark_failed(step).map_err(RuntimeEngineError::Core)?;
+    evidence
+        .push_step_failed(step)
+        .map_err(RuntimeEngineError::Core)?;
+    run.write_slot_with_taint(output, SlotValue::List(list), output_taint)
+        .map_err(RuntimeEngineError::Core)?;
+    run.set_pc(owner).map_err(RuntimeEngineError::Core)?;
+    Ok(true)
+}
 /// Enhanced drive loop that handles all node kinds including
 /// iteration, compound, action, and suspension primitives.
 ///
@@ -115,8 +190,19 @@ fn run_drive_loop(
             collect_states,
             granted,
             state_run_attempt,
+            budget: Some(&mut *budget),
+            evidence: Some(&mut *evidence),
+            drive_state: Some(&mut *drive_state),
         };
-        let signal = execute_node_deferred(ctx)?;
+        let signal = match execute_node_deferred(ctx) {
+            Ok(signal) => signal,
+            Err(error) => {
+                if route_resumed_first_success_error(plan, run, store, evidence, step.pc, &error)? {
+                    continue;
+                }
+                return Err(error);
+            }
+        };
         finish_drive_step(
             plan,
             run,

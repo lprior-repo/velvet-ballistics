@@ -32,7 +32,9 @@ pub(crate) struct EvidenceGapReport {
 pub(crate) struct DriveState {
     evidence_gaps: u64,
     last_gap_slot: Option<SlotIdx>,
+    active_concurrent_lane: Option<vb_core::ids::StepIdx>,
 }
+
 
 impl DriveState {
     /// Creates a fresh drive state with no recorded gaps.
@@ -41,7 +43,26 @@ impl DriveState {
         Self {
             evidence_gaps: 0,
             last_gap_slot: None,
+            active_concurrent_lane: None,
         }
+    }
+
+    pub(crate) fn enter_concurrent_lane(
+        &mut self,
+        owner: vb_core::ids::StepIdx,
+    ) -> Option<vb_core::ids::StepIdx> {
+        self.active_concurrent_lane.replace(owner)
+    }
+
+    pub(crate) fn restore_concurrent_lane(
+        &mut self,
+        previous: Option<vb_core::ids::StepIdx>,
+    ) {
+        self.active_concurrent_lane = previous;
+    }
+
+    pub(crate) const fn active_concurrent_lane(&self) -> Option<vb_core::ids::StepIdx> {
+        self.active_concurrent_lane
     }
 
     /// Records one evidence gap for `slot`. RE-004 calls this when

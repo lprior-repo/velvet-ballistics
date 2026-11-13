@@ -1,12 +1,7 @@
 #![forbid(unsafe_code)]
-//! Deterministic owned-arena trace replay.
+//! Deterministic owned-arena trace replay from retained input checkpoints.
 //!
-//! The generic recovery path replays a workflow from an empty frame/store and
-//! therefore cannot reconstruct post-admission `List`/`Object` handles
-//! (ForEach cursor and accumulator, Reduce accumulator, Together branch
-//! results, Repeat materialization, Collect pagination). This module consumes the exact journal
-//! activation order starting from the owned input checkpoint, so the replay
-//! value store matches the live one handle-for-handle.
+//! Replays recorded activation order for supported bounded controls, including incremental ConcurrentV3 ForEach, preserving live arena handle allocation. Handles created after admission are reconstructed from the same retained input checkpoint and deterministic transitions.
 
 use vb_core::frame::StepState;
 use vb_core::value_store::ValueStoreCheckpointV1;
@@ -176,7 +171,10 @@ fn eligibility(plan: &CompiledWorkflow) -> Option<bool> {
 
 fn owned_node_kind(kind: &K) -> Option<bool> {
     match kind {
-        K::ForEachStart { .. }
+        K::ForEachConcurrentStart { .. }
+        | K::ConcurrentLaneEnd { .. }
+        | K::ConcurrentGroupJoin { .. }
+        | K::ForEachStart { .. }
         | K::ForEachNext { .. }
         | K::ForEachJoin { .. }
         | K::ReduceStart { .. }

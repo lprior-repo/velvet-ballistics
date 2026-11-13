@@ -43,6 +43,56 @@ pub fn replay_step_with_collect(
     collect_states: &mut ReplayCollectStates,
 ) -> Result<ReplayAction, ReplayError> {
     match &node.kind {
+        CompiledNodeKind::ForEachConcurrentStart {
+            input,
+            item_slot,
+            limit,
+            at_once,
+            body,
+            join,
+        } => super::concurrent::replay_for_each_concurrent_start(
+            plan,
+            run,
+            store,
+            collect_states,
+            node,
+            *input,
+            *item_slot,
+            *limit,
+            *at_once,
+            *body,
+            *join,
+        ),
+        CompiledNodeKind::TogetherConcurrentStart { branches, join } => {
+            super::concurrent::replay_fixed_concurrent_start(
+                plan,
+                run,
+                store,
+                collect_states,
+                node,
+                branches,
+                *join,
+                false,
+            )
+        }
+        CompiledNodeKind::FirstSuccessStart { branches, join } => {
+            super::concurrent::replay_fixed_concurrent_start(
+                plan,
+                run,
+                store,
+                collect_states,
+                node,
+                branches,
+                *join,
+                true,
+            )
+        }
+        CompiledNodeKind::ConcurrentLaneEnd { owner, .. } => {
+            super::concurrent::replay_concurrent_lane_end(plan, run, *owner)
+        }
+        CompiledNodeKind::ConcurrentGroupJoin { .. } => {
+            super::concurrent::replay_concurrent_group_join(run, node)
+        }
         CompiledNodeKind::Nop => replay_nop(node, run),
         CompiledNodeKind::SetConst { value } => replay_set_const(plan, run, node, *value),
         CompiledNodeKind::Copy { source } => replay_copy(run, node, *source),

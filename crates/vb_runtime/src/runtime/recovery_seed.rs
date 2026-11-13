@@ -254,13 +254,11 @@ impl Runtime {
                     _ => String::from("artifact_decode_failed"),
                 },
             })?;
-        let parts = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
-            .map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })?;
         let workflow =
-            CompiledWorkflow::try_from_parts(parts).map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
+            vb_storage::admission::verify_accepted_artifact(&artifact).map_err(|error| {
+                RuntimeError::Recovery {
+                    error: error.to_string(),
+                }
             })?;
         Ok(RecoveryArtifactWorkflow { artifact, workflow })
     }

@@ -29,7 +29,7 @@ pub(super) fn runtime(journal: Arc<FjallJournal>, step_budget_per_tick: u64) -> 
 
 pub(super) fn multi_source(result: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: shipping_foreach_recovery\nwhen: {{manual: {{}}}}\ninputs: {{items: {{is: list, of: any, max: 4}}}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 2\n      steps:\n        - id: projected\n          set: {{output: projected, value: '$entry'}}\n  - id: check\n    set: {{output: check, value: '{result}'}}\n  - id: done\n    finish: {{result: '$check'}}\n"
+        "version: velvet-ballistics/v1\nname: shipping_foreach_recovery\nwhen: {{manual: {{}}}}\ninputs: {{items: {{is: list, of: any, max: 4}}}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 1\n      steps:\n        - id: projected\n          set: {{output: projected, value: '$entry'}}\n  - id: check\n    set: {{output: check, value: '{result}'}}\n  - id: done\n    finish: {{result: '$check'}}\n"
     )
 }
 

@@ -1,11 +1,15 @@
+#[path = "bounded_for_each/width.rs"]
+mod width;
 use super::super::part_01::ForEachInputs;
 use super::super::{SlotCompiler, list_input};
 use super::{CanonicalScope, resolve_slot_reference_scoped};
 use crate::{CompileError, CompileErrors};
 use vb_core::{
-    CompiledNodeKind as K, ExprOp, ExprProgram, SlotIdx, StepIdx, WorkflowError, workflow::node,
+    BranchCount, CompiledNodeKind as K, ExprOp, ExprProgram, SlotIdx, StepIdx, WorkflowError,
+    workflow::node,
 };
 use vb_expr::expr_typecheck::ExprType;
+use width::emitted_at_once;
 
 pub(super) struct ForEachLowering<'a> {
     pub(super) input: &'a str,
@@ -124,6 +128,8 @@ fn emit_body(
     )
 }
 
+/// Emitted `at_once` for a raw source value: serial for absent/one, otherwise
+/// the positive capacity clamped to the resource contract's fanout limit.
 pub(super) fn lower_bounded_for_each(
     index: usize,
     id: StepIdx,
@@ -132,11 +138,72 @@ pub(super) fn lower_bounded_for_each(
 ) -> Result<SlotIdx, CompileErrors> {
     validate(index, &config)?;
     let (input, init, limit) = resolve_input(index, id, &config, builder)?;
+    let width = super::super::part_14::iteration_body_width(config.body)
+        .map_err(|e| CompileErrors(vec![e]))?;
+    match emitted_at_once(index, config.at_once, builder.resource_contract.max_fanout)? {
+        Some(at_once) => emit_concurrent(&config, init, input, limit, at_once, width, builder),
+        None => emit_serial(&config, init, input, limit, width, builder),
+    }
+}
+
+fn emit_concurrent(
+    config: &ForEachLowering<'_>,
+    init: StepIdx,
+    input: SlotIdx,
+    limit: u32,
+    at_once: u16,
+    width: usize,
+    builder: &mut SlotCompiler,
+) -> Result<SlotIdx, CompileErrors> {
+    let body = offset(init, 1, "body")?;
+    let lane_end = offset(body, width, "lane end")?;
+    let join = offset(lane_end, 1, "join")?;
+    let item = allocate(builder)?;
+    let result = allocate(builder)?;
+    let item_type = list_input::item_type(input, builder, config.scope);
+    builder.push_node(node(
+        init,
+        K::ForEachConcurrentStart {
+            input,
+            item_slot: item,
+            limit: limit.into(),
+            at_once: BranchCount::new(at_once),
+            body,
+            join,
+        },
+        None,
+        None,
+    ));
+    let output = emit_body(config, body, lane_end, item, item_type, builder)?;
+    builder.push_node(node(
+        lane_end,
+        K::ConcurrentLaneEnd {
+            owner: init,
+            result: output,
+        },
+        None,
+        Some(join),
+    ));
+    builder.push_node(node(
+        join,
+        K::ConcurrentGroupJoin { owner: init },
+        Some(result),
+        config.next,
+    ));
+    Ok(result)
+}
+
+fn emit_serial(
+    config: &ForEachLowering<'_>,
+    init: StepIdx,
+    input: SlotIdx,
+    limit: u32,
+    width: usize,
+    builder: &mut SlotCompiler,
+) -> Result<SlotIdx, CompileErrors> {
     let taint = offset(init, 1, "source taint")?;
     let start = offset(init, 2, "start")?;
     let body = offset(init, 3, "body")?;
-    let width = super::super::part_14::iteration_body_width(config.body)
-        .map_err(|e| CompileErrors(vec![e]))?;
     let append = offset(body, width, "append")?;
     let advance = offset(append, 1, "next")?;
     let join = offset(advance, 1, "join")?;
@@ -180,7 +247,7 @@ pub(super) fn lower_bounded_for_each(
         Some(iterator),
         None,
     ));
-    let output = emit_body(&config, body, append, item, item_type, builder)?;
+    let output = emit_body(config, body, append, item, item_type, builder)?;
     let value = match output {
         Some(slot) => ExprOp::LoadSlot(slot),
         None => ExprOp::LoadConst(builder.push_constant(vb_core::ConstValue::Null)?),

@@ -139,7 +139,7 @@ pub(super) fn constant_writers(parts: &WorkflowParts) -> FlowResult<()> {
                 .get_mut(slot.as_usize())
                 .ok_or_else(|| failure(node.id, Some(slot), SlotFlowFailure::InvalidReference))?;
             let kind = Fact::constant(constant);
-            if dest.kinds != 0 && dest.kinds != kind.kinds {
+            if constant_conflict(*dest, kind) {
                 return Err(failure(
                     node.id,
                     Some(slot),
@@ -154,4 +154,8 @@ pub(super) fn constant_writers(parts: &WorkflowParts) -> FlowResult<()> {
 
 pub(super) fn invalid(step: StepIdx) -> super::SlotFlowError {
     failure(step, None, SlotFlowFailure::InvalidReference)
+}
+
+pub(super) fn constant_conflict(prior: Fact, next: Fact) -> bool {
+    prior.kinds != 0 && prior.kinds != next.kinds
 }

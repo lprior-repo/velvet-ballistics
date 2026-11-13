@@ -1,10 +1,11 @@
 #![forbid(unsafe_code)]
 //! Workflow validation functions.
+#[path = "validate/targets.rs"]
+mod targets;
+use targets::{validate_branch_targets, validate_slot_branch_targets, validate_two_step_targets};
 
 use crate::ids::StepIdx;
-use crate::workflow::{
-    CompiledNodeKind, CompiledWorkflow, ExprBranch, SlotBranch, WorkflowError, WorkflowParts,
-};
+use crate::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowError, WorkflowParts};
 
 /// Validates compiled workflow IR integrity.
 pub fn validate_compiled_workflow(parts: &WorkflowParts) -> Result<(), WorkflowError> {
@@ -118,41 +119,36 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
 /// signal.
 pub fn validate_no_nested_together(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let node_count = parts.nodes.len();
-    // Identify all `TogetherStart` step indices for quick lookup.
     let together_starts: Vec<StepIdx> = parts
         .nodes
         .iter()
         .filter_map(|node| match &node.kind {
-            CompiledNodeKind::TogetherStart { .. } => Some(node.id),
+            CompiledNodeKind::TogetherStart { .. }
+            | CompiledNodeKind::TogetherConcurrentStart { .. } => Some(node.id),
             _ => None,
         })
         .collect();
     if together_starts.len() < 2 {
-        // Cannot be nested with zero or one `TogetherStart` nodes.
         return Ok(());
     }
     let together_set: std::collections::BTreeSet<StepIdx> =
         together_starts.iter().copied().collect();
     for node in &parts.nodes {
-        let CompiledNodeKind::TogetherStart { branches, join } = &node.kind else {
-            continue;
+        let (branches, join) = match &node.kind {
+            CompiledNodeKind::TogetherStart { branches, join }
+            | CompiledNodeKind::TogetherConcurrentStart { branches, join } => (branches, *join),
+            _ => continue,
         };
         let outer = node.id;
         for branch_entry in branches.iter() {
             let entry_idx = branch_entry.as_usize();
             if entry_idx >= node_count {
-                // Out-of-bounds branch is reported by `validate_transition_target`.
                 continue;
             }
             let join_idx = join.as_usize();
             if join_idx >= node_count {
                 continue;
             }
-            // Depth-first walk from `branch_entry`; stop at the `join` step
-            // (which is the outer TogetherStart's join, exclusive). The walk
-            // follows the linear `next` chain emitted by the compiler for
-            // TogetherStart branch bodies, so it stays bounded to the outer
-            // TogetherStart's body.
             if walk_contains_together_start(&parts.nodes, &together_set, entry_idx, join_idx, outer)
             {
                 return Err(WorkflowError::NestedTogether {
@@ -169,6 +165,22 @@ pub fn validate_no_nested_together(parts: &WorkflowParts) -> Result<(), Workflow
         }
     }
     Ok(())
+}
+
+fn push_nested_group_entries(node: &crate::workflow::CompiledNode, stack: &mut Vec<usize>) {
+    match &node.kind {
+        CompiledNodeKind::ForEachConcurrentStart { body, .. }
+        | CompiledNodeKind::ForEachStart { body, .. }
+        | CompiledNodeKind::CollectStart { body, .. }
+        | CompiledNodeKind::ReduceStart { body, .. }
+        | CompiledNodeKind::RepeatStart { body, .. } => stack.push(body.as_usize()),
+        CompiledNodeKind::TogetherStart { branches, .. }
+        | CompiledNodeKind::TogetherConcurrentStart { branches, .. }
+        | CompiledNodeKind::FirstSuccessStart { branches, .. } => {
+            stack.extend(branches.iter().map(|step| step.as_usize()));
+        }
+        _ => {}
+    }
 }
 
 /// Walks nodes starting at `start_idx` and following each node's `next`
@@ -197,6 +209,7 @@ fn walk_contains_together_start(
         let Some(node) = nodes.get(idx) else {
             continue;
         };
+        push_nested_group_entries(node, &mut stack);
         if let Some(next) = node.routing.next.step() {
             stack.push(next.as_usize());
         }
@@ -229,65 +242,12 @@ fn find_inner_together_start(
         let Some(node) = nodes.get(idx) else {
             continue;
         };
+        push_nested_group_entries(node, &mut stack);
         if let Some(next) = node.routing.next.step() {
             stack.push(next.as_usize());
         }
     }
     outer
-}
-
-fn validate_branch_targets(
-    branches: &[ExprBranch],
-    otherwise: Option<StepIdx>,
-    node_count: usize,
-) -> Result<(), WorkflowError> {
-    for branch in branches {
-        if branch.target.as_usize() >= node_count {
-            return Err(WorkflowError::StepOutOfBounds {
-                step: branch.target,
-            });
-        }
-    }
-    if let Some(target) = otherwise
-        && target.as_usize() >= node_count
-    {
-        return Err(WorkflowError::StepOutOfBounds { step: target });
-    }
-    Ok(())
-}
-
-fn validate_slot_branch_targets(
-    branches: &[SlotBranch],
-    otherwise: Option<StepIdx>,
-    node_count: usize,
-) -> Result<(), WorkflowError> {
-    for branch in branches {
-        if branch.target.as_usize() >= node_count {
-            return Err(WorkflowError::StepOutOfBounds {
-                step: branch.target,
-            });
-        }
-    }
-    if let Some(target) = otherwise
-        && target.as_usize() >= node_count
-    {
-        return Err(WorkflowError::StepOutOfBounds { step: target });
-    }
-    Ok(())
-}
-
-fn validate_two_step_targets(
-    first: StepIdx,
-    second: StepIdx,
-    node_count: usize,
-) -> Result<(), WorkflowError> {
-    if first.as_usize() >= node_count {
-        return Err(WorkflowError::StepOutOfBounds { step: first });
-    }
-    if second.as_usize() >= node_count {
-        return Err(WorkflowError::StepOutOfBounds { step: second });
-    }
-    Ok(())
 }
 
 #[cfg(test)]

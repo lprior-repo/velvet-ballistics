@@ -11,6 +11,18 @@ use thiserror::Error;
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WorkflowError {
+    /// Concurrent nodes require the explicitly checked execution profile.
+    #[error("concurrent node {step:?} requires the concurrent execution profile")]
+    ConcurrentProfileRequired {
+        /// First concurrent node in an unversioned or legacy graph.
+        step: StepIdx,
+    },
+    /// Bound symbol payloads failed metadata validation.
+    #[error("invalid symbol metadata: {source}")]
+    InvalidSymbolMetadata {
+        /// Exact metadata validation failure.
+        source: super::source_metadata::SourceMetadataError,
+    },
     /// A foreign step writes an active ForEach or Reduce cursor.
     #[error("step {writer:?} writes loop cursor slot {slot:?} owned by step {owner:?}")]
     LoopCursorForeignWrite {
@@ -33,6 +45,9 @@ pub enum WorkflowError {
     /// Compiled execution can read an absent slot or an incompatible operand.
     #[error(transparent)]
     SlotFlow(#[from] super::SlotFlowError),
+    /// Concurrent region shape or capacity analysis failed.
+    #[error(transparent)]
+    ConcurrentAnalysis(#[from] super::ConcurrentAnalysisError),
 
     /// A step wrote to a repeat counter owned by a different step.
     #[error("step {writer:?} wrote to repeat counter slot {slot:?} owned by step {owner:?}")]
@@ -245,6 +260,15 @@ pub enum WorkflowError {
         /// The loop control step.
         control: StepIdx,
         /// The unsupported referenced step.
+        step: StepIdx,
+    },
+    /// A concurrent lane contains a suspension node, which the checked
+    /// ConcurrentV3 profile does not support.
+    #[error("concurrent group {owner:?} lane step {step:?} cannot suspend")]
+    ConcurrentLaneSuspension {
+        /// The concurrent start step that owns the lane.
+        owner: StepIdx,
+        /// The suspension node inside the lane.
         step: StepIdx,
     },
 }

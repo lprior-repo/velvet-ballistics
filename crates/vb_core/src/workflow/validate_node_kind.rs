@@ -1,21 +1,40 @@
 #![forbid(unsafe_code)]
-
+#[path = "validate_node_kind/choose.rs"]
+mod choose;
+#[path = "validate_node_kind/concurrent.rs"]
+mod concurrent;
 use super::validate_refs::{
-    validate_branch_route, validate_const, validate_expr, validate_optional_slot,
-    validate_optional_step, validate_slot, validate_step,
+    validate_branch_route, validate_const, validate_expr, validate_optional_slot, validate_slot,
+    validate_step,
 };
-use super::{
-    BranchContinuation, CompiledNodeKind, ContractResource, ExprBranch, SlotBranch, WorkflowError,
-    WorkflowParts,
-};
-use crate::ids::{ConstIdx, MaxAttempts, SlotIdx, StepIdx};
+use super::{CompiledNodeKind, ContractResource, WorkflowError, WorkflowParts};
+use crate::ids::{BranchCount, ConstIdx, FanoutLimit, MaxAttempts, SlotIdx, StepIdx};
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
+use choose::{validate_expr_choose, validate_slot_choose};
+use concurrent::validate_concurrent_foreach;
 
 pub(super) fn validate_node_kind(
     kind: &CompiledNodeKind,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     match kind {
+        CompiledNodeKind::ForEachConcurrentStart {
+            input,
+            item_slot,
+            limit,
+            at_once,
+            body,
+            join,
+        } => validate_concurrent_foreach(*input, *item_slot, *limit, *at_once, *body, *join, parts),
+        CompiledNodeKind::TogetherConcurrentStart { branches, join }
+        | CompiledNodeKind::FirstSuccessStart { branches, join } => {
+            validate_together(branches, *join, parts)
+        }
+        CompiledNodeKind::ConcurrentLaneEnd { owner, result } => {
+            validate_step(*owner, parts.nodes.len())?;
+            validate_optional_slot(*result, parts.slot_count)
+        }
+        CompiledNodeKind::ConcurrentGroupJoin { owner } => validate_step(*owner, parts.nodes.len()),
         CompiledNodeKind::Nop => Ok(()),
         CompiledNodeKind::SetConst { value } => validate_const(*value, parts.constants.len()),
         CompiledNodeKind::Copy { source } => validate_slot(*source, parts.slot_count),
@@ -264,37 +283,4 @@ fn validate_repeat_start(
 ) -> Result<(), WorkflowError> {
     validate_nonzero_u16(max_attempts.get(), ContractResource::RetryAttempts)?;
     validate_two_steps(body, done, parts)
-}
-
-fn validate_optional_step_continuation(
-    continuation: BranchContinuation,
-    node_count: usize,
-) -> Result<(), WorkflowError> {
-    validate_optional_step(continuation.step(), node_count)
-}
-
-fn validate_slot_choose(
-    branches: &[SlotBranch],
-    otherwise: BranchContinuation,
-    parts: &WorkflowParts,
-) -> Result<(), WorkflowError> {
-    validate_branch_route(branches.len(), otherwise.step())?;
-    branches.iter().try_for_each(|branch| {
-        validate_slot(branch.condition, parts.slot_count)?;
-        validate_step(branch.target, parts.nodes.len())
-    })?;
-    validate_optional_step_continuation(otherwise, parts.nodes.len())
-}
-
-fn validate_expr_choose(
-    branches: &[ExprBranch],
-    otherwise: BranchContinuation,
-    parts: &WorkflowParts,
-) -> Result<(), WorkflowError> {
-    validate_branch_route(branches.len(), otherwise.step())?;
-    branches.iter().try_for_each(|branch| {
-        validate_expr(branch.condition, parts.expressions.len())?;
-        validate_step(branch.target, parts.nodes.len())
-    })?;
-    validate_optional_step_continuation(otherwise, parts.nodes.len())
 }

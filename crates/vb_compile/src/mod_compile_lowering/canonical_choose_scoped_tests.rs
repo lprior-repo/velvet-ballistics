@@ -56,11 +56,7 @@ fn choose_multi_branches_layout_and_skip() -> Result<(), String> {
     );
     let wf = compile(&top_choose(branches, Some("done")))?;
     assert_eq!(wf.to_parts().nodes.len(), 6);
-    let CompiledNodeKind::Choose {
-        branches,
-        otherwise,
-    } = &node(&wf, 2)?.kind
-    else {
+    let CompiledNodeKind::Choose { branches, otherwise } = &node(&wf, 2)?.kind else {
         return Err("node 2 not Choose".to_owned());
     };
     let branches = branches.as_ref();
@@ -68,10 +64,7 @@ fn choose_multi_branches_layout_and_skip() -> Result<(), String> {
     assert_eq!(branches[0].target, StepIdx::new(3));
     assert_eq!(branches[1].target, StepIdx::new(4));
     assert_eq!(otherwise.step(), Some(StepIdx::new(5)));
-    assert_eq!(
-        node(&wf, 3)?.routing.next,
-        NodeContinuation::Step(StepIdx::new(5))
-    );
+    assert_eq!(node(&wf, 3)?.routing.next, NodeContinuation::Step(StepIdx::new(5)));
     Ok(())
 }
 
@@ -91,15 +84,7 @@ fn choose_empty_table_without_otherwise_rejected() -> Result<(), String> {
     let text = format!(
         "{HEADER}steps:\n  - id: pick\n    choose:\n      branches: []\n  - id: done\n    finish: {{result: '1'}}\n"
     );
-    rejects(&text, |e| {
-        matches!(
-            e,
-            CompileError::StepFieldShape {
-                field: "choose.branches",
-                ..
-            }
-        )
-    })
+    rejects(&text, |e| matches!(e, CompileError::StepFieldShape { field: "choose.branches", .. }))
 }
 
 #[test]
@@ -107,15 +92,7 @@ fn choose_nonboolean_condition_rejected() -> Result<(), String> {
     let text = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: num\n    set: {{output: num_val, value: '1'}}\n  - id: pick\n    choose:\n      branches:\n        - when: '$num_val'\n          steps:\n            - id: a\n              set: {{output: xa, value: '1'}}\n      otherwise: done\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(&text, |e| {
-        matches!(
-            e,
-            CompileError::TypeMismatch {
-                field: "choose.branches[].when",
-                ..
-            }
-        )
-    })
+    rejects(&text, |e| matches!(e, CompileError::TypeMismatch { field: "choose.branches[].when", .. }))
 }
 
 fn top_together(branches: &str) -> String {
@@ -160,10 +137,7 @@ fn together_empty_branch_writes_null_and_joins() -> Result<(), String> {
     };
     assert_eq!(branches.as_ref(), &[StepIdx::new(2), StepIdx::new(4)]);
     assert_eq!(*join, StepIdx::new(7));
-    assert!(matches!(
-        &node(&wf, 3)?.kind,
-        CompiledNodeKind::SetConst { .. } | CompiledNodeKind::Copy { .. }
-    ));
+    assert!(matches!(&node(&wf, 3)?.kind, CompiledNodeKind::SetConst { .. } | CompiledNodeKind::Copy { .. }));
     Ok(())
 }
 
@@ -172,15 +146,7 @@ fn together_zero_branches_rejected() -> Result<(), String> {
     let text = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: fan\n    together:\n      branches: []\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(&text, |e| {
-        matches!(
-            e,
-            CompileError::StepFieldShape {
-                field: "together.branches",
-                ..
-            }
-        )
-    })
+    rejects(&text, |e| matches!(e, CompileError::StepFieldShape { field: "together.branches", .. }))
 }
 
 #[test]
@@ -188,17 +154,11 @@ fn branch_output_does_not_escape_choose_or_together() -> Result<(), String> {
     let choose_escape = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: pick\n    choose:\n      branches:\n        - when: 'true'\n          steps:\n            - id: a\n              set: {{output: branch_out, value: '1'}}\n      otherwise: done\n  - id: after\n    set: {{output: after_val, value: '$branch_out'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(
-        &choose_escape,
-        |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "branch_out"),
-    )?;
+    rejects(&choose_escape, |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "branch_out"))?;
     let together_escape = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: fan\n    together:\n      branches:\n        - label: a\n          steps:\n            - id: only_a\n              set: {{output: branch_out, value: '1'}}\n  - id: after\n    set: {{output: after_val, value: '$branch_out'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(
-        &together_escape,
-        |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "branch_out"),
-    )
+    rejects(&together_escape, |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "branch_out"))
 }
 
 #[test]
@@ -206,30 +166,15 @@ fn nested_together_rejected_at_any_depth() -> Result<(), String> {
     let direct = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: outer\n    together:\n      branches:\n        - label: a\n          steps:\n            - id: inner\n              together:\n                branches:\n                  - label: x\n                    steps:\n                      - id: leaf\n                        set: {{output: yx, value: '1'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(&direct, |e| {
-        matches!(
-            e,
-            CompileError::Workflow(vb_core::WorkflowError::NestedTogether { .. })
-        )
-    })?;
+    rejects(&direct, |e| matches!(e, CompileError::Workflow(vb_core::WorkflowError::NestedTogether { .. })))?;
     let via_choose = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: outer\n    together:\n      branches:\n        - label: a\n          steps:\n            - id: route\n              choose:\n                branches:\n                  - when: 'true'\n                    steps:\n                      - id: inner\n                        together:\n                          branches:\n                            - label: x\n                              steps:\n                                - id: leaf\n                                  set: {{output: yx, value: '1'}}\n                otherwise: after_route\n            - id: after_route\n              set: {{output: after_val, value: '1'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(&via_choose, |e| {
-        matches!(
-            e,
-            CompileError::Workflow(vb_core::WorkflowError::NestedTogether { .. })
-        )
-    })?;
+    rejects(&via_choose, |e| matches!(e, CompileError::Workflow(vb_core::WorkflowError::NestedTogether { .. })))?;
     let via_repeat = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: outer\n    together:\n      branches:\n        - label: a\n          steps:\n            - id: r\n              repeat:\n                max_attempts: 2\n                steps:\n                  - id: inner\n                    together:\n                      branches:\n                        - label: x\n                          steps:\n                            - id: leaf\n                              set: {{output: yx, value: '1'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(&via_repeat, |e| {
-        matches!(
-            e,
-            CompileError::Workflow(vb_core::WorkflowError::NestedTogether { .. })
-        )
-    })
+    rejects(&via_repeat, |e| matches!(e, CompileError::Workflow(vb_core::WorkflowError::NestedTogether { .. })))
 }
 
 #[test]
@@ -238,20 +183,12 @@ fn together_in_choose_and_choose_in_together_allowed() -> Result<(), String> {
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: pick\n    choose:\n      branches:\n        - when: 'true'\n          steps:\n            - id: fan\n              together:\n                branches:\n                  - label: a\n                    steps:\n                      - id: only_a\n                        set: {{output: xa, value: '1'}}\n      otherwise: done\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
     let wf = compile(&together_in_choose)?;
-    assert!(matches!(
-        &node(&wf, 1)?.kind,
-        CompiledNodeKind::Choose { .. }
-    ));
+    assert!(matches!(&node(&wf, 1)?.kind, CompiledNodeKind::Choose { .. }));
     let choose_in_together = format!(
         "{HEADER}steps:\n  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: fan\n    together:\n      branches:\n        - label: a\n          steps:\n            - id: pick\n              choose:\n                branches:\n                  - when: 'true'\n                    steps:\n                      - id: inner\n                        set: {{output: xa, value: '1'}}\n                otherwise: after_pick\n            - id: after_pick\n              set: {{output: after_val, value: '2'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
     let wf2 = compile(&choose_in_together)?;
-    assert!(
-        wf2.to_parts()
-            .nodes
-            .iter()
-            .any(|n| matches!(&n.kind, CompiledNodeKind::Choose { .. }))
-    );
+    assert!(wf2.to_parts().nodes.iter().any(|n| matches!(&n.kind, CompiledNodeKind::Choose { .. })));
     Ok(())
 }
 
@@ -278,9 +215,7 @@ fn deterministic_slots_choose_and_together() -> Result<(), String> {
     let b = compile(&text)?;
     assert_eq!(a.to_parts().nodes, b.to_parts().nodes);
     assert_eq!(a.to_parts().slot_count, b.to_parts().slot_count);
-    let together_text = top_together(
-        "        - label: a\n          steps:\n            - id: only_a\n              set: {output: xa, value: '1'}\n",
-    );
+    let together_text = top_together("        - label: a\n          steps:\n            - id: only_a\n              set: {output: xa, value: '1'}\n");
     let c = compile(&together_text)?;
     let d = compile(&together_text)?;
     assert_eq!(c.to_parts().nodes, d.to_parts().nodes);

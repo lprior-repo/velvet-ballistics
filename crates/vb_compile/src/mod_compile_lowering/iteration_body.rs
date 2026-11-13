@@ -40,6 +40,18 @@ pub(in crate::mod_compile_lowering) fn needs_tracking(body: &[crate::StepAst]) -
     })
 }
 
+/// Node overhead of one `for_each` construct.
+///
+/// Serial lowering emits list initialization, source taint, start, append,
+/// advance and join. Concurrent lowering emits start, lane end and join.
+pub(in crate::mod_compile_lowering) fn for_each_overhead(at_once: Option<u32>) -> usize {
+    if at_once.is_some_and(|value| value > 1) {
+        3
+    } else {
+        6
+    }
+}
+
 pub(in crate::mod_compile_lowering) fn iteration_body_width(
     body: &[crate::StepAst],
 ) -> Result<usize, CompileError> {

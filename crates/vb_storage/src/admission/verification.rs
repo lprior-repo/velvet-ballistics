@@ -5,6 +5,7 @@ use vb_core::artifact::{
     ArtifactEvidence, ArtifactVerificationEvidence, AssumptionId, ObligationClosure,
     ObligationKind, VerificationLedgerEntry,
 };
+use vb_core::workflow::{CompiledNodeKind, WorkflowIrProfile};
 use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest, WorkflowParts};
 
 pub(crate) const EVIDENCE_VERSION: u16 = 3;
@@ -78,8 +79,27 @@ pub fn verify_accepted_artifact(
     if !trailing.is_empty() {
         return Err(JournalError::ArtifactMalformed);
     }
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(JournalError::WorkflowReconstruction)?;
+    let profile = if parts.nodes.iter().any(|node| {
+        matches!(
+            node.kind,
+            CompiledNodeKind::ForEachConcurrentStart { .. }
+                | CompiledNodeKind::TogetherConcurrentStart { .. }
+                | CompiledNodeKind::FirstSuccessStart { .. }
+                | CompiledNodeKind::ConcurrentLaneEnd { .. }
+                | CompiledNodeKind::ConcurrentGroupJoin { .. }
+        )
+    }) {
+        WorkflowIrProfile::ConcurrentV3
+    } else {
+        WorkflowIrProfile::LegacyV2
+    };
+    let workflow = match profile {
+        WorkflowIrProfile::LegacyV2 => CompiledWorkflow::try_from_parts(parts),
+        WorkflowIrProfile::ConcurrentV3 => {
+            CompiledWorkflow::try_from_concurrent_parts(parts)
+        }
+    }
+    .map_err(JournalError::WorkflowReconstruction)?;
     let expected = prepare_compiled_artifact(
         &workflow,
         evidence.admission_policy,
@@ -170,8 +190,13 @@ fn checked_parts(
         _ => return Err(JournalError::ArtifactMalformed),
     }
     let mut parts = workflow.to_parts();
-    CompiledWorkflow::try_from_parts(parts.clone())
-        .map_err(JournalError::WorkflowReconstruction)?;
+    let checked = match workflow.ir_profile() {
+        WorkflowIrProfile::LegacyV2 => CompiledWorkflow::try_from_parts(parts.clone()),
+        WorkflowIrProfile::ConcurrentV3 => {
+            CompiledWorkflow::try_from_concurrent_parts(parts.clone())
+        }
+    };
+    checked.map_err(JournalError::WorkflowReconstruction)?;
     vb_validate::shared::validate_with_contracts(&parts, contracts)
         .map_err(JournalError::ArtifactValidation)?;
     vb_core::action::validate_action_registry(contracts)

@@ -34,10 +34,13 @@
 
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
+use vb_core::engine::StepBudget;
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
+
+use crate::engine::drive::DriveState;
 
 use crate::engine::execute::handlers_compound::{
     handle_for_each_join, handle_for_each_next, handle_for_each_start, handle_together_branch,
@@ -67,6 +70,13 @@ pub(crate) struct NodeDispatchContext<'a> {
     pub(crate) collect_states: &'a mut CollectStates,
     pub(crate) granted: &'a CapabilitySet,
     pub(crate) state_run_attempt: u16,
+    /// Drive-step budget; `None` on direct node execution outside the drive
+    /// loop, where concurrent scheduling is not available.
+    pub(crate) budget: Option<&'a mut StepBudget>,
+    /// Step evidence collector for per-lane accounting.
+    pub(crate) evidence: Option<&'a mut crate::engine::types::EvidenceCollector>,
+    /// Drive-state for slot-evidence gaps.
+    pub(crate) drive_state: Option<&'a mut DriveState>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -91,6 +101,9 @@ pub fn execute_node_full(
         collect_states,
         granted,
         state_run_attempt,
+        budget: None,
+        evidence: None,
+        drive_state: None,
     };
     execute_node_with_policy::<LegacyEntry>(ctx)
 }
@@ -126,6 +139,13 @@ fn execute_node_with_policy<P: BodyEntryPolicy>(
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::RepeatCheck { .. }
         | CompiledNodeKind::RepeatFinish { .. } => dispatch_repeat::<P>(ctx.run, ctx.node),
+        CompiledNodeKind::ForEachConcurrentStart { .. }
+        | CompiledNodeKind::TogetherConcurrentStart { .. }
+        | CompiledNodeKind::FirstSuccessStart { .. }
+        | CompiledNodeKind::ConcurrentLaneEnd { .. }
+        | CompiledNodeKind::ConcurrentGroupJoin { .. } => {
+            crate::engine::execute::handlers_concurrent::dispatch_concurrent(&mut ctx)
+        }
         _ => {
             let mut actx = ActionDispatchContext {
                 plan: ctx.plan,

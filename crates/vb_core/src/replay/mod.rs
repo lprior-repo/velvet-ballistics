@@ -56,6 +56,11 @@ pub enum ReplayError {
         /// Description of the internal failure.
         reason: &'static str,
     },
+    /// A deterministic iteration exceeded its checked resource limit.
+    IterationLimitExceeded {
+        /// Resource whose configured bound was exceeded.
+        resource: &'static str,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +83,9 @@ fn engine_to_replay_err(e: EngineError) -> ReplayError {
         EngineError::InvalidProgramCounter { step } => ReplayError::StepNotFound { step },
         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+        EngineError::IterationLimitExceeded { resource } => {
+            ReplayError::IterationLimitExceeded { resource }
+        }
         _ => ReplayError::Internal {
             reason: "unexpected engine error during replay",
         },

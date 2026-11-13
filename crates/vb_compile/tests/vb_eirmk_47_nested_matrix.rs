@@ -32,9 +32,7 @@ const INPUTS: &str =
 const SEED: &str = "  - id: seed\n    set: {output: base, value: '42'}\n  - id: delay\n    set: {output: delay, value: '5'}\n";
 const DONE: &str = "  - id: done\n    finish: {result: '$seed'}\n";
 
-const OUTERS: [&str; 6] = [
-    "foreach", "collect", "reduce", "repeat", "choose", "together",
-];
+const OUTERS: [&str; 6] = ["foreach", "collect", "reduce", "repeat", "choose", "together"];
 const INNERS: [&str; 9] = [
     "foreach", "collect", "reduce", "repeat", "choose", "together", "wait", "ask", "do",
 ];
@@ -91,7 +89,10 @@ fn kind_present(workflow: &CompiledWorkflow, family: &str) -> bool {
 fn assert_terminal(workflow: &CompiledWorkflow) -> Result<(), String> {
     let parts = workflow.to_parts();
     validate_compiled_workflow(&parts).map_err(|error| format!("validate: {error:?}"))?;
-    let last = parts.nodes.last().ok_or_else(|| "no nodes".to_owned())?;
+    let last = parts
+        .nodes
+        .last()
+        .ok_or_else(|| "no nodes".to_owned())?;
     let CompiledNodeKind::Finish { result } = &last.kind else {
         return Err(format!("last node is not Finish: {:?}", last.kind));
     };
@@ -103,9 +104,7 @@ fn assert_terminal(workflow: &CompiledWorkflow) -> Result<(), String> {
     if *result == seed {
         Ok(())
     } else {
-        Err(format!(
-            "finish result {result:?} is not the seed slot {seed:?}"
-        ))
+        Err(format!("finish result {result:?} is not the seed slot {seed:?}"))
     }
 }
 
@@ -143,8 +142,9 @@ fn assert_ask_pair(workflow: &CompiledWorkflow) -> Result<(), String> {
 }
 
 fn inner_yaml(kind: &str, indent: &str) -> String {
-    let leaf =
-        format!("{indent}      - id: leaf\n{indent}        set: {{output: picked, value: '1'}}\n");
+    let leaf = format!(
+        "{indent}      - id: leaf\n{indent}        set: {{output: picked, value: '1'}}\n"
+    );
     match kind {
         "foreach" => format!(
             "{indent}- id: inner\n{indent}  for_each:\n{indent}    input: '$input.b_items'\n{indent}    variable: sub\n{indent}    steps:\n{leaf}"
@@ -182,9 +182,9 @@ fn outer_yaml(outer: &str, body: &str) -> String {
         "reduce" => format!(
             "  - id: outer\n    reduce:\n      variable: ototal\n      input: '$input.a_items'\n      initial: '0'\n      steps:\n{body}"
         ),
-        "repeat" => {
-            format!("  - id: outer\n    repeat:\n      max_attempts: 2\n      steps:\n{body}")
-        }
+        "repeat" => format!(
+            "  - id: outer\n    repeat:\n      max_attempts: 2\n      steps:\n{body}"
+        ),
         "choose" => format!(
             "  - id: outer\n    choose:\n      branches:\n        - when: 'true'\n          steps:\n{body}      otherwise: after_outer\n  - id: after_outer\n    set: {{output: after_outer_v, value: '3'}}\n"
         ),
@@ -235,12 +235,7 @@ fn assert_ownership(workflow: &CompiledWorkflow) -> Result<(), String> {
     Ok(())
 }
 
-fn assert_bounds(
-    workflow: &CompiledWorkflow,
-    family: &str,
-    outer: &str,
-    inner: &str,
-) -> Result<(), String> {
+fn assert_bounds(workflow: &CompiledWorkflow, family: &str, outer: &str, inner: &str) -> Result<(), String> {
     if family != outer && family != inner {
         return Ok(());
     }
@@ -258,7 +253,10 @@ fn assert_bounds(
                 "collect",
             ) => {
                 if limit.get() != 1 || *page_size != 1 {
-                    return Err(format!("collect limit/page {} != 1/1", limit.get()));
+                    return Err(format!(
+                        "collect limit/page {} != 1/1",
+                        limit.get()
+                    ));
                 }
             }
             (CompiledNodeKind::RepeatStart { max_attempts, .. }, "repeat") => {
@@ -295,11 +293,14 @@ fn matrix_positive_all_legal_pairs() -> Result<(), String> {
                 continue;
             }
             let source = cell_source(outer, inner);
-            let workflow =
-                compile(&source).map_err(|error| format!("{outer} x {inner}: {error}"))?;
-            assert_terminal(&workflow).map_err(|error| format!("{outer} x {inner}: {error}"))?;
-            assert_no_nop(&workflow).map_err(|error| format!("{outer} x {inner}: {error}"))?;
-            assert_ownership(&workflow).map_err(|error| format!("{outer} x {inner}: {error}"))?;
+            let workflow = compile(&source)
+                .map_err(|error| format!("{outer} x {inner}: {error}"))?;
+            assert_terminal(&workflow)
+                .map_err(|error| format!("{outer} x {inner}: {error}"))?;
+            assert_no_nop(&workflow)
+                .map_err(|error| format!("{outer} x {inner}: {error}"))?;
+            assert_ownership(&workflow)
+                .map_err(|error| format!("{outer} x {inner}: {error}"))?;
             for family in ["foreach", "collect", "repeat"] {
                 assert_bounds(&workflow, family, outer, inner)
                     .map_err(|error| format!("{outer} x {inner}: {error}"))?;
@@ -319,10 +320,12 @@ fn matrix_positive_all_legal_pairs() -> Result<(), String> {
                 return Err(format!("{outer} x {inner}: non-deterministic IR"));
             }
             if inner == "ask" {
-                assert_ask_pair(&workflow).map_err(|error| format!("{outer} x ask: {error}"))?;
+                assert_ask_pair(&workflow)
+                    .map_err(|error| format!("{outer} x ask: {error}"))?;
             }
             if inner == "wait" {
-                assert_wait_node(&workflow).map_err(|error| format!("{outer} x wait: {error}"))?;
+                assert_wait_node(&workflow)
+                    .map_err(|error| format!("{outer} x wait: {error}"))?;
             }
             if inner == "do" && !kind_present(&workflow, "do") {
                 return Err(format!("{outer} x do: missing Do kind"));
@@ -384,10 +387,12 @@ fn matrix_three_level_mixtures_positive() -> Result<(), String> {
         ),
     ];
     for (index, source) in mixtures.iter().enumerate() {
-        let workflow = compile(source).map_err(|error| format!("mixture {index}: {error}"))?;
+        let workflow =
+            compile(source).map_err(|error| format!("mixture {index}: {error}"))?;
         assert_terminal(&workflow).map_err(|error| format!("mixture {index}: {error}"))?;
         assert_no_nop(&workflow).map_err(|error| format!("mixture {index}: {error}"))?;
-        assert_ownership(&workflow).map_err(|error| format!("mixture {index}: {error}"))?;
+        assert_ownership(&workflow)
+            .map_err(|error| format!("mixture {index}: {error}"))?;
     }
     Ok(())
 }
@@ -449,25 +454,13 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
         "{HEADER}{INPUTS}steps:\n{SEED}  - id: f\n    for_each:\n      input: '$input.a_items'\n      variable: step\n      steps:\n        - id: leaf\n          set: {{output: x, value: '1'}}\n{DONE}"
     );
     rejects(&reserved, |error| {
-        matches!(
-            error,
-            CompileError::InvalidName {
-                field: "for_each.variable",
-                ..
-            }
-        )
+        matches!(error, CompileError::InvalidName { field: "for_each.variable", .. })
     })?;
     let nested_reserved = nested_in_repeat(
         "        - id: f\n          for_each:\n            input: '$input.b_items'\n            variable: step\n            steps:\n              - id: leaf\n                set: {output: x, value: '1'}\n",
     );
     rejects(&nested_reserved, |error| {
-        matches!(
-            error,
-            CompileError::InvalidName {
-                field: "for_each.variable",
-                ..
-            }
-        )
+        matches!(error, CompileError::InvalidName { field: "for_each.variable", .. })
     })?;
     let zero = format!(
         "{HEADER}{INPUTS}steps:\n{SEED}  - id: f\n    for_each:\n      input: '$input.a_items'\n      variable: e\n      at_once: 0\n      steps:\n        - id: leaf\n          set: {{output: x, value: '1'}}\n{DONE}"
@@ -475,10 +468,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&zero, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "for_each.at_once",
-                ..
-            }
+            CompileError::StepFieldShape { field: "for_each.at_once", .. }
         )
     })?;
     let one = format!(
@@ -494,27 +484,13 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
         "{HEADER}{INPUTS}steps:\n{SEED}  - id: c\n    collect:\n      variable: batch\n      source: '$input.a_items'\n      steps:\n        - id: leaf\n          set: {{output: x, value: '1'}}\n{DONE}"
     );
     rejects(&missing, |error| {
-        matches!(
-            error,
-            CompileError::StepFieldShape {
-                field: "collect",
-                ..
-            }
-        )
+        matches!(error, CompileError::StepFieldShape { field: "collect", .. })
     })?;
     for (pages, items) in [(0, 1), (1, 0)] {
-        let zero = format!(
-            "{HEADER}{INPUTS}steps:\n{SEED}  - id: c\n    collect:\n      variable: batch\n      source: '$input.a_items'\n      pages: {pages}\n      items: {items}\n      steps:\n        - id: leaf\n          set: {{output: x, value: '1'}}\n{DONE}"
-        );
+        let zero = format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: c\n    collect:\n      variable: batch\n      source: '$input.a_items'\n      pages: {pages}\n      items: {items}\n      steps:\n        - id: leaf\n          set: {{output: x, value: '1'}}\n{DONE}");
         // One bound at zero is rejected even when the other is positive.
         rejects(&zero, |error| {
-            matches!(
-                error,
-                CompileError::StepFieldShape {
-                    field: "collect",
-                    ..
-                }
-            )
+            matches!(error, CompileError::StepFieldShape { field: "collect", .. })
         })?;
     }
     let at_one = format!(
@@ -531,10 +507,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&empty, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "reduce.steps",
-                ..
-            }
+            CompileError::StepFieldShape { field: "reduce.steps", .. }
         )
     })?;
     let mismatch = format!(
@@ -543,10 +516,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&mismatch, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "reduce.steps",
-                ..
-            }
+            CompileError::StepFieldShape { field: "reduce.steps", .. }
         )
     })?;
     let matching = format!(
@@ -561,7 +531,10 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
         "{HEADER}{INPUTS}steps:\n{SEED}  - id: r\n    repeat:\n      max_attempts: 2\n      steps: []\n{DONE}"
     );
     rejects(&empty, |error| {
-        matches!(error, CompileError::StepFieldShape { field: "steps", .. })
+        matches!(
+            error,
+            CompileError::StepFieldShape { field: "steps", .. }
+        )
     })?;
     let zero = format!(
         "{HEADER}{INPUTS}steps:\n{SEED}  - id: r\n    repeat:\n      max_attempts: 0\n      steps:\n        - id: leaf\n          set: {{output: x, value: '1'}}\n{DONE}"
@@ -569,10 +542,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&zero, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "repeat.max_attempts",
-                ..
-            }
+            CompileError::StepFieldShape { field: "repeat.max_attempts", .. }
         )
     })?;
     let nested_zero = nested_in_repeat(
@@ -581,10 +551,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&nested_zero, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "repeat.max_attempts",
-                ..
-            }
+            CompileError::StepFieldShape { field: "repeat.max_attempts", .. }
         )
     })?;
     let one_attempt = format!(
@@ -595,15 +562,13 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     }
 
     // Choose: empty branches / non-boolean condition.
-    let empty =
-        format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: c\n    choose:\n      branches: []\n{DONE}");
+    let empty = format!(
+        "{HEADER}{INPUTS}steps:\n{SEED}  - id: c\n    choose:\n      branches: []\n{DONE}"
+    );
     rejects(&empty, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "choose.branches",
-                ..
-            }
+            CompileError::StepFieldShape { field: "choose.branches", .. }
         )
     })?;
     let nonbool = format!(
@@ -612,10 +577,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&nonbool, |error| {
         matches!(
             error,
-            CompileError::TypeMismatch {
-                field: "choose.branches[].when",
-                ..
-            }
+            CompileError::TypeMismatch { field: "choose.branches[].when", .. }
         )
     })?;
     let boolean = format!(
@@ -632,10 +594,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&empty, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "together.branches",
-                ..
-            }
+            CompileError::StepFieldShape { field: "together.branches", .. }
         )
     })?;
     // A nested `collect` with neither bound set is the same typed rejection.
@@ -643,13 +602,7 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
         "        - id: inner\n          collect:\n            variable: batch\n            source: '$input.b_items'\n            steps:\n              - id: leaf\n                set: {output: x, value: '1'}\n",
     );
     rejects(&nested_missing, |error| {
-        matches!(
-            error,
-            CompileError::StepFieldShape {
-                field: "collect",
-                ..
-            }
-        )
+        matches!(error, CompileError::StepFieldShape { field: "collect", .. })
     })?;
 
     // Wait: neither field (malformed) / one field (one-over in).
@@ -657,8 +610,9 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     rejects(&empty, |error| {
         matches!(error, CompileError::StepFieldShape { field: "wait", .. })
     })?;
-    let timeout_only =
-        format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: w\n    wait: {{timeout: '$delay'}}\n{DONE}");
+    let timeout_only = format!(
+        "{HEADER}{INPUTS}steps:\n{SEED}  - id: w\n    wait: {{timeout: '$delay'}}\n{DONE}"
+    );
     assert_wait_node(&compile(&timeout_only)?)?;
     let nested_empty = nested_in_repeat("        - id: inner\n          wait: {}\n");
     rejects(&nested_empty, |error| {
@@ -666,12 +620,13 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     })?;
 
     // Ask: empty prompt (malformed) / suspension pair (one-over in).
-    let empty = format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: q\n    ask: {{prompt: ''}}\n{DONE}");
+    let empty = format!(
+        "{HEADER}{INPUTS}steps:\n{SEED}  - id: q\n    ask: {{prompt: ''}}\n{DONE}"
+    );
     rejects(&empty, |error| {
         matches!(error, CompileError::CanonicalYaml { .. })
     })?;
-    let ok =
-        format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: q\n    ask: {{prompt: '$base'}}\n{DONE}");
+    let ok = format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: q\n    ask: {{prompt: '$base'}}\n{DONE}");
     assert_ask_pair(&compile(&ok)?)?;
     let bad_timeout = format!(
         "{HEADER}{INPUTS}steps:\n{SEED}  - id: q\n    ask: {{prompt: '$base', timeout: '$nope'}}\n{DONE}"
@@ -684,13 +639,11 @@ fn per_family_malformed_and_one_over() -> Result<(), String> {
     })?;
 
     // Do: missing action / missing input (malformed), complete (in).
-    let missing_action =
-        format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: d\n    do: {{input: '$base'}}\n{DONE}");
+    let missing_action = format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: d\n    do: {{input: '$base'}}\n{DONE}");
     rejects(&missing_action, |error| {
         matches!(error, CompileError::CanonicalYaml { .. })
     })?;
-    let missing_input =
-        format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: d\n    do: {{action: '0'}}\n{DONE}");
+    let missing_input = format!("{HEADER}{INPUTS}steps:\n{SEED}  - id: d\n    do: {{action: '0'}}\n{DONE}");
     rejects(&missing_input, |error| {
         matches!(error, CompileError::CanonicalYaml { .. })
     })?;
@@ -795,10 +748,7 @@ fn reduce_bare_container_is_typed_rejection() -> Result<(), String> {
         rejects(&source, |error| {
             matches!(
                 error,
-                CompileError::StepFieldShape {
-                    field: "reduce.steps",
-                    ..
-                }
+                CompileError::StepFieldShape { field: "reduce.steps", .. }
             )
         })
         .map_err(|error| format!("reduce x {container}: {error}"))?;
@@ -810,10 +760,7 @@ fn reduce_bare_container_is_typed_rejection() -> Result<(), String> {
     rejects(&bare_wait, |error| {
         matches!(
             error,
-            CompileError::StepFieldShape {
-                field: "reduce.steps",
-                ..
-            }
+            CompileError::StepFieldShape { field: "reduce.steps", .. }
         )
     })?;
     Ok(())
@@ -828,8 +775,8 @@ fn source_direct_path_parity() -> Result<(), String> {
                 continue;
             }
             let source = cell_source(outer, inner);
-            let via_workflow =
-                compile(&source).map_err(|error| format!("{outer} x {inner} source: {error}"))?;
+            let via_workflow = compile(&source)
+                .map_err(|error| format!("{outer} x {inner} source: {error}"))?;
             let parsed = parse_workflow_source(&source)
                 .map_err(|error| format!("{outer} x {inner} parse: {error:?}"))?;
             let via_source = compile_source(&parsed)
@@ -837,7 +784,9 @@ fn source_direct_path_parity() -> Result<(), String> {
             if via_workflow.to_parts().nodes != via_source.to_parts().nodes
                 || via_workflow.to_parts().slot_count != via_source.to_parts().slot_count
             {
-                return Err(format!("{outer} x {inner}: source/direct IR mismatch"));
+                return Err(format!(
+                    "{outer} x {inner}: source/direct IR mismatch"
+                ));
             }
             assert_terminal(&via_source)
                 .map_err(|error| format!("{outer} x {inner} direct: {error}"))?;
@@ -852,10 +801,15 @@ fn source_direct_path_parity() -> Result<(), String> {
     if !errors.0.iter().any(is_nested_together) {
         return Err(format!("source path wrong diagnostic: {errors:?}"));
     }
-    let parsed = parse_workflow_source(&cell).map_err(|error| format!("parse: {error:?}"))?;
+    let parsed = parse_workflow_source(&cell)
+        .map_err(|error| format!("parse: {error:?}"))?;
     match compile_source(&parsed) {
         Ok(_) => Err("direct path accepted Together x Together".to_owned()),
-        Err(errors) if errors.0.iter().any(is_nested_together) => Ok(()),
+        Err(errors)
+            if errors.0.iter().any(is_nested_together) =>
+        {
+            Ok(())
+        }
         Err(errors) => Err(format!("direct path wrong diagnostic: {errors:?}")),
     }
 }
@@ -866,10 +820,7 @@ fn leaf_only_terminal_parity() -> Result<(), String> {
     for (body, label) in [
         ("  - id: leaf\n    wait: {timeout: '$delay'}\n", "wait"),
         ("  - id: leaf\n    ask: {prompt: '$base'}\n", "ask"),
-        (
-            "  - id: leaf\n    do: {action: '0', input: '$base'}\n",
-            "do",
-        ),
+        ("  - id: leaf\n    do: {action: '0', input: '$base'}\n", "do"),
     ] {
         let source = format!("{HEADER}{INPUTS}steps:\n{SEED}{body}{DONE}");
         let workflow = compile(&source)?;
@@ -880,3 +831,10 @@ fn leaf_only_terminal_parity() -> Result<(), String> {
     }
     Ok(())
 }
+
+
+
+
+
+
+

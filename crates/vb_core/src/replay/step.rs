@@ -2,6 +2,9 @@
 //! Replay step execution.
 
 mod collect;
+mod concurrent;
+mod concurrent_trace;
+mod concurrent_validation;
 mod control;
 mod dispatch;
 mod for_each;
@@ -12,6 +15,9 @@ mod repeat;
 mod together;
 mod types;
 
+pub use concurrent_trace::{
+    finish_concurrent_trace_step, prepare_concurrent_trace_start, replay_concurrent_trace_step,
+};
 pub use dispatch::{replay_step, replay_step_with_collect};
 pub use types::{ReplayAction, ReplayCollectStateSnapshot, ReplayCollectStates, SuspensionKind};
 

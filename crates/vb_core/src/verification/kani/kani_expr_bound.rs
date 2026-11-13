@@ -5,7 +5,7 @@
 use crate::errors::CoreError;
 use crate::ids::SlotIdx;
 use crate::limits::{MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK};
-use crate::workflow::{ExprOp, check_expr_stack_bound};
+use crate::workflow::{check_expr_stack_bound, ExprOp};
 
 #[kani::proof]
 fn harness_empty_ops_returns_zero() {

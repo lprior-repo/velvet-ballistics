@@ -15,6 +15,8 @@ impl Driver<'_> {
                 "StepStarted differs from replay control edge",
             ));
         }
+        vb_core::replay::step::prepare_concurrent_trace_start(self.plan, &mut self.frame, step)
+            .map_err(|error| invalid(step, format!("{error:?}")))?;
         self.frame
             .mark_running(step)
             .map_err(|e| invalid(step, e.to_string()))?;
@@ -22,7 +24,14 @@ impl Driver<'_> {
             .plan
             .node(step)
             .ok_or_else(|| invalid(step, "step node missing"))?;
-        let action = match ask_failure_action(self.plan, &mut self.frame, node)? {
+        let concurrent = vb_core::replay::step::replay_concurrent_trace_step(
+            self.plan,
+            &mut self.frame,
+            &mut self.store,
+            node,
+        )
+        .map_err(|error| invalid(step, format!("{error:?}")))?;
+        let action = match concurrent.or(ask_failure_action(self.plan, &mut self.frame, node)?) {
             Some(action) => action,
             None => vb_core::replay::step::replay_step_with_collect(
                 node,
@@ -123,6 +132,8 @@ impl Driver<'_> {
         }
         self.finished = matches!(action, ReplayAction::Finished);
         self.active = None;
+        vb_core::replay::step::finish_concurrent_trace_step(self.plan, &mut self.frame, step)
+            .map_err(|error| invalid(step, format!("{error:?}")))?;
         if let Some(region) = self.plan.loop_region(step)
             && self.frame.pc() == region.body()
         {
@@ -207,7 +218,7 @@ fn mark_untimed_wait(
     ) {
         frame
             .mark_waiting(step)
-            .map_err(|error| invalid(step, error.to_string()))?;
+            .map_err(|error| invalid(step, format!("{error:?}")))?;
     }
     Ok(())
 }
