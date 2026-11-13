@@ -5,9 +5,7 @@
 
 use vb_core::frame::StepState;
 use vb_core::value_store::ValueStoreCheckpointV1;
-use vb_core::{
-    CompiledNodeKind as K, CompiledWorkflow, RunFrame, SlotIdx, SlotValue, StepIdx, Taint,
-};
+use vb_core::{CompiledWorkflow, RunFrame, SlotIdx, SlotValue, StepIdx, Taint};
 
 use super::owned_for_each_summary::{pending_actions, summary};
 use crate::JournalEvent;
@@ -18,6 +16,9 @@ use crate::recovery::types::{
     RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
     RecoveryFrameSeedProduct, RecoveryResult, UnsupportedRecoveryState,
 };
+
+#[path = "owned_for_each/supported_route.rs"]
+mod supported_route;
 
 /// A complete deterministic owned-arena replay.
 #[derive(Debug)]
@@ -43,7 +44,7 @@ pub struct OwnedForEachReplayWithCollectSnapshots {
 /// contract handled by [`replay_owned_for_each`].
 #[must_use]
 pub fn is_owned_for_each_contract(plan: &CompiledWorkflow) -> bool {
-    eligibility(plan) == Some(true)
+    supported_route::eligibility(plan) == Some(true)
 }
 
 /// Returns true for deterministic plans that need the retained owned input
@@ -54,7 +55,7 @@ pub fn is_owned_input_replay_contract(
     initial_inputs: &[(SlotIdx, SlotValue, Taint)],
     store_checkpoint: Option<&ValueStoreCheckpointV1>,
 ) -> bool {
-    eligibility(plan) == Some(false)
+    supported_route::eligibility(plan) == Some(false)
         && retained_handles_require_store(initial_inputs)
         && store_checkpoint.is_some()
 }
@@ -157,57 +158,6 @@ fn retained_handles_require_store(initial_inputs: &[(SlotIdx, SlotValue, Taint)]
             SlotValue::Symbol(_) | SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_)
         )
     })
-}
-
-fn eligibility(plan: &CompiledWorkflow) -> Option<bool> {
-    (0..plan.node_count()).try_fold(false, |saw_control, raw| {
-        let node = plan.node(StepIdx::new(raw))?;
-        let valid_route =
-            node.routing.error.handler().is_none() && node.routing.error.error_slot().is_none();
-        valid_route.then_some(())?;
-        Some(saw_control || owned_node_kind(&node.kind)?)
-    })
-}
-
-fn owned_node_kind(kind: &K) -> Option<bool> {
-    match kind {
-        K::ForEachConcurrentStart { .. }
-        | K::ConcurrentLaneEnd { .. }
-        | K::ConcurrentGroupJoin { .. }
-        | K::ForEachStart { .. }
-        | K::ForEachNext { .. }
-        | K::ForEachJoin { .. }
-        | K::ReduceStart { .. }
-        | K::ReduceNext { .. }
-        | K::ReduceFinish { .. }
-        | K::TogetherStart { .. }
-        | K::TogetherBranch { .. }
-        | K::TogetherJoin { .. }
-        | K::RepeatStart { .. }
-        | K::RepeatAttempt { .. }
-        | K::RepeatCheck { .. }
-        | K::RepeatFinish { .. }
-        | K::CollectStart { .. }
-        | K::CollectPage { .. }
-        | K::CollectNext { .. }
-        | K::CollectFinish { .. } => Some(true),
-        K::Ask { .. }
-        | K::AskResume { .. }
-        | K::Do { .. }
-        | K::WaitUntil { .. }
-        | K::WaitEvent { .. }
-        | K::Nop
-        | K::SetConst { .. }
-        | K::Copy { .. }
-        | K::EvalExpr { .. }
-        | K::BuildObject { .. }
-        | K::BuildList { .. }
-        | K::Choose { .. }
-        | K::ChooseSlot { .. }
-        | K::Jump { .. }
-        | K::Finish { .. } => Some(false),
-        _ => None,
-    }
 }
 
 fn seed_from_frame(
