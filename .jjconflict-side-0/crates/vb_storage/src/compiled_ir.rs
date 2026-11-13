@@ -52,21 +52,13 @@ fn read_parts(
     outer_version: Option<SchemaVersion>,
 ) -> Result<VersionedWorkflowParts, JournalError> {
     checked_byte_length(bytes.len())?;
-    let reader = match outer_version {
-        Some(version) => outer_reader(version)?,
-        None if bytes.starts_with(&V2_PREFIX) => Reader::V2,
-        None => Reader::V1,
-    };
-    match reader {
-        Reader::V1 if bytes.starts_with(&V2_PREFIX) => Err(JournalError::ArtifactMalformed),
-        Reader::V1 => decode_full(bytes).map(VersionedWorkflowParts::V1),
-        Reader::V2 => read_v2(bytes).map(VersionedWorkflowParts::V2),
+    if let Some(version) = outer_version {
+        authorize_outer(version)?;
     }
-}
-
-enum Reader {
-    V1,
-    V2,
+    if bytes.starts_with(&[0x01, 0xff]) {
+        return read_v2(bytes).map(VersionedWorkflowParts::V2);
+    }
+    decode_full(bytes).map(VersionedWorkflowParts::V1)
 }
 
 fn version_error(
@@ -81,7 +73,7 @@ fn version_error(
     }
 }
 
-fn outer_reader(held: SchemaVersion) -> Result<Reader, JournalError> {
+fn authorize_outer(held: SchemaVersion) -> Result<(), JournalError> {
     let required = if held.major == 1 {
         CURRENT_IR_VERSION
     } else {
@@ -92,8 +84,7 @@ fn outer_reader(held: SchemaVersion) -> Result<Reader, JournalError> {
         return Err(version_error(held, required, class));
     }
     match held.major {
-        1 => Ok(Reader::V1),
-        2 => Ok(Reader::V2),
+        1 | 2 => Ok(()),
         _ => Err(version_error(
             held,
             V2_VERSION,
