@@ -49,7 +49,7 @@ fn kani_commands_includes_agent_context() {
     }
 }
 
-/// OBL-005: exit_codes covers all defined codes 0 through 8.
+/// OBL-005: exit_codes covers all defined codes 0 through 9.
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_exit_codes_has_defined_range() {
@@ -59,7 +59,7 @@ fn kani_exit_codes_has_defined_range() {
     assert!(exit_codes.is_some());
 
     if let Some(codes) = exit_codes {
-        for code in 0..=8 {
+        for code in 0..=9 {
             let key = format!("{}", code);
             assert!(
                 codes.get(&key).is_some(),
@@ -170,7 +170,7 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
     }
 }
 
-/// OBL-012: known_blockers policy has exactly 8 entries.
+/// OBL-012: known_blockers policy has exactly 9 entries.
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_known_blockers_policy_count_exact() {
@@ -179,7 +179,7 @@ fn kani_known_blockers_policy_count_exact() {
     assert!(policy.is_some());
     if let Some(p) = policy {
         assert!(p.is_array());
-        assert_eq!(p.as_array().map(|a| a.len()), Some(8));
+        assert_eq!(p.as_array().map(|a| a.len()), Some(9));
     }
 }
 

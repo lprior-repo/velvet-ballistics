@@ -5,6 +5,7 @@ pub(crate) mod agent_context;
 pub mod cli_postcard;
 pub mod commands_diff;
 pub mod commands_incident;
+pub(crate) mod exit_code;
 
 pub mod lifecycle;
 pub mod naming_scan;
@@ -12,3 +13,4 @@ pub mod status;
 
 // The remaining CLI implementation modules are binary-only because they depend
 // on local output macros, process exit handling, and argument parsing types.
+// exit_code is shared: agent_context derives its exit-code map from it.

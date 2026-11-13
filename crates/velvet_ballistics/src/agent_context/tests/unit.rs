@@ -119,14 +119,14 @@ fn vocabulary_policy_has_canonical_flags() {
 }
 
 #[test]
-fn exit_codes_covers_zero_through_eight() {
+fn exit_codes_covers_zero_through_nine() {
     let context = build("0.1.0");
     let exit_codes = context
         .get("exit_codes")
         .and_then(Value::as_object)
         .expect("exit_codes must be an object");
 
-    for code in 0..=8 {
+    for code in 0..=9 {
         let key = format!("{}", code);
         assert!(
             exit_codes.contains_key(&key),
@@ -237,7 +237,7 @@ fn known_blockers_policy_covers_all_exit_codes() {
         .and_then(Value::as_array)
         .expect("policy must be an array");
 
-    assert_eq!(policy.len(), 8);
+    assert_eq!(policy.len(), 9);
 }
 
 #[test]
@@ -428,15 +428,16 @@ fn known_blockers_policy_entries_have_category_and_exit_code() {
         .and_then(Value::as_array)
         .expect("policy must be an array");
 
-    let expected: [(i64, &str); 8] = [
-        (1, "validation_failed"),
-        (2, "verification_failed"),
+    let expected: [(i64, &str); 9] = [
+        (1, "runtime_failed"),
+        (2, "validation_failed"),
         (3, "compile_failed"),
-        (4, "runtime_failed"),
+        (4, "verification_failed"),
         (5, "storage_error"),
         (6, "ipc_error"),
         (7, "action_policy_error"),
         (8, "replay_divergence"),
+        (9, "lifecycle_error"),
     ];
 
     for (i, entry) in policy.iter().enumerate() {
@@ -502,16 +503,17 @@ fn exit_codes_have_correct_description_mapping() {
         .and_then(Value::as_object)
         .expect("exit_codes must be an object");
 
-    let expected: [(i64, &str); 9] = [
+    let expected: [(i64, &str); 10] = [
         (0, "success"),
-        (1, "validation failed"),
-        (2, "verification failed"),
+        (1, "runtime failed"),
+        (2, "validation failed"),
         (3, "compile failed"),
-        (4, "runtime failed"),
+        (4, "verification failed"),
         (5, "storage error"),
         (6, "ipc error"),
         (7, "action policy error"),
         (8, "replay divergence"),
+        (9, "lifecycle error"),
     ];
 
     for (code, desc) in &expected {

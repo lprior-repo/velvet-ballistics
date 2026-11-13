@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(not(kani), allow(dead_code, unused_mut, unused_variables))]
 
+use crate::exit_code::CliExitCode;
 use serde_json::Value;
 
 mod commands;
@@ -55,16 +56,7 @@ fn active_gates() -> Value {
 
 fn known_blockers() -> Value {
     serde_json::json!({
-        "policy": [
-            {"category": "validation_failed", "exit_code": 1},
-            {"category": "verification_failed", "exit_code": 2},
-            {"category": "compile_failed", "exit_code": 3},
-            {"category": "runtime_failed", "exit_code": 4},
-            {"category": "storage_error", "exit_code": 5},
-            {"category": "ipc_error", "exit_code": 6},
-            {"category": "action_policy_error", "exit_code": 7},
-            {"category": "replay_divergence", "exit_code": 8}
-        ],
+        "policy": policy_blockers(),
         "resource": [
             {"category": "slot_count_exceeded"},
             {"category": "input_index_out_of_range"},
@@ -78,18 +70,33 @@ fn known_blockers() -> Value {
     })
 }
 
+fn policy_blockers() -> Vec<Value> {
+    CliExitCode::ALL
+        .iter()
+        .copied()
+        .filter(|code| u8::from(*code) != 0)
+        .map(|code| {
+            serde_json::json!({
+                "category": code.description().replace(' ', "_"),
+                "exit_code": u8::from(code),
+            })
+        })
+        .collect()
+}
+
 fn exit_codes() -> Value {
-    serde_json::json!({
-        "0": "success",
-        "1": "validation failed",
-        "2": "verification failed",
-        "3": "compile failed",
-        "4": "runtime failed",
-        "5": "storage error",
-        "6": "ipc error",
-        "7": "action policy error",
-        "8": "replay divergence"
-    })
+    Value::Object(
+        CliExitCode::ALL
+            .iter()
+            .copied()
+            .map(|code| {
+                (
+                    u8::from(code).to_string(),
+                    Value::String(code.description().to_owned()),
+                )
+            })
+            .collect(),
+    )
 }
 
 fn enums() -> Value {

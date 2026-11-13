@@ -56,6 +56,38 @@ impl From<CliExitCode> for u8 {
     }
 }
 
+impl CliExitCode {
+    /// Every defined exit code in discriminant order.
+    pub(crate) const ALL: [CliExitCode; 10] = [
+        CliExitCode::Success,
+        CliExitCode::RuntimeFailed,
+        CliExitCode::ValidationFailed,
+        CliExitCode::CompileFailed,
+        CliExitCode::VerificationFailed,
+        CliExitCode::StorageError,
+        CliExitCode::IpcError,
+        CliExitCode::ActionPolicyError,
+        CliExitCode::ReplayDivergence,
+        CliExitCode::LifecycleError,
+    ];
+
+    /// Short human label for this code, as surfaced in agent-context output.
+    pub(crate) fn description(self) -> &'static str {
+        match self {
+            CliExitCode::Success => "success",
+            CliExitCode::RuntimeFailed => "runtime failed",
+            CliExitCode::ValidationFailed => "validation failed",
+            CliExitCode::CompileFailed => "compile failed",
+            CliExitCode::VerificationFailed => "verification failed",
+            CliExitCode::StorageError => "storage error",
+            CliExitCode::IpcError => "ipc error",
+            CliExitCode::ActionPolicyError => "action policy error",
+            CliExitCode::ReplayDivergence => "replay divergence",
+            CliExitCode::LifecycleError => "lifecycle error",
+        }
+    }
+}
+
 impl From<vb_core::errors::CoreError> for CliExitCode {
     fn from(err: vb_core::errors::CoreError) -> Self {
         let _ = err;
@@ -125,6 +157,15 @@ mod tests {
             ExitCode::from(CliExitCode::LifecycleError),
             ExitCode::from(9u8)
         );
+    }
+
+    #[test]
+    fn all_const_covers_zero_through_nine_in_order() {
+        let values: Vec<u8> = CliExitCode::ALL
+            .iter()
+            .map(|code| u8::from(*code))
+            .collect();
+        assert_eq!(values, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     }
 
     #[test]

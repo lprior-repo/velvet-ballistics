@@ -30,7 +30,7 @@ proptest! {
             .get("exit_codes")
             .and_then(serde_json::Value::as_object)
             .expect("exit_codes must be an object");
-        for code in 0..=8 {
+        for code in 0..=9 {
             let key = format!("{}", code);
             prop_assert!(
                 exit_codes.contains_key(&key),
@@ -176,7 +176,7 @@ proptest! {
             .pointer("/known_blockers/policy")
             .and_then(serde_json::Value::as_array)
             .expect("policy must be an array");
-        prop_assert_eq!(policy.len(), 8);
+        prop_assert_eq!(policy.len(), 9);
     }
 
     #[test]
