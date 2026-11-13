@@ -1200,6 +1200,64 @@ fn admission_postcard_encode_failed_surfaces_typed_variant() {
         "`From<postcard::Error>` for `JournalError` must continue to produce the Encode variant"
     );
 }
+#[test]
+fn payload_tag_classifies_prepared_artifact_as_accepted() -> Result<(), String> {
+    let workflow = minimal_workflow()?;
+    let artifact = prepare_compiled_artifact(&workflow, vb_core::RuntimePolicy::Strict, &[])
+        .map_err(|e| format!("prepare failed: {e}"))?;
+    assert_eq!(
+        classify_accepted_artifact(&artifact),
+        PayloadTag::AcceptedArtifact
+    );
+    assert!(is_strict_accepted_artifact_tag(classify_accepted_artifact(
+        &artifact
+    )));
+    Ok(())
+}
+
+#[test]
+fn payload_tag_classifies_legacy_version_as_legacy_compiled_ir() -> Result<(), String> {
+    let workflow = minimal_workflow()?;
+    let mut artifact = prepare_compiled_artifact(&workflow, vb_core::RuntimePolicy::Strict, &[])
+        .map_err(|e| format!("prepare failed: {e}"))?;
+    artifact.artifact_version = crate::compat::SchemaVersion::new(1, 0, 0);
+    assert_eq!(
+        classify_accepted_artifact(&artifact),
+        PayloadTag::LegacyCompiledIr
+    );
+    assert!(!is_strict_accepted_artifact_tag(
+        classify_accepted_artifact(&artifact)
+    ));
+    Ok(())
+}
+
+#[test]
+fn strict_predicate_admits_only_accepted_artifact_tag() {
+    assert!(is_strict_accepted_artifact_tag(
+        PayloadTag::AcceptedArtifact
+    ));
+    assert!(!is_strict_accepted_artifact_tag(
+        PayloadTag::RawWorkflowParts
+    ));
+    assert!(!is_strict_accepted_artifact_tag(
+        PayloadTag::LegacyCompiledIr
+    ));
+    assert!(!is_strict_accepted_artifact_tag(PayloadTag::Malformed));
+}
+
+#[test]
+fn submit_artifact_strict_returns_accepted_artifact_tag() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
+        .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
+    assert_eq!(
+        classify_accepted_artifact(&artifact),
+        PayloadTag::AcceptedArtifact
+    );
+    Ok(())
+}
+
 #[path = "acceptance_sequence_tests.rs"]
 mod acceptance_sequence_tests;
 
