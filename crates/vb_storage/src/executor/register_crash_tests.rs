@@ -3,6 +3,7 @@
 
 use super::test_support::scratch_grant;
 use super::{ExecutorError, FjallRegister};
+use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -35,6 +36,11 @@ fn abrupt_crash_after_commit_reopens_all_rows_and_duplicate_retries() -> TestRes
         "child must reach the commit marker: {stdout}"
     );
     assert!(!output.status.success(), "child must abort");
+    assert_eq!(
+        output.status.signal(),
+        Some(6),
+        "child must terminate with SIGABRT"
+    );
     let mut adapter = FjallRegister::open(&dir.path().join("register"), 2)?;
     let grant = scratch_grant();
     assert_eq!(adapter.effect_count()?, 1);
@@ -56,6 +62,11 @@ fn abrupt_crash_before_commit_leaves_no_partial_rows() -> TestResult {
         "child must open the register before aborting: {stdout}"
     );
     assert!(!output.status.success(), "child must abort");
+    assert_eq!(
+        output.status.signal(),
+        Some(6),
+        "child must terminate with SIGABRT"
+    );
     let mut adapter = FjallRegister::open(&dir.path().join("register"), 2)?;
     let grant = scratch_grant();
     assert_eq!(adapter.effect_count()?, 0);
