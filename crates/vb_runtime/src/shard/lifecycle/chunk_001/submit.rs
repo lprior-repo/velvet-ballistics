@@ -2,6 +2,7 @@
 #[derive(Debug, Clone, Copy)]
 struct SubmitOptions {
     tenant: Option<vb_core::ids::TenantId>,
+    lifetime_cap: Option<std::num::NonZeroU64>,
     persist_header: bool,
 }
 
@@ -9,6 +10,7 @@ impl SubmitOptions {
     const fn persist(tenant: Option<vb_core::ids::TenantId>) -> Self {
         Self {
             tenant,
+            lifetime_cap: None,
             persist_header: true,
         }
     }
@@ -16,6 +18,7 @@ impl SubmitOptions {
     const fn pre_persisted() -> Self {
         Self {
             tenant: None,
+            lifetime_cap: None,
             persist_header: false,
         }
     }
@@ -54,7 +57,7 @@ impl Shard {
                 }),
             })?;
         let admission = self
-            .build_admission_with_budget(run, &workflow, caps)?
+            .build_admission_with_budget(run, &workflow, caps, options.lifetime_cap)?
             .map(|admission| match options.tenant {
                 Some(tenant) => admission.with_tenant(tenant),
                 None => admission,

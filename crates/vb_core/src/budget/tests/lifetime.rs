@@ -81,29 +81,51 @@ fn lifetime_is_stable_across_repeated_checks_and_replay() {
 }
 
 #[test]
-fn lifetime_long_wait_expires_one_step_workflow() {
+fn lifetime_default_profile_cap_is_independent_of_step_count() -> Result<(), String> {
     let nodes = vec![finish_node(0)];
     let contract = test_contract(1, 1);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
-        .expect("one-step workflow computes");
+        .map_err(|error| error.to_string())?;
     assert_eq!(budget.max_total_steps, 1, "one instruction");
+    let profile_cap = BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;
     assert_eq!(
-        budget.max_run_time_seconds, 1,
-        "admitted lifetime remains derived from the existing budget"
+        budget.max_run_time_seconds, profile_cap,
+        "one-step workflow receives the explicit default lifetime profile"
     );
 
     let aggregate = AggregateResourceBudget::from_whole_workflow_budget(budget, contract)
-        .expect("aggregate projection succeeds");
-    let lifetime = RunLifetimeBudget::from_budget(0, &aggregate).expect("lifetime builds");
-    let seven_days_millis = 7 * 24 * 60 * 60 * 1_000;
+        .map_err(|error| format!("aggregate projection failed: {error}"))?;
+    let lifetime = RunLifetimeBudget::from_budget(0, &aggregate)
+        .map_err(|error| format!("lifetime construction failed: {error}"))?;
+    let exact_deadline = profile_cap
+        .checked_mul(1_000)
+        .ok_or_else(|| String::from("profile lifetime milliseconds overflow"))?;
+    let after_deadline = exact_deadline
+        .checked_add(1)
+        .ok_or_else(|| String::from("after-deadline instant overflow"))?;
+    assert_eq!(lifetime.check(exact_deadline), Ok(()));
     assert_eq!(
-        lifetime.check(seven_days_millis),
+        lifetime.check(after_deadline),
         Err(LifetimeBudgetError::Expired {
-            now_millis: seven_days_millis,
-            deadline_millis: 1_000,
+            now_millis: after_deadline,
+            deadline_millis: exact_deadline,
         }),
-        "wall-clock suspension expires even when no instruction was consumed"
+        "the explicit lifetime cap is enforced independently of steps"
     );
+    Ok(())
+}
+
+#[test]
+fn general_budget_path_uses_the_same_default_lifetime_profile() -> Result<(), String> {
+    let nodes = vec![finish_node(0), finish_node(1), finish_node(2)];
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &test_contract(3, 1))
+        .map_err(|error| error.to_string())?;
+    assert_eq!(budget.max_total_steps, 1);
+    assert_eq!(
+        budget.max_run_time_seconds,
+        BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds
+    );
+    Ok(())
 }
 
 #[test]

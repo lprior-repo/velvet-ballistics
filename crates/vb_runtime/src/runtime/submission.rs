@@ -20,6 +20,31 @@ impl Runtime {
         })
     }
 
+    /// Submits a run with an explicit positive hard lifetime cap.
+    pub fn submit_direct_with_lifetime_cap(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+        max_run_time_seconds: std::num::NonZeroU64,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        let profile_cap = vb_core::BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;
+        let requested_cap = max_run_time_seconds.get();
+        if requested_cap > profile_cap {
+            return Err(RuntimeError::AdmissionArtifactInvalid {
+                digest: workflow.digest(),
+            });
+        }
+        shard.validate_submit_admission(run, &workflow, caps.clone())?;
+        shard.enqueue(ShardCommand::SubmitWithLifetimeCap {
+            run,
+            workflow,
+            caps,
+            max_run_time_seconds,
+        })
+    }
+
     /// Submits a tenant-scoped run using a compiled workflow and explicit grants.
     pub fn submit_direct_with_tenant(
         &self,

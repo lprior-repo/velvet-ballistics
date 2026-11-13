@@ -124,6 +124,7 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
             run,
             &workflow,
             crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            None,
         )
         .map_err(|error| error.to_string())?
         .ok_or("missing admission fixture")?;

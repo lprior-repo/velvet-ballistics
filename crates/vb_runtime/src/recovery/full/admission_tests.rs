@@ -46,14 +46,16 @@ fn descriptor(value: u8) -> AggregateResourceBudget {
 
 #[test]
 fn every_recorded_budget_dimension_is_enforced_without_mutation() -> TestResult {
-    let required = descriptor(2);
-    let enough = descriptor(3);
+    let mut required = descriptor(2);
+    required.max_run_time_seconds = 2_592_000;
+    let mut enough = descriptor(3);
+    enough.max_run_time_seconds = required.max_run_time_seconds;
     assert_eq!(
         validate_recorded_budget_limits(&required, &required),
         Ok(())
     );
     assert_eq!(validate_recorded_budget_limits(&enough, &required), Ok(()));
-    let deficiencies: [(&str, fn(&mut AggregateResourceBudget)); 28] = [
+    let deficiencies: [(&str, fn(&mut AggregateResourceBudget)); 27] = [
         ("max_steps_executable", |budget| {
             budget.max_steps_executable = 1
         }),
@@ -74,9 +76,6 @@ fn every_recorded_budget_dimension_is_enforced_without_mutation() -> TestResult 
         }),
         ("max_repeat_attempts", |budget| {
             budget.max_repeat_attempts = 1
-        }),
-        ("max_run_time_seconds", |budget| {
-            budget.max_run_time_seconds = 1
         }),
         ("max_result_bytes", |budget| budget.max_result_bytes = 1),
         ("max_total_slots_written", |budget| {
@@ -126,6 +125,30 @@ fn every_recorded_budget_dimension_is_enforced_without_mutation() -> TestResult 
         );
         assert_eq!(postcard::to_allocvec(&recorded)?, before, "{name}");
     }
+    Ok(())
+}
+
+#[test]
+fn recorded_lifetime_is_a_positive_cap_not_a_minimum_reservation() -> TestResult {
+    let mut required = descriptor(2);
+    required.max_run_time_seconds = 2_592_000;
+    let mut recorded = descriptor(2);
+    recorded.max_run_time_seconds = 3;
+    assert_eq!(
+        validate_recorded_budget_limits(&recorded, &required),
+        Ok(())
+    );
+
+    recorded.max_run_time_seconds = 0;
+    assert_eq!(
+        validate_recorded_budget_limits(&recorded, &required),
+        Err(cannot_resume_error("admission_budget_lifetime_invalid"))
+    );
+    recorded.max_run_time_seconds = required.max_run_time_seconds + 1;
+    assert_eq!(
+        validate_recorded_budget_limits(&recorded, &required),
+        Err(cannot_resume_error("admission_budget_lifetime_invalid"))
+    );
     Ok(())
 }
 
@@ -197,7 +220,10 @@ fn current_requirements_validate_without_replacing_admission_identity_or_limits(
         RuntimePolicy::Strict,
         &[contract()?],
     )?;
-    let recorded = AggregateResourceBudget::from_workflow(&workflow)?;
+    let required = AggregateResourceBudget::from_workflow(&workflow)?;
+    assert_eq!(required.max_run_time_seconds, 2_592_000);
+    let mut recorded = AggregateResourceBudget::from_workflow(&workflow)?;
+    recorded.max_run_time_seconds = 3;
     let run = RunId::new(201);
     let admission = RunAdmission::with_budget(
         artifact.digest,
@@ -224,7 +250,7 @@ fn current_requirements_validate_without_replacing_admission_identity_or_limits(
 }
 
 #[test]
-fn missing_recorded_budget_is_not_inferred_as_zero_or_replaced() -> TestResult {
+fn missing_recorded_budget_fails_closed_without_mutation() -> TestResult {
     let workflow = workflow()?;
     let admission = RunAdmission::new(
         WorkflowDigest::from_bytes([8; 32]),
@@ -232,8 +258,13 @@ fn missing_recorded_budget_is_not_inferred_as_zero_or_replaced() -> TestResult {
         CapabilitySet::empty(),
         RuntimePolicy::Strict,
     );
-    assert_eq!(validate_recovered_budget(&admission, &workflow), Ok(()));
+    let before = postcard::to_allocvec(&admission)?;
+    assert_eq!(
+        validate_recovered_budget(&admission, &workflow),
+        Err(cannot_resume_error("admission_budget_missing"))
+    );
     assert_eq!(admission.budget(), None);
+    assert_eq!(postcard::to_allocvec(&admission)?, before);
     Ok(())
 }
 
@@ -258,6 +289,7 @@ fn durable_fixture(deficient_cost: bool) -> TestResult<DurableFixture> {
     )?;
     let run = RunId::new(203);
     let mut recorded = AggregateResourceBudget::from_workflow(&workflow)?;
+    recorded.max_run_time_seconds = 3;
     if deficient_cost {
         recorded.max_cost_units = recorded
             .max_cost_units
@@ -344,6 +376,8 @@ fn sufficient_budget_recovery_query_is_a_nonmutating_artifact_control() -> TestR
     let before = fixture.journal.events_for_run_full(fixture.run)?;
     let state = fixture.runtime.pending_boundary_snapshot(4);
     let required = AggregateResourceBudget::from_workflow(&workflow()?)?;
+    assert_eq!(required.max_run_time_seconds, 2_592_000);
+    assert_eq!(fixture.recorded.max_run_time_seconds, 3);
     assert!(fixture.recorded.max_cost_units > required.max_cost_units);
     let original = crate::recovery::hydrate_run_admission_from_events(&before)
         .ok_or("original durable admission missing")?;
@@ -399,7 +433,7 @@ fn validate_descriptor(budget: &AggregateResourceBudget) -> TestResult {
 
 #[test]
 fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
-    let raise: [(&str, fn(&mut AggregateResourceBudget)); 28] = [
+    let raise: [(&str, fn(&mut AggregateResourceBudget)); 27] = [
         ("max_steps_executable", |required| {
             required.max_steps_executable = 3
         }),
@@ -422,9 +456,6 @@ fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
         }),
         ("max_repeat_attempts", |required| {
             required.max_repeat_attempts = 3
-        }),
-        ("max_run_time_seconds", |required| {
-            required.max_run_time_seconds = 3
         }),
         ("max_result_bytes", |required| required.max_result_bytes = 3),
         ("max_total_slots_written", |required| {
@@ -465,12 +496,15 @@ fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
         }),
         ("max_cost_units", |required| required.max_cost_units = 3),
     ];
-    let uniform_two = descriptor(2);
-    let larger = descriptor(3);
+    let mut uniform_two = descriptor(2);
+    uniform_two.max_run_time_seconds = 1;
+    let mut larger = descriptor(3);
+    larger.max_run_time_seconds = 1;
     validate_descriptor(&uniform_two)?;
     validate_descriptor(&larger)?;
     for (name, raise) in raise {
         let mut required = descriptor(1);
+        required.max_run_time_seconds = 1;
         raise(&mut required);
         validate_descriptor(&required)?;
         let exact = required;

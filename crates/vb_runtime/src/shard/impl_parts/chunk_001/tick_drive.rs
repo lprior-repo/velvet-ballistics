@@ -102,6 +102,12 @@ impl Shard {
                 workflow,
                 caps,
             } => self.handle_submit(run, workflow, caps)?,
+            ShardCommand::SubmitWithLifetimeCap {
+                run,
+                workflow,
+                caps,
+                max_run_time_seconds,
+            } => self.handle_submit_with_lifetime_cap(run, workflow, caps, max_run_time_seconds)?,
             ShardCommand::SubmitTenantScoped {
                 run,
                 workflow,

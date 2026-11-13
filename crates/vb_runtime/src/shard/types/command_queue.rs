@@ -105,6 +105,7 @@ impl ShardCommandQueue {
         let run = cmd.run_id();
         let submit_depth = match &cmd {
             ShardCommand::Submit { run, workflow, .. }
+            | ShardCommand::SubmitWithLifetimeCap { run, workflow, .. }
             | ShardCommand::SubmitPrePersisted { run, workflow, .. }
             | ShardCommand::SubmitWithInputs { run, workflow, .. }
             | ShardCommand::SubmitWithContracts { run, workflow, .. }

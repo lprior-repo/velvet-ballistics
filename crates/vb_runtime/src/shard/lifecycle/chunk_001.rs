@@ -1,4 +1,26 @@
 impl Shard {
+    pub(crate) fn handle_submit_with_lifetime_cap(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+        max_run_time_seconds: std::num::NonZeroU64,
+    ) -> RuntimeResult<()> {
+        let options = SubmitOptions {
+            tenant: None,
+            lifetime_cap: Some(max_run_time_seconds),
+            persist_header: true,
+        };
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            &[],
+            options,
+        )
+    }
+
     pub(crate) fn handle_submit(
         &mut self,
         run: RunId,

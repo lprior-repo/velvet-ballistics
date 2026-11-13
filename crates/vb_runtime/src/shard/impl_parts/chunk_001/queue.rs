@@ -12,6 +12,7 @@ impl Shard {
         self.validate_secret_submission(&cmd)?;
         match &cmd {
             ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitWithLifetimeCap { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
             | ShardCommand::SubmitWithContracts { workflow, .. } => {
                 let inputs = self.prepare_secret_inputs(workflow, &[])?;
@@ -30,6 +31,7 @@ impl Shard {
         }
         match &cmd {
             ShardCommand::Submit { .. }
+            | ShardCommand::SubmitWithLifetimeCap { .. }
             | ShardCommand::ActivateOwnedSubmission { .. }
             | ShardCommand::SubmitPrePersisted { .. }
             | ShardCommand::SubmitWithInputs { .. }
@@ -54,6 +56,7 @@ impl Shard {
     fn admitted_queue_depth(&self, cmd: &ShardCommand) -> RuntimeResult<Option<u32>> {
         match cmd {
             ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitWithLifetimeCap { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
             | ShardCommand::SubmitWithInputs { workflow, .. }
             | ShardCommand::SubmitWithContracts { workflow, .. }

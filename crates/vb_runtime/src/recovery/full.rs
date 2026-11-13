@@ -9,6 +9,10 @@ mod pending;
 mod product;
 mod suspended;
 
+#[cfg(test)]
+#[path = "lifetime_submission_tests.rs"]
+mod lifetime_submission_tests;
+
 use arena::recovered_arena_handles_resolve;
 use suspended::{
     recoverable_open_ask_boundary, recoverable_timed_ask_boundary,

@@ -18,6 +18,17 @@ pub enum ShardCommand {
         /// Capabilities granted to this run.
         caps: CapabilitySet,
     },
+    /// Submit a run with an explicit positive hard lifetime cap.
+    SubmitWithLifetimeCap {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Maximum lifetime admitted for this run.
+        max_run_time_seconds: std::num::NonZeroU64,
+    },
     /// Submit a run whose durable header was already persisted by the runtime shell.
     SubmitPrePersisted {
         /// Run identifier chosen by the caller.
@@ -204,6 +215,7 @@ impl ShardCommand {
         match self {
             Self::ActivateOwnedSubmission { run, .. }
             | Self::Submit { run, .. }
+            | Self::SubmitWithLifetimeCap { run, .. }
             | Self::SubmitTenantScoped { run, .. }
             | Self::SubmitPrePersisted { run, .. }
             | Self::SubmitWithInputs { run, .. }

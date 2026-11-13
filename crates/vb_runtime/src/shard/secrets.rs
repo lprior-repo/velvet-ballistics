@@ -15,6 +15,12 @@ impl Shard {
                 workflow,
                 caps,
             }
+            | ShardCommand::SubmitWithLifetimeCap {
+                run,
+                workflow,
+                caps,
+                ..
+            }
             | ShardCommand::SubmitPrePersisted {
                 run,
                 workflow,
