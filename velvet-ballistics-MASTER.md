@@ -4301,14 +4301,15 @@ Stable exit codes:
 | Code | Meaning |
 |------|---------|
 | 0 | success |
-| 1 | validation failed |
-| 2 | verification failed |
+| 1 | runtime failed |
+| 2 | validation failed |
 | 3 | compile failed |
-| 4 | runtime failed |
+| 4 | verification failed |
 | 5 | storage error |
-| 6 | IPC error |
+| 6 | ipc error |
 | 7 | action policy error |
 | 8 | replay divergence |
+| 9 | lifecycle error |
 
 AI agents can branch on exit codes. No parsing error text.
 

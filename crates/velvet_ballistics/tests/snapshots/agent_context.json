@@ -523,14 +523,15 @@
   },
   "exit_codes": {
     "0": "success",
-    "1": "validation failed",
-    "2": "verification failed",
+    "1": "runtime failed",
+    "2": "validation failed",
     "3": "compile failed",
-    "4": "runtime failed",
+    "4": "verification failed",
     "5": "storage error",
     "6": "ipc error",
     "7": "action policy error",
-    "8": "replay divergence"
+    "8": "replay divergence",
+    "9": "lifecycle error"
   },
   "kind": "AgentContext",
   "known_blockers": {
@@ -547,11 +548,11 @@
     ],
     "policy": [
       {
-        "category": "validation_failed",
+        "category": "runtime_failed",
         "exit_code": 1
       },
       {
-        "category": "verification_failed",
+        "category": "validation_failed",
         "exit_code": 2
       },
       {
@@ -559,7 +560,7 @@
         "exit_code": 3
       },
       {
-        "category": "runtime_failed",
+        "category": "verification_failed",
         "exit_code": 4
       },
       {
@@ -577,6 +578,10 @@
       {
         "category": "replay_divergence",
         "exit_code": 8
+      },
+      {
+        "category": "lifecycle_error",
+        "exit_code": 9
       }
     ],
     "resource": [
