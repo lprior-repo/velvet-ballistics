@@ -52,21 +52,53 @@ fn replay_refuses_duplicate_stale_foreign_missing_and_out_of_order_evidence() ->
         *digest = WorkflowDigest::from_bytes([0xa5; 32]);
     }
 
+    let action = match workflow.node(work).ok_or("work step node")?.kind {
+        vb_core::workflow::CompiledNodeKind::Do { action, .. } => action,
+        _ => return Err("work step must be an action".into()),
+    };
     for (label, events, want) in [
         (
             "duplicate action failure",
             duplicate,
-            Refusal::NonIdempotent,
+            Expect::NonIdempotent { step: work, action },
         ),
         (
             "out-of-order schedule",
             out_of_order,
-            Refusal::NonIdempotent,
+            Expect::NonIdempotent { step: work, action },
         ),
-        ("stale attempt", stale_attempt, Refusal::Divergence),
-        ("foreign run", foreign, Refusal::Divergence),
-        ("missing RunAccepted", missing, Refusal::Divergence),
-        ("digest mismatch", digest_mismatch, Refusal::DigestMismatch),
+        (
+            "stale attempt",
+            stale_attempt,
+            Expect::Divergence {
+                step: work,
+                detail: "action failure attempt does not match schedule ticket",
+            },
+        ),
+        (
+            "foreign run",
+            foreign,
+            Expect::Divergence {
+                step: vb_core::ids::StepIdx::ZERO,
+                detail: "frame seed recovery received events for multiple runs",
+            },
+        ),
+        (
+            "missing RunAccepted",
+            missing,
+            Expect::Divergence {
+                step: vb_core::ids::StepIdx::ZERO,
+                detail: "RunAccepted evidence missing",
+            },
+        ),
+        (
+            "digest mismatch",
+            digest_mismatch,
+            Expect::DigestMismatch {
+                expected: workflow.digest(),
+                found: WorkflowDigest::from_bytes([0xa5; 32]),
+            },
+        ),
     ] {
         let error = match recover_runtime_frame_seed_from_events_with_workflow(&events, &workflow) {
             Ok(_) => return Err(format!("{label}: accepted invalid evidence").into()),
@@ -76,15 +108,6 @@ fn replay_refuses_duplicate_stale_foreign_missing_and_out_of_order_evidence() ->
             want.matches(&error),
             "{label}: unexpected refusal {error:?}"
         );
-        if let Refusal::Divergence = want
-            && label == "stale attempt"
-        {
-            assert!(
-                matches!(&error, RecoveryError::ReplayDivergence { step, detail }
-                    if *step == work && detail == "action failure attempt does not match schedule ticket"),
-                "stale attempt must name the attempt mismatch: {error:?}"
-            );
-        }
     }
     Ok(())
 }
@@ -109,21 +132,46 @@ fn live_schedule(workflow: &vb_core::CompiledWorkflow) -> TestResult<JournalEven
         .ok_or_else(|| String::from("scheduled ticket evidence").into())
 }
 
-#[derive(Clone, Copy)]
-enum Refusal {
-    NonIdempotent,
-    Divergence,
-    DigestMismatch,
+/// Exact expected refusal for one mutated journal.
+enum Expect {
+    NonIdempotent {
+        step: vb_core::ids::StepIdx,
+        action: vb_core::ids::ActionId,
+    },
+    Divergence {
+        step: vb_core::ids::StepIdx,
+        detail: &'static str,
+    },
+    DigestMismatch {
+        expected: WorkflowDigest,
+        found: WorkflowDigest,
+    },
 }
 
-impl Refusal {
-    fn matches(self, error: &RecoveryError) -> bool {
+impl Expect {
+    fn matches(&self, error: &RecoveryError) -> bool {
         match self {
-            Self::NonIdempotent => {
-                matches!(error, RecoveryError::NonIdempotentActionBlocked { .. })
-            }
-            Self::Divergence => matches!(error, RecoveryError::ReplayDivergence { .. }),
-            Self::DigestMismatch => matches!(error, RecoveryError::CompiledIrDigestMismatch { .. }),
+            Self::NonIdempotent { step, action } => matches!(
+                error,
+                RecoveryError::NonIdempotentActionBlocked {
+                    step: refused_step,
+                    action: refused_action,
+                } if refused_step == step && refused_action == action
+            ),
+            Self::Divergence { step, detail } => matches!(
+                error,
+                RecoveryError::ReplayDivergence {
+                    step: refused_step,
+                    detail: refused_detail,
+                } if refused_step == step && refused_detail == detail
+            ),
+            Self::DigestMismatch { expected, found } => matches!(
+                error,
+                RecoveryError::CompiledIrDigestMismatch {
+                    expected: refused_expected,
+                    found: refused_found,
+                } if refused_expected == expected && refused_found == found
+            ),
         }
     }
 }

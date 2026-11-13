@@ -45,6 +45,9 @@ fn recovered_open_ask_keeps_its_ticket_and_the_answer_completes_the_run() -> Tes
     ))?;
     drain_until_completed(&mut runtime)?;
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+    // The answer's value/taint is a boundary effect: durable replay refuses to
+    // reconstruct an Ask step, so the completed run is asserted through the
+    // journal and counters rather than a removed run frame.
     assert!(
         journal
             .events_for_run_full(RUN)?

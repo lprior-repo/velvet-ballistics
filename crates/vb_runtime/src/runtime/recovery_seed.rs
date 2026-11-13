@@ -2,17 +2,14 @@ impl Runtime {
     /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
     /// for a workflow-aware replay path.
     ///
-    /// **FINDING-002 typestate closure.** Uses the typed entry point
-    /// `recover_runtime_frame_seed_from_events_with_workflow` so the
-    /// storage-classified cannot-resume/resumable product is the source
-    /// of truth; the runtime never sees the raw DTO.
-    ///
-    /// The recovered seed is then passed through
-    /// [`crate::recovery::restore_routed_action_failure`], which rebuilds an
-    /// action failure's handler transition when the journal ends before that
-    /// transition was durable. Without it the seed still points at the resolved
-    /// `Do` step and recovery would reissue the action as a new external
-    /// effect.
+    /// The storage product is consumed for its recovered seed and the repair of
+    /// a partially journaled action-failure route
+    /// ([`crate::recovery::restore_routed_action_failure`]); the returned
+    /// product is then re-classified from the repaired seed. This raw-DTO
+    /// roundtrip is intentional: the storage classification is a replay-shape
+    /// witness, not resume authority, and the runtime boundary
+    /// (`classify_full_recovery_resume`) is what decides resumability from the
+    /// repaired evidence. The storage wrapper never resumes a run on its own.
     fn recover_seed_for_loaded_workflow(
         events: &[vb_storage::JournalEvent],
         workflow: &CompiledWorkflow,
