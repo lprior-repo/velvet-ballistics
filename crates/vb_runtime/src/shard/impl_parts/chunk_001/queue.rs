@@ -9,8 +9,23 @@ impl Shard {
         if self.shutting_down {
             return Err(RuntimeError::ShutdownInProgress);
         }
-        self.validate_secret_submission(&cmd)?;
-        match &cmd {
+        self.prepare_submission_inputs(&cmd)?;
+        self.probe_submission_journal(&cmd)?;
+        let limit = self.admitted_queue_depth(&cmd)?;
+        let duplicate_active =
+            submission_run(&cmd).is_some_and(|run| self.run_state_contains(run));
+        let quota = if duplicate_active {
+            None
+        } else {
+            self.pending_submission_quota(&cmd)?
+        };
+        self.command_queue
+            .enqueue_with_reservation(cmd, limit, quota, Some(&self.quota))
+    }
+
+    fn prepare_submission_inputs(&self, cmd: &ShardCommand) -> RuntimeResult<()> {
+        self.validate_secret_submission(cmd)?;
+        match cmd {
             ShardCommand::Submit { workflow, .. }
             | ShardCommand::SubmitWithLifetimeCap { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
@@ -29,7 +44,11 @@ impl Shard {
             }
             _ => {}
         }
-        match &cmd {
+        Ok(())
+    }
+
+    fn probe_submission_journal(&self, cmd: &ShardCommand) -> RuntimeResult<()> {
+        match cmd {
             ShardCommand::Submit { .. }
             | ShardCommand::SubmitWithLifetimeCap { .. }
             | ShardCommand::ActivateOwnedSubmission { .. }
@@ -42,15 +61,7 @@ impl Shard {
             }
             _ => {}
         }
-        let limit = self.admitted_queue_depth(&cmd)?;
-        let duplicate_active = submission_run(&cmd).is_some_and(|run| self.run_state_contains(run));
-        let quota = if duplicate_active {
-            None
-        } else {
-            self.pending_submission_quota(&cmd)?
-        };
-        self.command_queue
-            .enqueue_with_reservation(cmd, limit, quota, Some(&self.quota))
+        Ok(())
     }
 
     /// Resolves the admitted per-run queue depth for a command, when one
