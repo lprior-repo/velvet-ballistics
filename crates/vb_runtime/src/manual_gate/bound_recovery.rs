@@ -4,7 +4,7 @@
 //! synthesizes a decision or a receipt, and a malformed or mismatched stream
 //! fails closed so a recovered run does not drive past an undecided gate.
 
-use super::bound_receipt::verify_bound_receipt;
+use super::bound_receipt::{compute_bound_receipt_digest, verify_bound_receipt};
 use super::errors::GateError;
 use crate::shard::types::BoundOpenGate;
 use indexmap::IndexMap;
@@ -25,6 +25,7 @@ pub(crate) fn reconstruct_bound_open_gates(
         match event {
             vb_storage::JournalEvent::GateOpenedBoundEvent {
                 gate,
+                seq,
                 opened_at_ms,
                 requester,
                 ..
@@ -41,6 +42,7 @@ pub(crate) fn reconstruct_bound_open_gates(
                     BoundOpenGate {
                         gate: gate.clone(),
                         opened_at_ms: *opened_at_ms,
+                        opening_seq: seq.get(),
                         requester: requester.clone(),
                         delegated_to: None,
                     },
@@ -51,12 +53,21 @@ pub(crate) fn reconstruct_bound_open_gates(
                     return Err(GateError::InvalidRecord);
                 }
                 let gate_id = record.record.gate.get();
+                if let Some(receipt) = &record.bound_receipt {
+                    if compute_bound_receipt_digest(receipt)? != receipt.digest {
+                        return Err(GateError::BoundReceiptMismatch);
+                    }
+                    if seen_receipts.insert(receipt.digest, gate_id).is_some() {
+                        return Err(GateError::ReplayDuplicateBoundReceipt { gate: gate_id });
+                    }
+                }
                 let Some(existing) = open.get(&gate_id) else {
                     continue;
                 };
                 if !record.matches_bound_gate(&existing.gate)
                     || record.record.requester != existing.requester
                     || record.record.opened_at_ms != existing.opened_at_ms
+                    || record.opening_seq != existing.opening_seq
                     || record.record.decided_at_ms < existing.opened_at_ms
                 {
                     return Err(GateError::ReplayBoundGateMismatch { gate: gate_id });
@@ -64,12 +75,6 @@ pub(crate) fn reconstruct_bound_open_gates(
                 if let Some(receipt) = &record.bound_receipt {
                     if !verify_bound_receipt(receipt, &existing.gate)? {
                         return Err(GateError::BoundReceiptMismatch);
-                    }
-                    if seen_receipts
-                        .insert(receipt.digest, gate_id)
-                        .is_some()
-                    {
-                        return Err(GateError::ReplayDuplicateBoundReceipt { gate: gate_id });
                     }
                 }
                 match record.record.outcome {

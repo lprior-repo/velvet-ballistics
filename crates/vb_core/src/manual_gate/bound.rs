@@ -44,6 +44,8 @@ pub struct BoundApprovalReceipt {
     pub separation: SeparationOfDuties,
     /// Artifact/policy/input/attempt binding of the approved run.
     pub binding: GateBinding,
+    /// Journal sequence of the exact opening this receipt decides.
+    pub opening_seq: u64,
     /// Provenance of the claimed approver identity.
     pub operator_trust: OperatorTrust,
     /// V2 digest over every field above except this digest.
@@ -66,6 +68,8 @@ pub struct BoundGateOutcomeRecord {
     pub record: GateOutcomeRecord,
     /// Artifact/policy/input/attempt binding of the run.
     pub binding: GateBinding,
+    /// Journal sequence of the exact opening this outcome decides.
+    pub opening_seq: u64,
     /// Provenance of the claimed approver identity; `None` only for escalation.
     pub operator_trust: Option<OperatorTrust>,
     /// Bound receipt; present exactly for approve/break-glass.
@@ -109,6 +113,7 @@ impl BoundGateOutcomeRecord {
             && self.record.requester == bound.requester
             && self.record.approver_role.as_ref() == Some(&bound.approver_role)
             && self.binding == bound.binding
+            && self.opening_seq == bound.opening_seq
             && self.operator_trust == Some(bound.operator_trust)
             && self.record.evidence_bundle_digest == bound.receipt.evidence_bundle_digest
             && self.record.prompt_digest == bound.receipt.prompt_digest

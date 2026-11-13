@@ -8,7 +8,7 @@ impl Shard {
         gate: vb_core::manual_gate::BoundManualGate,
         opened_at_ms: u64,
         requester: vb_core::manual_gate::ApproverId,
-    ) -> crate::RuntimeResult<()> {
+    ) -> crate::RuntimeResult<vb_storage::EventSeq> {
         let run = gate.gate.run;
         if !gate.is_structurally_valid() || !requester.is_valid() {
             return Err(crate::RuntimeError::InvalidGateOpenedRecord);
@@ -31,7 +31,7 @@ impl Shard {
             .run_state_get_mut(run)
             .ok_or(crate::RuntimeError::RunNotFound)?;
         state.journal_bytes_written = projected;
-        Ok(())
+        Ok(seq)
     }
 
     /// Strict durable bound gate-decision port.

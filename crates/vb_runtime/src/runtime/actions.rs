@@ -155,7 +155,34 @@ impl Runtime {
     ///
     /// Bound gates carry artifact/policy/input/attempt binding. A legacy gate
     /// submitted here is rejected with a typed legacy-without-binding error.
+    /// Direct Rust callers are recorded as in-process callers.
     pub fn submit_bound_gate_decision(
+        &self,
+        run: RunId,
+        input: GateDecisionInput,
+    ) -> RuntimeResult<()> {
+        self.submit_bound_gate_decision_with_trust(
+            run,
+            input,
+            vb_core::manual_gate::OperatorTrust::InProcessCaller,
+        )
+    }
+
+    /// Submits a decision received through the local Unix-socket server.
+    /// The IPC payload cannot supply or override this trust provenance.
+    pub fn submit_bound_gate_decision_from_local_socket(
+        &self,
+        run: RunId,
+        input: GateDecisionInput,
+    ) -> RuntimeResult<()> {
+        self.submit_bound_gate_decision_with_trust(
+            run,
+            input,
+            vb_core::manual_gate::OperatorTrust::LocalSocketClaim,
+        )
+    }
+
+    fn submit_bound_gate_decision_with_trust(
         &self,
         run: RunId,
         input: GateDecisionInput,

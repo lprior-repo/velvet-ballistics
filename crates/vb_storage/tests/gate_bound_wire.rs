@@ -103,12 +103,14 @@ fn bound_record(run: RunId) -> BoundGateOutcomeRecord {
         risk: RiskClass::High,
         separation: SeparationOfDuties::DistinctFromRequester,
         binding: binding(),
+        opening_seq: 0,
         operator_trust: OperatorTrust::InProcessCaller,
         digest: digest(7),
     };
     BoundGateOutcomeRecord {
         record,
         binding: binding(),
+        opening_seq: 0,
         operator_trust: Some(OperatorTrust::InProcessCaller),
         bound_receipt: Some(bound),
     }

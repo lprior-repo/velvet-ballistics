@@ -654,3 +654,7 @@ mod tests;
 #[cfg(test)]
 #[path = "commands_journal/retry_analysis_tests.rs"]
 mod retry_analysis_tests;
+
+#[cfg(test)]
+#[path = "commands_journal/bound_gate_trace_tests.rs"]
+mod bound_gate_trace_tests;

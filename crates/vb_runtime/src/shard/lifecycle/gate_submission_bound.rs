@@ -29,11 +29,14 @@ impl Shard {
         }
         self.check_gate_suspendable(run)?;
         self.reserve_open_gate_slot()?;
-        self.append_gate_opened_bound_strict(gate.clone(), opened_at_ms, requester.clone())?;
+        let opening_seq = self
+            .append_gate_opened_bound_strict(gate.clone(), opened_at_ms, requester.clone())?
+            .get();
         self.apply(run, RuntimeEvent::AwaitAction)?;
         let open = BoundOpenGate {
             gate,
             opened_at_ms,
+            opening_seq,
             requester,
             delegated_to: None,
         };
@@ -80,11 +83,13 @@ impl Shard {
         let record = evaluate_bound_decision(
             &open.gate,
             open.opened_at_ms,
+            open.opening_seq,
             &open.requester,
             operator_trust,
             &input,
         )
         .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
+        Self::verify_bound_gate_authority(&record, &open.gate, open.opening_seq)?;
         self.append_gate_decision_bound_strict(record.clone())?;
         match input.decision {
             GateDecision::Approve | GateDecision::BreakGlass => {
@@ -133,8 +138,14 @@ impl Shard {
         }
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         Self::check_bound_binding(state, &open.gate)?;
-        let record = evaluate_bound_timeout(&open.gate, &open.requester, open.opened_at_ms, now_ms)
-            .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
+        let record = evaluate_bound_timeout(
+            &open.gate,
+            &open.requester,
+            open.opened_at_ms,
+            open.opening_seq,
+            now_ms,
+        )
+        .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
         self.append_gate_decision_bound_strict(record.clone())?;
         self.bound_open_gates.swap_remove(&gate);
         self.fail_gated_run(run)?;
@@ -180,7 +191,10 @@ impl Shard {
         gate: &BoundManualGate,
     ) -> RuntimeResult<()> {
         let binding = gate.binding;
-        let admission = state.admission.as_ref().ok_or_else(|| binding_error(gate, "admission"))?;
+        let admission = state
+            .admission
+            .as_ref()
+            .ok_or_else(|| binding_error(gate, "admission"))?;
         if admission.artifact_digest().as_bytes() != binding.artifact_digest.as_bytes() {
             return Err(binding_error(gate, "artifact_digest"));
         }
@@ -190,8 +204,9 @@ impl Shard {
         match admission.policy_pin() {
             vb_storage::RunPolicyPin::Pinned(policy_digest)
                 if policy_digest.as_bytes() == binding.policy_digest.as_bytes() => {}
-            vb_storage::RunPolicyPin::Unverified
-                if admission.policy() == vb_core::policy::RuntimePolicy::Relaxed => {}
+            vb_storage::RunPolicyPin::Unverified => {
+                return Err(binding_error(gate, "policy_digest"));
+            }
             _ => return Err(binding_error(gate, "policy_digest")),
         }
         if admission.input_digest()
@@ -202,6 +217,33 @@ impl Shard {
             return Err(binding_error(gate, "input_digest"));
         }
         Ok(())
+    }
+
+    fn verify_bound_gate_authority(
+        record: &BoundGateOutcomeRecord,
+        gate: &BoundManualGate,
+        opening_seq: u64,
+    ) -> RuntimeResult<()> {
+        let mismatch = || RuntimeError::GateEvaluationFailed {
+            source: crate::manual_gate::GateError::BoundReceiptMismatch,
+        };
+        if !matches!(
+            record.record.outcome,
+            vb_core::manual_gate::GateOutcome::Approved
+                | vb_core::manual_gate::GateOutcome::BreakGlassApproved
+        ) {
+            return Ok(());
+        }
+        let receipt = record
+            .bound_receipt
+            .as_ref()
+            .filter(|receipt| receipt.opening_seq == opening_seq)
+            .ok_or_else(mismatch)?;
+        match crate::manual_gate::verify_bound_receipt(receipt, gate) {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(mismatch()),
+            Err(source) => Err(RuntimeError::GateEvaluationFailed { source }),
+        }
     }
 }
 

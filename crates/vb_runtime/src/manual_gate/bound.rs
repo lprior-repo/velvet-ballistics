@@ -13,6 +13,7 @@ use vb_core::manual_gate::{
 pub fn evaluate_bound_decision(
     gate: &BoundManualGate,
     opened_at_ms: u64,
+    opening_seq: u64,
     requester: &ApproverId,
     operator_trust: OperatorTrust,
     input: &vb_core::manual_gate::GateDecisionInput,
@@ -31,6 +32,7 @@ pub fn evaluate_bound_decision(
                 risk: gate.gate.risk,
                 separation: gate.gate.separation_of_duties,
                 binding: gate.binding,
+                opening_seq,
                 operator_trust,
                 digest: GateDigest::ZERO,
             };
@@ -42,6 +44,7 @@ pub fn evaluate_bound_decision(
     let outcome = BoundGateOutcomeRecord {
         record,
         binding: gate.binding,
+        opening_seq,
         operator_trust: Some(operator_trust),
         bound_receipt,
     };
@@ -56,6 +59,7 @@ pub fn evaluate_bound_timeout(
     gate: &BoundManualGate,
     requester: &ApproverId,
     opened_at_ms: u64,
+    opening_seq: u64,
     now_ms: u64,
 ) -> Result<BoundGateOutcomeRecord, GateError> {
     if !gate.is_structurally_valid() {
@@ -65,6 +69,7 @@ pub fn evaluate_bound_timeout(
     let outcome = BoundGateOutcomeRecord {
         record,
         binding: gate.binding,
+        opening_seq,
         operator_trust: None,
         bound_receipt: None,
     };
@@ -125,12 +130,13 @@ pub fn replay_bound_gate_history(
 ) -> Result<Vec<BoundGateReplay>, GateError> {
     let mut replays = Vec::new();
     let mut seen_receipts = IndexMap::new();
-    let mut opened: IndexMap<u64, (BoundManualGate, ApproverId, u64)> = IndexMap::new();
+    let mut opened: IndexMap<u64, (BoundManualGate, ApproverId, u64, u64)> = IndexMap::new();
     for event in events {
         match event {
             vb_storage::JournalEvent::GateOpenedBoundEvent {
                 gate,
                 opened_at_ms,
+                seq,
                 requester,
                 ..
             } => {
@@ -139,7 +145,10 @@ pub fn replay_bound_gate_history(
                 }
                 let gate_id = gate.gate.id.get();
                 if opened
-                    .insert(gate_id, (gate.clone(), requester.clone(), *opened_at_ms))
+                    .insert(
+                        gate_id,
+                        (gate.clone(), requester.clone(), *opened_at_ms, seq.get()),
+                    )
                     .is_some()
                 {
                     return Err(GateError::ReplayDuplicateOpen { gate: gate_id });
@@ -167,7 +176,8 @@ pub fn replay_bound_gate_history(
                     }
                     None => None,
                 };
-                let Some((gate, requester, opened_at_ms)) = opened.get(&gate_id) else {
+                let Some((gate, requester, opened_at_ms, opening_seq)) = opened.get(&gate_id)
+                else {
                     // The opening is outside the recovered window; history
                     // replay ignores the decision rather than guessing.
                     continue;
@@ -175,6 +185,7 @@ pub fn replay_bound_gate_history(
                 if !record.matches_bound_gate(gate)
                     || record.record.requester != *requester
                     || record.record.opened_at_ms != *opened_at_ms
+                    || record.opening_seq != *opening_seq
                     || record.record.decided_at_ms < *opened_at_ms
                 {
                     return Err(GateError::ReplayBoundGateMismatch { gate: gate_id });

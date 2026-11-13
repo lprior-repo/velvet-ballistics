@@ -141,6 +141,10 @@ name = "restate_journal_tail_scan_fallback_tests"
 path = "tests/restate_journal_tail_scan_fallback_tests.rs"
 
 [[test]]
+name = "vb_ifn5b_ipc_gate"
+path = "tests/vb_ifn5b_ipc_gate.rs"
+
+[[test]]
 name = "vb_eepg_bdd_tests"
 path = "tests/vb_eepg_bdd_tests.rs"
 

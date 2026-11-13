@@ -30,6 +30,7 @@ pub fn compute_bound_receipt_digest(
     hasher.update(&receipt.binding.policy_digest.as_bytes());
     hasher.update(&receipt.binding.input_digest.as_bytes());
     hasher.update(&receipt.binding.attempt.to_le_bytes());
+    hasher.update(&receipt.opening_seq.to_le_bytes());
     hasher.update(&[trust_byte(receipt.operator_trust)]);
     hasher.update(&receipt.receipt.decided_at_ms.to_le_bytes());
     Ok(GateDigest::from_bytes(*hasher.finalize().as_bytes()))
