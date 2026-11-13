@@ -56,6 +56,7 @@ pub(super) fn replay_collect_start(
             cursor: page.len(),
             page_size,
             item_count,
+            limit: item_limit,
             taint: source_taint,
         },
     );

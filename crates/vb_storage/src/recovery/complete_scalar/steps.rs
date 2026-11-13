@@ -1,7 +1,11 @@
-use super::{driver::Driver, invalid};
+use super::driver::Driver;
+use super::{TraceReplayMode, invalid};
 use crate::recovery::RecoveryResult;
 use vb_core::replay::{ReplayAction, SuspensionKind};
-use vb_core::{CompiledNodeKind as K, SlotIdx, StepIdx, StepState};
+use vb_core::{CompiledNodeKind as K, Deadline, SlotIdx, StepIdx, StepState};
+
+#[path = "steps/owned_required.rs"]
+mod owned_required;
 
 impl Driver<'_> {
     pub(super) fn start(&mut self, step: StepIdx) -> RecoveryResult<()> {
@@ -29,11 +33,14 @@ impl Driver<'_> {
             )
             .map_err(|e| invalid(step, format!("artifact replay failed: {e:?}")))?,
         };
+        mark_untimed_wait(step, &node.kind, &action, &mut self.frame)?;
         let prefix = self
             .plan
             .source_metadata()
             .map_or(0, |metadata| metadata.symbols_count());
-        if self.store.total_arena_count() != u64::from(prefix) {
+        if self.mode == TraceReplayMode::Scalar
+            && self.store.total_arena_count() != u64::from(prefix)
+        {
             return Err(invalid(
                 step,
                 "runtime arena allocation outside scalar replay scope",
@@ -42,7 +49,9 @@ impl Driver<'_> {
         if matches!(
             action,
             ReplayAction::Suspended {
-                kind: SuspensionKind::AskPending,
+                kind: SuspensionKind::AskPending
+                    | SuspensionKind::WaitUntil
+                    | SuspensionKind::WaitEvent,
                 ..
             }
         ) {
@@ -56,17 +65,17 @@ impl Driver<'_> {
         Ok(())
     }
 
-    pub(super) fn required(&self, step: StepIdx) -> RecoveryResult<Vec<SlotIdx>> {
+    pub(super) fn required(
+        &self,
+        step: StepIdx,
+        action: &ReplayAction,
+    ) -> RecoveryResult<Vec<SlotIdx>> {
         let node = self
             .plan
             .node(step)
             .ok_or_else(|| invalid(step, "writer node missing"))?;
         let mut slots: Vec<_> = node.output.slot().into_iter().collect();
-        if let K::RepeatCheck { attempt_slot, .. } = node.kind
-            && !slots.contains(&attempt_slot)
-        {
-            slots.push(attempt_slot);
-        }
+        owned_required::add_owned_required(&node.kind, node.output.slot(), action, &mut slots);
         Ok(slots)
     }
 
@@ -102,7 +111,7 @@ impl Driver<'_> {
         } else {
             if !matches!(action, ReplayAction::Continue(_) | ReplayAction::Finished)
                 || self
-                    .required(step)?
+                    .required(*active, action)?
                     .iter()
                     .any(|slot| !self.captures.contains(slot))
             {
@@ -175,6 +184,32 @@ impl Driver<'_> {
         }
         Ok(())
     }
+}
+
+fn mark_untimed_wait(
+    step: StepIdx,
+    kind: &K,
+    action: &ReplayAction,
+    frame: &mut vb_core::RunFrame,
+) -> RecoveryResult<()> {
+    if matches!(
+        kind,
+        K::WaitEvent {
+            timeout_slot: Deadline::Unset,
+            ..
+        }
+    ) && matches!(
+        action,
+        ReplayAction::Suspended {
+            kind: SuspensionKind::WaitEvent,
+            ..
+        }
+    ) {
+        frame
+            .mark_waiting(step)
+            .map_err(|error| invalid(step, error.to_string()))?;
+    }
+    Ok(())
 }
 
 fn ask_failure_action(

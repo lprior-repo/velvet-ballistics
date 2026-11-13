@@ -48,6 +48,17 @@ struct RecoveredSeedProductContext {
     seed: vb_storage::recovery::RecoveryFrameSeedProduct,
     boundary: crate::recovery::RecoveredRunBoundary,
     complete_frame: Option<vb_core::RunFrame>,
+    /// Replayed owned-ForEach value store, when the trace was replayed from
+    /// the retained input checkpoint. It is the authoritative arena for the
+    /// recovered frame handles and supersedes the input-only checkpoint.
+    recovered_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+}
+
+/// Seed, frame and arena evidence recovered from one durable trace.
+struct RecoveredSeedEvidence {
+    seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+    complete_frame: Option<vb_core::RunFrame>,
+    recovered_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
 }
 
 /// Lossless conversion of a `u32` integer to its exact `f32` representation.
@@ -209,6 +220,7 @@ include!("runtime/retry_validation.rs");
 include!("runtime/recovery_product.rs");
 
 include!("runtime/recovery_seed.rs");
+include!("runtime/recovery_collect_binding.rs");
 
 include!("runtime/tick.rs");
 

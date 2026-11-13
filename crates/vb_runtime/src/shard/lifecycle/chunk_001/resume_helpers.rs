@@ -1,4 +1,13 @@
 impl Shard {
+    fn restore_recovered_timer_boundary(
+        &mut self,
+        run: RunId,
+        boundary: crate::recovery::RecoveredTimerSuspension,
+        kind: PendingTimerKind,
+    ) -> RuntimeResult<()> {
+        self.restore_recovered_timer(run, boundary.step(), boundary.boundary_seq(), kind)
+    }
+
     /// Re-arms a recovered timer suspension from its timeout slot.
     ///
     /// Covers waiting waits and timed asks. Wall-clock instants are not
@@ -9,16 +18,17 @@ impl Shard {
         &mut self,
         run: RunId,
         step: StepIdx,
+        boundary_seq: vb_storage::EventSeq,
         kind: PendingTimerKind,
     ) -> RuntimeResult<()> {
         let deadline = match self.run_state_get(run) {
             Some(state) => awaiting_deadline(state, step),
             None => return Err(RuntimeError::RunNotFound),
         };
-        let generation = match self.next_pending_timer_generation(run) {
-            Some(generation) => generation,
-            None => return Err(RuntimeError::InvalidTimerFire),
-        };
+        let generation = boundary_seq
+            .get()
+            .checked_add(1)
+            .ok_or(RuntimeError::InvalidTimerFire)?;
         self.pending_timer_insert(
             run,
             PendingTimer {

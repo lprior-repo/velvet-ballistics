@@ -144,6 +144,9 @@ impl Runtime {
     /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run owner.
     pub fn timer_entry_fired(&self, entry: TimerEntry) -> RuntimeResult<()> {
         let shard = self.shard_for_run(entry.run)?;
+        if shard.timer_entry(entry.run) != Some(entry) {
+            return Err(RuntimeError::InvalidTimerFire);
+        }
         shard.enqueue(ShardCommand::TimerFired {
             run: entry.run,
             generation: entry.generation,

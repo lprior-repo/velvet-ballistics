@@ -1,3 +1,6 @@
+#[path = "recovery_product/attempts.rs"]
+mod attempts;
+
 impl Runtime {
     /// Builds a typed durable recovery product without mutating shard state.
     pub fn recover_product(
@@ -13,6 +16,15 @@ impl Runtime {
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
         self.shard_for(run)?
             .validate_secret_presence(&recovered.workflow)?;
+        if crate::recovery::run_is_currently_terminal(&prefix.events)
+            && let Ok(hydration) = vb_storage::recovery::summarize_recovery_events(&prefix.events)
+        {
+            return Ok(
+                crate::recovery::RuntimeRecoveryProduct::cannot_resume_terminal(
+                    hydration.summary(),
+                ),
+            );
+        }
         let retained_inputs = crate::recovery::load_retained_inputs_for_recovery(
             &prefix.events,
             fjall_journal.as_ref(),
@@ -34,20 +46,68 @@ impl Runtime {
         run: RunId,
     ) -> RuntimeResult<RecoveryPrefixEvidence> {
         let events = Self::load_recovery_events(journal, run)?;
-        let seed = Self::recover_frame_seed_from_events(&events)?;
-        let workflow_digest = Self::recovery_workflow_digest(&seed)?;
-        let next_seq = Self::next_recovery_sequence(&seed.summary())?;
-        let admission = crate::recovery::hydrate_run_admission_from_events(&events).ok_or(
-            RuntimeError::RecoveryCannotResume {
-                reason: String::from("admission_missing"),
-            },
-        )?;
+        let (workflow_digest, next_seq) = Self::recovery_prefix_identity(&events)?;
+        let admission = Self::recovery_prefix_admission(&events)?;
         Ok(RecoveryPrefixEvidence {
             events,
             admission,
             workflow_digest,
             next_seq,
         })
+    }
+
+    fn recovery_prefix_identity(
+        events: &[vb_storage::JournalEvent],
+    ) -> RuntimeResult<(WorkflowDigest, vb_storage::EventSeq)> {
+        if events.is_empty() {
+            return Self::empty_recovery_prefix_identity(events);
+        }
+        Self::durable_recovery_prefix_identity(events)
+    }
+
+    fn empty_recovery_prefix_identity(
+        events: &[vb_storage::JournalEvent],
+    ) -> RuntimeResult<(WorkflowDigest, vb_storage::EventSeq)> {
+        let seed = Self::recover_frame_seed_from_events(events)?;
+        Ok((
+            Self::recovery_workflow_digest(&seed)?,
+            Self::next_recovery_sequence(&seed.summary())?,
+        ))
+    }
+
+    fn durable_recovery_prefix_identity(
+        events: &[vb_storage::JournalEvent],
+    ) -> RuntimeResult<(WorkflowDigest, vb_storage::EventSeq)> {
+        let workflow_digest = events
+            .iter()
+            .find_map(|event| match event {
+                vb_storage::JournalEvent::RunAccepted { workflow, .. } => Some(*workflow),
+                _ => None,
+            })
+            .ok_or(RuntimeError::RecoveryCannotResume {
+                reason: String::from("workflow_digest_missing_from_recovery_summary"),
+            })?;
+        let next_seq = events
+            .last()
+            .ok_or(RuntimeError::RecoveryCannotResume {
+                reason: String::from("recovery_events_missing"),
+            })?
+            .seq()
+            .get()
+            .checked_add(1)
+            .map(vb_storage::EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        Ok((workflow_digest, next_seq))
+    }
+
+    fn recovery_prefix_admission(
+        events: &[vb_storage::JournalEvent],
+    ) -> RuntimeResult<crate::admission::RunAdmission> {
+        crate::recovery::hydrate_run_admission_from_events(events).ok_or(
+            RuntimeError::RecoveryCannotResume {
+                reason: String::from("admission_missing"),
+            },
+        )
     }
 
     fn load_recovery_events(
@@ -135,35 +195,31 @@ impl Runtime {
         if let Some(product) = self.retry_timer_recovery_product(run, &prefix, &recovered)? {
             return Ok(product);
         }
+        attempts::validate_owned_run_attempts(
+            &prefix.events,
+            &recovered.workflow,
+            &retained_inputs,
+        )?;
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
         )?;
-        let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
+        let evidence =
+            Self::recover_seed_evidence(&prefix.events, &recovered.workflow, &retained_inputs)?;
         let boundary = Self::recovered_boundary_from_events(
-            &seed,
+            &evidence.seed,
             &prefix.events,
             &recovered.workflow,
             &expected,
+        )?;
+        attempts::validate_pending_action_capacity(
+            boundary,
+            &recovered.workflow,
+            evidence.complete_frame.as_ref(),
         )?;
         // Enforce receipt-only reconciliation for recovered registered actions:
         // a pending registered action must be reconciliable from the durable
         // receipt before the run is allowed to resume (no live re-execution).
         self.validate_registered_recovery(&recovered.artifact, boundary)?;
-        let complete_frame = vb_storage::recovery::complete_scalar::replay_complete_scalar(
-            &prefix.events,
-            &recovered.workflow,
-        )
-        .map_err(|error| RuntimeError::Recovery {
-            error: error.to_string(),
-        })?
-        .map(|replayed| replayed.into_frame());
-        Self::product_from_recovered_seed(
-            run,
-            prefix,
-            seed,
-            boundary,
-            retained_inputs,
-            complete_frame,
-        )
+        Self::product_from_recovered_seed(run, prefix, evidence, boundary, retained_inputs)
     }
 }

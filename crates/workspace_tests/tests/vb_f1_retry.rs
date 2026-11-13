@@ -252,11 +252,10 @@ fn retry_timer_rejects_early_and_forged_authority_without_rescheduling() -> Test
         .generation
         .checked_add(1)
         .ok_or("generation overflow")?;
-    runtime.timer_entry_fired(forged)?;
-    assert!(matches!(
-        runtime.tick_all(),
+    assert_eq!(
+        runtime.timer_entry_fired(forged),
         Err(RuntimeError::InvalidTimerFire)
-    ));
+    );
     assert_eq!(runtime.capture_timer_entry(RUN)?, entry);
     assert_eq!(journal.snapshot()?, before);
     assert!(matches!(runtime.lookup_pending_action_ticket(RUN, 1), None));

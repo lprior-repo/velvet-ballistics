@@ -77,7 +77,12 @@ impl Shard {
         } else {
             None
         };
-        let timer = self.pending_timer_for_awaiting(run, state, step, kind, register_timer)?;
+        let timer = if register_timer {
+            let generation = self.scheduled_timer_generation(run, journal_events.len())?;
+            Some(self.pending_timer_for_awaiting(state, step, kind, generation))
+        } else {
+            None
+        };
         Self::push_drive_journal_event(journal_events, awaiting_schedule_event(run, step, kind))?;
         Ok((timer, boundary_seq))
     }

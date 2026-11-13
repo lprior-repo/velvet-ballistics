@@ -242,10 +242,12 @@ fn timer_wheel_fired_entry_carries_freshness_metadata_for_runtime_validation() {
 }
 
 #[test]
-fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
+fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() -> Result<(), String> {
     // Given a run is waiting and its live timer has reached the maximum generation.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared_journal: crate::journal::SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(config, shared_journal);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for overflow test");
     };
@@ -269,9 +271,17 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
         Ok(Some(_))
     ));
     assert_eq!(shard.checked_out_run_insert(run), Ok(()));
+    let state_before = shard
+        .run_state_get(run)
+        .cloned()
+        .ok_or_else(|| String::from("waiting run state must exist before checkout"))?;
+    let sequence_before = shard.journal_sequence_for(run);
     let Some(state) = shard.run_state_remove(run) else {
         panic!("waiting run state must check out for overflow test");
     };
+    let events_before = journal
+        .snapshot()
+        .map_err(|error| format!("volatile journal snapshot failed: {error:?}"))?;
 
     // When registration tries to replace the timer, generation must not wrap to 1.
     assert!(matches!(
@@ -282,6 +292,15 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
     // Then the existing max-generation timer and run state remain intact.
     assert_eq!(shard.pending_timer_get(run), Some(timer));
     assert_eq!(shard.run_state_contains(run), true);
+    assert_eq!(shard.run_state_get(run), Some(&state_before));
+    assert_eq!(shard.journal_sequence_for(run), sequence_before);
+    assert_eq!(
+        journal
+            .snapshot()
+            .map_err(|error| format!("volatile journal snapshot failed: {error:?}"))?,
+        events_before
+    );
+    Ok(())
 }
 
 struct RejectTimerScheduledJournal {
@@ -347,9 +366,31 @@ impl crate::journal::RuntimeJournal for RejectTimerScheduledJournal {
 }
 
 fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_prompt = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(vb_core::ids::StepIdx::new(1)));
-    let set_timeout = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(2)));
-    let ask = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)).into(), }, None, None);
+    let set_prompt = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let set_timeout = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+        Some(SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(2)),
+    );
+    let ask = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(2),
+        CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)).into(),
+        },
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,

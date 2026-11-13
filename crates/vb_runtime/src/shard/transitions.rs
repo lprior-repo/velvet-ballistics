@@ -175,6 +175,17 @@ impl Shard {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
+        let generation = if register_timer {
+            match self.scheduled_timer_generation(run, 0) {
+                Ok(generation) => Some(generation),
+                Err(error) => {
+                    self.run_state_insert(run, state)?;
+                    return Err(error);
+                }
+            }
+        } else {
+            None
+        };
         let ask_boundary_seq = if kind == PendingTimerKind::Ask {
             self.reserve_pending_ask_authority_slot(run)?;
             Some(self.journal_sequence_for(run))
@@ -200,14 +211,7 @@ impl Shard {
             }
             state.journal_bytes_written = projected;
         }
-        if register_timer {
-            let generation = match self.next_pending_timer_generation(run) {
-                Some(generation) => generation,
-                None => {
-                    self.run_state_insert(run, state)?;
-                    return Err(RuntimeError::InvalidTimerFire);
-                }
-            };
+        if let Some(generation) = generation {
             self.pending_timer_insert(
                 run,
                 PendingTimer {

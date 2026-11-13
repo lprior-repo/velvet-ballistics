@@ -3,7 +3,7 @@
 //! Drive-loop state transitions: begin/finish step and signal classification.
 
 use vb_core::engine::{EngineError, StepBudget};
-use vb_core::frame::RunFrame;
+use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
@@ -14,6 +14,7 @@ use crate::engine::types::{
     EvidenceCollector, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };
 use crate::primitives::collect::CollectStates;
+use crate::recovery::handler_route_for_failure;
 
 /// Carries the per-step node reference plus its program counter through
 /// the begin/finish transition pair.
@@ -37,12 +38,59 @@ pub(super) fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    super::loop_rearm::validate_activation(plan, node, run)?;
-    evidence
-        .push_step_started(pc)
-        .map_err(RuntimeEngineError::Core)?;
-    run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    let resumed = resumes_journaled_handler(plan, node, run)?;
+    super::loop_rearm::validate_activation(plan, node, run, resumed)?;
+    if !resumed {
+        evidence
+            .push_step_started(pc)
+            .map_err(RuntimeEngineError::Core)?;
+        run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    }
     Ok(Some(DriveStep { pc, node }))
+}
+
+/// Reports whether `node` is a compiled error-handler target whose
+/// `StepStarted` is already durable.
+///
+/// A failure routed to an authored handler journals `ActionFailed` and then
+/// the resolved handler's `StepStarted` (and the `ErrorHandler` body's, when
+/// the handler is a legacy wrapper) before executing it. A crash in that
+/// window leaves those steps `Running` with no handler effect, so recovery
+/// resumes the journaled step in place: re-emitting `StepStarted` would
+/// duplicate durable evidence, and no action ticket or completion exists for
+/// it.
+///
+/// Targets are resolved with the same table the failure path and the replay
+/// repair use ([`handler_route_for_failure`]), so direct `on_error` routes and
+/// legacy wrapper jump targets are treated identically. The candidate step must
+/// already be `Failed`, so an unrelated `Running` node is never exempted.
+fn resumes_journaled_handler(
+    plan: &CompiledWorkflow,
+    node: &CompiledNode,
+    run: &RunFrame,
+) -> RuntimeEngineResult<bool> {
+    if run.step_state(node.id).map_err(RuntimeEngineError::Core)? != StepState::Running {
+        return Ok(false);
+    }
+    for raw in 0..plan.node_count() {
+        let Some(candidate) = plan.node(StepIdx::new(raw)) else {
+            continue;
+        };
+        if run
+            .step_state(candidate.id)
+            .map_err(RuntimeEngineError::Core)?
+            != StepState::Failed
+        {
+            continue;
+        }
+        let Some(route) = handler_route_for_failure(plan, candidate.id) else {
+            continue;
+        };
+        if route.handler == node.id || route.handler_body == Some(node.id) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Extracts the body step index from an owning-loop control node, or
