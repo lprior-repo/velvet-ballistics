@@ -6,6 +6,7 @@ use super::{
     ScopedGrantParams,
 };
 use crate::action::action_ticket_has_valid_key;
+use crate::action_pack::CapabilityScopeSpec;
 use crate::manual_gate::{BoundApprovalReceipt, GateDecision, GateDigest};
 use crate::{ActionTicket, WorkflowDigest};
 
@@ -43,10 +44,10 @@ pub enum GrantError {
     /// Ticket does not match the canonical pending ticket.
     #[error("grant ticket mismatch")]
     TicketMismatch,
-    /// Scope does not equal the declared pack scope (overgrant).
+    /// Scope is not admitted under the grant admission mode.
     #[error("grant scope mismatch")]
     ScopeMismatch,
-    /// Mode is not the wedge `StrictExact` mode.
+    /// Admission mode rejected at the dispatch gate.
     #[error("grant admission mode mismatch")]
     ModeMismatch,
     /// Approval receipt digest is missing (zero).
@@ -73,6 +74,32 @@ pub enum GrantError {
     /// Revocation view exceeds the bounded scan capacity.
     #[error("revocation view is too large")]
     TooManyRevokedIds,
+}
+
+/// Pure §77.10 admission decision over scope sets, compared
+/// order-insensitively. `StrictExact` admits only equal sets.
+/// `StrictNarrow` admits a narrower granted set only when the workflow can
+/// suspend at explicit missing-grant gates. `ProdDefault` admits when the
+/// required set is covered by the granted set; the narrowing to declared
+/// tokens happens at dispatch, not in this predicate.
+#[must_use]
+pub(crate) fn grant_scope_admits(
+    mode: GrantAdmissionMode,
+    granted: &[CapabilityScopeSpec],
+    required: &[CapabilityScopeSpec],
+    can_suspend_at_missing_grant_gates: bool,
+) -> bool {
+    let sets_equal =
+        granted.len() == required.len() && granted.iter().all(|scope| required.contains(scope));
+    let granted_subset = granted.iter().all(|scope| required.contains(scope));
+    let required_subset = required.iter().all(|scope| granted.contains(scope));
+    match mode {
+        GrantAdmissionMode::StrictExact => sets_equal,
+        GrantAdmissionMode::StrictNarrow => {
+            granted_subset && (sets_equal || can_suspend_at_missing_grant_gates)
+        }
+        GrantAdmissionMode::ProdDefault => required_subset,
+    }
 }
 
 impl ScopedGrant {
@@ -123,7 +150,7 @@ impl ScopedGrant {
             ticket,
             capability: params.capability,
             scope: params.scope,
-            mode: GrantAdmissionMode::StrictExact,
+            mode: params.mode,
             issued_at: params.issued_at,
             expires_at: params.expires_at,
             delegable: params.delegable,
@@ -169,9 +196,6 @@ impl ScopedGrant {
 
     /// Identity bindings against the live invocation. No clock read.
     pub fn verify_identity(&self, ctx: &GrantDispatchContext) -> Result<(), GrantError> {
-        if !matches!(self.mode, GrantAdmissionMode::StrictExact) {
-            return Err(GrantError::ModeMismatch);
-        }
         if !self.issuer.is_valid() {
             return Err(GrantError::InvalidIssuer);
         }
@@ -196,7 +220,12 @@ impl ScopedGrant {
         if self.ticket != ctx.ticket {
             return Err(GrantError::TicketMismatch);
         }
-        if self.scope != ctx.declared_scope {
+        if !grant_scope_admits(
+            self.mode,
+            std::slice::from_ref(&self.scope),
+            std::slice::from_ref(&ctx.declared_scope),
+            ctx.can_suspend_at_missing_grant_gates,
+        ) {
             return Err(GrantError::ScopeMismatch);
         }
         if self.approval_receipt == GateDigest::from_bytes([0u8; 32]) {

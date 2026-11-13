@@ -46,10 +46,12 @@ impl RuntimeError {
     pub const ENGINE_DRIVE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x201B);
     pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
     pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
-    pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
+    pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x2029);
     pub const RETRY_BLOCKED_ON_UNDRAINED_JOURNAL_CODE: DiagnosticCode = DiagnosticCode::new(0x2023);
     pub const PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2024);
     pub const COMPAT_GATE_BLOCKED_CODE: DiagnosticCode = DiagnosticCode::new(0x2025);
+    pub const OPEN_GATE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2027);
+    pub const OPEN_GATE_CAPACITY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x2028);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -59,6 +61,8 @@ impl RuntimeError {
             Self::PerRunQueueDepthExceeded { .. } => Self::PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE,
             Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
             Self::ActiveRunCapacityExceeded { .. } => Self::ACTIVE_RUN_CAPACITY_EXCEEDED_CODE,
+            Self::OpenGateCapacityExceeded { .. } => Self::OPEN_GATE_CAPACITY_EXCEEDED_CODE,
+            Self::OpenGateCapacityZero => Self::OPEN_GATE_CAPACITY_ZERO_CODE,
             Self::RunAlreadyExists => Self::RUN_ALREADY_EXISTS_CODE,
             Self::UnsupportedOperation { .. } => Self::UNSUPPORTED_OPERATION_CODE,
             Self::ShutdownInProgress => Self::SHUTDOWN_IN_PROGRESS_CODE,
@@ -152,7 +156,8 @@ impl RuntimeError {
         match self {
             Self::QueueFull
             | Self::PerRunQueueDepthExceeded { .. }
-            | Self::ActiveRunCapacityExceeded { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+            | Self::ActiveRunCapacityExceeded { .. }
+            | Self::OpenGateCapacityExceeded { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::JournalFull { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::JournalPoisoned | Self::UnsupportedAsyncStrictAck => {
                 Some(Self::STORAGE_ERROR_RUNTIME_CODE)
@@ -206,6 +211,7 @@ impl RuntimeError {
             | Self::InvalidRecoveryHydration
             | Self::CommandQueueCapacityExceeded { .. }
             | Self::ActiveRunCapacityZero
+            | Self::OpenGateCapacityZero
             | Self::AdmissionArtifactNotFound { .. }
             | Self::AdmissionArtifactInvalid { .. }
             | Self::ResourceQuotaExceeded { .. }

@@ -6,25 +6,61 @@ pub(super) fn execution_prefix(case: &Case, journal: &vb_storage::FjallJournal) 
     assert_eq!(
         events
             .iter()
-            .filter(|e| matches!(e, vb_storage::JournalEvent::RunAccepted { .. }))
+            .filter(|event| matches!(event, vb_storage::JournalEvent::RunAccepted { .. }))
             .count(),
         1
+    );
+    let admission = events
+        .iter()
+        .find(|event| {
+            matches!(
+                event,
+                vb_storage::JournalEvent::RunAdmissionBudget { .. }
+            )
+        })
+        .ok_or("budgeted admission missing")?;
+    let compatibility = events
+        .iter()
+        .find(|event| {
+            matches!(
+                event,
+                vb_storage::JournalEvent::CompatibilityDecisionEvent { .. }
+            )
+        })
+        .ok_or("compatibility decision missing")?;
+    let origin = events
+        .iter()
+        .find(|event| {
+            matches!(event, vb_storage::JournalEvent::RunBudgetOriginEvent { .. })
+        })
+        .ok_or("budget origin missing")?;
+    assert_eq!(
+        compatibility.seq().get(),
+        admission
+            .seq()
+            .get()
+            .checked_add(1)
+            .ok_or("admission sequence overflow")?
     );
     assert_eq!(
-        events
-            .iter()
-            .filter(|e| matches!(e, vb_storage::JournalEvent::RunAdmission { .. }))
-            .count(),
-        1
+        origin.seq().get(),
+        compatibility
+            .seq()
+            .get()
+            .checked_add(1)
+            .ok_or("compatibility sequence overflow")?
     );
-    assert!(
-        matches!(events.get(2), Some(vb_storage::JournalEvent::CompatibilityDecisionEvent { run, seq, .. })
-        if *run == case.run && seq.get() == 2)
-    );
-    assert!(
-        matches!(events.get(3), Some(vb_storage::JournalEvent::StepStarted { run, seq, step, attempt })
-        if *run == case.run && seq.get() == 3 && *step == case.workflow.entry() && *attempt == 1)
-    );
+    assert!(events.iter().any(|event| {
+        matches!(
+            event,
+            vb_storage::JournalEvent::StepStarted {
+                run,
+                step,
+                attempt,
+                ..
+            } if *run == case.run && *step == case.workflow.entry() && *attempt == 1
+        )
+    }));
     for (raw, event) in events.iter().enumerate() {
         assert_eq!(event.seq().get(), u64::try_from(raw)?);
     }

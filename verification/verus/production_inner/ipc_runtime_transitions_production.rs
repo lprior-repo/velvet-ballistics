@@ -12,7 +12,7 @@
 //   - `crates/vb_runtime/src/ipc_refinement.rs`             (REFINE-IPC-003..005)
 //   - `crates/vb_runtime/src/shard/types/runtime_state.rs:4-67`      (`RuntimeState`,
 //                                                            `RuntimeEvent`)
-//   - `crates/vb_runtime/src/shard/types/shard.rs:33-66`      (`ShardStatus`,
+//   - `crates/vb_runtime/src/shard/types/shard.rs:34-67`      (`ShardStatus`,
 //                                                            `ShardHealth`)
 //   - `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8` (`PendingTimerKind`)
 //   - `crates/vb_runtime/src/shard/types/command_queue.rs:2,20-36` (`ShardCommandQueue`,
@@ -62,10 +62,10 @@
 //   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types/runtime_state.rs:4-15
 // Production `crates/vb_runtime/src/shard/types/runtime_state.rs:4-15`
 //   - `RuntimeState::is_resumable()`                  <- crates/vb_runtime/src/shard/types/runtime_state.rs:20-22
-//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:33-56
-// Production `crates/vb_runtime/src/shard/types/shard.rs:33-56`
-//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:61-66
-// Production `crates/vb_runtime/src/shard/types/shard.rs:61-66`
+//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:34-57
+// Production `crates/vb_runtime/src/shard/types/shard.rs:34-57`
+//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:62-67
+// Production `crates/vb_runtime/src/shard/types/shard.rs:62-67`
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types/command_queue.rs:2
 //     (declared in the spec file, not this mirror — see header note)
 //   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types/command_queue.rs:20-36
@@ -192,11 +192,11 @@ pub fn runtime_state_is_resumable(state: RuntimeState) -> bool {
 }
 
 // ============================================================================
-// Mirror of production `ShardHealth` (shard/types/shard.rs:61-66)
+// Mirror of production `ShardHealth` (shard/types/shard.rs:62-67)
 // ============================================================================
 
 /// Mirror of production `vb_runtime::shard::ShardHealth` at
-/// `crates/vb_runtime/src/shard/types/shard.rs:61-66`. Discriminant set
+/// `crates/vb_runtime/src/shard/types/shard.rs:62-67`. Discriminant set
 /// is the production set: 2 variants.
 #[derive(Clone, Copy)]
 pub enum ShardHealth {
@@ -207,11 +207,11 @@ pub enum ShardHealth {
 }
 
 // ============================================================================
-// Mirror of production `ShardStatus` (shard/types/shard.rs:33-56)
+// Mirror of production `ShardStatus` (shard/types/shard.rs:34-57)
 // ============================================================================
 
 /// Mirror of production `vb_runtime::shard::ShardStatus` at
-/// `crates/vb_runtime/src/shard/types/shard.rs:33-56`. Field names and
+/// `crates/vb_runtime/src/shard/types/shard.rs:34-57`. Field names and
 /// types match production exactly.
 #[derive(Clone, Copy)]
 pub struct ShardStatus {

@@ -18,7 +18,7 @@
 //   - `vb_storage::admission::VerificationWarning`
 //                                                 (crates/vb_storage/src/admission/proof.rs:8-15)
 //   - `vb_storage::admission::VerificationProof` (crates/vb_storage/src/admission/proof.rs:55-80)
-//   - `vb_storage::admission::AcceptedArtifact`   (crates/vb_storage/src/admission.rs:37-73)
+//   - `vb_storage::admission::AcceptedArtifact`   (crates/vb_storage/src/admission.rs:41-77)
 //   - `vb_storage::admission::verification_proof_core`
 //                                                 (crates/vb_storage/src/admission/proof.rs:103-118)
 //   - `vb_storage::admission::prepare_with_profile` proof construction
@@ -314,7 +314,7 @@ pub struct VerificationProof {
 // ---------------------------------------------------------------------------
 //
 // Verbatim mirror of `vb_storage::admission::AcceptedArtifact` at
-// `crates/vb_storage/src/admission.rs:37-73`. The 4 digest fields
+// `crates/vb_storage/src/admission.rs:41-77`. The 4 digest fields
 // + embedded `VerificationProof` are mirrored because those are the
 // only fields the spec reasons about. Opaque payload fields are
 // omitted.
@@ -341,7 +341,7 @@ pub struct AcceptedArtifact {
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and wraps the rebuilt evidence as `Verified` (Legacy profile; the
 // Registered profile wraps as `Packed` instead).
-// `submit_artifact_with_contracts` (admission.rs:92-112) performs no
+// `submit_artifact_with_contracts` (admission.rs:96-121) performs no
 // gate-count or proof-flag validation of its own; the shape is
 // enforced by `verify_accepted_artifact` at
 // `crates/vb_storage/src/admission/verification.rs:60-90`, which

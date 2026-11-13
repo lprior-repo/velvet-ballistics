@@ -48,7 +48,7 @@
 //                                               crates/vb_storage/src/admission/verification.rs:10)
 //   - `AcceptedArtifact`                       <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:37-73;
+//                                               crates/vb_storage/src/admission.rs:41-77;
 //                                               4 digest fields + embedded
 //                                               VerificationProof mirrored)
 //   - `PREPARED_GATE_COUNT = 0`                 <- extern_admission_artifact_model.rs

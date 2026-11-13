@@ -47,11 +47,8 @@ impl JournalWriterQueue {
             };
         }
         let event_count = NonZeroUsize::new(events.len()).ok_or(JournalError::QueueCapacity)?;
-        if retained_inputs
-            .as_ref()
-            .is_some_and(|inputs| events.iter().any(|event| event.run_id() != inputs.run()))
-        {
-            return Err(JournalError::InvalidEvent);
+        if let Some(inputs) = retained_inputs.as_ref() {
+            crate::inputs::validate_admission_inputs(&events, inputs)?;
         }
         let mut state = self
             .state

@@ -23,6 +23,7 @@ pub(crate) fn relaxed_config() -> ShardConfig {
         trace_capacity: 64,
         step_budget_per_tick: 16,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     }
 }
@@ -33,6 +34,7 @@ pub(crate) fn strict_config() -> ShardConfig {
         trace_capacity: 64,
         step_budget_per_tick: 16,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Strict,
     }
 }

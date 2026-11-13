@@ -6,7 +6,7 @@ use super::{RunId, SlotValue, Taint};
 use lane_evidence::{assert_lane_activity, lane_activity};
 use std::num::NonZeroUsize;
 use std::sync::Arc;
-use support::{Case, case};
+use support::{Case, case, now_ms};
 use vb_core::StepState;
 use vb_core::value_store::ValueStoreCheckpointV1;
 use vb_runtime::journal::StorageRuntimeJournal;
@@ -48,7 +48,7 @@ fn open_journal(case: &Case) -> TestResult<Arc<FjallJournal>> {
 }
 
 fn execute(interrupt_at_cut: bool) -> TestResult<Snapshot> {
-    let case = case()?;
+    let case = case(now_ms()?)?;
     let journal = open_journal(&case)?;
     let mut runtime = make_runtime(journal.clone())?;
     runtime

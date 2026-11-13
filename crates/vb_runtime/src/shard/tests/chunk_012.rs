@@ -6,6 +6,7 @@ fn shard_remaining_capacity_decrements_on_enqueue() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -25,6 +26,7 @@ fn shard_remaining_capacity_is_zero_when_full() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -52,6 +54,7 @@ fn shard_is_queue_full_returns_true_when_at_capacity() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -70,6 +73,7 @@ fn shard_command_queue_capacity_returns_configured_value() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -85,6 +89,7 @@ fn shard_remaining_capacity_after_pop() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -103,6 +108,7 @@ fn shard_queue_len_decrements_after_tick() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -123,7 +129,8 @@ fn shard_queue_len_decrements_after_tick() {
 
 #[test]
 fn shard_config_new_rejects_zero_command_queue_capacity() {
-    let result = ShardConfig::new(0, 16, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(0, 16, 4, 4, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Err(RuntimeError::CommandQueueCapacityExceeded {
@@ -140,8 +147,9 @@ fn shard_config_new_rejects_excessive_command_queue_capacity() {
         16,
         4,
         4,
-        vb_core::policy::RuntimePolicy::Relaxed,
-    );
+        1,
+
+        vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Err(RuntimeError::CommandQueueCapacityExceeded {
@@ -173,13 +181,15 @@ fn command_queue_capacity_predicate_matches_config_boundary() {
 
 #[test]
 fn shard_config_new_rejects_zero_max_active_runs() {
-    let result = ShardConfig::new(16, 16, 4, 0, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(16, 16, 4, 0, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero));
 }
 
 #[test]
 fn shard_config_new_rejects_zero_trace_capacity() {
-    let result = ShardConfig::new(16, 0, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(16, 0, 4, 4, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Err(RuntimeError::UnsupportedOperation {
@@ -190,7 +200,8 @@ fn shard_config_new_rejects_zero_trace_capacity() {
 
 #[test]
 fn shard_config_new_rejects_zero_step_budget_per_tick() {
-    let result = ShardConfig::new(16, 16, 0, 4, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(16, 16, 0, 4, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Err(RuntimeError::UnsupportedOperation {
@@ -206,8 +217,9 @@ fn shard_config_new_accepts_valid_parameters() {
         4096,
         1000,
         512,
-        vb_core::policy::RuntimePolicy::Relaxed,
-    );
+        256,
+
+        vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Ok(ShardConfig {
@@ -215,6 +227,7 @@ fn shard_config_new_accepts_valid_parameters() {
             trace_capacity: 4096,
             step_budget_per_tick: 1000,
             max_active_runs: 512,
+            max_open_gates: 256,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );

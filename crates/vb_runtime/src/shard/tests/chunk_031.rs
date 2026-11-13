@@ -99,6 +99,7 @@ fn current_tick_starts_at_zero_for_custom_config() {
         trace_capacity: 128,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let shard = Shard::new(config);

@@ -33,6 +33,7 @@ fn test_config() -> ShardConfig {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     }
 }
@@ -232,6 +233,7 @@ fn ipc_queue_full_does_not_corrupt_other_runs() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -967,6 +969,7 @@ fn resource_active_run_capacity_enforced_on_tick() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -1004,6 +1007,7 @@ fn resource_runs_submitted_count_includes_all_submissions() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {

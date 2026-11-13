@@ -46,8 +46,8 @@ impl Shard {
     /// budget's `max_open_gates` is not enforced here: the verifier
     /// derives it from reachable Ask nodes only, so it is zero for
     /// Ask-less workflows and cannot bound operator-opened gates. The
-    /// registry cap below is the bound; a distinct operator gate budget
-    /// is a policy decision for John.
+    /// registry cap below is the bound: the shard's configured
+    /// `max_open_gates` (1024 by default).
     pub(crate) fn open_gate(
         &mut self,
         gate: ManualGate,

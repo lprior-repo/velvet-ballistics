@@ -28,7 +28,7 @@
 //
 // There is no production `is_strict_accepted` decision fn and no
 // strict-policy gate validation in `submit_artifact_with_contracts`
-// (crates/vb_storage/src/admission.rs:92-112 performs no gate-count
+// (crates/vb_storage/src/admission.rs:96-121 performs no gate-count
 // or proof-flag check). The shape below is the decision production
 // actually enforces, by recompute-and-compare, with every deviation
 // rejected as `ArtifactEvidenceInvalid`.
@@ -102,7 +102,7 @@ pub const PREPARED_GATE_COUNT: u8 = 0;
 // `crates/vb_storage/src/admission/verification.rs:39-42` then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and leaves the idempotency attestation empty.
-// `submit_artifact_with_contracts` (admission.rs:92-112) performs no
+// `submit_artifact_with_contracts` (admission.rs:96-121) performs no
 // gate-count or proof-flag validation of its own; the shape is
 // enforced by `verify_accepted_artifact` at
 // `crates/vb_storage/src/admission/verification.rs:60-90`, which

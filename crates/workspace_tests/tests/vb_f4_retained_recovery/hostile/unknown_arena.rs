@@ -76,7 +76,11 @@ fn prepared_action() -> TestResult<PreparedAction> {
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: u64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_millis(),
+        )?,
     };
     let submission = RunSubmission::owned(source, artifact, inputs, header)?;
     let (step, output) = workflow
@@ -243,9 +247,16 @@ fn scheduled_do_with_unknown_arena_handle_is_refused_after_cold_reopen() -> Test
 fn standalone_slot_capture_without_step_start_is_exact_divergence() -> TestResult {
     let case = Case::new("$input.data.profile.count")?;
     let journal = case.open()?;
+    let next_seq = journal
+        .events_for_run_full(RUN)?
+        .last()
+        .map(|event| event.seq().get())
+        .ok_or("submission prefix missing")?
+        .checked_add(1)
+        .ok_or("event sequence overflow")?;
     journal.append_journaled(&JournalEvent::SlotWrittenEvent {
         run: RUN,
-        seq: vb_storage::EventSeq::new(3),
+        seq: vb_storage::EventSeq::new(next_seq),
         slot: case.input,
         value: Some(postcard::to_allocvec(&SlotValue::List(
             vb_core::ListId::new(999),

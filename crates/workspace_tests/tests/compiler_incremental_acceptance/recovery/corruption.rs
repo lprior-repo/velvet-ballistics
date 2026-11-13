@@ -20,8 +20,8 @@ fn raw_rows(path: &std::path::Path) -> TestResult<RawRows> {
     Ok(rows)
 }
 
-fn cut() -> TestResult<Vec<JournalEvent>> {
-    let case = case()?;
+fn cut(accepted_at_ms: u64) -> TestResult<Vec<JournalEvent>> {
+    let case = case(accepted_at_ms)?;
     let journal = open_journal(&case)?;
     let mut runtime = make_runtime(journal.clone())?;
     runtime
@@ -137,14 +137,15 @@ fn divergence(step: vb_core::StepIdx, detail: &str) -> RuntimeError {
 #[test]
 fn cold_recovery_rejects_encoded_cursor_attempt_foreign_step_and_taint_without_mutation()
 -> TestResult {
-    let original = cut()?;
+    let accepted_at_ms = now_ms()?;
+    let original = cut(accepted_at_ms)?;
     for corruption in [
         Corruption::Cursor,
         Corruption::Attempt,
         Corruption::ForeignStep,
         Corruption::Taint,
     ] {
-        let case = case()?;
+        let case = case(accepted_at_ms)?;
         let mut events = original.clone();
         let expected = mutate(&mut events, &case, corruption)?;
         let journal = open_journal(&case)?;

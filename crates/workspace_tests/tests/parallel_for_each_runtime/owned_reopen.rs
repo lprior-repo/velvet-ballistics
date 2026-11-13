@@ -57,7 +57,13 @@ fn owned_strict_submission_drop_reopen_resumes_for_each() -> Result<(), String> 
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms: u64::try_from(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|error| error.to_string())?
+                    .as_millis(),
+            )
+            .map_err(|error| error.to_string())?,
         },
     )
     .map_err(|error| format!("submission: {error:?}"))?;

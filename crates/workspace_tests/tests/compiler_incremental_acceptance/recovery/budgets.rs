@@ -15,8 +15,12 @@ fn runtime_at(journal: Arc<FjallJournal>, quantum: u64) -> Runtime {
     )
 }
 
-fn trace(quantum: u64, reopen: bool) -> TestResult<(Checkpoints, Vec<JournalEvent>)> {
-    let case = case()?;
+fn trace(
+    quantum: u64,
+    reopen: bool,
+    accepted_at_ms: u64,
+) -> TestResult<(Checkpoints, Vec<JournalEvent>)> {
+    let case = case(accepted_at_ms)?;
     let mut journal = open_journal(&case)?;
     let mut runtime = runtime_at(journal.clone(), quantum);
     runtime
@@ -73,10 +77,12 @@ fn trace(quantum: u64, reopen: bool) -> TestResult<(Checkpoints, Vec<JournalEven
 }
 
 #[test]
-fn cold_reopen_matches_every_live_frame_store_and_event_at_budgets_one_two_four() -> TestResult {
+fn cold_reopen_matches_every_live_frame_store_and_event_at_budgets_one_two_four()
+-> TestResult {
+    let accepted_at_ms = now_ms()?;
     for quantum in [1, 2, 4] {
-        let uninterrupted = trace(quantum, false)?;
-        let recovered = trace(quantum, true)?;
+        let uninterrupted = trace(quantum, false, accepted_at_ms)?;
+        let recovered = trace(quantum, true, accepted_at_ms)?;
         assert_eq!(
             recovered.0, uninterrupted.0,
             "all frame/store checkpoints budget={quantum}"

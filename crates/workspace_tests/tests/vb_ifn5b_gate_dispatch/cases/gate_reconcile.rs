@@ -37,6 +37,7 @@ pub(super) fn recover_and_reconcile(probe: ColdReconcileProbe) -> TestResult {
         .catalog
         .issue_register_grant(&probe.artifact, ticket, scope())?;
     let params = vb_core::ScopedGrantParams {
+        mode: vb_core::GrantAdmissionMode::StrictExact,
         id: vb_core::GrantId::new(73),
         issuer: person("grant-authority")?,
         subject: person("run-operator")?,
@@ -65,6 +66,7 @@ pub(super) fn recover_and_reconcile(probe: ColdReconcileProbe) -> TestResult {
         person("run-operator")?,
         vb_core::GrantTimeMs::new(250),
         vb_core::RevocationEpoch::new(1),
+        false,
     );
     let mut adapter = FjallRegister::open(&probe.dir.join("register"), 8)?;
     let receipt = runtime.reconcile_registered_action(

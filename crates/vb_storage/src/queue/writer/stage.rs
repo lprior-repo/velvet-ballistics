@@ -12,7 +12,8 @@ use crate::{
     keys::{run_event_key, run_header_key},
 };
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use vb_core::RunId;
 
 /// Stages one queued event into the supplied `OwnedWriteBatch`.
 ///
@@ -77,7 +78,25 @@ pub(super) fn stage_queued_event(
     Ok(())
 }
 
-pub(super) fn stage_queued_inputs(
+pub(super) fn stage_queued_inputs<'a>(
+    owned_batch: &mut fjall::OwnedWriteBatch,
+    journal: &FjallJournal,
+    inputs: &'a RunInputsRecord,
+    staged_inputs: &mut HashMap<RunId, &'a RunInputsRecord>,
+) -> Result<(), JournalError> {
+    if let Some(staged) = staged_inputs.get(&inputs.run()) {
+        return if *staged == inputs {
+            Ok(())
+        } else {
+            Err(JournalError::PayloadDigestMismatch)
+        };
+    }
+    stage_queued_input_row(owned_batch, journal, inputs)?;
+    staged_inputs.insert(inputs.run(), inputs);
+    Ok(())
+}
+
+fn stage_queued_input_row(
     owned_batch: &mut fjall::OwnedWriteBatch,
     journal: &FjallJournal,
     inputs: &RunInputsRecord,

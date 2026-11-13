@@ -159,12 +159,21 @@ pub trait RuntimeJournal: Send + Sync {
     }
 
     /// Atomically appends admission events with their retained scalar inputs.
+    /// Durable adapters must implement this operation. The default supports
+    /// only explicitly volatile journals, which make no recovery promise.
     fn append_admission_batch(
         &self,
         events: &[RuntimeJournalEvent],
         start_seq: EventSeq,
         _inputs: vb_storage::RunInputsRecord,
     ) -> RuntimeResult<()> {
+        if self.durability_profile() != Some(vb_storage::DurabilityProfile::Volatile)
+            || self.storage_journal().is_some()
+        {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "runtime_journal_admission_batch",
+            });
+        }
         self.append_sequenced_batch(events, start_seq)
     }
 
@@ -263,39 +272,3 @@ pub trait RuntimeJournal: Send + Sync {
 
 /// Shared journal trait object.
 pub type SharedRuntimeJournal = Arc<dyn RuntimeJournal>;
-
-/// Journal implementation that intentionally drops all events.
-#[derive(Debug, Default)]
-pub struct NoopRuntimeJournal;
-
-impl NoopRuntimeJournal {
-    /// Creates a shared noop journal for explicitly non-durable tests or benchmarks.
-    #[must_use]
-    pub fn shared_for_tests_and_benchmarks() -> SharedRuntimeJournal {
-        Arc::new(Self)
-    }
-
-    /// Creates a shared noop journal for callers that explicitly select no durability.
-    #[must_use]
-    pub fn shared() -> SharedRuntimeJournal {
-        Self::shared_for_tests_and_benchmarks()
-    }
-}
-
-impl RuntimeJournal for NoopRuntimeJournal {
-    fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
-        Ok(())
-    }
-
-    fn append_sequenced_batch(
-        &self,
-        _events: &[RuntimeJournalEvent],
-        _start_seq: EventSeq,
-    ) -> RuntimeResult<()> {
-        Ok(())
-    }
-
-    fn probe(&self) -> RuntimeResult<()> {
-        Ok(())
-    }
-}

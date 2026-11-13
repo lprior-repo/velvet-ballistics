@@ -44,6 +44,10 @@ impl BoundJournal {
 }
 
 impl RuntimeJournal for BoundJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
         Ok(())
     }
@@ -230,8 +234,15 @@ fn chain_workflow() -> Option<CompiledWorkflow> {
 }
 
 fn running_shard(run: RunId) -> Result<(Shard, Arc<BoundJournal>), Box<dyn std::error::Error>> {
+    running_shard_with_config(run, small_config())
+}
+
+fn running_shard_with_config(
+    run: RunId,
+    config: crate::shard::ShardConfig,
+) -> Result<(Shard, Arc<BoundJournal>), Box<dyn std::error::Error>> {
     let journal = BoundJournal::shared();
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(config, journal.clone());
     let workflow = require_workflow("chain", chain_workflow())?;
     let policy_digest = vb_storage::admission::compute_policy_digest(&workflow)?;
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
@@ -274,4 +285,5 @@ mod r5_authority {
 mod r5_registry {
     use super::*;
     include!("gate_bound_registry_r5.rs");
+    include!("gate_bound_capacity.rs");
 }

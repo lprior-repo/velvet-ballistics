@@ -1,6 +1,9 @@
 use std::io::{self, Write};
 use std::process::ExitCode;
 
+#[path = "../source_validators/text.rs"]
+mod source_text;
+
 #[path = "../hotpath_scan/mod.rs"]
 mod hotpath_scan;
 

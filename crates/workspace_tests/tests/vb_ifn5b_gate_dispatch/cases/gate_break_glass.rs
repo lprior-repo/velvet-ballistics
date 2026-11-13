@@ -51,6 +51,7 @@ fn matching_break_glass_receipt_authorizes_one_registered_effect() -> TestResult
     let ticket = pending_ticket(&mut runtime, run)?;
     let register = catalog.issue_register_grant(&artifact, ticket, scope())?;
     let params = vb_core::ScopedGrantParams {
+        mode: vb_core::GrantAdmissionMode::StrictExact,
         id: vb_core::GrantId::new(72),
         issuer: person("grant-authority")?,
         subject: person("run-operator")?,
@@ -91,6 +92,7 @@ fn matching_break_glass_receipt_authorizes_one_registered_effect() -> TestResult
         person("run-operator")?,
         vb_core::GrantTimeMs::new(250),
         vb_core::RevocationEpoch::new(1),
+        false,
     );
     let mut adapter = FjallRegister::open(&dir.join("register"), 8)?;
     let receipt = runtime.execute_registered_action(

@@ -148,6 +148,7 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
     }
     let register = catalog.issue_register_grant(&artifact, ticket, scope())?;
     let params = vb_core::ScopedGrantParams {
+        mode: vb_core::GrantAdmissionMode::StrictExact,
         id: vb_core::GrantId::new(803),
         issuer: person("grant-authority")?,
         subject: person("run-operator")?,
@@ -172,6 +173,7 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
         person("run-operator")?,
         vb_core::GrantTimeMs::new(250),
         vb_core::RevocationEpoch::new(1),
+        false,
     );
     let event_snapshot = rebuilt_journal.events_for_run_full(run)?;
     let bytes_snapshot = event_bytes(&rebuilt_journal, run, event_snapshot.len())?;

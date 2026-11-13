@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Scoped capability grant lifecycle (MASTER §77.10, `strict_exact` wedge).
+//! Scoped capability grant lifecycle (MASTER §77.10).
 //!
 //! A [`ScopedGrant`] is a trusted authority-bound value checked at the
 //! admission/dispatch boundary before any live effect. It binds grant id,
@@ -124,13 +124,19 @@ impl GrantSignature {
     }
 }
 
-/// Admission mode. This wedge implements `StrictExact` only.
+/// Admission mode (MASTER §77.10 modes table).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum GrantAdmissionMode {
     /// Granted scope must equal the declared scope; overgrant rejects.
     StrictExact = 0,
+    /// Granted scope may be narrower only when the workflow can suspend
+    /// at explicit missing-grant gates; overgrant rejects.
+    StrictNarrow = 1,
+    /// Operator authority may be broader; dispatch passes only the
+    /// declared narrowed tokens to executors.
+    ProdDefault = 2,
 }
 
 /// Trusted scoped grant binding authority, invocation, scope, and time.
@@ -187,6 +193,8 @@ pub struct ScopedGrantParams {
     pub capability: Capability,
     /// Exact resource scope the grant authorizes.
     pub scope: CapabilityScopeSpec,
+    /// Admission mode the issued grant carries.
+    pub mode: GrantAdmissionMode,
     /// Start of the validity window, inclusive.
     pub issued_at: GrantTimeMs,
     /// End of the validity window, exclusive.
@@ -222,6 +230,9 @@ pub struct GrantDispatchContext {
     pub now_ms: GrantTimeMs,
     /// Minimum live revocation epoch; caller-owned revocation view.
     pub min_epoch: RevocationEpoch,
+    /// Whether the workflow can suspend at explicit missing-grant gates;
+    /// consulted only by `StrictNarrow` admission.
+    pub can_suspend_at_missing_grant_gates: bool,
 }
 
 /// Borrowed presentation for one live execution: the scoped grant, the
@@ -264,29 +275,8 @@ impl<'a> ScopedDispatch<'a> {
     }
 }
 
-impl GrantDispatchContext {
-    /// Bundles the expected bindings with caller-owned time/revocation.
-    #[must_use]
-    pub fn new(
-        artifact: WorkflowDigest,
-        ticket: ActionTicket,
-        declared_scope: CapabilityScopeSpec,
-        expected_issuer: ApproverId,
-        expected_subject: ApproverId,
-        now_ms: GrantTimeMs,
-        min_epoch: RevocationEpoch,
-    ) -> Self {
-        Self {
-            artifact,
-            ticket,
-            declared_scope,
-            expected_issuer,
-            expected_subject,
-            now_ms,
-            min_epoch,
-        }
-    }
-}
+#[path = "capability_grant/dispatch_context.rs"]
+mod dispatch_context;
 
 #[cfg(test)]
 #[path = "capability_grant_tests.rs"]

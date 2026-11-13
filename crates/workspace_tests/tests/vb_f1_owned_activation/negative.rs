@@ -18,7 +18,7 @@ fn wrong_source_run_and_header_are_rejected_without_publication() -> TestResult 
         Err(RuntimeError::RunNotFound)
     ));
     assert_pristine(&case, &journal)?;
-    let mut header = super::support::header(case.run, &case.workflow);
+    let mut header = super::support::header(case.run, &case.workflow)?;
     header.compiled_digest = WorkflowDigest::from_bytes([8; 32]);
     journal.put_run_header(&header)?;
     assert!(
@@ -66,16 +66,26 @@ fn source_advancement_between_enqueue_and_shard_processing_is_revalidated() -> T
     let journal = case.open()?;
     let mut runtime = case.runtime(journal.clone(), 10)?;
     runtime.activate_owned_submission(case.run, case.source.digest)?;
+    let last_seq = journal
+        .events_for_run_full(case.run)?
+        .last()
+        .map(|event| event.seq().get())
+        .ok_or("submission prefix missing")?;
+    let next_seq = last_seq.checked_add(1).ok_or("event sequence overflow")?;
     journal.append_strict(&vb_storage::JournalEvent::StepStarted {
         run: case.run,
-        seq: vb_storage::EventSeq::new(3),
+        seq: vb_storage::EventSeq::new(next_seq),
         step: case.workflow.entry(),
         attempt: 1,
     })?;
     let before = journal.events_for_run_full(case.run)?;
+    let error = runtime
+        .tick_all()
+        .expect_err("advanced journal source was accepted");
     assert!(
-        matches!(runtime.tick_all(), Err(RuntimeError::StorageJournalAppend { source })
-        if matches!(*source, vb_storage::JournalError::TooManyEvents { .. }))
+        matches!(error, RuntimeError::StorageJournalAppend { ref source }
+            if matches!(source.as_ref(), vb_storage::JournalError::TooManyEvents { .. })),
+        "unexpected source-advancement error: {error:?}"
     );
     assert_eq!(journal.events_for_run_full(case.run)?, before);
     assert!(matches!(
@@ -156,7 +166,7 @@ fn actual_full_capacity_is_rechecked_at_processing_then_submission_can_retry() -
     runtime.activate_owned_submission(second, case.source.digest)?;
     assert!(runtime.tick_all()?);
     let pending = journal.events_for_run_full(second)?;
-    assert_eq!(pending.len(), 3);
+    assert_eq!(pending.len(), 4);
     assert!(matches!(
         runtime.tick_all(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
