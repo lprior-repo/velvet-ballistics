@@ -70,20 +70,38 @@ impl Shard {
             | ShardCommand::SubmitWithInputsAndContracts { workflow, .. }
             | ShardCommand::SubmitTenantScoped { workflow, .. }
             | ShardCommand::SubmitTenantWithInputsAndContracts { workflow, .. } => {
-                let budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
-                    .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
-                        digest: workflow.digest(),
-                    })?;
-                Ok(Some(budget.max_queue_depth))
+                self.workflow_queue_depth(cmd, workflow)
             }
             ShardCommand::Recover { command } => Ok(command.admitted_queue_depth()),
-            _ => Ok(cmd.run_id().and_then(|run| {
-                self.run_state_get(run)
-                    .and_then(|state| state.admission.as_ref())
-                    .and_then(|admission| admission.budget())
-                    .map(|budget| budget.max_queue_depth)
-            })),
+            _ => Ok(self.active_run_queue_depth(cmd)),
         }
+    }
+
+    fn workflow_queue_depth(
+        &self,
+        command: &ShardCommand,
+        workflow: &vb_core::workflow::CompiledWorkflow,
+    ) -> RuntimeResult<Option<u32>> {
+        let budget =
+            vb_core::budget::AggregateResourceBudget::from_workflow(workflow).map_err(|_| {
+                RuntimeError::AdmissionArtifactInvalid {
+                    digest: workflow.digest(),
+                }
+            })?;
+        let candidate = budget.max_queue_depth;
+        Ok(Some(
+            self.active_run_queue_depth(command)
+                .map_or(candidate, |admitted| admitted.min(candidate)),
+        ))
+    }
+
+    fn active_run_queue_depth(&self, command: &ShardCommand) -> Option<u32> {
+        command
+            .run_id()
+            .and_then(|run| self.run_state_get(run))
+            .and_then(|state| state.admission.as_ref())
+            .and_then(|admission| admission.budget())
+            .map(|budget| budget.max_queue_depth)
     }
 
     /// Returns the number of commands currently pending for a run.

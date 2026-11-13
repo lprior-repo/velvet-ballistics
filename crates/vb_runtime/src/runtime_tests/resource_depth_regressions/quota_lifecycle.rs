@@ -258,7 +258,85 @@ fn duplicate_submit_cannot_raise_pending_run_queue_cap() -> Result<(), String> {
             limit: 1
         }),
     );
-    assert_eq!(runtime.pending_boundary_snapshot(8).command_queue_depth(), before);
+    assert_eq!(
+        runtime.pending_boundary_snapshot(8).command_queue_depth(),
+        before
+    );
     assert_eq!(before, 1);
+    Ok(())
+}
+
+#[test]
+fn active_run_admission_cap_rejects_widening_duplicate_submit() -> Result<(), String> {
+    let shard_count = NonZeroUsize::new(1).ok_or_else(|| String::from("one shard"))?;
+    let mut low_parts = suspended_workflow()
+        .ok_or_else(|| String::from("suspended workflow"))?
+        .to_parts();
+    low_parts.resource_contract.max_queue_depth = 1;
+    let low =
+        vb_core::CompiledWorkflow::try_from_parts(low_parts).map_err(|error| error.to_string())?;
+    let high = suspended_workflow().ok_or_else(|| String::from("suspended workflow"))?;
+    let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&low)
+        .map_err(|error| error.to_string())?
+        .max_cost_units;
+    let run = RunId::new(950);
+    let tenant = vb_core::ids::TenantId::new(950);
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal);
+    runtime
+        .set_resource_quotas(cost, cost)
+        .map_err(|error| error.to_string())?;
+    submit_suspended_tenant(&runtime, run, low, tenant).map_err(|error| error.to_string())?;
+    assert_eq!(runtime.tick_all(), Ok(true));
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or_else(|| String::from("active action ticket"))?;
+    assert_eq!(
+        runtime.pending_boundary_snapshot(8).command_queue_depth(),
+        0
+    );
+    assert_eq!(runtime.global_cost_usage(), cost);
+
+    submit_suspended_tenant(&runtime, run, high.clone(), tenant)
+        .map_err(|error| error.to_string())?;
+    let before_refusal = runtime.pending_boundary_snapshot(8).command_queue_depth();
+    assert_eq!(before_refusal, 1);
+    assert_eq!(
+        submit_suspended_tenant(&runtime, run, high, tenant),
+        Err(RuntimeError::PerRunQueueDepthExceeded {
+            run,
+            pending: 1,
+            limit: 1,
+        })
+    );
+    assert_eq!(
+        runtime.pending_boundary_snapshot(8).command_queue_depth(),
+        before_refusal
+    );
+    assert_eq!(runtime.lookup_pending_action_ticket(run, 0), Some(ticket));
+    assert_eq!(runtime.global_cost_usage(), cost);
+    let other_run = RunId::new(951);
+    let other_tenant = vb_core::ids::TenantId::new(951);
+    runtime
+        .submit_direct_with_tenant(
+            other_run,
+            finished_workflow().ok_or_else(|| String::from("finished workflow"))?,
+            CapabilitySet::empty(),
+            other_tenant,
+        )
+        .map_err(|error| error.to_string())?;
+    assert_eq!(runtime.tick_all(), Err(RuntimeError::RunAlreadyExists));
+    assert_eq!(
+        runtime.pending_boundary_snapshot(8).command_queue_depth(),
+        1
+    );
+    assert_eq!(runtime.lookup_pending_action_ticket(run, 0), Some(ticket));
+    assert_eq!(runtime.global_cost_usage(), cost);
+    assert_eq!(runtime.tick_all(), Ok(true));
+    assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+    assert_eq!(runtime.global_cost_usage(), cost);
+    runtime.kill_run(run).map_err(|error| error.to_string())?;
+    assert_eq!(runtime.tick_all(), Ok(true));
+    assert_eq!(runtime.global_cost_usage(), 0);
     Ok(())
 }
