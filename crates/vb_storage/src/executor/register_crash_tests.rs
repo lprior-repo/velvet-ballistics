@@ -13,7 +13,12 @@ const CHILD_TEST: &str = "executor::register_crash_tests::child_commit_then_abor
 fn spawn_child(mode: &str) -> Result<(tempfile::TempDir, Output), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let path = dir.path().join("register");
-    let output = Command::new(std::env::current_exe()?)
+    let current = std::env::current_exe()?;
+    // Lower only the child's core limit so an intentional abort cannot dump a host core.
+    let output = Command::new("/bin/sh")
+        .arg("-c")
+        .arg("ulimit -c 0; exec \"$0\" \"$@\"")
+        .arg(current)
         .args(["--exact", CHILD_TEST, "--nocapture", "--test-threads=1"])
         .env("VB_CRASH_REGISTER_PATH", &path)
         .env("VB_CRASH_MODE", mode)

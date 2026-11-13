@@ -1,6 +1,9 @@
 #![forbid(unsafe_code)]
 mod artifact_evidence_support;
+#[path = "vb_7r7jv_executor_conformance/conformance_helpers.rs"]
+mod conformance_helpers;
 use artifact_evidence_support::*;
+use conformance_helpers::{first_pack, ticket};
 use vb_core::action::{Idempotency, RetrySafety, SideEffect};
 use vb_core::action_pack::{
     ActionPack, CapabilityScopeSpec, ExecutorVersionDigest, ManifestDigest, ReceiptSchemaDigest,
@@ -33,33 +36,6 @@ fn pure_contract() -> Result<ActionContract, Box<dyn std::error::Error>> {
     contract.retry_safety = RetrySafety::Safe;
     contract.required_capabilities = Box::new([]);
     Ok(contract)
-}
-fn first_pack(
-    artifact: &mut vb_storage::AcceptedArtifact,
-) -> Result<&mut ActionPack, Box<dyn std::error::Error>> {
-    let ArtifactEvidence::Packed(evidence) = &mut artifact.verification.evidence else {
-        return Err("missing packs".into());
-    };
-    evidence
-        .packs
-        .first_mut()
-        .ok_or_else(|| "missing pack".into())
-}
-fn ticket(seq: u64) -> ActionTicket {
-    let run = RunId::new(100);
-    let seq = SeqNo::new(seq);
-    let action = ActionId::new(0);
-    ActionTicket {
-        run,
-        step: StepIdx::new(1),
-        seq,
-        action,
-        run_attempt: 1,
-        attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
-        capacity: 2,
-        fencing_token: 0,
-    }
 }
 
 #[test]
@@ -243,7 +219,7 @@ fn strict_pure_action_succeeds_without_external_claims() -> TestResult {
         artifact.verification.evidence,
         ArtifactEvidence::Verified(_)
     ));
-    assert!(artifact.required_capabilities.is_empty());
+    assert_eq!(artifact.required_capabilities.len(), 0);
     Ok(())
 }
 

@@ -34,6 +34,9 @@ mod issuance_boundary_tests;
 mod test_support;
 
 #[cfg(test)]
+mod conformance_probe_tests;
+
+#[cfg(test)]
 mod scope_pack_regression_tests;
 
 #[cfg(test)]
