@@ -75,6 +75,26 @@ impl StorageRuntimeJournal {
         batch.commit().map_err(RuntimeError::from)
     }
 
+    fn append_runtime_admission_batch(
+        journal: &FjallJournal,
+        profile: DurabilityProfile,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        let mut storage_events = Vec::new();
+        storage_events
+            .try_reserve(events.len())
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::QueueFull))?;
+        for (offset, event) in events.iter().enumerate() {
+            let seq = Self::sequence_at_offset(start_seq, offset)?;
+            storage_events.push(Self::storage_event(event.clone(), seq)?);
+        }
+        journal
+            .append_runtime_admission_batch(&storage_events, &inputs, profile)
+            .map_err(RuntimeError::from)
+    }
+
     fn sequence_at_offset(start_seq: EventSeq, offset: usize) -> RuntimeResult<EventSeq> {
         let offset = u64::try_from(offset)
             .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;

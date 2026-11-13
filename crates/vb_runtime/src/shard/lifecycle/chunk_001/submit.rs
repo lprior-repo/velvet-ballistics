@@ -24,8 +24,8 @@ impl Shard {
             vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
         }
         let digest = workflow.digest();
-        let input_digest = vb_storage::inputs::compute_input_digest(inputs)
-            .map_err(RuntimeError::from)?;
+        let input_digest =
+            vb_storage::inputs::compute_input_digest(inputs).map_err(RuntimeError::from)?;
         let admission = self
             .build_admission_with_budget(run, &workflow, caps)?
             .map(|admission| {
@@ -39,7 +39,10 @@ impl Shard {
         )?;
         self.prepare_run_slots(run)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
-        crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
+        if let Err(error) = crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow) {
+            self.release_frame(frame);
+            return Err(error);
+        }
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         let ir_compat_decision = admission
             .as_ref()
@@ -49,6 +52,19 @@ impl Shard {
             .and_then(|admission| crate::journal::tenant_admission_event(admission, run));
         let mut header_bytes: u64 = 0;
         if let (true, Some(admission)) = (persist_header, admission.as_ref()) {
+            let retained_inputs = match vb_storage::RunInputsRecord::new(
+                run,
+                admission.artifact_digest(),
+                digest,
+                &workflow,
+                filled_inputs.into_boxed_slice(),
+            ) {
+                Ok(record) => record,
+                Err(error) => {
+                    self.release_frame(frame);
+                    return Err(RuntimeError::from(error));
+                }
+            };
             let mut events = vec![
                 RuntimeJournalEvent::RunSubmitted {
                     run,
@@ -64,10 +80,17 @@ impl Shard {
             if let Some(event) = tenant_admission {
                 events.push(event);
             }
-            header_bytes = Self::journal_batch_bytes(&events)?;
-            let header_result = self.append_journal_event_batch(&events);
-            if let Err(error) = header_result {
+            header_bytes = match Self::journal_batch_bytes(&events) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    self.release_frame(frame);
+                    return Err(error);
+                }
+            };
+            if let Err(error) = self.append_admission_journal_event_batch(&events, retained_inputs)
+            {
                 self.discard_journal_sequence(run);
+                self.release_frame(frame);
                 return Err(RuntimeError::admission_header_persistence_failed(error));
             }
         } else {

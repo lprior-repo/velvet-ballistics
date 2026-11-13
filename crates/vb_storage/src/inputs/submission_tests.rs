@@ -116,6 +116,49 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
 }
 
 #[test]
+fn failed_runtime_admission_batch_publishes_neither_event_nor_inputs() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let journal = FjallJournal::open(directory.path(), None)?;
+    let workflow = super::tests::workflow()?;
+    let artifact =
+        crate::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
+    let run = RunId::new(91);
+    let inputs = RunInputsRecord::new(
+        run,
+        artifact.digest,
+        workflow.digest(),
+        &workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::I64(73))]),
+    )?;
+    let events = [JournalEvent::RunAccepted {
+        run,
+        seq: crate::EventSeq::new(0),
+        workflow: workflow.digest(),
+    }];
+
+    journal.fail_next_batch_commit_for_test();
+    assert!(matches!(
+        journal.append_runtime_admission_batch(
+            &events,
+            &inputs,
+            crate::types::DurabilityProfile::Strict,
+        ),
+        Err(JournalError::Fjall(_))
+    ));
+    assert!(journal.events_for_run(run)?.is_empty());
+    assert!(journal.run_inputs(run)?.is_none());
+
+    journal.append_runtime_admission_batch(
+        &events,
+        &inputs,
+        crate::types::DurabilityProfile::Strict,
+    )?;
+    assert_eq!(journal.events_for_run(run)?, events);
+    assert_eq!(journal.run_inputs(run)?, Some(inputs));
+    Ok(())
+}
+
+#[test]
 fn future_major_ir_version_is_rejected_before_any_write() -> TestResult {
     for policy in [RuntimePolicy::Journaled, RuntimePolicy::Strict] {
         let directory = tempfile::tempdir()?;
