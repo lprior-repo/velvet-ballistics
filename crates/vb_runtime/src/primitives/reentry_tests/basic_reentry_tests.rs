@@ -818,10 +818,10 @@ fn tc013_for_each_next_jumps_to_done_when_iterator_empty() {
     assert_eq!(run.pc(), done);
 }
 
-/// TC-014: reduce_next_jumps_to_done_when_remaining_empty
-/// Empty remaining list: reduce_next jumps to done.
+/// TC-014: reduce_next_rejects_empty_iterator_state
+/// An empty reduce iterator list is a corrupted compact cursor handle.
 #[test]
-fn tc014_reduce_next_jumps_to_done_when_remaining_empty() {
+fn tc014_reduce_next_rejects_empty_iterator_state() {
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
 
@@ -830,8 +830,9 @@ fn tc014_reduce_next_jumps_to_done_when_remaining_empty() {
     let body = StepIdx::new(1);
     let done = StepIdx::new(2);
 
-    // Empty remaining list
+    // Empty iterator handle is a corrupted compact cursor state
     list_in_slot(&mut run, &mut store, iterator_slot, vec![]);
+    let before = run.pc();
 
     let result = reduce_next(
         &mut run,
@@ -843,6 +844,11 @@ fn tc014_reduce_next_jumps_to_done_when_remaining_empty() {
         Some(SlotIdx::new(2)),
     );
 
-    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    assert_eq!(run.pc(), done);
+    assert_eq!(
+        result,
+        Err(vb_core::EngineError::InternalInvariantViolation {
+            reason: "iterator state must be a 2-element list".into()
+        })
+    );
+    assert_eq!(run.pc(), before);
 }
