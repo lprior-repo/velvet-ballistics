@@ -1,8 +1,6 @@
 # vb-jpq7 closure evidence manifest
 
-`scripts/check-vb-jpq7-closure-evidence.py` fails closed unless every closed
-`vb-jpq7.*` child has a JSONL row in
-`.beads/vb-jpq7/closure-evidence-manifest.jsonl` with raw command evidence.
+`scripts/check-vb-jpq7-closure-evidence.sh` runs the Rust validator and fails closed unless every closed `vb-jpq7.*` child has a JSONL row in `.beads/vb-jpq7/closure-evidence-manifest.jsonl` with raw command evidence.
 
 Required row fields: `bead_id`, `command`, `cwd`, `commit_sha`, `tool_version`,
 UTC-`Z` `timestamp`, `raw_log_path`, `stdout_summary`, `stderr_summary`,
@@ -30,6 +28,6 @@ Non-zero rows are not passing closure evidence. They must declare
 Useful commands:
 
 ```bash
-python scripts/check-vb-jpq7-closure-evidence.py --self-test
-python scripts/check-vb-jpq7-closure-evidence.py --parent vb-jpq7 --bd-workdir /home/lewis/src/velvet-ballistics
+bash scripts/check-vb-jpq7-closure-evidence.sh --self-test
+bash scripts/check-vb-jpq7-closure-evidence.sh --parent vb-jpq7 --bd-workdir /home/lewis/src/velvet-ballistics
 ```
