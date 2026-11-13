@@ -27,10 +27,7 @@ fn cold_fjall_recovery_rearms_timed_ask_then_records_timeout() -> ColdTimerResul
         kind: crate::shard::types::PendingTimerKind::Ask,
         timeout: std::time::Duration::ZERO,
     };
-    let events = cold_recovery_case(
-        timer_ask_workflow().ok_or("ask workflow missing")?,
-        expected,
-    )?;
+    let events = cold_recovery_case(cold_timer_ask_workflow()?, expected)?;
     assert_eq!(events.iter().filter(|event| matches!(event, vb_storage::JournalEvent::AskTimedOutEvent { step, .. } if *step == expected.step)).count(), 1);
     assert!(
         events
@@ -62,8 +59,18 @@ fn cold_fjall_timed_ask_recovery_preserves_positive_timeout_policy() -> ColdTime
         kind: crate::shard::types::PendingTimerKind::Ask,
         timeout: std::time::Duration::from_millis(25),
     };
-    cold_recovery_policy_case(
-        timer_ask_workflow().ok_or("ask workflow missing")?,
-        expected,
+    cold_recovery_policy_case(cold_timer_ask_workflow()?, expected)
+}
+
+fn cold_timer_ask_workflow() -> ColdTimerResult<vb_core::workflow::CompiledWorkflow> {
+    let mut parts = timer_ask_workflow()
+        .ok_or("ask workflow missing")?
+        .to_parts();
+    let metadata = vb_core::workflow::source_metadata::WorkflowSourceMetadata::try_new(
+        Box::new([Box::<str>::from("unused"), Box::<str>::from("prompt")]),
+        Box::default(),
     )
+    .map_err(|error| format!("{error:?}"))?;
+    parts.source_metadata = Some(Box::new(metadata));
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|error| format!("{error:?}"))
 }
