@@ -83,7 +83,7 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
         let expected_event_count = if policy == RuntimePolicy::Relaxed {
             0
         } else {
-            3
+            4
         };
         let events = journal.events_for_run(retained.run())?;
         assert_eq!(events.len(), expected_event_count);

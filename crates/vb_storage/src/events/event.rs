@@ -496,4 +496,13 @@ pub enum JournalEvent {
         /// Unchanged V1 outcome plus its binding, trust, and bound receipt.
         record: Box<BoundGateOutcomeRecord>,
     },
+    /// Durable admission wall-clock origin used by absolute lifetime accounting.
+    RunBudgetOriginEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Wall-clock origin in milliseconds since the UNIX epoch.
+        started_millis: u64,
+    },
 }

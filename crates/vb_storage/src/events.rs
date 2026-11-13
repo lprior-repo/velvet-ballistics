@@ -59,6 +59,7 @@ impl JournalEvent {
             | Self::GateOpenedEvent { run, .. }
             | Self::CompatibilityDecisionEvent { run, .. }
             | Self::TenantAdmissionEvent { run, .. }
+            | Self::RunBudgetOriginEvent { run, .. }
             | Self::GateOpenedBoundEvent { run, .. }
             | Self::GateDecisionBoundEvent { run, .. } => *run,
         }
@@ -104,6 +105,7 @@ impl JournalEvent {
             | Self::GateOpenedEvent { seq, .. }
             | Self::CompatibilityDecisionEvent { seq, .. }
             | Self::TenantAdmissionEvent { seq, .. }
+            | Self::RunBudgetOriginEvent { seq, .. }
             | Self::GateOpenedBoundEvent { seq, .. }
             | Self::GateDecisionBoundEvent { seq, .. } => *seq,
         }
@@ -168,6 +170,7 @@ impl JournalEvent {
             Self::TenantAdmissionEvent { .. } => RecordKind::TenantAdmission,
             Self::GateOpenedBoundEvent { .. } => RecordKind::GateOpenedBound,
             Self::GateDecisionBoundEvent { .. } => RecordKind::GateDecisionBound,
+            Self::RunBudgetOriginEvent { .. } => RecordKind::RunBudgetOrigin,
         }
     }
 
@@ -214,6 +217,7 @@ impl JournalEvent {
             | Self::GateOpenedEvent { .. }
             | Self::CompatibilityDecisionEvent { .. }
             | Self::TenantAdmissionEvent { .. }
+            | Self::RunBudgetOriginEvent { .. }
             | Self::GateOpenedBoundEvent { .. }
             | Self::GateDecisionBoundEvent { .. } => None,
         }
@@ -274,7 +278,9 @@ impl JournalEvent {
             | Self::GateOpenedEvent { .. }
             | Self::GateOpenedBoundEvent { .. }
             | Self::GateDecisionBoundEvent { .. } => true,
-            Self::CompatibilityDecisionEvent { .. } | Self::TenantAdmissionEvent { .. } => true,
+            Self::CompatibilityDecisionEvent { .. }
+            | Self::TenantAdmissionEvent { .. }
+            | Self::RunBudgetOriginEvent { .. } => true,
         }
     }
 }

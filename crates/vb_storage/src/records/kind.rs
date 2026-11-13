@@ -113,6 +113,8 @@ pub enum RecordKind {
     GateOpenedBound = 54,
     /// Bound manual gate decision carrying the additive bound receipt.
     GateDecisionBound = 55,
+    /// Absolute wall-clock origin for a budgeted admission.
+    RunBudgetOrigin = 56,
 }
 
 impl RecordKind {
@@ -166,6 +168,7 @@ impl RecordKind {
             Self::RetryTimerScheduled => 51,
             Self::GateOpenedBound => 54,
             Self::GateDecisionBound => 55,
+            Self::RunBudgetOrigin => 56,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -221,6 +224,7 @@ impl RecordKind {
             51 => Some(Self::RetryTimerScheduled),
             54 => Some(Self::GateOpenedBound),
             55 => Some(Self::GateDecisionBound),
+            56 => Some(Self::RunBudgetOrigin),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -270,6 +274,7 @@ impl RecordKind {
             | Self::RetryTimerScheduled
             | Self::GateOpenedBound
             | Self::GateDecisionBound
+            | Self::RunBudgetOrigin
             | Self::RunContinuation => true,
             Self::WorkflowSource
             | Self::CompiledIr

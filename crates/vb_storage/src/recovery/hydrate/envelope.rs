@@ -120,7 +120,8 @@ pub(crate) fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bo
             Ok(true)
         }
         JournalEvent::CompatibilityDecisionEvent { .. }
-        | JournalEvent::TenantAdmissionEvent { .. } => Ok(true),
+        | JournalEvent::TenantAdmissionEvent { .. }
+        | JournalEvent::RunBudgetOriginEvent { .. } => Ok(true),
         JournalEvent::ActionScheduled { .. }
         | JournalEvent::ActionScheduledTicket { .. }
         | JournalEvent::ActionCompletedEvent { .. }

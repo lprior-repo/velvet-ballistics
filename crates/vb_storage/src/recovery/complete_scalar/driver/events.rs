@@ -4,12 +4,29 @@ use super::{Driver, K, invalid};
 use crate::JournalEvent as E;
 use crate::recovery::RecoveryResult;
 use crate::recovery::types::RecoveryError;
+#[path = "events/admission.rs"]
+mod admission;
 
 impl Driver<'_> {
     pub(super) fn apply_bound_event(&mut self, event: &E) -> RecoveryResult<()> {
         self.validate_sequence(event)?;
+        self.close_admission_prefix(event);
         self.dispatch_event(event)?;
         self.validate_step_budget()
+    }
+
+    fn close_admission_prefix(&mut self, event: &E) {
+        if !matches!(
+            event,
+            E::RunAccepted { .. }
+                | E::RunAdmission { .. }
+                | E::RunAdmissionBudget { .. }
+                | E::CompatibilityDecisionEvent { .. }
+                | E::TenantAdmissionEvent { .. }
+                | E::RunBudgetOriginEvent { .. }
+        ) {
+            self.admission_prefix_closed = true;
+        }
     }
 
     fn validate_sequence(&mut self, event: &E) -> RecoveryResult<()> {
@@ -32,9 +49,12 @@ impl Driver<'_> {
             | E::RunContinuation { .. }
             | E::CompatibilityDecisionEvent { .. }
             | E::TenantAdmissionEvent { .. }
+            | E::RunBudgetOriginEvent { .. }
             | E::PolicyDecisionEvent { .. }
             | E::GateOpenedEvent { .. }
             | E::GateDecisionEvent { .. }
+            | E::GateOpenedBoundEvent { .. }
+            | E::GateDecisionBoundEvent { .. }
             | E::RetryCheckpoint { .. } => self.apply_admission_event(event),
             E::StepStarted { .. }
             | E::SlotWrittenEvent { .. }
@@ -56,34 +76,6 @@ impl Driver<'_> {
         }
     }
 
-    fn apply_admission_event(&mut self, event: &E) -> RecoveryResult<()> {
-        match event {
-            E::RunAccepted { workflow, .. }
-                if !self.accepted && *workflow == self.plan.digest() =>
-            {
-                self.accepted = true;
-                Ok(())
-            }
-            E::RunAdmission { .. } | E::RunAdmissionBudget { .. }
-                if self.accepted && !self.admitted && !self.started =>
-            {
-                self.admitted = true;
-                Ok(())
-            }
-            E::RunContinuation { .. } if self.accepted && self.admitted && !self.started => Ok(()),
-            E::CompatibilityDecisionEvent { .. }
-            | E::TenantAdmissionEvent { .. }
-            | E::PolicyDecisionEvent { .. }
-            | E::GateOpenedEvent { .. }
-            | E::GateDecisionEvent { .. }
-            | E::RetryCheckpoint { .. }
-                if self.accepted =>
-            {
-                Ok(())
-            }
-            _ => Err(self.unsupported_event(event)),
-        }
-    }
 
     fn apply_execution_event(&mut self, event: &E) -> RecoveryResult<()> {
         match event {

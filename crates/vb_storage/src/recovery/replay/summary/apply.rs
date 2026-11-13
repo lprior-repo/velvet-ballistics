@@ -94,7 +94,8 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         | JournalEvent::GateOpenedBoundEvent { .. }
         | JournalEvent::GateDecisionBoundEvent { .. } => {}
         JournalEvent::CompatibilityDecisionEvent { .. }
-        | JournalEvent::TenantAdmissionEvent { .. } => {}
+        | JournalEvent::TenantAdmissionEvent { .. }
+        | JournalEvent::RunBudgetOriginEvent { .. } => {}
     }
 }
 

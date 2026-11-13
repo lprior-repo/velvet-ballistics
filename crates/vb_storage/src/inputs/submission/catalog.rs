@@ -2,7 +2,7 @@ use super::{RunSubmission, SubmissionInputs};
 use crate::{
     FjallJournal, JournalError, OwnedRunInputsRecordV1, RunHeaderRecord, WorkflowSourceRecord,
 };
-use vb_core::{CapabilitySet, RuntimePolicy};
+use vb_core::{AggregateResourceBudget, CapabilitySet, RuntimePolicy};
 
 /// Transient trusted inputs for one packed registered-artifact submission.
 pub struct ExecutorCatalogSubmissionContext<'a> {
@@ -32,18 +32,27 @@ impl RunSubmission {
         header: RunHeaderRecord,
         context: ExecutorCatalogSubmissionContext<'_>,
     ) -> Result<Self, JournalError> {
+        let budget_origin_millis = header.accepted_at_ms;
+        let workflow = context
+            .catalog
+            .verify_artifact(&artifact, artifact_policy(&artifact))
+            .map_err(|_| JournalError::ArtifactMalformed)?;
+        let budget = AggregateResourceBudget::from_workflow(&workflow)
+            .map_err(|_| JournalError::ArtifactMalformed)?;
         let submission = Self {
             source,
             artifact,
             inputs: SubmissionInputs::Owned(inputs),
             header,
+            budget: Some(budget),
+            budget_origin_millis: Some(budget_origin_millis),
             granted_capabilities: context.granted_capabilities,
         };
         submission.validate_binding_with_executor_catalog(context.catalog)?;
         submission.validate_catalog_capabilities()?;
         Ok(submission)
-    }
 
+    }
     fn validate_binding_with_executor_catalog(
         &self,
         catalog: &crate::executor::ExecutorCatalog,
@@ -56,7 +65,7 @@ impl RunSubmission {
         self.validate_workflow_binding(&workflow)
     }
 
-    fn validate_policy_with_executor_catalog(
+    pub(super) fn validate_policy_with_executor_catalog(
         &self,
         policy: RuntimePolicy,
         catalog: &crate::executor::ExecutorCatalog,
@@ -90,7 +99,7 @@ impl FjallJournal {
         catalog: &crate::executor::ExecutorCatalog,
     ) -> Result<(), JournalError> {
         submission.validate_policy_with_executor_catalog(policy, catalog)?;
-        self.commit_run_submission_validated(submission, policy)
+        self.commit_run_submission_validated(submission, policy, Some(catalog))
     }
 }
 

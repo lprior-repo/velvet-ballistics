@@ -266,7 +266,8 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 | JournalEvent::GateOpenedBoundEvent { .. }
                 | JournalEvent::GateDecisionBoundEvent { .. }
                 | JournalEvent::CompatibilityDecisionEvent { .. }
-                | JournalEvent::TenantAdmissionEvent { .. } => {}
+                | JournalEvent::TenantAdmissionEvent { .. }
+                | JournalEvent::RunBudgetOriginEvent { .. } => {}
             }
             summary
         })

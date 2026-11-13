@@ -40,6 +40,7 @@ fn is_run_record(kind: RecordKind) -> bool {
             | RecordKind::RunAdmission
             | RecordKind::RunAdmissionBudget
             | RecordKind::TenantAdmission
+            | RecordKind::RunBudgetOrigin
             | RecordKind::RunAdmissionBound
             | RecordKind::RunAdmissionPinned
             | RecordKind::RunAdmissionBoundPinned

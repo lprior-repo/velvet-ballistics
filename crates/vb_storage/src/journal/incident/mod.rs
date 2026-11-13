@@ -260,6 +260,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::GateDecisionBoundEvent { .. } => LifecycleState::Active,
         JournalEvent::CompatibilityDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::TenantAdmissionEvent { .. } => LifecycleState::Active,
+        JournalEvent::RunBudgetOriginEvent { .. } => LifecycleState::Active,
     }
 }
 
