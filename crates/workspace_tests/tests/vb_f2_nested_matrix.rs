@@ -5,6 +5,10 @@ use vb_runtime::engine::{
 };
 use vb_runtime::primitives::collect::CollectStates;
 
+#[path = "vb_f2_nested_matrix/policy.rs"]
+mod policy;
+use policy::assert_nested_together_rejected;
+
 const FAMILIES: [&str; 6] = [
     "repeat", "for_each", "collect", "reduce", "together", "choose",
 ];
@@ -47,6 +51,7 @@ fn compound(family: &str, name: &str, body: &str) -> Result<String, String> {
 fn all_nested_pairs_preserve_source_values_taints_and_ir() -> Result<(), Box<dyn std::error::Error>>
 {
     let mut exercised = 0usize;
+    let mut rejected = 0usize;
     for outer in FAMILIES {
         for inner in FAMILIES {
             let leaf = "- id: leaf\n  set: {output: leaf, value: '9'}\n";
@@ -57,6 +62,11 @@ fn all_nested_pairs_preserve_source_values_taints_and_ir() -> Result<(), Box<dyn
                 "version: velvet-ballistics/v1\nname: nested_matrix\nwhen: {{manual: {{}}}}\ninputs: {{items: {{is: list, of: number, max: 2}}}}\nvars: {{sentinel: 42, marker: source_payload}}\nsteps:\n{}  - id: done\n    finish: {{result: '$vars.sentinel'}}\n",
                 indent(&outer_body, 2)
             );
+            if outer == "together" && inner == "together" {
+                assert_nested_together_rejected(&source)?;
+                rejected = rejected.checked_add(1).ok_or("rejection count overflow")?;
+                continue;
+            }
             let workflow = vb_compile::compile_workflow(source.as_bytes())
                 .map_err(|error| format!("{outer}/{inner}: {error}"))?;
             let original = workflow.to_parts();
@@ -149,7 +159,8 @@ fn all_nested_pairs_preserve_source_values_taints_and_ir() -> Result<(), Box<dyn
             exercised = exercised.checked_add(1).ok_or("case count overflow")?;
         }
     }
-    assert_eq!(exercised, 36);
+    assert_eq!(exercised, 35);
+    assert_eq!(rejected, 1);
     Ok(())
 }
 

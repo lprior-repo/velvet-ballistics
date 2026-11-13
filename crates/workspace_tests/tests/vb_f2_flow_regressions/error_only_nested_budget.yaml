@@ -14,20 +14,19 @@ steps:
       branches:
         - label: first
           steps:
-            - id: nested
-              together:
-                branches:
-                  - label: nested_first
-                    steps:
-                      - id: one
-                        set: {output: one, value: '1'}
-                  - label: nested_second
-                    steps:
-                      - id: two
-                        set: {output: two, value: '2'}
+            - id: one
+              set: {output: one, value: '1'}
         - label: second
           steps:
             - id: other
               set: {output: other, value: '3'}
+        - label: third
+          steps:
+            - id: three
+              set: {output: three, value: '4'}
+        - label: fourth
+          steps:
+            - id: four
+              set: {output: four, value: '5'}
   - id: done
     finish: {result: '$seed'}

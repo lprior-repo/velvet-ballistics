@@ -5,6 +5,9 @@ use vb_core::ActionTicket;
 use vb_core::action::compute_action_idempotency_key;
 use vb_core::ids::SeqNo;
 
+#[path = "envelope_tests.rs"]
+mod envelope_tests;
+
 /// Helper: create a minimal StepStarted event.
 fn step_event(step: u16) -> JournalEvent {
     JournalEvent::StepStarted {

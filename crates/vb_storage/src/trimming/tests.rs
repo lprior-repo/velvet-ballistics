@@ -155,3 +155,4 @@ include!("tests/snapshot_and_retained.rs");
 include!("tests/batch_and_fail_closed.rs");
 include!("tests/retention_and_replay.rs");
 include!("tests/diagnostics.rs");
+include!("tests/retention_corruption.rs");

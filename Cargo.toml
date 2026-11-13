@@ -10,8 +10,6 @@ members = [
     "crates/vb_ipc",
     "crates/velvet_ballistics",
     "crates/workspace_tests",
-    "crates/reference",
-    "crates/boundary_inventory",
     "fuzz",
 ]
 resolver = "2"

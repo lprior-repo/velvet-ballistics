@@ -1,6 +1,6 @@
 #![no_main]
 
-use boundary_inventory::validate_evidence_reference_bytes;
+use fuzz_lib::boundary_inventory::validate_evidence_reference_bytes;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

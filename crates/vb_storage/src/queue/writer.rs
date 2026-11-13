@@ -21,6 +21,7 @@ use self::group::{QueuedJournalGroup, count_profile};
 #[derive(Debug, Clone)]
 struct QueuedJournalEvent {
     event: JournalEvent,
+    record_bytes: u64,
     profile: DurabilityProfile,
     group: QueuedJournalGroup,
 }
@@ -28,6 +29,7 @@ struct QueuedJournalEvent {
 #[derive(Debug, Clone)]
 struct JournalWriterQueueState {
     pending: VecDeque<QueuedJournalEvent>,
+    pending_bytes: u64,
     shutdown: bool,
 }
 
@@ -37,6 +39,8 @@ pub struct JournalWriterQueue {
     state: Mutex<JournalWriterQueueState>,
     capacity: usize,
     batch_size: usize,
+    max_event_payload_bytes: u32,
+    max_pending_bytes: u64,
 }
 
 impl JournalWriterQueue {
@@ -55,15 +59,29 @@ impl JournalWriterQueue {
     pub fn with_contracts(
         capacity: JournalQueueCapacity,
         batch_size: JournalBatchSize,
-        _limits: StorageLimits,
+        limits: StorageLimits,
     ) -> Result<Self, JournalError> {
+        let max_event_payload_bytes = limits
+            .max_journal_event_payload_bytes
+            .min(crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let max_record_bytes = u64::from(max_event_payload_bytes)
+            .checked_add(u64::from(crate::constants::RECORD_HEADER_LEN))
+            .ok_or(JournalError::QueueCapacity)?;
+        // Atomic groups may exceed `batch_size`, but never total queue capacity.
+        let max_pending_bytes = u64::try_from(capacity.get())
+            .map_err(|_| JournalError::QueueCapacity)?
+            .checked_mul(max_record_bytes)
+            .ok_or(JournalError::QueueCapacity)?;
         Ok(Self {
             state: Mutex::new(JournalWriterQueueState {
                 pending: VecDeque::with_capacity(capacity.get()),
+                pending_bytes: 0,
                 shutdown: false,
             }),
             capacity: capacity.get(),
             batch_size: batch_size.get(),
+            max_event_payload_bytes,
+            max_pending_bytes,
         })
     }
 
@@ -96,12 +114,16 @@ impl JournalWriterQueue {
         // transient. Accepting an oversized event would poison every later
         // flush, because failed staging leaves the batch owned by the queue
         // and healthy entries behind the poison never drain.
-        check_event_payload_size(&event)?;
+        let record_bytes = check_event_payload_size(&event, self.max_event_payload_bytes)?;
         if state.pending.len() >= self.capacity {
             return Err(JournalError::QueueFull);
         }
+        let pending_bytes =
+            reserve_pending_bytes(state.pending_bytes, record_bytes, self.max_pending_bytes)?;
+        state.pending_bytes = pending_bytes;
         state.pending.push_back(QueuedJournalEvent {
             event,
+            record_bytes,
             profile,
             group: QueuedJournalGroup::Single,
         });
@@ -214,14 +236,42 @@ impl JournalWriterQueue {
 /// that [`encode_record`](crate::codec::encode_record) enforces at staging,
 /// so the gate agrees exactly with flush-time behavior and adds no encode
 /// pass: the event is still encoded once, at staging.
-pub(super) fn check_event_payload_size(event: &JournalEvent) -> Result<(), JournalError> {
+pub(super) fn check_event_payload_size(
+    event: &JournalEvent,
+    max_payload_bytes: u32,
+) -> Result<u64, JournalError> {
     let size = postcard::experimental::serialized_size(event).map_err(JournalError::Encode)?;
-    crate::codec::payload::payload_len_u32(
-        size,
-        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
-    Ok(())
+    crate::codec::payload::payload_len_u32(size, max_payload_bytes)?;
+    u64::try_from(size)
+        .map_err(|_| JournalError::SequenceOverflow)?
+        .checked_add(u64::from(crate::constants::RECORD_HEADER_LEN))
+        .ok_or(JournalError::SequenceOverflow)
+}
+
+pub(super) fn reserve_pending_bytes(
+    pending_bytes: u64,
+    record_bytes: u64,
+    max_pending_bytes: u64,
+) -> Result<u64, JournalError> {
+    let attempted =
+        pending_bytes
+            .checked_add(record_bytes)
+            .ok_or(JournalError::JournalBatchBytesExceeded {
+                attempted: u64::MAX,
+                limit: max_pending_bytes,
+            })?;
+    if attempted > max_pending_bytes {
+        return Err(JournalError::JournalBatchBytesExceeded {
+            attempted,
+            limit: max_pending_bytes,
+        });
+    }
+    Ok(attempted)
 }
 
 #[cfg(test)]
 mod flush_tests;
+#[cfg(test)]
+mod queue_bytes_tests;
+#[cfg(test)]
+mod queue_failure_tests;

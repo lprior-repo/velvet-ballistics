@@ -34,9 +34,7 @@ impl JournalWriterQueue {
         // Gate every member before mutating: an atomic batch is all-or-nothing,
         // so a single oversized member rejects the whole batch with no partial
         // push. Same shutdown-then-payload-then-capacity order as `enqueue`.
-        for event in &events {
-            super::check_event_payload_size(event)?;
-        }
+        let record_bytes = total_batch_record_bytes(&events, self.max_event_payload_bytes)?;
         let available = self
             .capacity
             .checked_sub(state.pending.len())
@@ -44,13 +42,25 @@ impl JournalWriterQueue {
         if event_count.get() > available {
             return Err(JournalError::QueueFull);
         }
-        for (position, event) in events.into_iter().enumerate() {
+        let record_bytes = record_bytes.ok_or(JournalError::JournalBatchBytesExceeded {
+            attempted: u64::MAX,
+            limit: self.max_pending_bytes,
+        })?;
+        let record_sizes = batch_record_sizes(&events, self.max_event_payload_bytes)?;
+        let pending_bytes = super::reserve_pending_bytes(
+            state.pending_bytes,
+            record_bytes,
+            self.max_pending_bytes,
+        )?;
+        for ((position, event), record_bytes) in events.into_iter().enumerate().zip(record_sizes) {
             state.pending.push_back(QueuedJournalEvent {
                 event,
+                record_bytes,
                 profile,
                 group: group_for_batch_position(position, event_count),
             });
         }
+        state.pending_bytes = pending_bytes;
         Ok(())
     }
 }
@@ -92,6 +102,26 @@ pub(super) fn count_profile(
         }
         DurabilityProfile::Volatile => {}
     }
+}
+
+fn batch_record_sizes(
+    events: &[JournalEvent],
+    max_payload_bytes: u32,
+) -> Result<Vec<u64>, JournalError> {
+    events
+        .iter()
+        .map(|event| super::check_event_payload_size(event, max_payload_bytes))
+        .collect()
+}
+
+fn total_batch_record_bytes(
+    events: &[JournalEvent],
+    max_payload_bytes: u32,
+) -> Result<Option<u64>, JournalError> {
+    events.iter().try_fold(Some(0_u64), |total, event| {
+        let record_bytes = super::check_event_payload_size(event, max_payload_bytes)?;
+        Ok(total.and_then(|current| current.checked_add(record_bytes)))
+    })
 }
 
 fn group_for_batch_position(position: usize, event_count: NonZeroUsize) -> QueuedJournalGroup {

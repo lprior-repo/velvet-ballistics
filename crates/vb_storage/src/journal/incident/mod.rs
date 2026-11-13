@@ -51,6 +51,13 @@ pub fn analyze_incident_events(events: &[JournalEvent]) -> IncidentAnalysis {
                     certainty: SideEffectCertainty::Confirmed,
                 });
             }
+            JournalEvent::ActionCompletedEnvelope { ticket, .. } => {
+                side_effects.push(SideEffect {
+                    step: ticket.step.get(),
+                    action: ticket.action.get(),
+                    certainty: SideEffectCertainty::Confirmed,
+                });
+            }
             JournalEvent::ActionAbandoned { ticket, .. } => {
                 // ActionAbandoned is a run-cancellation side effect;
                 // surface it as a confirmed side effect so downstream

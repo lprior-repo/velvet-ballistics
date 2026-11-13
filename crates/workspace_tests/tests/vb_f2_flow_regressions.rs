@@ -73,6 +73,7 @@ fn recovery_inside_outer_together_retains_outer_reservation() -> TestResult {
     let source = r#"version: velvet-ballistics/v1
 name: recovery_inside_outer
 when: {manual: {}}
+vars: {empty_list: []}
 inputs: {divisor: number}
 steps:
   - id: outer
@@ -80,21 +81,11 @@ steps:
       branches:
         - label: first
           steps:
-            - id: inner
+            - id: fault
               on_error: {handler: recovery}
-              together:
-                branches:
-                  - label: failing
-                    steps:
-                      - id: fault
-                        set: {output: quotient, value: '1 / $input.divisor'}
+              set: {output: quotient, value: '1 / $input.divisor'}
             - id: recovery
-              together:
-                branches:
-                  - label: recovered
-                    steps:
-                      - id: answer
-                        set: {output: answer, value: '42'}
+              set: {output: answer, value: 'append($vars.empty_list, 42)'}
         - label: second
           steps:
             - id: other
@@ -105,7 +96,7 @@ steps:
     for quantum in [1, 64] {
         let mut probe = Probe::new(source)?;
         probe.seed(SlotValue::I64(0), Taint::Clean)?;
-        assert_eq!(probe.budget()?.max_parallel_in_flight, 3);
+        assert_eq!(probe.budget()?.max_parallel_in_flight, 2);
         let result = probe.finish(quantum)?;
         let values = probe.list(result)?;
         assert_eq!(values.len(), 2);
@@ -115,7 +106,7 @@ steps:
         );
         assert_eq!(values.get(1), Some(&SlotValue::I64(9)));
         if quantum == 1 {
-            assert_eq!(probe.peak, 3);
+            assert_eq!(probe.peak, 2);
         }
         probe.assert_failure_evidence()?;
         probe.assert_result_evidence(result, Taint::Clean)?;

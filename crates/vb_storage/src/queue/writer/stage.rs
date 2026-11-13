@@ -34,6 +34,7 @@ pub(super) fn stage_queued_event(
     journal: &FjallJournal,
     event: &JournalEvent,
     staged_keys: &mut HashSet<[u8; crate::constants::JOURNAL_KEY_BYTES]>,
+    max_payload_bytes: u32,
 ) -> Result<(), JournalError> {
     let key = run_event_key(event.run_id(), event.seq())?;
     if let Some(existing_bytes) = journal.events.get(key.as_slice())? {
@@ -64,7 +65,7 @@ pub(super) fn stage_queued_event(
         event.record_kind(),
         event.seq().get(),
         event,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        max_payload_bytes,
     )?;
     journal.stage_recovery_index_ops(owned_batch, event)?;
     owned_batch.insert(&journal.events, key, value);

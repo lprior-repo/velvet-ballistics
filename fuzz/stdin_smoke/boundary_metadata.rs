@@ -1,6 +1,6 @@
 #![no_main]
 
-use boundary_inventory::{BoundaryCandidate, classify_boundary};
+use fuzz_lib::boundary_inventory::{BoundaryCandidate, classify_boundary};
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

@@ -14,7 +14,6 @@ enum FlushDurability {
 
 struct PreparedBatch {
     batch: fjall::OwnedWriteBatch,
-    written: usize,
     has_strict: bool,
 }
 
@@ -59,9 +58,16 @@ impl JournalWriterQueue {
                 written: 0,
             });
         }
-        let prepared = prepare_batch(&state, journal, length, durability)?;
-        let written = commit_prepared(prepared, journal)?;
-        retire_committed(&mut state, written)
+        let pending_bytes = pending_bytes_after_retirement(&state, length)?;
+        let prepared = prepare_batch(
+            &state,
+            journal,
+            length,
+            durability,
+            self.max_event_payload_bytes,
+        )?;
+        commit_prepared(prepared, journal)?;
+        Ok(retire_committed(&mut state, length, pending_bytes))
     }
 }
 
@@ -70,27 +76,28 @@ fn prepare_batch(
     journal: &FjallJournal,
     length: usize,
     durability: FlushDurability,
+    max_event_payload_bytes: u32,
 ) -> Result<PreparedBatch, JournalError> {
     let mut prepared = PreparedBatch {
         batch: journal.database.batch(),
-        written: 0,
         has_strict: durability == FlushDurability::SyncAll,
     };
     let mut staged_keys = std::collections::HashSet::new();
     for item in state.pending.iter().take(length) {
         prepared.has_strict |= item.profile == DurabilityProfile::Strict;
-        stage_queued_event(&mut prepared.batch, journal, &item.event, &mut staged_keys)?;
-        prepared.written = prepared.written.saturating_add(1);
+        stage_queued_event(
+            &mut prepared.batch,
+            journal,
+            &item.event,
+            &mut staged_keys,
+            max_event_payload_bytes,
+        )?;
     }
     Ok(prepared)
 }
 
-fn commit_prepared(prepared: PreparedBatch, journal: &FjallJournal) -> Result<usize, JournalError> {
-    let PreparedBatch {
-        batch,
-        written,
-        has_strict,
-    } = prepared;
+fn commit_prepared(prepared: PreparedBatch, journal: &FjallJournal) -> Result<(), JournalError> {
+    let PreparedBatch { batch, has_strict } = prepared;
     let mode = if has_strict {
         Some(fjall::PersistMode::SyncAll)
     } else {
@@ -105,21 +112,43 @@ fn commit_prepared(prepared: PreparedBatch, journal: &FjallJournal) -> Result<us
         journal.persist_strict()?;
     }
     batch.commit()?;
-    Ok(written)
+    Ok(())
 }
 
 fn retire_committed(
     state: &mut JournalWriterQueueState,
     written: usize,
-) -> Result<JournalWriterFlushReport, JournalError> {
-    let mut drained = 0usize;
-    while drained < written {
-        match state.pending.pop_front() {
-            Some(_) => drained = drained.saturating_add(1),
-            None => return Err(JournalError::WriteLockPoisoned),
-        }
+    pending_bytes: u64,
+) -> JournalWriterFlushReport {
+    state.pending.drain(..written);
+    state.pending_bytes = pending_bytes;
+    JournalWriterFlushReport {
+        drained: written,
+        written,
     }
-    Ok(JournalWriterFlushReport { drained, written })
+}
+
+fn pending_bytes_after_retirement(
+    state: &JournalWriterQueueState,
+    written: usize,
+) -> Result<u64, JournalError> {
+    if state.pending.len() < written {
+        return Err(JournalError::WriteLockPoisoned);
+    }
+    let retired_bytes = state
+        .pending
+        .iter()
+        .take(written)
+        .try_fold(0_u64, |total, item| {
+            total
+                .checked_add(item.record_bytes)
+                .ok_or(JournalError::WriteLockPoisoned)
+        })?;
+    let pending_bytes = state
+        .pending_bytes
+        .checked_sub(retired_bytes)
+        .ok_or(JournalError::WriteLockPoisoned)?;
+    Ok(pending_bytes)
 }
 
 #[cfg(test)]

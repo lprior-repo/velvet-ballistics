@@ -9,7 +9,9 @@
 # - No unsafe, no unwrap, no panic
 # - Must be obviously correct
 #
-# Use: cargo nextest run -p reference to run differential tests
+# Use: cargo nextest run -p velvet-ballistics-workspace-tests --test reference_models
+
+[workspace]
 
 [package]
 name = "reference"

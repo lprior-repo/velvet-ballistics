@@ -4,9 +4,8 @@ use vb_core::{FiniteF64, SlotValue, Taint};
 fn source(first: bool, nested: bool) -> String {
     let mut value = "set: {output: payload, value: '$input.payload'}".to_string();
     if nested {
-        value = format!(
-            "together:\n                branches:\n                  - label: nested\n                    steps:\n                      - id: payload\n                        {value}"
-        );
+        value =
+            "set: {output: payload, value: 'append($vars.empty_list, $input.payload)'}".to_string();
     }
     let payload = format!(
         "        - label: payload\n          steps:\n            - id: payload_branch\n              {value}\n"
@@ -18,7 +17,7 @@ fn source(first: bool, nested: bool) -> String {
         format!("{other}{payload}")
     };
     format!(
-        "version: velvet-ballistics/v1\nname: together_results\nwhen: {{manual: {{}}}}\ninputs: {{payload: any}}\nsteps:\n  - id: outer\n    together:\n      branches:\n{branches}  - id: done\n    finish: {{result: '$step.outer'}}\n"
+        "version: velvet-ballistics/v1\nname: together_results\nwhen: {{manual: {{}}}}\nvars: {{empty_list: []}}\ninputs: {{payload: any}}\nsteps:\n  - id: outer\n    together:\n      branches:\n{branches}  - id: done\n    finish: {{result: '$step.outer'}}\n"
     )
 }
 

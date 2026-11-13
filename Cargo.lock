@@ -161,14 +161,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "boundary_inventory"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1235,16 +1227,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reference"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "vb_core",
- "vb_expr",
- "vb_storage",
-]
-
-[[package]]
 name = "regex"
 version = "1.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1887,13 +1869,13 @@ version = "0.1.0"
 dependencies = [
  "arbitrary",
  "blake3",
- "boundary_inventory",
  "bytes",
  "crc32c",
  "libfuzzer-sys",
  "postcard",
  "proptest",
  "serde",
+ "serde_json",
  "tempfile",
  "vb_compile",
  "vb_core",
@@ -1908,7 +1890,6 @@ name = "velvet-ballistics-workspace-tests"
 version = "0.1.0"
 dependencies = [
  "blake3",
- "boundary_inventory",
  "bytes",
  "chrono",
  "crc32c",
@@ -1919,7 +1900,6 @@ dependencies = [
  "postcard",
  "proptest",
  "rand",
- "reference",
  "rtrb",
  "saphyr",
  "serde",

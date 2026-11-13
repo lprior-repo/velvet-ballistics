@@ -11,7 +11,23 @@
 #![allow(clippy::arithmetic_side_effects)]
 #![allow(clippy::len_zero)]
 
+#[path = "../../crates/boundary_inventory/src/api.rs"]
+mod api;
+#[path = "../../crates/boundary_inventory/src/inventory.rs"]
+mod inventory;
+#[path = "../../crates/boundary_inventory/src/parser.rs"]
+mod parser;
+#[path = "../../crates/boundary_inventory/src/record.rs"]
+mod record;
+#[path = "../../crates/boundary_inventory/src/status.rs"]
+mod status;
+#[path = "../../crates/boundary_inventory/src/types.rs"]
+mod types;
+#[path = "../../crates/boundary_inventory/src/validation.rs"]
+mod validation;
+
 pub mod bin_common;
+pub mod boundary_inventory;
 pub mod boundary_target;
 pub mod bounded_cmd;
 pub mod byte_flip_mutation;

@@ -1,6 +1,7 @@
 version: velvet-ballistics/v1
 name: nested_join_minimal
 when: {manual: {}}
+vars: {empty_list: []}
 steps:
   - id: outer
     together:
@@ -8,11 +9,6 @@ steps:
         - label: outer_branch
           steps:
             - id: inner
-              together:
-                branches:
-                  - label: inner_branch
-                    steps:
-                      - id: value
-                        set: {output: value, value: '7'}
+              set: {output: value, value: 'append($vars.empty_list, 7)'}
   - id: done
     finish: {result: '$step.outer'}

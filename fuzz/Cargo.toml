@@ -43,8 +43,8 @@ vb_validate = { path = "../crates/vb_validate" }
 vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
 vb_ipc = { path = "../crates/vb_ipc" }
 
-boundary_inventory = { path = "../crates/boundary_inventory" }
 crc32c = "0.6"
+serde_json = "1"
 
 [dev-dependencies]
 proptest = "1"

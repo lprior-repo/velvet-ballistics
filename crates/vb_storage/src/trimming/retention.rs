@@ -13,13 +13,23 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, prefix) {
             let (key, value) = item.into_inner().map_err(TrimError::from)?;
-            decode_event_seq_for_trim(key.as_ref(), run, 0)?;
-            let (_, event) = crate::codec::decode_journal_event(
+            let key_seq = decode_event_seq_for_trim(key.as_ref(), run, 0)?;
+            let (envelope, event) = crate::codec::decode_journal_event(
                 value.as_ref(),
                 crate::constants::MAGIC_JOURNAL_EVENT,
                 crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             )
             .map_err(TrimError::from)?;
+            if key_seq.get() != envelope.sequence || key_seq != event.seq() {
+                return Err(JournalError::ReplayKeyMismatch {
+                    run,
+                    key_seq: key_seq.get(),
+                    payload_seq: event.seq().get(),
+                }
+                .into());
+            }
+            crate::codec::validate_replayed_event(run, event.seq(), &event)
+                .map_err(TrimError::from)?;
             if crate::recovery::replay::is_terminal_event(&event) {
                 return Ok(true);
             }
