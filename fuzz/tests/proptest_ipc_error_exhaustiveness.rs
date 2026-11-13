@@ -5,7 +5,7 @@
 //! currently-defined production variants.
 
 use proptest::prelude::*;
-use vb_ipc::{IPC_HEADER_LEN, IpcError, MaxPayloadBytes};
+use vb_ipc::{CommandFlags, IPC_HEADER_LEN, IpcCommand, IpcError, MaxPayloadBytes};
 
 proptest! {
     /// Verify that every error result from IPC frame decode matches a known
@@ -44,6 +44,82 @@ proptest! {
             Err(error) => assert_known_ipc_error(error)?,
         }
     }
+
+    /// Actual encoded Health headers with low-byte non-zero flags trigger
+    /// InvalidCommandFlags (valid mask is 0x0000 for Health).
+    #[test]
+    fn proptest_invalid_command_flags_qualifies(
+        correlation in any::<u64>(),
+        flags in 1u16..=0x00FF,
+    ) {
+        let header = vb_ipc::IpcFrameHeader::new(IpcCommand::Health, flags, correlation, 0);
+        let encoded = header
+            .encode()
+            .map_err(|e| TestCaseError::fail(format!("encode failed: {e:?}")))?;
+
+        let expected = IpcError::InvalidCommandFlags {
+            command: IpcCommand::Health,
+            flags,
+        };
+
+        assert_decode_error(
+            vb_ipc::IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT),
+            &expected,
+            "non-zero low-byte Health flags",
+        )?;
+        assert_decode_error(
+            vb_ipc::frame::decode_frame_header(&encoded),
+            &expected,
+            "non-zero low-byte Health flags via frame::decode_frame_header",
+        )?;
+    }
+
+    /// Actual encoded Health headers with high-byte reserved flags trigger
+    /// ReservedBitsSet (reserved global mask 0xFF00 takes precedence).
+    #[test]
+    fn proptest_reserved_bits_set_qualifies(
+        correlation in any::<u64>(),
+        flags in 0x0100u16..=u16::MAX,
+    ) {
+        let header = vb_ipc::IpcFrameHeader::new(IpcCommand::Health, flags, correlation, 0);
+        let encoded = header
+            .encode()
+            .map_err(|e| TestCaseError::fail(format!("encode failed: {e:?}")))?;
+
+        let expected = IpcError::ReservedBitsSet {
+            command: IpcCommand::Health,
+            actual: flags,
+            reserved_mask: CommandFlags::reserved_global_mask(),
+        };
+
+        assert_decode_error(
+            vb_ipc::IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT),
+            &expected,
+            "high-byte reserved Health flags",
+        )?;
+        assert_decode_error(
+            vb_ipc::frame::decode_frame_header(&encoded),
+            &expected,
+            "high-byte reserved Health flags via frame::decode_frame_header",
+        )?;
+    }
+}
+
+/// Shared helper: assert exact decode error variant and qualify through oracle.
+fn assert_decode_error(
+    result: Result<vb_ipc::IpcFrameHeader, IpcError>,
+    expected: &IpcError,
+    description: &str,
+) -> Result<(), TestCaseError> {
+    match result {
+        Ok(_) => Err(TestCaseError::fail(format!(
+            "Expected error for {description}, got Ok"
+        ))),
+        Err(error) => {
+            prop_assert_eq!(&error, expected, "Incorrect error for {}", description);
+            assert_known_ipc_error(error)
+        }
+    }
 }
 
 /// Asserts that an IPC error is a known typed variant.
@@ -56,6 +132,8 @@ fn assert_known_ipc_error(error: IpcError) -> Result<(), TestCaseError> {
         | IpcError::InvalidMagic { .. }
         | IpcError::UnsupportedVersion { .. }
         | IpcError::UnknownCommand(_)
+        | IpcError::InvalidCommandFlags { .. }
+        | IpcError::ReservedBitsSet { .. }
         | IpcError::ReservedNonZero { .. }
         | IpcError::PayloadLengthMismatch { .. }
         | IpcError::HeaderEncodeFailed
