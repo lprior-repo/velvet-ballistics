@@ -129,23 +129,14 @@ fn crash_lab_boundary_ticket(
 #[test]
 fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(60_014);
-    let workflow_digest = WorkflowDigest::from_bytes([42u8; 32]);
-    let artifact_digest = WorkflowDigest::from_bytes([43u8; 32]);
-    let parts = crash_lab_minimal_parts(workflow_digest);
-    let workflow_ir = postcard::to_allocvec(&parts)?;
-    let workflow = require_workflow(
+    let parts = crash_lab_minimal_parts(WorkflowDigest::from_bytes([0; 32]));
+    let workflow = honest_digest_workflow(require_workflow(
         "crash-lab-minimal",
         CompiledWorkflow::try_from_parts(parts).ok(),
-    )?;
-    let policy_digest = vb_storage::admission::compute_policy_digest(&workflow)?;
+    )?)?;
+    let workflow_digest = workflow.digest();
     let contract = action_recovery_test_contract()?;
-    let store = action_recovery_contract_store(
-        artifact_digest,
-        workflow_digest,
-        policy_digest,
-        workflow_ir,
-        contract,
-    );
+    let (artifact_digest, store) = action_recovery_contract_store(&workflow, &contract)?;
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard =
