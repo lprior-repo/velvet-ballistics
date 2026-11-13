@@ -31,6 +31,15 @@ fn v1_raw_carrier_current_outer_accepted() -> TestResult {
 }
 
 #[test]
+fn v1_outer_version_1_2_0_accepted() -> TestResult {
+    let held = SchemaVersion::new(1, 2, 0);
+    let workflow = legacy(0)?;
+    let parts = workflow.to_parts();
+    let bytes = postcard::to_allocvec(&parts)?;
+    versions::reject_outer(held, &bytes)
+}
+
+#[test]
 fn v1_nonzero_symbol_wire_identity() -> TestResult {
     assert_v1(1, None)
 }

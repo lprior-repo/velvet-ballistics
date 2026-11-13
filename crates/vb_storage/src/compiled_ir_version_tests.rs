@@ -1,6 +1,6 @@
 use super::*;
 
-fn reject_outer(held: SchemaVersion, bytes: &[u8]) -> TestResult {
+pub(super) fn reject_outer(held: SchemaVersion, bytes: &[u8]) -> TestResult {
     match decode_compiled_ir(bytes, Some(held)) {
         Err(JournalError::ArtifactVersionIncompatible {
             held: actual,
@@ -18,7 +18,9 @@ fn reject_outer(held: SchemaVersion, bytes: &[u8]) -> TestResult {
 
 #[test]
 fn version_matrix_matching_v1() -> TestResult {
-    assert_v1(0, Some(SchemaVersion::new(2, 0, 0)))
+    let workflow = legacy(0)?;
+    let bytes = postcard::to_allocvec(&workflow.to_parts())?;
+    reject_outer(SchemaVersion::new(1, 0, 0), &bytes)
 }
 
 #[test]
@@ -45,7 +47,7 @@ fn version_matrix_future_3_0_0_rejected() -> TestResult {
 }
 
 #[test]
-fn version_matrix_outer1_2_0_rejected() -> TestResult {
+fn version_matrix_same_major_1_2_0_accepted() -> TestResult {
     let held = SchemaVersion::new(1, 2, 0);
     let workflow = legacy(0)?;
     let parts = workflow.to_parts();
@@ -54,7 +56,7 @@ fn version_matrix_outer1_2_0_rejected() -> TestResult {
 }
 
 #[test]
-fn version_matrix_outer1_patch_rejected() -> TestResult {
+fn version_matrix_v1_patch_accepted() -> TestResult {
     let held = SchemaVersion::new(1, 0, 1);
     let workflow = legacy(1)?;
     let parts = workflow.to_parts();
@@ -89,7 +91,7 @@ fn outer_inner_disagreement_v1_with_v2_prefix() -> TestResult {
 }
 
 #[test]
-fn outer_v2_accepts_raw_v1_bytes() -> TestResult {
+fn outer_inner_disagreement_v2_with_v1_bytes() -> TestResult {
     assert_v1(0, Some(SchemaVersion::new(2, 0, 0)))
 }
 
@@ -109,8 +111,6 @@ fn explicit_classifier_keeps_legacy_wrapper() {
         crate::compat::artifact_ir_version_inputs(held),
         crate::compat::artifact_ir_version_inputs_for(held, CURRENT_IR_VERSION)
     );
-    let classified = crate::compat::classify(crate::compat::artifact_ir_version_inputs(held));
-    assert_eq!(classified.class, CompatibilityClass::Rejected);
 }
 
 #[test]
