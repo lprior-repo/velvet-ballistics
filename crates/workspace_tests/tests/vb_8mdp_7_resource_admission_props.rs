@@ -71,6 +71,7 @@ fn new_shard_config(queue_capacity: usize) -> ShardConfig {
         trace_capacity: 64,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     }
 }
@@ -345,6 +346,7 @@ fn no_run_inserted_when_active_run_capacity_exceeded() {
         trace_capacity: 64,
         step_budget_per_tick: 100,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     });
 
@@ -388,6 +390,7 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
         trace_capacity: 64,
         step_budget_per_tick: 100,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     });
 
@@ -474,6 +477,7 @@ fn staged_frame_release_integration_accept_then_reject() {
         trace_capacity: 64,
         step_budget_per_tick: 100,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     });
 
@@ -765,6 +769,7 @@ proptest! {
             trace_capacity: 64,
             step_budget_per_tick: 100,
             max_active_runs: capacity,
+            max_open_gates: 1024,
             policy: RuntimePolicy::Relaxed,
         });
 

@@ -7,7 +7,8 @@ use vb_core::action::compute_action_idempotency_key;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_core::manual_gate::{ApproverId, GateDigest};
 use vb_core::{
-    ActionTicket, GrantId, GrantTimeMs, RevocationEpoch, RuntimePolicy, ScopedGrantParams,
+    ActionTicket, GrantAdmissionMode, GrantId, GrantTimeMs, RevocationEpoch, RuntimePolicy,
+    ScopedGrantParams,
 };
 
 fn ticket() -> ActionTicket {
@@ -36,6 +37,7 @@ fn params() -> Result<ScopedGrantParams, Box<dyn std::error::Error>> {
         subject,
         capability: vb_core::Capability::new("velvet.register.write".into(), ActionId::new(0)),
         scope: register_scope(),
+        mode: GrantAdmissionMode::StrictExact,
         issued_at: GrantTimeMs::new(1_000),
         expires_at: GrantTimeMs::new(2_000),
         delegable: false,

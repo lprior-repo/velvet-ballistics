@@ -12,6 +12,7 @@ workspace = true
 [features]
 
 [dependencies]
+chrono.workspace = true
 fjall.workspace = true
 rand.workspace = true
 serde.workspace = true
@@ -21,11 +22,11 @@ saphyr.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 toml.workspace = true
+regex = "=1.12.3"
 
 [dev-dependencies]
 blake3.workspace = true
 bytes.workspace = true
-chrono.workspace = true
 crc32c.workspace = true
 mio = { workspace = true, features = ["net", "os-poll"] }
 criterion.workspace = true

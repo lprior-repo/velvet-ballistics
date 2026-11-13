@@ -22,6 +22,7 @@ fn runtime_error_unit_tag(error: &RuntimeError) -> Option<u8> {
         RuntimeError::UnsupportedFullRecoveryHydration => Some(9),
         RuntimeError::InvalidRecoveryHydration => Some(10),
         RuntimeError::ActiveRunCapacityZero => Some(11),
+        RuntimeError::OpenGateCapacityZero => Some(19),
         RuntimeError::EncodeFailed => Some(12),
         RuntimeError::SecretResultNotAllowed => Some(13),
         RuntimeError::MigrateSelf => Some(15),

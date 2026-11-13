@@ -11,7 +11,7 @@
 //   - `vb_runtime::admission::REQUIRED_GATE_COUNT` (= 15)
 //     (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2)
 //   - `vb_storage::admission::submit_artifact_with_contracts`
-//     (crates/vb_storage/src/admission.rs:92-112)
+//     (crates/vb_storage/src/admission.rs:96-121)
 //
 // The 15-gate shape is NOT what production constructs or validates:
 // `submit_artifact_with_contracts` performs no gate/flag validation.
@@ -32,12 +32,12 @@
 // which builds the legacy 15-gate/all-true shape with Unverified
 // evidence; real validation rejects it.
 //
-// DRIFT POLICY: `crates/vb_storage/src/admission.rs:92-112`
+// DRIFT POLICY: `crates/vb_storage/src/admission.rs:96-121`
 // Production source coverage:
 //   - `REQUIRED_GATE_COUNT` (= 15)
 //     <- crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
 //   - `submit_artifact_with_contracts`
-//     <- crates/vb_storage/src/admission.rs:92-112
+//     <- crates/vb_storage/src/admission.rs:96-121
 // Regenerate this file whenever production changes. Any rename of
 // `PayloadTag::AcceptedArtifact` or body change in the submit path
 // breaks the `extern_run_atomic_admission` Verus build.

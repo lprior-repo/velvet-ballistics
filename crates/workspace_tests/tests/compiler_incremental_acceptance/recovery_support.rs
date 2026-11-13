@@ -18,7 +18,17 @@ pub(super) struct Case {
     pub(super) lane_items: [(SlotValue, Taint); 3],
 }
 
-pub(super) fn case() -> FixtureResult<Case> {
+
+pub(super) fn now_ms() -> FixtureResult<u64> {
+    u64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_millis(),
+    )
+    .map_err(|error| error.to_string())
+}
+pub(super) fn case(accepted_at_ms: u64) -> FixtureResult<Case> {
     let workflow = compiled_source()?;
     let mut body = None;
     let mut finish = None;
@@ -99,7 +109,7 @@ pub(super) fn case() -> FixtureResult<Case> {
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms,
         },
     )
     .map_err(|error| format!("owned submission: {error:?}"))?;

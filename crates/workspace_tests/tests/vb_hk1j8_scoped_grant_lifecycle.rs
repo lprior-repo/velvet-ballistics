@@ -15,8 +15,8 @@ use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 use vb_core::{
-    ActionTicket, GrantDispatchContext, GrantError, GrantId, GrantTimeMs, RevocationEpoch,
-    ScopedDispatch, ScopedGrant, ScopedGrantParams,
+    ActionTicket, GrantAdmissionMode, GrantDispatchContext, GrantError, GrantId, GrantTimeMs,
+    RevocationEpoch, ScopedDispatch, ScopedGrant, ScopedGrantParams,
 };
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
@@ -136,6 +136,7 @@ fn issue_kw(
         subject: operator.clone(),
         capability: Capability::new("velvet.register.write".into(), ticket.action),
         scope,
+        mode: GrantAdmissionMode::StrictExact,
         issued_at: GrantTimeMs::new(1_000),
         expires_at: GrantTimeMs::new(2_000),
         delegable: false,
@@ -154,6 +155,7 @@ fn issue_kw(
         operator,
         GrantTimeMs::new(now),
         RevocationEpoch::new(1),
+        false,
     );
     Ok((scoped, dispatch))
 }

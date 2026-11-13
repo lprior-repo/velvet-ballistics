@@ -42,8 +42,8 @@
 //   - `RuntimeEvent::is_resumable()`                  <- crates/vb_runtime/src/shard/types/runtime_state.rs:62-67
 //   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types/runtime_state.rs:4-15
 //   - `RuntimeState::is_resumable()`                  <- crates/vb_runtime/src/shard/types/runtime_state.rs:20-22
-//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:33-56
-//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:61-66
+//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:34-57
+//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:62-67
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types/command_queue.rs:2
 //   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types/command_queue.rs:20-36
 //   - `PendingTimerKind` (2-variant enum)             <- crates/vb_runtime/src/shard/types/pending_timer.rs:5-8

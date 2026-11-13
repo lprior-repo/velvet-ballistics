@@ -5,6 +5,7 @@ fn vb1u88_queue_full_at_capacity_boundary() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);

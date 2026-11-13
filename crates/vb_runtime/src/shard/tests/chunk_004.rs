@@ -6,6 +6,7 @@ fn submit_returns_active_run_capacity_exceeded_at_limit() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

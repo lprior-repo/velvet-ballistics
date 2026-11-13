@@ -98,6 +98,7 @@ fn foreign_run_and_ticket_attempt_boundary_refuse_without_mutation() -> TestResu
         person("run-operator")?,
         vb_core::GrantTimeMs::new(250),
         vb_core::RevocationEpoch::new(1),
+        false,
     );
     let boundary_result = runtime.execute_registered_action(
         &mut adapter,

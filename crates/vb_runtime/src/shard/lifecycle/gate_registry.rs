@@ -37,28 +37,27 @@ impl Shard {
 
     /// Reserves one slot in the shard-wide open-gate registry.
     ///
-    /// Total open gates are capped at the shard's active-run capacity:
-    /// every open gate belongs to an active run, and the registry must
-    /// stay bounded even for runs admitted without a budget.
+    /// Legacy and bound gates share the configured `max_open_gates` cap,
+    /// including runs admitted without a resource budget.
     fn reserve_open_gate_slot(&mut self) -> RuntimeResult<()> {
         let total = self
             .open_gates
             .len()
             .saturating_add(self.bound_open_gates.len());
-        if total >= self.max_active_runs {
-            return Err(RuntimeError::ActiveRunCapacityExceeded {
-                capacity: self.max_active_runs,
+        if total >= self.max_open_gates {
+            return Err(RuntimeError::OpenGateCapacityExceeded {
+                capacity: self.max_open_gates,
             });
         }
         self.open_gates
             .try_reserve(1)
-            .map_err(|_| RuntimeError::ActiveRunCapacityExceeded {
-                capacity: self.max_active_runs,
+            .map_err(|_| RuntimeError::OpenGateCapacityExceeded {
+                capacity: self.max_open_gates,
             })?;
         self.bound_open_gates
             .try_reserve(1)
-            .map_err(|_| RuntimeError::ActiveRunCapacityExceeded {
-                capacity: self.max_active_runs,
+            .map_err(|_| RuntimeError::OpenGateCapacityExceeded {
+                capacity: self.max_open_gates,
             })
     }
 }

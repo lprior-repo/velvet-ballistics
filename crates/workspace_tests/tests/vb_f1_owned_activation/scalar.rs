@@ -36,7 +36,7 @@ fn submission() -> TestResult<(RunSubmission, WorkflowDigest)> {
         &workflow,
         Box::from([(slot, SlotValue::I64(91))]),
     )?;
-    let header = super::support::header(run, &workflow);
+    let header = super::support::header(run, &workflow)?;
     Ok((
         RunSubmission::new(source.clone(), artifact, inputs, header)?,
         source.digest,

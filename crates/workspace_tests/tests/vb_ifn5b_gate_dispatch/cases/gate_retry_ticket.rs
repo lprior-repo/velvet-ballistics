@@ -85,6 +85,7 @@ fn fresh_approval_authorizes_real_retry_but_old_approval_does_not() -> TestResul
 
     let register = catalog.issue_register_grant(&artifact, second, scope())?;
     let params = vb_core::ScopedGrantParams {
+        mode: vb_core::GrantAdmissionMode::StrictExact,
         id: vb_core::GrantId::new(793),
         issuer: person("grant-authority")?,
         subject: person("run-operator")?,
@@ -113,6 +114,7 @@ fn fresh_approval_authorizes_real_retry_but_old_approval_does_not() -> TestResul
         person("run-operator")?,
         vb_core::GrantTimeMs::new(250),
         vb_core::RevocationEpoch::new(1),
+        false,
     );
     let mut adapter = FjallRegister::open(&dir.join("register"), 8)?;
     let events_before = journal.events_for_run_full(run)?;

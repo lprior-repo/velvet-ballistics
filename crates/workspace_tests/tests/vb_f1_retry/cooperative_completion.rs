@@ -26,6 +26,7 @@ fn pending_action_with_tail() -> TestResult<(tempfile::TempDir, Arc<FjallJournal
             trace_capacity: 32,
             step_budget_per_tick: 1,
             max_active_runs: 4,
+            max_open_gates: 1024,
             policy: RuntimePolicy::Journaled,
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),

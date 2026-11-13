@@ -168,6 +168,7 @@
             trace_capacity: 64,
             step_budget_per_tick: 100,
             max_active_runs: 4,
+            max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -305,6 +306,7 @@
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            max_open_gates: 1024,
             policy: RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {

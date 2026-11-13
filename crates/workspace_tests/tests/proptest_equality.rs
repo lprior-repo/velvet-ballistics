@@ -15,9 +15,9 @@
 //! Three distinct types are covered:
 //!
 //! - `vb_runtime::RuntimeError` — hand-written `PartialEq` at
-//!   `crates/vb_runtime/src/error/equality.rs:3-194`. Not `Hash`-able.
+//!   `crates/vb_runtime/src/error/equality.rs:7-13`. Not `Hash`-able.
 //! - `vb_core::diagnostic::DiagnosticCode` — derived `PartialEq + Eq + Hash`
-//!   at `crates/vb_core/src/diagnostic.rs:1763`.
+//!   at `crates/vb_core/src/diagnostic.rs:903`.
 //! - `vb_core::diagnostic::CodeCategory` — derived `PartialEq + Eq + Hash`
 //!   at `crates/vb_core/src/diagnostic.rs:22`.
 //!
@@ -53,7 +53,7 @@ fn hash_of<T: Hash>(value: &T) -> u64 {
 }
 
 // ---------------------------------------------------------------------------
-// Source: crates/vb_core/src/diagnostic.rs:1763
+// Source: crates/vb_core/src/diagnostic.rs:903
 // pub struct DiagnosticCode(u16);
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
 //          Serialize, Deserialize)]
@@ -94,7 +94,7 @@ fn arb_code_category() -> impl Strategy<Value = CodeCategory> {
 }
 
 // ---------------------------------------------------------------------------
-// Source: crates/vb_runtime/src/error/equality.rs:3-194
+// Source: crates/vb_runtime/src/error/equality.rs:7-13
 // hand-written PartialEq for RuntimeError. Variant constructors must come
 // from outside the defining crate, so we enumerate the variants the equality
 // impl actually handles. `&'static str` operation strings come from a small

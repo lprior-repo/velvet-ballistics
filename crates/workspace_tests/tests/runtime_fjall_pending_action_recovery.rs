@@ -1747,7 +1747,13 @@ fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> 
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: u64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|error| error.to_string())?
+                .as_millis(),
+        )
+        .map_err(|error| error.to_string())?,
     };
     let submission = vb_storage::RunSubmission::owned(source, artifact.clone(), record, header)
         .map_err(|err| format!("{err}"))?;
@@ -1756,17 +1762,27 @@ fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> 
     journal
         .commit_run_submission(&submission, RuntimePolicy::Strict)
         .map_err(|err| format!("{err}"))?;
-    // Suspend on the ask after the commit prefix (seq 0..=2).
+    // The current budgeted admission prefix includes its durable origin.
+    let first_seq = journal
+        .events_for_run_full(run)
+        .map_err(|error| error.to_string())?
+        .last()
+        .map(|event| event.seq().get().checked_add(1))
+        .flatten()
+        .ok_or_else(|| String::from("submission event sequence missing or exhausted"))?;
+    let second_seq = first_seq
+        .checked_add(1)
+        .ok_or_else(|| String::from("submission event sequence exhausted"))?;
     let suspend = [
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(first_seq),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::AskScheduledEvent {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(second_seq),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -1862,8 +1878,8 @@ fn bound_gate(
 ) -> Result<BoundManualGate, String> {
     let role = ApproverRole::new(String::from("deploy-approver"))
         .ok_or_else(|| String::from("invalid role"))?;
-    let input_digest = vb_storage::inputs::compute_input_digest(&[])
-        .map_err(|err| format!("{err:?}"))?;
+    let input_digest =
+        vb_storage::inputs::compute_input_digest(&[]).map_err(|err| format!("{err:?}"))?;
     Ok(BoundManualGate {
         gate: ManualGate {
             id: GateId::new(7),

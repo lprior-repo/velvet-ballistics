@@ -875,6 +875,7 @@ fn submit_returns_exact_queue_full_on_full_queue() -> Result<(), String> {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
     let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, config);
@@ -1187,6 +1188,7 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 2, // Only 2 active runs per shard
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, config);

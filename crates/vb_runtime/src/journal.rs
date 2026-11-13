@@ -7,6 +7,7 @@ include!("journal/chunk_001c.rs");
 include!("journal/chunk_002.rs");
 include!("journal/chunk_002b.rs");
 include!("journal/chunk_002c.rs");
+include!("journal/accounting.rs");
 include!("journal/chunk_003.rs");
 
 #[cfg(test)]
@@ -15,6 +16,7 @@ mod tests {
     include!("journal/tests/chunk_002.rs");
     include!("journal/tests/chunk_003.rs");
     include!("journal/tests/chunk_004.rs");
+    include!("journal/tests/atomic_admission_review.rs");
     include!("journal/tests/proptest_vb_edvbj_all_24_variants.rs");
     include!("journal/tests/proptest_vb_edvbj_resumed_replay.rs");
 }

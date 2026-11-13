@@ -88,9 +88,10 @@ impl FjallJournal {
         inputs: &RunInputsRecord,
         profile: DurabilityProfile,
     ) -> Result<(), JournalError> {
-        if events.is_empty() || events.iter().any(|event| event.run_id() != inputs.run()) {
+        if events.is_empty() {
             return Err(JournalError::InvalidEvent);
         }
+        crate::inputs::validate_admission_inputs(events, inputs)?;
         if let Some(existing) = self.run_inputs(inputs.run())?
             && existing != *inputs
         {

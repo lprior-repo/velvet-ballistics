@@ -28,7 +28,7 @@ pub(super) fn original_prefix(case: &Case, runtime: &Runtime) -> TestResult {
         admission.policy_pin(),
         vb_storage::RunPolicyPin::Pinned(case.artifact.policy_digest)
     );
-    assert_eq!(admission.budget(), None);
+    assert!(admission.budget().is_some());
     assert!(admission.idempotency_attested().is_empty());
     Ok(())
 }

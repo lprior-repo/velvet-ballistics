@@ -230,6 +230,7 @@ mod vb_3l40a_contract_validation_tests {
             trace_capacity: 64,
             step_budget_per_tick: 4,
             max_active_runs: 8,
+            max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(shard_config);
@@ -278,6 +279,7 @@ mod vb_3l40a_contract_validation_tests {
             trace_capacity: 64,
             step_budget_per_tick: 4,
             max_active_runs: 8,
+            max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let shard = Shard::new(shard_config);

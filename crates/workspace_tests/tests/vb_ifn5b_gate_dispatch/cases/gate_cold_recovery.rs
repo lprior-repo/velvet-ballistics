@@ -275,6 +275,7 @@ pub(super) fn scoped_params(
     break_glass: bool,
 ) -> Result<vb_core::ScopedGrantParams, Box<dyn std::error::Error>> {
     Ok(vb_core::ScopedGrantParams {
+        mode: vb_core::GrantAdmissionMode::StrictExact,
         id: vb_core::GrantId::new(74),
         issuer: person("grant-authority")?,
         subject: person("run-operator")?,
@@ -303,5 +304,6 @@ pub(super) fn dispatch_context(
         person("run-operator")?,
         vb_core::GrantTimeMs::new(250),
         vb_core::RevocationEpoch::new(1),
+        false,
     ))
 }

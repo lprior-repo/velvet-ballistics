@@ -24,7 +24,7 @@
 //     idempotency attestation empty.
 //   - submit_artifact_with_contracts mirrors
 //     `vb_storage::admission::submit_artifact_with_contracts` at
-//     crates/vb_storage/src/admission.rs:92-112: prepares, issues, and
+//     crates/vb_storage/src/admission.rs:96-121: prepares, issues, and
 //     readback-verifies. It performs no gate-count or proof-flag validation.
 //   - verify_accepted_artifact mirrors
 //     `vb_storage::admission::verify_accepted_artifact` at

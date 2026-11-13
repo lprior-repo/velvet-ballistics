@@ -375,6 +375,13 @@ pub enum RuntimeError {
         /// Human-readable validation error.
         error: String,
     },
+    /// Open-gate registry for a shard has reached its configured cap.
+    OpenGateCapacityExceeded {
+        /// Configured open-gate capacity for the shard.
+        capacity: usize,
+    },
+    /// Open-gate capacity cannot be zero.
+    OpenGateCapacityZero,
 }
 
 impl From<std::io::Error> for RuntimeError {

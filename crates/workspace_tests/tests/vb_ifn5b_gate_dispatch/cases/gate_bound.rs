@@ -51,6 +51,7 @@ fn gate_dispatch_requires_immutable_origin_and_durable_receipt() -> TestResult {
     let ticket = pending_ticket(&mut runtime, run)?;
     let register_grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
     let params = vb_core::ScopedGrantParams {
+        mode: vb_core::GrantAdmissionMode::StrictExact,
         id: vb_core::GrantId::new(71),
         issuer: person("grant-authority")?,
         subject: person("run-operator")?,
@@ -79,6 +80,7 @@ fn gate_dispatch_requires_immutable_origin_and_durable_receipt() -> TestResult {
         person("run-operator")?,
         vb_core::GrantTimeMs::new(250),
         vb_core::RevocationEpoch::new(1),
+        false,
     );
     let register_path = dir.join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;

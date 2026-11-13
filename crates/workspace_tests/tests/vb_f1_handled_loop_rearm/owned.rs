@@ -162,7 +162,11 @@ fn exercise_with_capacity(
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms: u64::try_from(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)?
+                    .as_millis(),
+            )?,
         },
     )?;
     let directory = tempfile::tempdir()?;
