@@ -2,6 +2,7 @@
 //! Replay step execution.
 
 mod collect;
+mod concurrent;
 mod control;
 mod dispatch;
 mod for_each;

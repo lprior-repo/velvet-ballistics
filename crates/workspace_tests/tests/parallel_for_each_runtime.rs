@@ -108,3 +108,68 @@ fn repeated_activation_on_fresh_frames_is_deterministic() -> Result<(), String> 
     assert_eq!(second, first);
     Ok(())
 }
+
+fn replay(plan: &CompiledWorkflow, items: &[i64]) -> Result<Vec<i64>, String> {
+    use vb_core::replay::step::{ReplayAction, ReplayCollectStates, replay_step_with_collect};
+
+    let mut run = RunFrame::new(
+        RunId::new(1),
+        StepIdx::new(0),
+        plan.node_count(),
+        plan.slot_count(),
+    )
+    .map_err(|error| format!("{error}"))?;
+    let mut store = ValueStore::new();
+    let input = plan.input_slots().first().ok_or("missing input slot")?.slot;
+    let values: Vec<SlotValue> = items.iter().map(|value| SlotValue::I64(*value)).collect();
+    let list = store
+        .insert_list(values.into_boxed_slice())
+        .map_err(|error| format!("{error}"))?;
+    run.write_slot(input, SlotValue::List(list))
+        .map_err(|error| format!("{error}"))?;
+
+    let mut states = ReplayCollectStates::new();
+    let mut pc = StepIdx::new(0);
+    for _ in 0..10_000 {
+        let node = plan.node(pc).ok_or_else(|| format!("missing node {pc:?}"))?;
+        match replay_step_with_collect(node, &mut run, &mut store, plan, &mut states)
+            .map_err(|error| format!("{error:?}"))?
+        {
+            ReplayAction::Continue(next) => pc = next,
+            ReplayAction::Finished => {
+                let finish = (0..plan.node_count())
+                    .filter_map(|index| plan.node(StepIdx::new(index)))
+                    .find(|node| matches!(node.kind, vb_core::CompiledNodeKind::Finish { .. }))
+                    .ok_or("missing finish")?;
+                let vb_core::CompiledNodeKind::Finish { result } = finish.kind else {
+                    return Err("finish kind".into());
+                };
+                let SlotValue::List(id) = *run.read_slot(result).map_err(|error| format!("{error}"))? else {
+                    return Err("finish result is not a list".into());
+                };
+                return store
+                    .list(id)
+                    .map_err(|error| format!("{error:?}"))?
+                    .iter()
+                    .map(|value| match value {
+                        SlotValue::I64(number) => Ok(*number),
+                        other => Err(format!("unexpected replay item: {other:?}")),
+                    })
+                    .collect();
+            }
+            ReplayAction::Suspended { .. } => return Err("unexpected suspension".into()),
+            _ => return Err("unknown replay action".into()),
+        }
+    }
+    Err("replay step bound".into())
+}
+
+#[test]
+fn replay_matches_runtime_for_parallel_for_each() -> Result<(), String> {
+    let plan = compile("2")?;
+    let runtime = drive(&plan, &[1, 2, 3])?;
+    let replayed = replay(&plan, &[1, 2, 3])?;
+    assert_eq!(runtime, vec![1, 2, 3]);
+    assert_eq!(replayed, runtime);
+    Ok(())
+}

@@ -30,6 +30,26 @@ fn invariant(reason: &'static str) -> RuntimeEngineError {
     })
 }
 
+/// Cross-checks the lanes a group is about to run against the cached checked
+/// requirements and the declared fanout policy.
+fn check_lane_bound(plan: &CompiledWorkflow, capacity: usize) -> RuntimeEngineResult<()> {
+    let requirements = plan
+        .concurrent_requirements()
+        .ok_or_else(|| invariant("concurrent plan missing checked requirements"))?;
+    let frames = usize::from(requirements.frames());
+    if capacity.saturating_add(1) > frames {
+        return Err(invariant("concurrent lane capacity exceeds checked frame bound"));
+    }
+    if requirements.groups() == 0 {
+        return Err(invariant("concurrent requirements report zero groups"));
+    }
+    let fanout = usize::from(plan.resource_contract().max_fanout);
+    if capacity > fanout {
+        return Err(invariant("concurrent lane capacity exceeds contract fanout"));
+    }
+    Ok(())
+}
+
 fn group_output(plan: &CompiledWorkflow, join: StepIdx) -> RuntimeEngineResult<SlotIdx> {
     plan.node(join)
         .and_then(|node| node.output.slot())
@@ -120,7 +140,7 @@ fn foreach_group(
     input: SlotIdx,
     item_slot: SlotIdx,
     limit: FanoutLimit,
-    _at_once: BranchCount,
+    at_once: BranchCount,
     body: StepIdx,
     join: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
@@ -138,6 +158,8 @@ fn foreach_group(
             },
         ));
     }
+    let capacity = usize::from(at_once.get()).min(count).min(limit.as_usize());
+    check_lane_bound(ctx.plan, capacity)?;
     let bound = lane_bound(ctx.plan, count);
     let owner = ctx.node.id;
     let mut results = Vec::new();
@@ -169,6 +191,7 @@ fn fixed_group(
     first_success: bool,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let owner = ctx.node.id;
+    check_lane_bound(ctx.plan, branches.len())?;
     let bound = lane_bound(ctx.plan, branches.len());
     let mut taint = Taint::Clean;
     let mut results = Vec::new();

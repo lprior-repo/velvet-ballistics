@@ -1,8 +1,3 @@
-pub(crate) fn replay_error() -> crate::replay::ReplayError {
-    crate::replay::ReplayError::Internal {
-        reason: "concurrent IR requires a checked IR3 execution profile",
-    }
-}
 
 pub(crate) fn flow_error(step: crate::ids::StepIdx) -> crate::workflow::SlotFlowError {
     crate::workflow::SlotFlowError {
