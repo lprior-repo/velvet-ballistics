@@ -2,7 +2,10 @@
 //! Schema generators cover two nested levels and up to two children per node.
 use super::*;
 use crate::input_schema::{CompiledInputField, InputDefaultValue};
-use crate::workflow::source_metadata::{CompiledSecretRequirement, WorkflowSourceMetadata};
+use crate::workflow::source_metadata::WorkflowSourceMetadata;
+
+#[path = "kani_metadata_generator.rs"]
+mod metadata_generator;
 
 pub(super) fn kind() -> InputSlotKind {
     match kani::any::<u8>() {
@@ -77,27 +80,5 @@ pub(super) fn constraint(depth: u8) -> CompiledInputConstraint {
 }
 
 pub(super) fn metadata() -> Option<Box<WorkflowSourceMetadata>> {
-    if !kani::any::<bool>() {
-        return None;
-    }
-    let count = width();
-    let symbols = (0..count).map(kani_step_name).collect();
-    let requirements: Box<[_]> = if kani::any::<bool>() && count > 0 {
-        let alias: u8 = kani::any();
-        let requirement: u8 = kani::any();
-        kani::assume(alias < count && requirement < count);
-        Box::new([CompiledSecretRequirement::new(
-            SymbolId::new(u32::from(alias)),
-            SymbolId::new(u32::from(requirement)),
-        )])
-    } else {
-        Box::new([])
-    };
-    match WorkflowSourceMetadata::try_new(symbols, requirements) {
-        Ok(metadata) => Some(Box::new(metadata)),
-        Err(_) => {
-            kani::assume(false);
-            None
-        }
-    }
+    metadata_generator::metadata()
 }
