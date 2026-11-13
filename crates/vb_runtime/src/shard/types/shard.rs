@@ -15,6 +15,16 @@ pub struct Shard {
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
     pub(crate) counters: ShardCounters,
+    /// Admitted tenant cost ledger and aggregate usage snapshot.
+    pub(crate) usage: vb_core::budget::ShardUsageSnapshot,
+    /// Conservative shard-wide admitted cost aggregate.
+    pub(crate) global_cost_usage: u64,
+    /// Per-tenant admitted cost quota enforced at tenant-scoped submit.
+    pub(crate) tenant_quota_cost_units: u64,
+    /// Shard-wide admitted cost quota enforced at tenant-scoped submit.
+    pub(crate) global_quota_cost_units: u64,
+    /// Exact admitted cost charged per live run, for idempotent release.
+    pub(crate) charged_quotas: IndexMap<RunId, (Option<vb_core::ids::TenantId>, u64)>,
     pub(crate) step_budget_per_tick: u64,
     pub(crate) max_active_runs: usize,
     pub(crate) policy: vb_core::policy::RuntimePolicy,

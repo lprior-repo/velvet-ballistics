@@ -26,6 +26,7 @@ impl crate::shard::Shard {
         self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_completed();
+        self.release_state_quota(run)?;
         self.add_executed_step_delta(run, state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
         self.release_frame(state.frame);
@@ -47,6 +48,7 @@ impl crate::shard::Shard {
         self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
+        self.release_state_quota(run)?;
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.release_frame(state.frame);
         self.runtime_state_remove(run);

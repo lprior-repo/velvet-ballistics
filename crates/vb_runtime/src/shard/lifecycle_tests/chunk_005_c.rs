@@ -665,7 +665,7 @@ fn drive_state_within_run_time_limit_finishes() {
 }
 
 #[test]
-fn drive_state_without_recorded_start_records_wall_clock_on_first_drive() {
+fn drive_state_without_recorded_start_fails_closed() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(746);
     let digest = workflow.digest();
@@ -678,11 +678,17 @@ fn drive_state_without_recorded_start_records_wall_clock_on_first_drive() {
         vb_core::policy::RuntimePolicy::Relaxed,
         run_time_budget(1000),
     ));
+    state.run_started_millis = None;
     assert_eq!(state.run_started_millis, None);
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
-    assert_ne!(state.run_started_millis, None);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(
+            EngineError::InternalInvariantViolation { .. }
+        ))
+    ));
+    assert_eq!(state.run_started_millis, None);
 }
 
 #[test]
@@ -1316,6 +1322,77 @@ fn empty_evidence_await_timer_charges_ask_scheduled_bytes() -> Result<(), String
         charged > 0,
         "rescheduled ask must charge its journal event"
     );
+    Ok(())
+}
+
+#[test]
+fn tenant_quota_charges_on_submit_and_releases_on_cancel() -> Result<(), String> {
+    let workflow = suspended_workflow().ok_or_else(|| "suspended workflow".to_string())?;
+    let tenant = vb_core::ids::TenantId::new(7);
+    let run = RunId::new(8_001);
+    let mut shard = Shard::new(small_config());
+    shard.set_resource_quotas(u64::MAX, u64::MAX);
+    shard
+        .handle_submit_with_inputs_contracts_and_tenant(
+            run,
+            workflow,
+            &[(SlotIdx::ZERO, SlotValue::I64(0))],
+            crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            &crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+            tenant,
+        )
+        .map_err(|error| error.to_string())?;
+    assert!(shard.run_state_contains(run));
+    let cost = shard
+        .run_state_get(run)
+        .and_then(|state| state.admission.as_ref())
+        .and_then(|admission| admission.budget())
+        .map(|budget| budget.max_cost_units)
+        .ok_or_else(|| "admitted budget".to_string())?;
+    assert!(cost > 0);
+    assert_eq!(shard.usage_snapshot().tenant_cost_usage(tenant), Ok(cost));
+    assert_eq!(shard.global_cost_usage(), cost);
+    shard
+        .handle_cancel(run, Some(String::from("test")))
+        .map_err(|error| error.to_string())?;
+    assert_eq!(shard.usage_snapshot().tenant_cost_usage(tenant), Ok(0));
+    assert_eq!(shard.global_cost_usage(), 0);
+    Ok(())
+}
+
+#[test]
+fn tenant_quota_rejects_limit_plus_one_without_mutation() -> Result<(), String> {
+    let tenant = vb_core::ids::TenantId::new(8);
+    let run = RunId::new(8_002);
+    let mut shard = Shard::new(small_config());
+    shard.set_resource_quotas(0, u64::MAX);
+    let result = shard.charge_admission_quota(run, Some(tenant), 1);
+    assert!(matches!(
+        result,
+        Err(RuntimeError::ResourceQuotaExceeded {
+            resource: "tenant_quota_cost_units",
+            ..
+        })
+    ));
+    assert_eq!(shard.usage_snapshot().tenant_cost_usage(tenant), Ok(0));
+    assert_eq!(shard.global_cost_usage(), 0);
+    Ok(())
+}
+
+#[test]
+fn global_quota_rejects_limit_plus_one() -> Result<(), String> {
+    let run = RunId::new(8_003);
+    let mut shard = Shard::new(small_config());
+    shard.set_resource_quotas(u64::MAX, 0);
+    let result = shard.charge_admission_quota(run, None, 1);
+    assert!(matches!(
+        result,
+        Err(RuntimeError::ResourceQuotaExceeded {
+            resource: "global_quota_cost_units",
+            ..
+        })
+    ));
+    assert_eq!(shard.global_cost_usage(), 0);
     Ok(())
 }
 

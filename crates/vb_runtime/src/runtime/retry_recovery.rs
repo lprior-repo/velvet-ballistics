@@ -110,6 +110,9 @@ impl Runtime {
                 restored_store: None,
                 open_gates,
                 admission: prefix.admission.clone(),
+                run_started_millis: crate::recovery::hydrate_run_budget_origin(&prefix.events),
+                recovered_action_attempts: None,
+                recovered_journal_bytes_written: None,
             }),
         )))
     }

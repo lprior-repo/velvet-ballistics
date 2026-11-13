@@ -136,6 +136,9 @@ pub struct ResumableRecoveryProduct {
     /// the run retained owned inputs. Rebuilt into the shard `RunState`
     /// instead of the default empty store.
     restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+    run_started_millis: Option<u64>,
+    recovered_action_attempts: Option<Box<[u16]>>,
+    recovered_journal_bytes_written: Option<u64>,
 }
 
 impl ResumableRecoveryProduct {
@@ -154,6 +157,9 @@ impl ResumableRecoveryProduct {
             open_gates: parts.open_gates,
             admission: parts.admission,
             restored_store: parts.restored_store,
+            run_started_millis: parts.run_started_millis,
+            recovered_action_attempts: parts.recovered_action_attempts,
+            recovered_journal_bytes_written: parts.recovered_journal_bytes_written,
         }
     }
 
@@ -185,7 +191,12 @@ impl ResumableRecoveryProduct {
         )
         .with_open_gates(self.open_gates)
         .with_validated_admission(self.admission)
-        .with_restored_store(self.restored_store);
+        .with_restored_store(self.restored_store)
+        .with_recovered_accounting(
+            self.run_started_millis,
+            self.recovered_action_attempts,
+            self.recovered_journal_bytes_written,
+        );
         match self.retry_checkpoint {
             Some(checkpoint) => command.with_retry_checkpoint(checkpoint),
             None => command,
@@ -211,4 +222,7 @@ pub(crate) struct ResumableRecoveryParts {
     /// Restored cold value store for arena-handle resolution, present when
     /// the run retained owned inputs.
     pub(crate) restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+    pub(crate) run_started_millis: Option<u64>,
+    pub(crate) recovered_action_attempts: Option<Box<[u16]>>,
+    pub(crate) recovered_journal_bytes_written: Option<u64>,
 }

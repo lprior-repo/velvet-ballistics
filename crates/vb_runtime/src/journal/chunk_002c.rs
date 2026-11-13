@@ -8,6 +8,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::CompatibilityDecision { .. }
             | RuntimeJournalEvent::TenantAdmission { .. }
+            | RuntimeJournalEvent::RunBudgetOrigin { .. }
             | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }

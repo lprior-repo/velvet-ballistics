@@ -27,6 +27,17 @@ pub enum ShardCommand {
         /// Capabilities granted to this run.
         caps: CapabilitySet,
     },
+    /// Submit a tenant-scoped run for execution.
+    SubmitTenantScoped {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Tenant charged for this run's admitted cost.
+        tenant: vb_core::ids::TenantId,
+    },
     /// Submit a new run with runtime input slots already mapped by the caller.
     SubmitWithInputs {
         /// Run identifier chosen by the caller.
@@ -186,9 +197,14 @@ impl ShardCommand {
     /// than as a direct field; `Shutdown` carries no run.
     #[must_use]
     pub fn run_id(&self) -> Option<RunId> {
+        self.direct_run_id().or_else(|| self.boundary_run_id())
+    }
+
+    fn direct_run_id(&self) -> Option<RunId> {
         match self {
             Self::ActivateOwnedSubmission { run, .. }
             | Self::Submit { run, .. }
+            | Self::SubmitTenantScoped { run, .. }
             | Self::SubmitPrePersisted { run, .. }
             | Self::SubmitWithInputs { run, .. }
             | Self::SubmitWithContracts { run, .. }
@@ -199,6 +215,12 @@ impl ShardCommand {
             | Self::Cancel { run, .. }
             | Self::Kill { run, .. }
             | Self::Inspect { run, .. } => Some(*run),
+            _ => None,
+        }
+    }
+
+    fn boundary_run_id(&self) -> Option<RunId> {
+        match self {
             Self::ActionCompleted { ticket, .. }
             | Self::RegisteredActionCompleted { ticket, .. }
             | Self::ActionFailed { ticket, .. }
@@ -208,6 +230,7 @@ impl ShardCommand {
             Self::OpenGate { gate, .. } => Some(gate.run),
             Self::SubmitGateDecision { run, .. } | Self::EscalateGate { run, .. } => Some(*run),
             Self::Shutdown => None,
+            _ => None,
         }
     }
 }

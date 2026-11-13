@@ -89,7 +89,7 @@ fn compat_gate_blocks_submit_with_journaled_replay_only_decision() {
         Some(super::super::RuntimeState::Initial)
     );
     let events = journal.events_for_run(run).expect("read journal events");
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 4);
 }
 
 #[test]

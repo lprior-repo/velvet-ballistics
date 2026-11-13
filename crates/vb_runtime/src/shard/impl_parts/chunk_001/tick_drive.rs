@@ -102,6 +102,12 @@ impl Shard {
                 workflow,
                 caps,
             } => self.handle_submit(run, workflow, caps)?,
+            ShardCommand::SubmitTenantScoped {
+                run,
+                workflow,
+                caps,
+                tenant,
+            } => self.handle_submit_tenant_scoped(run, workflow, caps, tenant)?,
             ShardCommand::SubmitPrePersisted {
                 run,
                 workflow,

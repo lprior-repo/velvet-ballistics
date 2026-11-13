@@ -11,7 +11,7 @@ impl Shard {
             &[],
             caps,
             &[],
-            true,
+            SubmitOptions::persist(None),
         )
     }
 
@@ -27,7 +27,7 @@ impl Shard {
             &[],
             caps,
             &[],
-            false,
+            SubmitOptions::pre_persisted(),
         )
     }
 
@@ -44,7 +44,7 @@ impl Shard {
             inputs,
             caps,
             &[],
-            true,
+            SubmitOptions::persist(None),
         )
     }
 
@@ -67,7 +67,44 @@ impl Shard {
             &[],
             caps,
             action_contracts,
-            true,
+            SubmitOptions::persist(None),
+        )
+    }
+
+    pub(crate) fn handle_submit_tenant_scoped(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+        tenant: vb_core::ids::TenantId,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            &[],
+            SubmitOptions::persist(Some(tenant)),
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn handle_submit_with_inputs_contracts_and_tenant(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+        tenant: vb_core::ids::TenantId,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            inputs,
+            caps,
+            action_contracts,
+            SubmitOptions::persist(Some(tenant)),
         )
     }
 
@@ -91,7 +128,7 @@ impl Shard {
             inputs,
             caps,
             action_contracts,
-            true,
+            SubmitOptions::persist(None),
         )
     }
 }

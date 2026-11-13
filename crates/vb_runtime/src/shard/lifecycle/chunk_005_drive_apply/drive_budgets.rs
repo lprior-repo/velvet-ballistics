@@ -45,8 +45,11 @@ impl Shard {
         let started = match state.run_started_millis {
             Some(started) => started,
             None => {
-                state.run_started_millis = Some(now);
-                now
+                return Err(crate::engine::types::RuntimeEngineError::Core(
+                    vb_core::engine::EngineError::InternalInvariantViolation {
+                        reason: "budget_origin_missing".into(),
+                    },
+                ));
             }
         };
         let Ok(lifetime) = vb_core::budget::RunLifetimeBudget::from_budget(started, &budget) else {
@@ -77,7 +80,9 @@ impl Shard {
         };
         let expired = self.runs.iter().find_map(|(&run, state)| {
             let budget = state.admission.as_ref()?.budget()?;
-            let started = state.run_started_millis?;
+            let Some(started) = state.run_started_millis else {
+                return Some(run);
+            };
             match vb_core::budget::RunLifetimeBudget::from_budget(started, &budget) {
                 Ok(lifetime) if !lifetime.is_expired(now) => None,
                 _ => Some(run),
@@ -89,10 +94,12 @@ impl Shard {
         let state = self.take_run_state(run)?;
         match self.fail_run_state(run, state)? {
             crate::shard::transitions::TransitionOutcome::Applied => Ok(()),
-            crate::shard::transitions::TransitionOutcome::JournalBudgetExceeded(state) => {
-                self.run_state_insert(run, *state)?;
-                Ok(())
-            }
+            crate::shard::transitions::TransitionOutcome::JournalBudgetExceeded(state) => self
+                .fail_run_on_journal_budget(run, *state, Vec::new())
+                .map_err(|failure| match failure {
+                    crate::shard::lifecycle::DriveApplyFailure::BeforeCommit(error)
+                    | crate::shard::lifecycle::DriveApplyFailure::AfterCommit(error) => error,
+                }),
         }
     }
 

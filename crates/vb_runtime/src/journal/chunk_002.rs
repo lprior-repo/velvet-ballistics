@@ -158,6 +158,14 @@ impl StorageRuntimeJournal {
                 tenant,
                 cost_units,
             })),
+            RuntimeJournalEvent::RunBudgetOrigin {
+                run,
+                started_millis,
+            } => Ok(Some(JournalEvent::RunBudgetOriginEvent {
+                run,
+                seq,
+                started_millis,
+            })),
             RuntimeJournalEvent::RunFailed { run, attempt } => {
                 Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
             }

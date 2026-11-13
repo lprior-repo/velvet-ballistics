@@ -1,3 +1,26 @@
+/// Submission header options shared by every submit wrapper.
+#[derive(Debug, Clone, Copy)]
+struct SubmitOptions {
+    tenant: Option<vb_core::ids::TenantId>,
+    persist_header: bool,
+}
+
+impl SubmitOptions {
+    const fn persist(tenant: Option<vb_core::ids::TenantId>) -> Self {
+        Self {
+            tenant,
+            persist_header: true,
+        }
+    }
+
+    const fn pre_persisted() -> Self {
+        Self {
+            tenant: None,
+            persist_header: false,
+        }
+    }
+}
+
 impl Shard {
     fn handle_submit_with_inputs_contracts_and_header_mode(
         &mut self,
@@ -6,7 +29,7 @@ impl Shard {
         inputs: &[(SlotIdx, SlotValue)],
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
-        persist_header: bool,
+        options: SubmitOptions,
     ) -> RuntimeResult<()> {
         if self.run_state_contains(run) {
             return Err(RuntimeError::RunAlreadyExists);
@@ -24,10 +47,18 @@ impl Shard {
             vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
         }
         let digest = workflow.digest();
-        let run_started_millis = crate::shard::helpers::wall_clock_millis_since_epoch();
+        let run_started_millis = crate::shard::helpers::wall_clock_millis_since_epoch()
+            .ok_or_else(|| RuntimeError::Core {
+                source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+                    reason: "wall_clock_unavailable".into(),
+                }),
+            })?;
         let admission = self
             .build_admission_with_budget(run, &workflow, caps)?
-            .map(|admission| admission.with_run_started_millis(run_started_millis));
+            .map(|admission| match options.tenant {
+                Some(tenant) => admission.with_tenant(tenant),
+                None => admission,
+            });
         execution_binding::validate(
             self.artifact_store.as_ref(),
             self.policy,
@@ -45,7 +76,7 @@ impl Shard {
             .as_ref()
             .and_then(|admission| crate::journal::tenant_admission_event(admission, run));
         let mut header_bytes: u64 = 0;
-        if let (true, Some(admission)) = (persist_header, admission.as_ref()) {
+        if let (true, Some(admission)) = (options.persist_header, admission.as_ref()) {
             let mut events = vec![
                 RuntimeJournalEvent::RunSubmitted {
                     run,
@@ -61,6 +92,12 @@ impl Shard {
             if let Some(event) = tenant_admission {
                 events.push(event);
             }
+            if admission.budget().is_some() {
+                events.push(RuntimeJournalEvent::RunBudgetOrigin {
+                    run,
+                    started_millis: run_started_millis,
+                });
+            }
             header_bytes = Self::journal_batch_bytes(&events)?;
             let header_result = self.append_journal_event_batch(&events);
             if let Err(error) = header_result {
@@ -68,7 +105,7 @@ impl Shard {
                 return Err(RuntimeError::admission_header_persistence_failed(error));
             }
         } else {
-            if persist_header {
+            if options.persist_header {
                 let event = RuntimeJournalEvent::RunSubmitted {
                     run,
                     workflow: digest,
@@ -99,9 +136,24 @@ impl Shard {
                         .ok_or(RuntimeError::EncodeFailed)?;
                     self.append_admission_header_journal_event(run, event)?;
                 }
+                if admission.budget().is_some() {
+                    let event = RuntimeJournalEvent::RunBudgetOrigin {
+                        run,
+                        started_millis: run_started_millis,
+                    };
+                    header_bytes = header_bytes
+                        .checked_add(Self::journal_event_bytes(&event)?)
+                        .ok_or(RuntimeError::EncodeFailed)?;
+                    self.append_admission_header_journal_event(run, event)?;
+                }
             }
         }
         self.counters.inc_submitted();
+        let quota_charge = admission.as_ref().and_then(|admission| {
+            admission
+                .budget()
+                .map(|budget| (admission.tenant(), budget.max_cost_units))
+        });
         let frame_step_count = frame.step_count();
         let state = RunState {
             registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
@@ -111,7 +163,7 @@ impl Shard {
             store,
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
-            run_started_millis,
+            run_started_millis: Some(run_started_millis),
             collect_states: CollectStates::new(),
             journal_bytes_written: header_bytes,
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
@@ -125,10 +177,22 @@ impl Shard {
             self.discard_journal_sequence(run);
             return Err(error);
         }
+        if let Some((tenant, cost_units)) = quota_charge
+            && let Err(error) = self.charge_admission_quota(run, tenant, cost_units)
+        {
+            if let Some(state) = self.run_state_remove(run) {
+                self.release_frame(state.frame);
+            }
+            self.discard_journal_sequence(run);
+            return Err(error);
+        }
         match self.drive_run(run) {
             Ok(()) => Ok(()),
             Err(error) => {
                 if !self.run_state_contains(run) {
+                    if let Some((_tenant, _cost_units)) = quota_charge {
+                        self.release_admission_quota(run)?;
+                    }
                     self.discard_journal_sequence(run);
                 }
                 Err(error)
