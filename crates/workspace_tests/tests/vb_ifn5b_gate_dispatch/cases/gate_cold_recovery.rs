@@ -157,18 +157,24 @@ fn cold_resume_reissues_bound_authority_for_pending_registered_do() -> TestResul
         .map_err(|error| format!("cold receipt reconciliation: {error:?}"))?;
     assert_eq!(receipt, live_receipt);
     assert_eq!(receipt.value(), 42);
+    runtime.tick_all()?;
     assert_eq!(adapter.effect_count()?, 1);
     assert_eq!(adapter.value(scope())?, Some(42));
-    runtime.tick_all()?;
-    assert!(journal.events_for_run_full(run)?.iter().any(|event| matches!(
-        event,
-        JournalEvent::ActionCompletedEnvelope { ticket: completed, .. } if *completed == ticket
-    )));
+    let events = journal.events_for_run_full(run)?;
+    super::assertions::assert_action_completed_envelope(
+        &events,
+        run,
+        ticket,
+        SlotIdx::new(2),
+        SlotValue::I64(42),
+        &artifact,
+        action,
+    )?;
     assert_eq!(adapter.effect_count()?, 1);
     Ok(())
 }
 
-fn matching_approval(
+pub(super) fn matching_approval(
     journal: &FjallJournal,
     run: RunId,
     expected: GateDigest,
@@ -209,7 +215,7 @@ fn altered_input_receipt(
     Ok(altered)
 }
 
-fn scoped_params(
+pub(super) fn scoped_params(
     action: ActionId,
     receipt: GateDigest,
     break_glass: bool,
@@ -231,7 +237,7 @@ fn scoped_params(
     })
 }
 
-fn dispatch_context(
+pub(super) fn dispatch_context(
     artifact: &vb_storage::AcceptedArtifact,
     ticket: vb_core::ActionTicket,
 ) -> Result<vb_core::GrantDispatchContext, Box<dyn std::error::Error>> {

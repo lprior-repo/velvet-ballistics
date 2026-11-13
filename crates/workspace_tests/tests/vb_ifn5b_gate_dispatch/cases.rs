@@ -264,9 +264,15 @@ pub(super) use assertions::assert_nonapproval_refusals;
 mod gate_bound;
 #[path = "cases/gate_break_glass.rs"]
 mod gate_break_glass;
+#[path = "cases/gate_cold_missing_receipt.rs"]
+mod gate_cold_missing_receipt;
 #[path = "cases/gate_cold_recovery.rs"]
 mod gate_cold_recovery;
+#[path = "cases/gate_nonapproval_consumer.rs"]
+mod gate_nonapproval_consumer;
 #[path = "cases/gate_reconcile.rs"]
 mod gate_reconcile;
+#[path = "cases/gate_ticket_boundaries.rs"]
+mod gate_ticket_boundaries;
 #[path = "cases/owned_submission.rs"]
 mod owned_submission;

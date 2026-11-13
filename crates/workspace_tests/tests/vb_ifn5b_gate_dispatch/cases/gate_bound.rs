@@ -245,7 +245,6 @@ fn gate_dispatch_requires_immutable_origin_and_durable_receipt() -> TestResult {
         .into());
     }
     super::assert_no_effect(&adapter, &mut runtime, &journal, &events_before)?;
-
     assert_eq!(
         bound.authority(),
         vb_core::ScopedGrantAuthority::BoundGate {
