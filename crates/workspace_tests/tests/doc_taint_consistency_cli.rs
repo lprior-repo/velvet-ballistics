@@ -115,8 +115,7 @@ fn missing_argument_prints_usage_exit2() {
     let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
     let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
     assert_eq!(stdout, "");
-    assert!(stderr.starts_with("usage:"));
-    assert!(stderr.ends_with('\n'));
+    assert_eq!(stderr, "usage: check-doc-taint-consistency velvet-ballistics-MASTER.md\n");
 }
 
 #[test]
@@ -127,8 +126,7 @@ fn too_many_arguments_prints_usage_exit2() {
     let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
     let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
     assert_eq!(stdout, "");
-    assert!(stderr.starts_with("usage:"));
-    assert!(stderr.ends_with('\n'));
+    assert_eq!(stderr, "usage: check-doc-taint-consistency velvet-ballistics-MASTER.md\n");
 }
 
 // === File validation ===
@@ -512,6 +510,7 @@ fn multiple_distinct_findings_all_reported() {
             "line 2: BuildObject stale taint wording: always Clean",
             "unknown taint term",
             "stale finish signal missing taint",
+            "missing finish signal taint wording",
         ],
     );
 }
@@ -761,7 +760,7 @@ fn realistic_document_with_mixed_issues() {
 #[test]
 fn realistic_document_with_stale_wording() {
     assert_failure(
-        "Velvet Ballistics Taint Model\n\nEvalExpr produces Always Clean output.\nBuildObject does not join field taints.\n\nOn finish, emit Finished(SlotValue).",
+        "Velvet Ballistics Taint Model\n\nEvalExpr produces Always Clean output.\nBuildObject does no join of field taints.\n\nOn finish, emit Finished(SlotValue). Finished(SlotValue, Taint) is emitted.",
         &[
             "line 3: EvalExpr stale taint wording: Always Clean",
             "line 4: BuildObject stale taint wording: no join of field taints",
