@@ -276,6 +276,8 @@ mod gate_cold_recovery;
 mod gate_nonapproval_consumer;
 #[path = "cases/gate_opening_metadata.rs"]
 mod gate_opening_metadata;
+#[path = "cases/gate_policy_tamper.rs"]
+mod gate_policy_tamper;
 #[path = "cases/gate_reconcile.rs"]
 mod gate_reconcile;
 #[path = "cases/gate_retry_ticket.rs"]
