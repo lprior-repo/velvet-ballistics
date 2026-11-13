@@ -8,8 +8,8 @@
 use vb_core::action_pack::CapabilityScopeSpec;
 use vb_core::manual_gate::{ApproverId, GateDigest};
 use vb_core::{
-    ActionTicket, Capability, GrantDispatchContext, GrantId, GrantTimeMs, RevocationEpoch,
-    ScopedGrant, ScopedGrantParams,
+    ActionTicket, Capability, GrantAdmissionMode, GrantDispatchContext, GrantId, GrantTimeMs,
+    RevocationEpoch, ScopedGrant, ScopedGrantParams,
 };
 use vb_storage::AcceptedArtifact;
 use vb_storage::executor::{ExecutorCatalog, RegisterGrant};
@@ -31,6 +31,7 @@ pub(crate) fn issue_scoped(
         subject: subject.clone(),
         capability: Capability::new("velvet.register.write".into(), ticket.action),
         scope,
+        mode: GrantAdmissionMode::StrictExact,
         issued_at: GrantTimeMs::new(0),
         expires_at: GrantTimeMs::new(u64::MAX),
         delegable: false,
@@ -49,6 +50,7 @@ pub(crate) fn issue_scoped(
         subject,
         GrantTimeMs::new(1_000_000),
         RevocationEpoch::new(0),
+        false,
     );
     Ok((scoped, dispatch))
 }

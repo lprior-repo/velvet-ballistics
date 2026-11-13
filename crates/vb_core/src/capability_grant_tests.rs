@@ -1,4 +1,4 @@
-//! Unit tests for the scoped grant lifecycle (`strict_exact` wedge).
+//! Unit tests for the scoped grant lifecycle (MASTER §77.10 modes).
 
 use super::*;
 use crate::action::compute_action_idempotency_key;
@@ -21,6 +21,10 @@ fn scope() -> CapabilityScopeSpec {
         namespace: 15,
         key: 29,
     }
+}
+
+fn scope_at(key: u64) -> CapabilityScopeSpec {
+    CapabilityScopeSpec { namespace: 15, key }
 }
 
 fn capability() -> Capability {
@@ -55,6 +59,7 @@ fn params() -> ScopedGrantParams {
         subject: subject(),
         capability: capability(),
         scope: scope(),
+        mode: GrantAdmissionMode::StrictExact,
         issued_at: GrantTimeMs::new(1_000),
         expires_at: GrantTimeMs::new(2_000),
         delegable: false,
@@ -79,6 +84,7 @@ fn ctx() -> GrantDispatchContext {
         subject(),
         GrantTimeMs::new(1_500),
         RevocationEpoch::new(1),
+        false,
     )
 }
 
@@ -287,4 +293,116 @@ fn grant_postcard_roundtrip_is_stable() {
     let bytes = postcard::to_allocvec(&grant).unwrap();
     let decoded: ScopedGrant = postcard::from_bytes(&bytes).unwrap();
     assert_eq!(decoded, grant);
+}
+
+fn grant_with_mode(mode: GrantAdmissionMode) -> ScopedGrant {
+    let mut issued = params();
+    issued.mode = mode;
+    ScopedGrant::issue(issued, artifact(), ticket()).unwrap()
+}
+
+#[test]
+fn grant_scope_admits_matrix_covers_all_modes() {
+    let a = scope_at(29);
+    let b = scope_at(30);
+    let cases: [(
+        &[CapabilityScopeSpec],
+        &[CapabilityScopeSpec],
+        bool,
+        bool,
+        bool,
+        bool,
+    ); 10] = [
+        (&[a], &[a], false, true, true, true),
+        (&[a], &[a], true, true, true, true),
+        (&[b, a], &[a, b], false, true, true, true),
+        (&[a], &[a, b], false, false, false, false),
+        (&[a], &[a, b], true, false, true, false),
+        (&[a, b], &[a], false, false, false, true),
+        (&[a, b], &[a], true, false, false, true),
+        (&[a], &[b], false, false, false, false),
+        (&[], &[a], false, false, false, false),
+        (&[], &[a], true, false, true, false),
+    ];
+    for (granted, required, suspend, exact, narrow, prod) in cases {
+        assert_eq!(
+            super::verify::grant_scope_admits(
+                GrantAdmissionMode::StrictExact,
+                granted,
+                required,
+                suspend
+            ),
+            exact
+        );
+        assert_eq!(
+            super::verify::grant_scope_admits(
+                GrantAdmissionMode::StrictNarrow,
+                granted,
+                required,
+                suspend
+            ),
+            narrow
+        );
+        assert_eq!(
+            super::verify::grant_scope_admits(
+                GrantAdmissionMode::ProdDefault,
+                granted,
+                required,
+                suspend
+            ),
+            prod
+        );
+    }
+}
+
+#[test]
+fn issue_records_strict_narrow_and_prod_default_modes() {
+    let narrow = grant_with_mode(GrantAdmissionMode::StrictNarrow);
+    assert!(matches!(narrow.mode, GrantAdmissionMode::StrictNarrow));
+    let bytes = postcard::to_allocvec(&narrow).unwrap();
+    let decoded: ScopedGrant = postcard::from_bytes(&bytes).unwrap();
+    assert!(matches!(decoded.mode, GrantAdmissionMode::StrictNarrow));
+
+    let prod = grant_with_mode(GrantAdmissionMode::ProdDefault);
+    assert!(matches!(prod.mode, GrantAdmissionMode::ProdDefault));
+}
+
+#[test]
+fn execute_admits_equal_scope_under_narrow_and_prod_default() {
+    let narrow = grant_with_mode(GrantAdmissionMode::StrictNarrow);
+    assert!(narrow.verify_for_execute(&ctx(), &[]).is_ok());
+
+    let prod = grant_with_mode(GrantAdmissionMode::ProdDefault);
+    assert!(prod.verify_for_execute(&ctx(), &[]).is_ok());
+}
+
+#[test]
+fn execute_rejects_mismatched_scope_under_narrow_with_or_without_suspend() {
+    let narrow = grant_with_mode(GrantAdmissionMode::StrictNarrow);
+
+    let mut declared_other = ctx();
+    declared_other.declared_scope = scope_at(30);
+    assert_eq!(
+        narrow.verify_for_execute(&declared_other, &[]),
+        Err(GrantError::ScopeMismatch)
+    );
+
+    let mut suspending = ctx();
+    suspending.declared_scope = scope_at(30);
+    suspending.can_suspend_at_missing_grant_gates = true;
+    assert_eq!(
+        narrow.verify_for_execute(&suspending, &[]),
+        Err(GrantError::ScopeMismatch)
+    );
+}
+
+#[test]
+fn execute_rejects_mismatched_scope_under_prod_default() {
+    let prod = grant_with_mode(GrantAdmissionMode::ProdDefault);
+    let mut declared_other = ctx();
+    declared_other.declared_scope = scope_at(30);
+    assert_eq!(
+        prod.verify_for_execute(&declared_other, &[]),
+        Err(GrantError::ScopeMismatch)
+    );
 }
