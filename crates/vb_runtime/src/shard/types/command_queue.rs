@@ -18,7 +18,7 @@ pub const fn is_valid_command_queue_capacity(capacity: usize) -> bool {
 /// (`RuntimeError::QueueFull`). This wrapper establishes the `ShardCommand` queue
 /// as a first-class domain boundary rather than a raw field.
 pub struct ShardCommandQueue {
-    inner: ArrayQueue<ShardCommand>,
+    inner: ArrayQueue<QueuedShardCommand>,
     /// Stored capacity to satisfy POST-001 and INV-001 invariants.
     capacity: usize,
     /// Pending command count per run, keyed by the run derived from each
@@ -33,6 +33,9 @@ pub struct ShardCommandQueue {
     /// the map is bounded by the number of distinct runs with pending
     /// commands.
     admitted_depth: std::sync::Mutex<IndexMap<RunId, u32>>,
+    /// Pending submit count per run; only the first pending submit carries a
+    /// quota reservation, preserving duplicate-run failure at dequeue time.
+    pending_submissions: std::sync::Mutex<IndexMap<RunId, u32>>,
 }
 
 impl ShardCommandQueue {
@@ -53,6 +56,7 @@ impl ShardCommandQueue {
             capacity,
             pending: std::sync::Mutex::new(IndexMap::new()),
             admitted_depth: std::sync::Mutex::new(IndexMap::new()),
+            pending_submissions: std::sync::Mutex::new(IndexMap::new()),
         })
     }
 
@@ -68,12 +72,13 @@ impl ShardCommandQueue {
             capacity: config.command_queue_capacity,
             pending: std::sync::Mutex::new(IndexMap::new()),
             admitted_depth: std::sync::Mutex::new(IndexMap::new()),
+            pending_submissions: std::sync::Mutex::new(IndexMap::new()),
         }
     }
 
-    fn lock_or_recover(
-        pending: &std::sync::Mutex<IndexMap<RunId, u32>>,
-    ) -> std::sync::MutexGuard<'_, IndexMap<RunId, u32>> {
+    fn lock_or_recover<T>(
+        pending: &std::sync::Mutex<IndexMap<RunId, T>>,
+    ) -> std::sync::MutexGuard<'_, IndexMap<RunId, T>> {
         match pending.lock() {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
@@ -102,60 +107,7 @@ impl ShardCommandQueue {
     /// run already has `limit` commands pending, or
     /// `RuntimeError::QueueFull` when the queue is at capacity.
     pub fn enqueue_with_limit(&self, cmd: ShardCommand, limit: Option<u32>) -> RuntimeResult<()> {
-        let run = cmd.run_id();
-        let submit_depth = match &cmd {
-            ShardCommand::Submit { run, workflow, .. }
-            | ShardCommand::SubmitPrePersisted { run, workflow, .. }
-            | ShardCommand::SubmitWithInputs { run, workflow, .. }
-            | ShardCommand::SubmitWithContracts { run, workflow, .. }
-            | ShardCommand::SubmitWithInputsAndContracts { run, workflow, .. } => {
-                vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
-                    .ok()
-                    .map(|budget| (*run, budget.max_queue_depth))
-            }
-            _ => None,
-        };
-        let mut pending = Self::lock_or_recover(&self.pending);
-        let mut admitted = Self::lock_or_recover(&self.admitted_depth);
-        let recorded = run.and_then(|run| admitted.get(&run).copied());
-        let effective = limit
-            .or(recorded)
-            .or_else(|| submit_depth.map(|(_, depth)| depth));
-        let current = run.and_then(|run| pending.get(&run).copied()).unwrap_or(0);
-        if let (Some(run), Some(limit)) = (run, effective)
-            && current >= limit
-        {
-            return Err(crate::RuntimeError::PerRunQueueDepthExceeded {
-                run,
-                pending: current,
-                limit,
-            });
-        }
-        let next = match run {
-            Some(run) => Some((
-                run,
-                current
-                    .checked_add(1)
-                    .ok_or(crate::RuntimeError::PerRunQueueDepthExceeded {
-                        run,
-                        pending: current,
-                        limit: current,
-                    })?,
-            )),
-            None => None,
-        };
-        match self.inner.push(cmd) {
-            Ok(()) => {
-                if let Some((run, next)) = next {
-                    let _previous = pending.insert(run, next);
-                }
-                if let Some((run, depth)) = submit_depth {
-                    let _previous = admitted.insert(run, depth);
-                }
-                Ok(())
-            }
-            Err(_) => Err(crate::RuntimeError::QueueFull),
-        }
+        self.enqueue_with_reservation(cmd, limit, None, None)
     }
 
     /// Returns the number of commands currently pending for a run.
@@ -172,7 +124,12 @@ impl ShardCommandQueue {
     /// Returns `Some(cmd)` in FIFO order, or `None` if the queue is empty.
     /// A dequeued command decrements its run's pending count.
     pub fn pop(&self) -> Option<ShardCommand> {
-        let cmd = self.inner.pop()?;
+        self.pop_queued().map(|queued| queued.command)
+    }
+
+    pub(crate) fn pop_queued(&self) -> Option<QueuedShardCommand> {
+        let queued = self.inner.pop()?;
+        let cmd = &queued.command;
         if let Some(run) = cmd.run_id() {
             let mut pending = Self::lock_or_recover(&self.pending);
             match pending.get(&run).copied() {
@@ -189,7 +146,21 @@ impl ShardCommandQueue {
                 None => {}
             }
         }
-        Some(cmd)
+        if let Some(run) = pending_submit_run(cmd) {
+            let mut submissions = Self::lock_or_recover(&self.pending_submissions);
+            match submissions.get(&run).copied() {
+                Some(1) => {
+                    let _removed = submissions.swap_remove(&run);
+                }
+                Some(count) => {
+                    if let Some(next) = count.checked_sub(1) {
+                        let _previous = submissions.insert(run, next);
+                    }
+                }
+                None => {}
+            }
+        }
+        Some(queued)
     }
 
     /// Returns the number of commands currently in the queue.
@@ -228,5 +199,27 @@ impl ShardCommandQueue {
     #[must_use]
     pub const fn bounded_capacity() -> usize {
         MAX_COMMAND_QUEUE_CAPACITY
+    }
+}
+
+fn pending_submit_run(command: &ShardCommand) -> Option<RunId> {
+    match command {
+        ShardCommand::Submit { run, .. }
+        | ShardCommand::SubmitWithLifetimeCap { run, .. }
+        | ShardCommand::SubmitTenantScoped { run, .. }
+        | ShardCommand::SubmitTenantWithInputsAndContracts { run, .. }
+        | ShardCommand::SubmitPrePersisted { run, .. }
+        | ShardCommand::SubmitWithInputs { run, .. }
+        | ShardCommand::SubmitWithContracts { run, .. }
+        | ShardCommand::SubmitWithInputsAndContracts { run, .. } => Some(*run),
+        ShardCommand::Recover { command }
+            if matches!(
+                &command.admission,
+                RecoveredAdmissionKind::Historical(admission) if admission.budget().is_some()
+            ) =>
+        {
+            Some(command.run)
+        }
+        _ => None,
     }
 }

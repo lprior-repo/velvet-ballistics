@@ -34,6 +34,7 @@ pub struct ContinuationAuthority {
     pub(super) input_digest: WorkflowDigest,
     pub(super) admission: RunAdmission,
     pub(super) contracts: Box<[vb_core::action::ActionContract]>,
+    pub(super) run_started_millis: Option<u64>,
 }
 
 impl ContinuationAuthority {
@@ -71,7 +72,15 @@ impl ContinuationAuthority {
             input_digest: record.input_digest(),
             admission,
             contracts: artifact.action_contracts.clone(),
+            run_started_millis: None,
         })
+    }
+
+    /// Binds the durable wall-clock origin recovered from the same prefix.
+    #[must_use]
+    pub fn with_run_started_millis(mut self, started_millis: u64) -> Self {
+        self.run_started_millis = Some(started_millis);
+        self
     }
 }
 

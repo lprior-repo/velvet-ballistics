@@ -54,9 +54,9 @@ fn compat_gate_submit_suspended(shard: &mut Shard, run: RunId) {
             run,
             workflow,
             caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
-                ActionId::new(0)
-            ),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
         }),
         Ok(())
@@ -89,7 +89,7 @@ fn compat_gate_blocks_submit_with_journaled_replay_only_decision() {
         Some(super::super::RuntimeState::Initial)
     );
     let events = journal.events_for_run(run).expect("read journal events");
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 4);
 }
 
 #[test]

@@ -17,7 +17,7 @@ use crate::shard::{
     ShardPendingBoundarySnapshot,
 };
 use crate::trace::TraceEvent;
-use crate::{RuntimeError, RuntimeResult};
+use crate::{RuntimeError, RuntimeQuotaUsage, RuntimeResult};
 
 pub mod completion_observation;
 mod owned_activation;
@@ -34,6 +34,7 @@ struct RecoveryPrefixEvidence {
     admission: crate::admission::RunAdmission,
     workflow_digest: WorkflowDigest,
     next_seq: vb_storage::EventSeq,
+    run_started_millis: Option<u64>,
 }
 
 struct RecoveredSeedProductContext {
@@ -207,11 +208,14 @@ pub struct Runtime {
     journal: SharedRuntimeJournal,
     policy: vb_core::policy::RuntimePolicy,
     live_policy: crate::policy::LivePolicy,
+    quota: crate::quota::SharedQuotaLedger,
 }
 
 include!("runtime/construction.rs");
 
 include!("runtime/submission.rs");
+
+include!("runtime/quota_api.rs");
 
 include!("runtime/cancel_recovery.rs");
 

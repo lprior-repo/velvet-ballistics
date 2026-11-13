@@ -184,6 +184,11 @@ pub fn admit_run_with_budget_and_global_quota(
 }
 
 fn validate_requested_budget(budget: &AdmissionBudgetRequest) -> Result<(), AdmissionError> {
+    if budget.requested.max_run_time_seconds == 0 {
+        return Err(AdmissionError::ResourceBudgetInvalidCapacity {
+            resource: "max_run_time_seconds",
+        });
+    }
     validate_aggregate_budget(&budget.requested, &budget.policy).map_err(map_budget_error)?;
     let requested_usage = AggregateResourceUsage::default()
         .try_add_budget(&budget.requested)

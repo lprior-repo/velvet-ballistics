@@ -18,6 +18,17 @@ pub enum ShardCommand {
         /// Capabilities granted to this run.
         caps: CapabilitySet,
     },
+    /// Submit a run with an explicit positive hard lifetime cap.
+    SubmitWithLifetimeCap {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Maximum lifetime admitted for this run.
+        max_run_time_seconds: std::num::NonZeroU64,
+    },
     /// Submit a run whose durable header was already persisted by the runtime shell.
     SubmitPrePersisted {
         /// Run identifier chosen by the caller.
@@ -26,6 +37,32 @@ pub enum ShardCommand {
         workflow: CompiledWorkflow,
         /// Capabilities granted to this run.
         caps: CapabilitySet,
+    },
+    /// Submit a tenant-scoped run for execution.
+    SubmitTenantScoped {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Tenant charged for this run's admitted cost.
+        tenant: vb_core::ids::TenantId,
+    },
+    /// Submit a tenant-scoped run with input slots and validated action contracts.
+    SubmitTenantWithInputsAndContracts {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Initial slot values written before deterministic execution starts.
+        inputs: Box<[(SlotIdx, SlotValue)]>,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Validated action contracts for Do execution.
+        action_contracts: Box<[ActionContract]>,
+        /// Tenant charged for this run's admitted cost.
+        tenant: vb_core::ids::TenantId,
     },
     /// Submit a new run with runtime input slots already mapped by the caller.
     SubmitWithInputs {
@@ -186,9 +223,16 @@ impl ShardCommand {
     /// than as a direct field; `Shutdown` carries no run.
     #[must_use]
     pub fn run_id(&self) -> Option<RunId> {
+        self.direct_run_id().or_else(|| self.boundary_run_id())
+    }
+
+    fn direct_run_id(&self) -> Option<RunId> {
         match self {
             Self::ActivateOwnedSubmission { run, .. }
             | Self::Submit { run, .. }
+            | Self::SubmitWithLifetimeCap { run, .. }
+            | Self::SubmitTenantScoped { run, .. }
+            | Self::SubmitTenantWithInputsAndContracts { run, .. }
             | Self::SubmitPrePersisted { run, .. }
             | Self::SubmitWithInputs { run, .. }
             | Self::SubmitWithContracts { run, .. }
@@ -199,6 +243,12 @@ impl ShardCommand {
             | Self::Cancel { run, .. }
             | Self::Kill { run, .. }
             | Self::Inspect { run, .. } => Some(*run),
+            _ => None,
+        }
+    }
+
+    fn boundary_run_id(&self) -> Option<RunId> {
+        match self {
             Self::ActionCompleted { ticket, .. }
             | Self::RegisteredActionCompleted { ticket, .. }
             | Self::ActionFailed { ticket, .. }
@@ -208,6 +258,7 @@ impl ShardCommand {
             Self::OpenGate { gate, .. } => Some(gate.run),
             Self::SubmitGateDecision { run, .. } | Self::EscalateGate { run, .. } => Some(*run),
             Self::Shutdown => None,
+            _ => None,
         }
     }
 }

@@ -91,15 +91,26 @@ impl Shard {
         run: RunId,
         workflow: &CompiledWorkflow,
         caps: CapabilitySet,
+        lifetime_cap: Option<std::num::NonZeroU64>,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
         let admission = self.build_admission(run, workflow.digest(), caps)?;
         self.validate_secret_presence(workflow)?;
         match admission {
             Some(adm) => {
-                let budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
+                let mut budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
                     .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
                         digest: workflow.digest(),
                     })?;
+                if let Some(cap) = lifetime_cap {
+                    let profile_cap =
+                        vb_core::BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;
+                    if cap.get() > profile_cap {
+                        return Err(RuntimeError::AdmissionArtifactInvalid {
+                            digest: workflow.digest(),
+                        });
+                    }
+                    budget.max_run_time_seconds = cap.get();
+                }
                 Ok(Some(adm.with_attached_budget(budget)))
             }
             None => Ok(None),

@@ -49,6 +49,15 @@ pub enum RuntimeJournalEvent {
         /// Admitted cost units charged to the tenant.
         cost_units: u64,
     },
+    /// Durable wall-clock budget origin for a budgeted run, journaled in
+    /// the same atomic admission-header batch. Recovery restores this
+    /// absolute origin instead of restarting or expiring at epoch zero.
+    RunBudgetOrigin {
+        /// Run identifier.
+        run: RunId,
+        /// Wall-clock origin in milliseconds since the UNIX epoch.
+        started_millis: u64,
+    },
     /// Full typed checkpoint and next-attempt authority for a retry.
     RetryCheckpoint {
         /// Run identifier.

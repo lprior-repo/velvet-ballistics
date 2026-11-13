@@ -262,6 +262,22 @@ fn submit_suspended(
     )
 }
 
+fn submit_suspended_tenant(
+    runtime: &Runtime,
+    run: vb_core::ids::RunId,
+    workflow: vb_core::workflow::CompiledWorkflow,
+    tenant: vb_core::ids::TenantId,
+) -> crate::RuntimeResult<()> {
+    runtime.submit_direct_with_tenant_inputs_grants_and_contracts(
+        run,
+        workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+        crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+        tenant,
+    )
+}
+
 fn ask_waiting_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = vb_core::workflow::node(
         StepIdx::ZERO,
@@ -443,6 +459,7 @@ fn asking_recovery_prefix(
         ),
         workflow_digest: workflow.digest(),
         next_seq: vb_storage::EventSeq::new(3),
+        run_started_millis: None,
     }
 }
 

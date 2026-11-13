@@ -472,4 +472,17 @@ pub enum JournalEvent {
         /// Admitted cost units charged to the tenant.
         cost_units: u64,
     },
+    /// Durable wall-clock budget origin for a budgeted admission (MASTER
+    /// §77.18). Appended at an unused record id; old admission bytes keep
+    /// their layout and meaning. The origin is written in the same atomic
+    /// admission-header batch, so a recovered budgeted run can enforce one
+    /// absolute deadline instead of restarting or expiring at epoch zero.
+    RunBudgetOriginEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Wall-clock origin in milliseconds since the UNIX epoch.
+        started_millis: u64,
+    },
 }

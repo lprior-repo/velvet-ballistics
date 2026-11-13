@@ -412,3 +412,27 @@ fn decode_record_journal_event_accepts_ask_timed_out_with_matching_kind() -> Res
     assert_eq!(decoded, event);
     Ok(())
 }
+
+#[test]
+fn run_budget_origin_round_trips_at_unused_kind_56() -> Result<(), JournalError> {
+    let event = JournalEvent::RunBudgetOriginEvent {
+        run: RunId::new(95),
+        seq: EventSeq::new(15),
+        started_millis: 1_700_000_000_123,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunBudgetOrigin,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let (envelope, decoded) = decode_record::<JournalEvent>(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    assert_eq!(envelope.record_kind, 56);
+    assert_eq!(decoded, event);
+    Ok(())
+}

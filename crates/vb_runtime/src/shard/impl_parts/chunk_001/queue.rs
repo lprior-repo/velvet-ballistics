@@ -12,6 +12,7 @@ impl Shard {
         self.validate_secret_submission(&cmd)?;
         match &cmd {
             ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitWithLifetimeCap { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
             | ShardCommand::SubmitWithContracts { workflow, .. } => {
                 let inputs = self.prepare_secret_inputs(workflow, &[])?;
@@ -30,6 +31,7 @@ impl Shard {
         }
         match &cmd {
             ShardCommand::Submit { .. }
+            | ShardCommand::SubmitWithLifetimeCap { .. }
             | ShardCommand::ActivateOwnedSubmission { .. }
             | ShardCommand::SubmitPrePersisted { .. }
             | ShardCommand::SubmitWithInputs { .. }
@@ -41,7 +43,14 @@ impl Shard {
             _ => {}
         }
         let limit = self.admitted_queue_depth(&cmd)?;
-        self.command_queue.enqueue_with_limit(cmd, limit)
+        let duplicate_active = submission_run(&cmd).is_some_and(|run| self.run_state_contains(run));
+        let quota = if duplicate_active {
+            None
+        } else {
+            self.pending_submission_quota(&cmd)?
+        };
+        self.command_queue
+            .enqueue_with_reservation(cmd, limit, quota, Some(&self.quota))
     }
 
     /// Resolves the admitted per-run queue depth for a command, when one
@@ -54,10 +63,13 @@ impl Shard {
     fn admitted_queue_depth(&self, cmd: &ShardCommand) -> RuntimeResult<Option<u32>> {
         match cmd {
             ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitWithLifetimeCap { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
             | ShardCommand::SubmitWithInputs { workflow, .. }
             | ShardCommand::SubmitWithContracts { workflow, .. }
-            | ShardCommand::SubmitWithInputsAndContracts { workflow, .. } => {
+            | ShardCommand::SubmitWithInputsAndContracts { workflow, .. }
+            | ShardCommand::SubmitTenantScoped { workflow, .. }
+            | ShardCommand::SubmitTenantWithInputsAndContracts { workflow, .. } => {
                 let budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
                     .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
                         digest: workflow.digest(),
@@ -114,5 +126,28 @@ impl Shard {
 
     fn run_capacity_error(capacity: usize) -> RuntimeError {
         RuntimeError::ActiveRunCapacityExceeded { capacity }
+    }
+}
+
+fn submission_run(command: &ShardCommand) -> Option<RunId> {
+    match command {
+        ShardCommand::Submit { run, .. }
+        | ShardCommand::SubmitWithLifetimeCap { run, .. }
+        | ShardCommand::SubmitTenantScoped { run, .. }
+        | ShardCommand::SubmitTenantWithInputsAndContracts { run, .. }
+        | ShardCommand::SubmitPrePersisted { run, .. }
+        | ShardCommand::SubmitWithInputs { run, .. }
+        | ShardCommand::SubmitWithContracts { run, .. }
+        | ShardCommand::SubmitWithInputsAndContracts { run, .. } => Some(*run),
+        ShardCommand::Recover { command }
+            if matches!(
+                &command.admission,
+                crate::shard::types::RecoveredAdmissionKind::Historical(admission)
+                    if admission.budget().is_some()
+            ) =>
+        {
+            Some(command.run)
+        }
+        _ => None,
     }
 }

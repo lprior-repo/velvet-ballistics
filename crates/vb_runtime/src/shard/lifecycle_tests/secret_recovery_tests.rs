@@ -341,6 +341,36 @@ mod secret_authority {
     }
 
     #[test]
+    fn retry_recovery_restores_tenant_charge() -> TestResult {
+        let mut fixture = checkpoint_fixture()?;
+        let tenant = vb_core::ids::TenantId::new(77);
+        let admission = fixture
+            .checkpoint
+            .admission
+            .clone()
+            .ok_or("checkpoint admission")?;
+        let mut budget = admission.budget().ok_or("checkpoint budget")?;
+        budget.max_cost_units = 5;
+        let cost = budget.max_cost_units;
+        fixture.checkpoint.admission =
+            Some(admission.with_attached_budget(budget).with_tenant(tenant));
+        let command = RecoverRunCommand::for_retry(fixture.checkpoint.clone(), fixture.next_seq)?;
+        let mut target = Shard::new_with_journal(
+            fixture.config,
+            crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
+        );
+        target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
+        target.set_resource_quotas(cost, cost);
+        target.enqueue(ShardCommand::Recover {
+            command: Box::new(command),
+        })?;
+        assert_eq!(target.tick(), Ok(true));
+        assert_eq!(target.usage_snapshot().tenant_cost_usage(tenant), Ok(cost));
+        assert_eq!(target.global_cost_usage(), cost);
+        Ok(())
+    }
+
+    #[test]
     fn full_checkpoint_missing_wrong_taint_or_wrong_handle_rejects_without_repair() -> TestResult {
         let fixture = checkpoint_fixture()?;
         let checkpoint = &fixture.checkpoint;

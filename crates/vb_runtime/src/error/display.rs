@@ -44,6 +44,8 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionArtifactInvalid { .. } => {
             Some("admission rejected: artifact invalid")
         }
+        RuntimeError::ResourceQuotaExceeded { .. } => Some("resource quota exceeded at admission"),
+        RuntimeError::ResourceAccountingUnderflow { .. } => Some("resource quota ledger underflow"),
         RuntimeError::AdmissionArtifactDigestMismatch { .. } => {
             Some("admission rejected: artifact digest mismatch")
         }

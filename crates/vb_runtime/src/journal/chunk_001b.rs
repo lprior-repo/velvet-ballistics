@@ -45,6 +45,7 @@ impl RuntimeJournalEvent {
             | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
             Self::CompatibilityDecision { run, .. } | Self::TenantAdmission { run, .. } => *run,
+            Self::RunBudgetOrigin { run, .. } => *run,
             Self::RetryCheckpoint { run, .. } | Self::RetryTimerScheduled { run, .. } => *run,
         }
     }
@@ -57,6 +58,7 @@ impl RuntimeJournalEvent {
             Self::RunAdmission { .. } => "RunAdmission",
             Self::CompatibilityDecision { .. } => "CompatibilityDecision",
             Self::TenantAdmission { .. } => "TenantAdmission",
+            Self::RunBudgetOrigin { .. } => "RunBudgetOrigin",
             Self::RetryCheckpoint { .. } => "RetryCheckpoint",
             Self::RetryTimerScheduled { .. } => "RetryTimerScheduled",
             Self::RunFinished { .. } => "RunFinished",

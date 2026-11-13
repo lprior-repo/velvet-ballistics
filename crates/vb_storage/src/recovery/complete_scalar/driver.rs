@@ -32,6 +32,12 @@ pub(super) struct Driver<'a> {
     pub(super) admitted: bool,
     pub(super) started: bool,
     pub(super) max_total_steps: u64,
+    pub(super) budgeted_admission: bool,
+    pub(super) origin_seen: bool,
+    pub(super) admission_prefix_closed: bool,
+    pub(super) compatibility_seen: bool,
+    pub(super) tenant_seen: bool,
+    pub(super) next_admission_seq: u64,
 }
 
 #[path = "driver/events.rs"]
@@ -137,6 +143,12 @@ fn replay_driver<'a>(
         admitted: false,
         started: false,
         max_total_steps: budget.max_total_steps,
+        budgeted_admission: false,
+        origin_seen: false,
+        admission_prefix_closed: false,
+        compatibility_seen: false,
+        tenant_seen: false,
+        next_admission_seq: 2,
     })
 }
 
@@ -205,11 +217,20 @@ impl Driver<'_> {
     }
 
     fn validate_final_state(&self, mode: TraceReplayMode) -> RecoveryResult<()> {
+        self.validate_budget_origin()?;
         if self.active.is_some() && !self.pending_boundary() {
             return Err(invalid(self.frame.pc(), "incomplete step receipt"));
         }
         validate_parallel_state(&self.frame, mode)?;
         validate_terminal_receipt(&self.frame, self.finished, self.terminal)
+    }
+
+    fn validate_budget_origin(&self) -> RecoveryResult<()> {
+        if self.budgeted_admission && !self.origin_seen {
+            Err(invalid(self.frame.pc(), "budget origin missing"))
+        } else {
+            Ok(())
+        }
     }
 }
 

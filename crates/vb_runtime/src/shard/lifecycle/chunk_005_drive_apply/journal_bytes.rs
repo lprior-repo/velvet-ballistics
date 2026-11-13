@@ -1,25 +1,22 @@
 impl Shard {
-    fn journal_batch_bytes(events: &[RuntimeJournalEvent]) -> RuntimeResult<u64> {
-        let mut total: u64 = 0;
-        for event in events {
-            let encoded = postcard::to_allocvec(event).map_err(|_| RuntimeError::EncodeFailed)?;
-            let len = u64::try_from(encoded.len()).map_err(|_| RuntimeError::EncodeFailed)?;
-            total = total
-                .checked_add(len)
-                .ok_or(RuntimeError::EncodeFailed)?;
-        }
-        Ok(total)
+    pub(crate) fn journal_batch_bytes(&self, events: &[RuntimeJournalEvent]) -> RuntimeResult<u64> {
+        let Some(first) = events.first() else {
+            return Ok(0);
+        };
+        let seq = self.journal_sequence_for(first.run_id());
+        crate::journal::charged_batch_bytes(self.journal.as_ref(), events, seq)
     }
 
-    pub(crate) fn journal_event_bytes(event: &RuntimeJournalEvent) -> RuntimeResult<u64> {
-        Self::journal_batch_bytes(core::slice::from_ref(event))
+    pub(crate) fn journal_event_bytes(&self, event: &RuntimeJournalEvent) -> RuntimeResult<u64> {
+        self.journal_batch_bytes(core::slice::from_ref(event))
     }
 
     fn charge_drive_journal_bytes(
+        &self,
         state: &mut RunState,
         events: &[RuntimeJournalEvent],
     ) -> RuntimeResult<bool> {
-        let next = Self::journal_bytes_after_append(state, events)?;
+        let next = self.journal_bytes_after_append(state, events)?;
         if Self::journal_bytes_exceeds_budget(state, next) {
             return Ok(false);
         }
@@ -28,18 +25,20 @@ impl Shard {
     }
 
     pub(crate) fn record_drive_journal_bytes(
+        &self,
         state: &mut RunState,
         events: &[RuntimeJournalEvent],
     ) -> RuntimeResult<()> {
-        state.journal_bytes_written = Self::journal_bytes_after_append(state, events)?;
+        state.journal_bytes_written = self.journal_bytes_after_append(state, events)?;
         Ok(())
     }
 
     pub(crate) fn journal_bytes_after_append(
+        &self,
         state: &RunState,
         events: &[RuntimeJournalEvent],
     ) -> RuntimeResult<u64> {
-        let bytes = Self::journal_batch_bytes(events)?;
+        let bytes = self.journal_batch_bytes(events)?;
         state
             .journal_bytes_written
             .checked_add(bytes)
@@ -54,10 +53,11 @@ impl Shard {
     }
 
     fn command_journal_bytes_exceeds(
+        &self,
         state: &RunState,
         events: &[RuntimeJournalEvent],
     ) -> RuntimeResult<bool> {
-        let bytes = Self::journal_batch_bytes(events)?;
+        let bytes = self.journal_batch_bytes(events)?;
         let next = state
             .journal_bytes_written
             .checked_add(bytes)
@@ -74,7 +74,7 @@ impl Shard {
         run: RunId,
         events: [RuntimeJournalEvent; N],
     ) -> RuntimeResult<()> {
-        let bytes = Self::journal_batch_bytes(&events)?;
+        let bytes = self.journal_batch_bytes(&events)?;
         self.append_journal_events_atomically(events)?;
         let state = self
             .run_state_get_mut(run)
@@ -92,7 +92,7 @@ impl Shard {
         events: [RuntimeJournalEvent; N],
     ) -> RuntimeResult<bool> {
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-        if Self::command_journal_bytes_exceeds(state, &events)? {
+        if self.command_journal_bytes_exceeds(state, &events)? {
             return Ok(true);
         }
         self.record_command_journal_events(run, events)?;
@@ -128,7 +128,7 @@ impl Shard {
             run,
             attempt: state.run_attempt.get(),
         }];
-        Self::record_drive_journal_bytes(&mut state, &fallback)
+        self.record_drive_journal_bytes(&mut state, &fallback)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&fallback)
             .map_err(DriveApplyFailure::BeforeCommit)?;

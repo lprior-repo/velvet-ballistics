@@ -20,6 +20,7 @@ impl Runtime {
             .map_err(|error| RuntimeError::Recovery {
                 error: format!("retry journal read failed: {error}"),
             })?;
+        validate_retry_budget_origin(&events, run, checkpoint)?;
 
         let durable = events.iter().rev().find(|event| {
             matches!(
@@ -166,5 +167,27 @@ impl Runtime {
                 RuntimeError::UnsupportedFullRecoveryHydration
             }
         }
+    }
+}
+
+fn validate_retry_budget_origin(
+    events: &[vb_storage::JournalEvent],
+    run: RunId,
+    checkpoint: &crate::run_checkpoint::RunCheckpointV1,
+) -> RuntimeResult<()> {
+    let admission = crate::recovery::hydrate_run_admission_from_events(events).ok_or(
+        RuntimeError::RecoveryCannotResume {
+            reason: String::from("admission_missing"),
+        },
+    )?;
+    let origin = crate::recovery::recover_run_budget_origin(events, run, &admission)?;
+    let validated =
+        crate::recovery::validate_recovered_lifetime_at_wall_clock(Some(&admission), origin)?;
+    if checkpoint.run_started_millis == validated {
+        Ok(())
+    } else {
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("budget_origin_invalid"),
+        })
     }
 }
