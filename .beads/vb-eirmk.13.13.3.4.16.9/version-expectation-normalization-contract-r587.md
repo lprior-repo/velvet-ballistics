@@ -1,0 +1,15 @@
+# Version expectation normalization
+
+This test-only follow-up implements the approved artifact-dispatch contract, whose independent CODE and TEST receipts have SHA256 cd0ce05ae8121494b0f99d33098b19cc2d4ef8103d1ee597094e4a2dcf994014 and 77d5ff92756c77e0b0b0ebe333efc0422752f1aae93bf43684ea46c2ec27ab9a. Reader source 7f7036dd26ed42a1f2f2db9f18b91bde7d2a9357 and focused tests 20905c5b4cf8ba5295dd890107b3722aa92967dd remain immutable.
+
+Raw WorkflowParts is the V1 carrier and retains absent symbol binding; the current artifact writer stamps outer execution version CURRENT_IR_VERSION=2. Bound V2 retains Some(empty) or the ordered payload table and the existing 01ffVB envelope. Tests must distinguish these independent facts without changing serialization, proof flags, authorization, public APIs, schemas, production code, or protected files.
+
+Candidates are written under target before source application. The case-map records every normative old-to-new assertion change, retained literal input and binding state, added corrupt-escape control, and preimage/postimage hash. No native acceptance is claimed before independent TEST review of that map and parent execution.
+
+The submission conflict is resolved against both real parents f971dee26b5c78f9fa03bf50e2f0e125337f41ad and 75bae4eb2ab6291630d5891b038ac3fa812aa6dd. Preserve current helper-based cases and all unrelated atomicity/collision/policy assertions. Future outer3 is rejected by the actual RunSubmission constructor under Relaxed, Journaled, and Strict before publication; Relaxed's zero-event success applies to a supported artifact. Preserve value5, the original source bytes, header fields, exact retained record, events, indexes, and injected commit-failure/retry control.
+
+Replace the obsolete outer2/raw rejection with a strict current2 roundtrip and absent-binding assertion using the same raw workflow. Add an actual corrupt reserved-escape header negative under all three policies, retaining no-partial-publication checks; do not substitute an unknown future outer version for supported Relaxed behavior. Retain explicit outer1 rejection according to unchanged classify/authorization and exact typed error fields.
+
+Normalize directly affected codec and runtime admission expectations only: raw bytes, canonical digest preimages, None versus Some, original workflow values, callback order and all legitimate negative payload checks stay intact. The runtime known2/raw case becomes a current2 positive; a distinct corrupt-escape case must preserve exact admission rejection and no-publication observations. Investigate cold V1 duplicate-identity failure from its actual source and raw failure before proposing any change; it is not presumed to be a version fixture defect.
+
+All changed and new functions remain at most25 nonblank, noncomment lines including signatures and punctuation, parameters at most5, new files at most300 lines. Rust source generation uses one serial local5090 request with actual API context. No new dependencies, test skips, error weakening, unknown-version authorization, or production changes are allowed.
