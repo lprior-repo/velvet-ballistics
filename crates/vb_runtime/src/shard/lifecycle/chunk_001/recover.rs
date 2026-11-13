@@ -264,10 +264,9 @@ impl Shard {
                     return Ok(());
                 }
             }
-            crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
-                if let Some(ask) = boundary.open_ask() {
-                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
+            crate::recovery::RecoveredRunBoundaryKind::OpenAsk
+            | crate::recovery::RecoveredRunBoundaryKind::OpenWaitEvent => {
+                if self.restore_recovered_suspended_boundary(run, boundary)? {
                     return Ok(());
                 }
             }

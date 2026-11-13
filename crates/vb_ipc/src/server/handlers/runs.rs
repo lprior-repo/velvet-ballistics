@@ -72,10 +72,22 @@ pub fn submit_resolved_workflow(
         Ok(inputs) => inputs,
         Err(response) => return response,
     };
+    let contracts = resolver.resolve_action_contracts(&workflow);
+    let grants = resolver.resolve_capability_grants(&workflow);
     let result = match command {
         IpcCommand::SubmitRun | IpcCommand::SubmitRunInline => {
             resolver.prepare_runtime(runtime, &workflow);
-            runtime.submit_compiled_with_inputs(submit.run_id, workflow, inputs)
+            if contracts.is_empty() {
+                runtime.submit_compiled_with_inputs(submit.run_id, workflow, inputs)
+            } else {
+                runtime.submit_direct_with_inputs_grants_and_contracts(
+                    submit.run_id,
+                    workflow,
+                    inputs,
+                    grants,
+                    contracts,
+                )
+            }
         }
         _ => return IpcResponse::CommandPayloadMismatch,
     };
