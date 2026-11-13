@@ -1,45 +1,54 @@
 // Verus spec for vb_qi37.16.5 lifecycle journal storage.
 //
-// Production binding (BINDING LEDGER):
-//   - RuntimeJournalEvent mirrors `vb_runtime::journal::RuntimeJournalEvent`
-//     at crates/vb_runtime/src/journal/chunk_001.rs:15
-//   - RuntimeJournalEvent::run_id mirrors
-//     `vb_runtime::journal::RuntimeJournalEvent::run_id` at
-//     crates/vb_runtime/src/journal/chunk_001.rs:185-208
-//   - RuntimeJournal::append mirrors
-//     `vb_runtime::journal::RuntimeJournal::append` at
-//     crates/vb_runtime/src/journal/chunk_001.rs:212-242
+// MODEL-ONLY. This file is a standalone mathematical model of the lifecycle
+// state machine and its journal-append discipline (LifecycleState,
+// LifecycleCommand, validate_command, journal_after_command). It is NOT
+// bound to production code, and it must never be presented as bound:
 //
-// The `#[path]` import below binds this spec file to a thin in-tree
-// `extern_lifecycle_journal.rs` module that exposes the production
-// `RuntimeJournalEvent` and the `journal_append_accepts` decision fn whose
-// semantics are the same as the lifecycle-validity precondition of
-// the production `RuntimeJournal::append`. The spec file then attaches
-// production-bound exec fn decoration to bind the production decision fn to
-// the lifecycle state machine spec.
+//   - The `#[path]` import this file used to carry pointed at
+//     `verification/verus/extern_lifecycle_journal.rs`, which does not exist
+//     on main; the extern module was never landed.
+//   - Production `RunId` (`vb_core::ids::RunId`) is a u64 newtype with
+//     `RunId::ZERO`; it has no `Run` variant, so `RunId::Run(0)` is fictional.
+//   - Production `RuntimeJournalEvent::StepStarted` carries
+//     `{ run, step, attempt }`; there is no bare-run form.
+//   - Production has no `journal_append_accepts` decision fn. The old header
+//     BINDING LEDGER cites into `crates/vb_runtime/src/journal/chunk_001.rs`
+//     resolve onto event-variant lines, not onto a `run_id` or `append` fn,
+//     because neither fn exists in that file.
+//   - The bead's own trusted boundary
+//     (`.beads/vb-qi37.16.5/proof-obligations.jsonl`, VERUS-INV-001 /
+//     VERUS-PRE-002 / VERUS-POST-001 / VERUS-POST-003 / VERUS-POST-004 /
+//     VERUS-POST-005) already records this file as a minimal standalone
+//     mathematical model with storage I/O and production crate context
+//     excluded. This header now says the same.
+//
+// Do NOT recreate the missing extern module as a shadow binding: a
+// hand-written `extern_lifecycle_journal.rs` with no production counterpart
+// would be a VACUUM binding under the repo's Verus production-binding gate.
 #![allow(unused_imports)]
 use vstd::prelude::*;
 
 verus! {
 
-#[path = "../../verification/verus/extern_lifecycle_journal.rs"]
-mod production;
-
 // ============================================================
-// Production-bound exec fns (mirror production)
+// Model types (no production binding)
 // ============================================================
-// Production mirror of vb_runtime::journal::RuntimeJournalEvent.
-pub use production::RuntimeJournalEvent;
+// Model run identifier. Mirrors the production shape only in that it is a
+// u64 newtype with a zero value; it is not the production type.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct RunId(pub u64);
 
-pub fn run_id(event: &RuntimeJournalEvent) -> RunId {
-    event.run_id()
+impl RunId {
+    pub const ZERO: RunId = RunId(0);
 }
 
-pub use production::RunId;
-
-// Production mirror of vb_runtime::journal::RuntimeJournal::append.
-pub fn journal_append_accepts(state: i64, command: i64) -> bool {
-    production::journal_append_accepts(state, command)
+// Model journal event. Minimal by design: only the run field the proofs
+// need. Production `RuntimeJournalEvent::StepStarted` carries step and
+// attempt as well; this model does not mirror it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeJournalEvent {
+    StepStarted { run: RunId },
 }
 
 // ============================================================
@@ -117,6 +126,10 @@ pub open spec fn transition_valid(state: LifecycleState, command: LifecycleComma
     state == command_prior(command)
 }
 
+pub open spec fn journal_append_accepts(state: LifecycleState, command: LifecycleCommand) -> bool {
+    transition_valid(state, command)
+}
+
 pub open spec fn spec_transition(
     state: LifecycleState,
     command: LifecycleCommand,
@@ -182,6 +195,23 @@ pub proof fn proof_validate_command_precondition(state: LifecycleState, command:
     ensures
         validate_command(state, command) == CommandResult::Accepted(command_next(command)),
 {
+    reveal(validate_command);
+    reveal(transition_valid);
+    assert(validate_command(state, command) == CommandResult::Accepted(command_next(command)));
+}
+
+// Non-vacuous: journal_append_accepts holds exactly when validate_command
+// accepts the command.
+pub proof fn proof_journal_append_accepts_iff_accepted(
+    state: LifecycleState,
+    command: LifecycleCommand,
+)
+    requires
+        journal_append_accepts(state, command),
+    ensures
+        validate_command(state, command) == CommandResult::Accepted(command_next(command)),
+{
+    reveal(journal_append_accepts);
     reveal(validate_command);
     reveal(transition_valid);
     assert(validate_command(state, command) == CommandResult::Accepted(command_next(command)));
@@ -301,7 +331,7 @@ pub open spec fn journal_after_command(
 ) -> Seq<RuntimeJournalEvent> {
     match validate_command(state, command) {
         CommandResult::Accepted(next) => journal.push(
-            RuntimeJournalEvent::StepStarted { run: RunId::Run(0) },
+            RuntimeJournalEvent::StepStarted { run: RunId::ZERO },
         ),
         CommandResult::Rejected(_) => journal,
     }
