@@ -6,59 +6,16 @@
 //! executed one at a time in ordinal order and their values are collected in
 //! that same order, so results are deterministic for a given IR and input.
 
-use vb_core::frame::RunFrame;
-use vb_core::ids::{BranchCount, FanoutLimit, ListId, SlotIdx, StepIdx};
+use vb_core::ids::{BranchCount, FanoutLimit, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint, join_taint};
-use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::workflow::CompiledNodeKind;
 
 use crate::engine::execute::NodeDispatchContext;
+use crate::engine::execute::concurrent_support::{
+    check_lane_bound, group_output, invariant, item_value, jump, lane_bound,
+};
 use crate::engine::execute::execute_node_deferred;
 use crate::engine::types::{RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
-
-/// Static per-lane step bound: every node may run once per item/attempt scale.
-fn lane_bound(plan: &CompiledWorkflow, work: usize) -> usize {
-    usize::from(plan.node_count())
-        .saturating_mul(work.saturating_add(1))
-        .saturating_mul(8)
-        .saturating_add(1)
-}
-
-fn invariant(reason: &'static str) -> RuntimeEngineError {
-    RuntimeEngineError::Core(vb_core::errors::EngineError::InternalInvariantViolation {
-        reason: reason.into(),
-    })
-}
-
-/// Cross-checks the lanes a group is about to run against the cached checked
-/// requirements and the declared fanout policy.
-fn check_lane_bound(plan: &CompiledWorkflow, capacity: usize) -> RuntimeEngineResult<()> {
-    let requirements = plan
-        .concurrent_requirements()
-        .ok_or_else(|| invariant("concurrent plan missing checked requirements"))?;
-    let frames = usize::from(requirements.frames());
-    if capacity.saturating_add(1) > frames {
-        return Err(invariant("concurrent lane capacity exceeds checked frame bound"));
-    }
-    if requirements.groups() == 0 {
-        return Err(invariant("concurrent requirements report zero groups"));
-    }
-    let fanout = usize::from(plan.resource_contract().max_fanout);
-    if capacity > fanout {
-        return Err(invariant("concurrent lane capacity exceeds contract fanout"));
-    }
-    Ok(())
-}
-
-fn group_output(plan: &CompiledWorkflow, join: StepIdx) -> RuntimeEngineResult<SlotIdx> {
-    plan.node(join)
-        .and_then(|node| node.output.slot())
-        .ok_or_else(|| invariant("concurrent join output slot"))
-}
-
-fn jump(run: &mut RunFrame, target: StepIdx) -> RuntimeEngineResult<()> {
-    run.set_pc(target).map_err(RuntimeEngineError::Core)
-}
 
 /// Executes one lane body until its owning lane end and returns the lane value.
 fn run_lane(
@@ -115,24 +72,6 @@ fn run_lane(
         }
     }
     Err(invariant("concurrent lane step bound exceeded"))
-}
-
-fn item_value(
-    store: &ValueStore,
-    list_id: ListId,
-    index: usize,
-) -> RuntimeEngineResult<(SlotValue, Taint)> {
-    let source = store.list(list_id).map_err(RuntimeEngineError::Core)?;
-    let value = source
-        .get(index)
-        .copied()
-        .ok_or_else(|| invariant("concurrent item index"))?;
-    let ordinal = u32::try_from(index).map_err(|_| invariant("concurrent item ordinal"))?;
-    let taint = store
-        .list_item_with_taint(list_id, ordinal)
-        .map_err(RuntimeEngineError::Core)?
-        .1;
-    Ok((value, taint))
 }
 
 fn foreach_group(

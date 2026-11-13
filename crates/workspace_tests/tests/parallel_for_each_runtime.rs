@@ -4,7 +4,7 @@
 use vb_compile::compile_workflow;
 use vb_core::engine::StepBudget;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{RunId, StepIdx};
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
@@ -171,5 +171,136 @@ fn replay_matches_runtime_for_parallel_for_each() -> Result<(), String> {
     let replayed = replay(&plan, &[1, 2, 3])?;
     assert_eq!(runtime, vec![1, 2, 3]);
     assert_eq!(replayed, runtime);
+    Ok(())
+}
+
+fn concurrent_ir(
+    name: &str,
+    nodes: Vec<vb_core::workflow::CompiledNode>,
+    constants: Vec<vb_core::value::ConstValue>,
+    slot_count: u16,
+) -> Result<CompiledWorkflow, String> {
+    use vb_core::ids::WorkflowDigest;
+    use vb_core::workflow::{ResourceContract, WorkflowParts};
+
+    let mut parts = WorkflowParts {
+        name: Box::from(name),
+        digest: WorkflowDigest::from_bytes([3u8; 32]),
+        semantic_source_identity: None,
+        source_metadata: None,
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: constants.into_boxed_slice(),
+        slot_count,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+        input_slots: Box::new([]),
+    };
+    let encoded = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded).into());
+    CompiledWorkflow::try_from_concurrent_parts(parts).map_err(|error| format!("{error:?}"))
+}
+
+fn drive_ir(plan: &CompiledWorkflow) -> Result<(RuntimeSignal, Vec<SlotValue>), String> {
+    let mut run = RunFrame::new(
+        RunId::new(1),
+        StepIdx::new(0),
+        plan.node_count(),
+        plan.slot_count(),
+    )
+    .map_err(|error| format!("{error}"))?;
+    let mut store = ValueStore::new();
+    let mut budget = StepBudget::new(10_000);
+    let mut evidence = EvidenceCollector::new();
+    let mut collect_states = CollectStates::new();
+    let granted = vb_core::capability::CapabilitySet::empty();
+    let signal = drive_deterministic_full(
+        plan,
+        &mut run,
+        &mut budget,
+        &mut store,
+        &[],
+        RetryPolicy::NEVER,
+        &mut evidence,
+        &mut collect_states,
+        &granted,
+        1,
+    )
+    .map_err(|error| format!("{error:?}"))?;
+    let values = match &signal {
+        RuntimeSignal::Finished(SlotValue::List(id)) => store
+            .list(*id)
+            .map_err(|error| format!("list: {error}"))?
+            .to_vec(),
+        _ => Vec::new(),
+    };
+    Ok((signal, values))
+}
+
+fn two_lane_nodes(first_success: bool) -> Vec<vb_core::workflow::CompiledNode> {
+    use vb_core::workflow::{CompiledNodeKind as K, node};
+    let n = |id: u16, kind: K, out: Option<u16>, next: Option<u16>| {
+        node(
+            StepIdx::new(id),
+            kind,
+            out.map(SlotIdx::new),
+            next.map(StepIdx::new),
+        )
+    };
+    let start = if first_success {
+        K::FirstSuccessStart {
+            branches: Box::new([StepIdx::new(1), StepIdx::new(3)]),
+            join: StepIdx::new(5),
+        }
+    } else {
+        K::TogetherConcurrentStart {
+            branches: Box::new([StepIdx::new(1), StepIdx::new(3)]),
+            join: StepIdx::new(5),
+        }
+    };
+    vec![
+        n(0, start, None, None),
+        n(1, K::SetConst { value: vb_core::ConstIdx::new(0) }, Some(1), Some(2)),
+        n(2, K::ConcurrentLaneEnd { owner: StepIdx::new(0), result: Some(SlotIdx::new(1)) }, None, Some(5)),
+        n(3, K::SetConst { value: vb_core::ConstIdx::new(1) }, Some(1), Some(4)),
+        n(4, K::ConcurrentLaneEnd { owner: StepIdx::new(0), result: Some(SlotIdx::new(1)) }, None, Some(5)),
+        n(5, K::ConcurrentGroupJoin { owner: StepIdx::new(0) }, Some(2), Some(6)),
+        n(6, K::Finish { result: SlotIdx::new(2) }, None, None),
+    ]
+}
+
+#[test]
+fn together_concurrent_drains_all_lane_results() -> Result<(), String> {
+    let plan = concurrent_ir(
+        "together_drain",
+        two_lane_nodes(false),
+        vec![
+            vb_core::value::ConstValue::I64(10),
+            vb_core::value::ConstValue::I64(20),
+        ],
+        3,
+    )?;
+    let (signal, values) = drive_ir(&plan)?;
+    assert!(matches!(signal, RuntimeSignal::Finished(_)));
+    assert_eq!(values, vec![SlotValue::I64(10), SlotValue::I64(20)]);
+    Ok(())
+}
+
+#[test]
+fn first_success_returns_first_lane_value() -> Result<(), String> {
+    let plan = concurrent_ir(
+        "first_success",
+        two_lane_nodes(true),
+        vec![
+            vb_core::value::ConstValue::I64(10),
+            vb_core::value::ConstValue::I64(20),
+        ],
+        3,
+    )?;
+    let (signal, _) = drive_ir(&plan)?;
+    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(10)));
     Ok(())
 }
