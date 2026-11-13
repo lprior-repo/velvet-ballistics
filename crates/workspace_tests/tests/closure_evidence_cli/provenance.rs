@@ -1,6 +1,39 @@
 use super::*;
 
 #[test]
+fn control_whitespace_manifest_padding_and_empty_raw_logs() {
+    let fixture = setup_test("control-whitespace-manifest-and-log");
+    let response = children(&fixture);
+    let raw = format!("{}/raw.log", fixture.dir);
+    let row = make_row(&fixture, "cargo test", &raw);
+    let manifest = write_manifest(&fixture.dir, &[row.clone()]);
+    for blank in ["\u{1c}", "\u{1d}", "\u{1e}", "\u{1f}"] {
+        write_file(&manifest, &format!("{blank}{row}{blank}\n"));
+        write_file(&raw, &log_text(&fixture, "cargo test", "\n"));
+        assert_eq!(
+            run_checker(&fixture, &response, &manifest),
+            (
+                0,
+                "VB_JPQ7_CLOSURE_EVIDENCE_PASS closed_children=1\n".into(),
+                String::new()
+            )
+        );
+        write_file(&raw, &format!("\t{blank}\n"));
+        assert_eq!(
+            run_checker(&fixture, &response, &manifest),
+            (
+                1,
+                format!(
+                    "VB_JPQ7_CLOSURE_EVIDENCE_FAIL\n- manifest row 1: raw_log_path is empty {raw}\n"
+                ),
+                String::new()
+            )
+        );
+    }
+    cleanup_test(fixture);
+}
+
+#[test]
 fn control_whitespace_required_fields_are_missing() {
     let fixture = setup_test("control-whitespace-fields");
     let response = children(&fixture);
