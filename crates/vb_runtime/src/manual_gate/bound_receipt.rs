@@ -88,6 +88,10 @@ pub fn verify_bound_receipt(
         || !receipt.approver_role.is_valid()
         || !receipt.requester.is_valid()
         || !receipt.receipt.approver.is_valid()
+        || !matches!(
+            receipt.receipt.decision,
+            GateDecision::Approve | GateDecision::BreakGlass
+        )
         || (receipt.receipt.decision != GateDecision::BreakGlass
             && receipt.approver_role != gate.gate.required_role)
         || receipt.risk != gate.gate.risk

@@ -40,7 +40,9 @@ include!("lifecycle/chunk_005_drive_apply/journal_bytes.rs");
 include!("lifecycle/chunk_005.rs");
 include!("lifecycle/chunk_004.rs");
 include!("lifecycle/gate_submission.rs");
+include!("lifecycle/gate_registry.rs");
 include!("lifecycle/gate_submission_bound.rs");
+include!("lifecycle/gate_recovery.rs");
 include!("lifecycle/gate_restore.rs");
 
 #[cfg(test)]

@@ -11,6 +11,9 @@ pub struct RunAdmission {
     policy: RuntimePolicy,
     /// Actual policy identity from the accepted artifact, or explicit absence.
     policy_pin: RunPolicyPin,
+    /// Canonical typed-input identity, or explicit historical absence.
+    #[serde(default)]
+    input_digest: vb_storage::RunInputBinding,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
     /// Caller-supplied tenant the run is charged to, when tenant-scoped
@@ -58,6 +61,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             budget: None,
             tenant: None,
             idempotency_attested: Box::new([]),
@@ -82,6 +86,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             budget: None,
             tenant: None,
             idempotency_attested,
@@ -106,6 +111,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             budget: Some(budget),
             tenant: None,
             idempotency_attested: Box::new([]),
@@ -122,6 +128,21 @@ impl RunAdmission {
     pub(crate) fn with_policy_pin(mut self, policy_pin: RunPolicyPin) -> Self {
         self.policy_pin = policy_pin;
         self
+    }
+
+    /// Attaches the canonical typed-input identity from the submission.
+    pub(crate) fn with_input_digest(
+        mut self,
+        input_digest: vb_storage::RunInputBinding,
+    ) -> Self {
+        self.input_digest = input_digest;
+        self
+    }
+
+    /// Returns the canonical typed-input identity, or explicit historical absence.
+    #[must_use]
+    pub fn input_digest(&self) -> vb_storage::RunInputBinding {
+        self.input_digest
     }
 
     /// Attaches the workflow-derived aggregate budget to this admission.

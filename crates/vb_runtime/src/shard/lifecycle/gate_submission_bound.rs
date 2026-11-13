@@ -20,6 +20,8 @@ impl Shard {
         if !self.run_state_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        Self::check_bound_binding(state, &gate)?;
         if self.open_gates.contains_key(&gate.gate.id)
             || self.bound_open_gates.contains_key(&gate.gate.id)
         {
@@ -64,6 +66,8 @@ impl Shard {
             self.bound_open_gates.swap_remove(&input.gate);
             return Err(RuntimeError::RunNotFound);
         }
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        Self::check_bound_binding(state, &open.gate)?;
         if let Some(delegate) = &open.delegated_to
             && input.approver != *delegate
         {
@@ -127,6 +131,8 @@ impl Shard {
             self.bound_open_gates.swap_remove(&gate);
             return Err(RuntimeError::RunNotFound);
         }
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        Self::check_bound_binding(state, &open.gate)?;
         let record = evaluate_bound_timeout(&open.gate, &open.requester, open.opened_at_ms, now_ms)
             .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
         self.append_gate_decision_bound_strict(record.clone())?;
@@ -149,7 +155,11 @@ impl Shard {
             });
         }
         match self.bound_open_gates.get(&input.gate) {
-            Some(open) => Self::check_bound_gate_run(&open.gate, run),
+            Some(open) => {
+                Self::check_bound_gate_run(&open.gate, run)?;
+                let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+                Self::check_bound_binding(state, &open.gate)
+            }
             None => Err(RuntimeError::GateNotOpen { gate: input.gate }),
         }
     }
@@ -163,5 +173,43 @@ impl Shard {
             });
         }
         Ok(())
+    }
+
+    fn check_bound_binding(
+        state: &crate::shard::types::RunState,
+        gate: &BoundManualGate,
+    ) -> RuntimeResult<()> {
+        let binding = gate.binding;
+        let admission = state.admission.as_ref().ok_or_else(|| binding_error(gate, "admission"))?;
+        if admission.artifact_digest().as_bytes() != binding.artifact_digest.as_bytes() {
+            return Err(binding_error(gate, "artifact_digest"));
+        }
+        if state.run_attempt.get() != binding.attempt {
+            return Err(binding_error(gate, "attempt"));
+        }
+        match admission.policy_pin() {
+            vb_storage::RunPolicyPin::Pinned(policy_digest)
+                if policy_digest.as_bytes() == binding.policy_digest.as_bytes() => {}
+            vb_storage::RunPolicyPin::Unverified
+                if admission.policy() == vb_core::policy::RuntimePolicy::Relaxed => {}
+            _ => return Err(binding_error(gate, "policy_digest")),
+        }
+        if admission.input_digest()
+            != vb_storage::RunInputBinding::Digest(vb_core::ids::WorkflowDigest::from_bytes(
+                binding.input_digest.as_bytes(),
+            ))
+        {
+            return Err(binding_error(gate, "input_digest"));
+        }
+        Ok(())
+    }
+}
+
+fn binding_error(gate: &BoundManualGate, field: &'static str) -> RuntimeError {
+    RuntimeError::GateEvaluationFailed {
+        source: crate::manual_gate::GateError::BoundGateBindingMismatch {
+            gate: gate.gate.id.get(),
+            field,
+        },
     }
 }

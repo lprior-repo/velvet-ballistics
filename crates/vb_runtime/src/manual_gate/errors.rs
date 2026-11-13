@@ -116,6 +116,14 @@ pub enum GateError {
         /// Gate identifier.
         gate: u64,
     },
+    /// Bound gate binding does not match the live run state.
+    #[error("bound gate {gate} binding does not match live run field {field}")]
+    BoundGateBindingMismatch {
+        /// Gate identifier.
+        gate: u64,
+        /// Binding field that disagrees with the live run.
+        field: &'static str,
+    },
     /// Replay found a gate opened twice without a closing decision.
     #[error("replay opened gate {gate} twice without a closing decision")]
     ReplayDuplicateOpen {

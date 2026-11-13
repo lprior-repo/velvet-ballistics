@@ -125,18 +125,21 @@ pub fn replay_bound_gate_history(
 ) -> Result<Vec<BoundGateReplay>, GateError> {
     let mut replays = Vec::new();
     let mut seen_receipts = IndexMap::new();
-    let mut opened: IndexMap<u64, (BoundManualGate, ApproverId)> = IndexMap::new();
+    let mut opened: IndexMap<u64, (BoundManualGate, ApproverId, u64)> = IndexMap::new();
     for event in events {
         match event {
             vb_storage::JournalEvent::GateOpenedBoundEvent {
-                gate, requester, ..
+                gate,
+                opened_at_ms,
+                requester,
+                ..
             } => {
                 if !gate.is_structurally_valid() || !requester.is_valid() {
                     return Err(GateError::ReplayInvalidGate);
                 }
                 let gate_id = gate.gate.id.get();
                 if opened
-                    .insert(gate_id, (gate.clone(), requester.clone()))
+                    .insert(gate_id, (gate.clone(), requester.clone(), *opened_at_ms))
                     .is_some()
                 {
                     return Err(GateError::ReplayDuplicateOpen { gate: gate_id });
@@ -164,12 +167,16 @@ pub fn replay_bound_gate_history(
                     }
                     None => None,
                 };
-                let Some((gate, requester)) = opened.get(&gate_id) else {
+                let Some((gate, requester, opened_at_ms)) = opened.get(&gate_id) else {
                     // The opening is outside the recovered window; history
                     // replay ignores the decision rather than guessing.
                     continue;
                 };
-                if !record.matches_bound_gate(gate) || record.record.requester != *requester {
+                if !record.matches_bound_gate(gate)
+                    || record.record.requester != *requester
+                    || record.record.opened_at_ms != *opened_at_ms
+                    || record.record.decided_at_ms < *opened_at_ms
+                {
                     return Err(GateError::ReplayBoundGateMismatch { gate: gate_id });
                 }
                 if let Some(receipt) = &record.bound_receipt

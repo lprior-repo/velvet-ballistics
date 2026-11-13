@@ -53,6 +53,8 @@ impl Shard {
                     gate: open.gate.gate.id,
                 });
             }
+            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+            Self::check_bound_binding(state, &open.gate)?;
             self.reserve_open_gate_slot()?;
             self.bound_open_gates.insert(open.gate.gate.id, open.clone());
         }

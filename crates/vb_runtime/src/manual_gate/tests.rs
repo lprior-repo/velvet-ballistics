@@ -868,10 +868,10 @@ fn bound_replay_allows_gate_id_reuse_after_closure() {
     )
     .unwrap();
     let mut second_input = input(GateDecision::Approve);
-    second_input.decided_at_ms = 600;
+    second_input.decided_at_ms = 800;
     let second = evaluate_bound_decision(
         &gate,
-        0,
+        700,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &second_input,

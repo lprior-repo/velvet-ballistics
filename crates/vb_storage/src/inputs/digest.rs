@@ -10,6 +10,12 @@ pub enum RunInputBinding {
     Digest(WorkflowDigest),
 }
 
+impl Default for RunInputBinding {
+    fn default() -> Self {
+        Self::LegacyUnbound
+    }
+}
+
 /// Computes the order-independent identity of a unique, bounded typed input mapping.
 pub fn compute_input_digest(
     inputs: &[(SlotIdx, SlotValue)],

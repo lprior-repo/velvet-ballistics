@@ -1855,9 +1855,15 @@ fn person(value: &str) -> Result<ApproverId, String> {
     ApproverId::new(value.to_string()).ok_or_else(|| String::from("invalid approver"))
 }
 
-fn bound_gate(run: RunId) -> Result<BoundManualGate, String> {
+fn bound_gate(
+    run: RunId,
+    artifact_digest: vb_core::WorkflowDigest,
+    policy_digest: vb_core::WorkflowDigest,
+) -> Result<BoundManualGate, String> {
     let role = ApproverRole::new(String::from("deploy-approver"))
         .ok_or_else(|| String::from("invalid role"))?;
+    let input_digest = vb_storage::inputs::compute_input_digest(&[])
+        .map_err(|err| format!("{err:?}"))?;
     Ok(BoundManualGate {
         gate: ManualGate {
             id: GateId::new(7),
@@ -1875,9 +1881,9 @@ fn bound_gate(run: RunId) -> Result<BoundManualGate, String> {
             approval_reason_required: true,
         },
         binding: GateBinding {
-            artifact_digest: gate_digest(4),
-            policy_digest: gate_digest(5),
-            input_digest: gate_digest(6),
+            artifact_digest: GateDigest::from_bytes(artifact_digest.as_bytes()),
+            policy_digest: GateDigest::from_bytes(policy_digest.as_bytes()),
+            input_digest: GateDigest::from_bytes(input_digest.as_bytes()),
             attempt: 1,
         },
     })
@@ -1890,7 +1896,7 @@ fn runtime_recovers_bound_gate_and_blocks_resume_after_fjall_reopen() -> Result<
     let workflow = chain_then_finish_workflow()?;
 
     let journal = open_journal(temp.path())?;
-    let _artifact =
+    let artifact =
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &Box::from([]))
             .map_err(|err| err.to_string())?;
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
@@ -1905,7 +1911,12 @@ fn runtime_recovers_bound_gate_and_blocks_resume_after_fjall_reopen() -> Result<
         .map_err(|err| err.to_string())?;
     runtime.tick_all().map_err(|err| err.to_string())?;
     runtime
-        .open_bound_gate(run, bound_gate(run)?, 0, person("bob")?)
+        .open_bound_gate(
+            run,
+            bound_gate(run, artifact.digest, artifact.policy_digest)?,
+            0,
+            person("bob")?,
+        )
         .map_err(|err| err.to_string())?;
     runtime.tick_all().map_err(|err| err.to_string())?;
     drop(runtime);

@@ -32,7 +32,7 @@ impl Shard {
     /// 7. Handle boundary (pending action / open ask / recovered timer)
     pub(crate) fn handle_recover(
         &mut self,
-        command: crate::shard::types::RecoverRunCommand,
+        mut command: crate::shard::types::RecoverRunCommand,
     ) -> RuntimeResult<()> {
         let run = command.run;
         let frame = command.frame;
@@ -41,8 +41,11 @@ impl Shard {
         let next_seq = command.next_seq;
         let collect_states = command.collect_states;
         let retry_checkpoint = command.retry_checkpoint;
+        let boundary_kind = command.boundary.kind();
         let boundary = command.boundary;
         let admission = command.admission;
+        let open_gates = core::mem::take(&mut command.open_gates);
+        let bound_open_gates = core::mem::take(&mut command.bound_open_gates);
         let restored_store = command.restored_store;
 
         // Step 1: Load artifact by artifact_digest for verification
@@ -214,31 +217,8 @@ impl Shard {
         self.terminal_runs_remove(run);
         self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
 
-        // Step 7a: Restore reconstructed open gates before any boundary
-        // handling. A gated run is suspended on its gate, never on another
-        // boundary: a recovered gate together with a pending-action or
-        // open-ask boundary is inconsistent journal evidence, so recovery
-        // fails instead of driving a gated run or dropping the gate. The
-        // run stays suspended (AwaitAction) and is not driven; the gate
-        // decision resumes or fails it through the normal submission flow.
-        if !command.open_gates.is_empty() || !command.bound_open_gates.is_empty() {
-            if boundary.kind() != crate::recovery::RecoveredRunBoundaryKind::None {
-                return Err(RuntimeError::Recovery {
-                    error: "recovered run has both an open gate and a suspended boundary"
-                        .to_string(),
-                });
-            }
-            if !command.open_gates.is_empty() && !command.bound_open_gates.is_empty() {
-                return Err(RuntimeError::Recovery {
-                    error: "recovered run has both legacy and bound open gates".to_string(),
-                });
-            }
-            if command.open_gates.is_empty() {
-                self.restore_bound_open_gates(run, &command.bound_open_gates)?;
-            } else {
-                self.restore_open_gates(run, &command.open_gates)?;
-            }
-            self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
+        // Step 7a: restore reconstructed open gates before boundary handling.
+        if self.restore_recovered_gates(run, &open_gates, &bound_open_gates, boundary_kind)? {
             return Ok(());
         }
 

@@ -297,14 +297,31 @@
         (runtime, journal)
     }
 
-    fn bound_gate_fixture(run: RunId, id: u64) -> BoundManualGate {
+    fn bound_gate_fixture(runtime: &Runtime, run: RunId, id: u64) -> BoundManualGate {
+        let state = runtime
+            .shards
+            .first()
+            .expect("single-shard runtime must hold one shard")
+            .run_state_get(run)
+            .expect("run state must exist");
+        let admission = state.admission.as_ref().expect("admission must exist");
+        let input_digest = match admission.input_digest() {
+            vb_storage::RunInputBinding::Digest(digest) => GateDigest::from_bytes(digest.as_bytes()),
+            vb_storage::RunInputBinding::LegacyUnbound => {
+                panic!("submitted run must carry an input digest")
+            }
+        };
+        let policy_digest = match admission.policy_pin() {
+            vb_storage::RunPolicyPin::Pinned(digest) => GateDigest::from_bytes(digest.as_bytes()),
+            vb_storage::RunPolicyPin::Unverified => gate_digest(5),
+        };
         BoundManualGate {
             gate: gate_fixture(run, id),
             binding: GateBinding {
-                artifact_digest: gate_digest(4),
-                policy_digest: gate_digest(5),
-                input_digest: gate_digest(6),
-                attempt: 1,
+                artifact_digest: GateDigest::from_bytes(admission.artifact_digest().as_bytes()),
+                policy_digest,
+                input_digest,
+                attempt: state.run_attempt.get(),
             },
         }
     }
@@ -319,15 +336,8 @@
         let workflow = gate_chain_workflow().expect("chain workflow must compile");
         assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        assert_eq!(
-            runtime.open_bound_gate(
-                run,
-                bound_gate_fixture(run, gate_id),
-                0,
-                gate_person("bob")
-            ),
-            Ok(())
-        );
+        let gate = bound_gate_fixture(&runtime, run, gate_id);
+        assert_eq!(runtime.open_bound_gate(run, gate, 0, gate_person("bob")), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         (runtime, journal)
     }

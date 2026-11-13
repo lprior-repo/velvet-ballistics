@@ -146,6 +146,23 @@ fn bound_gate(run: RunId) -> BoundManualGate {
     }
 }
 
+fn bound_gate_for_state(shard: &Shard, run: RunId) -> BoundManualGate {
+    let state = shard.run_state_get(run).expect("run state");
+    let admission = state.admission.as_ref().expect("admission");
+    let input_digest = match admission.input_digest() {
+        vb_storage::RunInputBinding::Digest(digest) => digest,
+        vb_storage::RunInputBinding::LegacyUnbound => panic!("submitted run has no input digest"),
+    };
+    let mut gate = bound_gate(run);
+    gate.binding = GateBinding {
+        artifact_digest: GateDigest::from_bytes(admission.artifact_digest().as_bytes()),
+        policy_digest: digest(5),
+        input_digest: GateDigest::from_bytes(input_digest.as_bytes()),
+        attempt: state.run_attempt.get(),
+    };
+    gate
+}
+
 fn input(decision: GateDecision) -> GateDecisionInput {
     GateDecisionInput {
         gate: GateId::new(7),
@@ -215,7 +232,7 @@ fn make_shard(run: RunId) -> Result<(Shard, Arc<BoundJournal>), Box<dyn std::err
     shard.tick()?;
     assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Running));
     shard.enqueue(ShardCommand::OpenBoundGate {
-        gate: bound_gate(run),
+        gate: bound_gate_for_state(&shard, run),
         opened_at_ms: 0,
         requester: person("bob"),
     })?;
@@ -298,7 +315,10 @@ fn bound_open_and_approve_journals_bound_record_and_closes_gate()
         decisions[0].operator_trust,
         Some(OperatorTrust::LocalSocketClaim)
     );
-    assert_eq!(decisions[0].binding, bound_gate(run).binding);
+    assert_eq!(
+        decisions[0].binding,
+        bound_gate_for_state(&shard, run).binding
+    );
     assert!(!shard.bound_open_gates.contains_key(&GateId::new(7)));
     Ok(())
 }

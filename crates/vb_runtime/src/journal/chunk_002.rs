@@ -96,7 +96,7 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::RunAdmission { admission } => {
                 if let Some(budget) = admission.budget() {
                     Ok(Some(JournalEvent::RunAdmissionBudget {
-                        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+                        input_digest: admission.input_digest(),
                         run: admission.run_id(),
                         seq,
                         artifact_digest: admission.artifact_digest(),
@@ -107,7 +107,7 @@ impl StorageRuntimeJournal {
                     }))
                 } else {
                     Ok(Some(JournalEvent::RunAdmission {
-                        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+                        input_digest: admission.input_digest(),
                         run: admission.run_id(),
                         seq,
                         artifact_digest: admission.artifact_digest(),

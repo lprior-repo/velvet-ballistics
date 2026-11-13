@@ -20,6 +20,7 @@ pub(crate) fn reconstruct_bound_open_gates(
     events: &[vb_storage::JournalEvent],
 ) -> Result<Vec<BoundOpenGate>, GateError> {
     let mut open: IndexMap<u64, BoundOpenGate> = IndexMap::new();
+    let mut seen_receipts: IndexMap<vb_core::manual_gate::GateDigest, u64> = IndexMap::new();
     for event in events {
         match event {
             vb_storage::JournalEvent::GateOpenedBoundEvent {
@@ -55,13 +56,21 @@ pub(crate) fn reconstruct_bound_open_gates(
                 };
                 if !record.matches_bound_gate(&existing.gate)
                     || record.record.requester != existing.requester
+                    || record.record.opened_at_ms != existing.opened_at_ms
+                    || record.record.decided_at_ms < existing.opened_at_ms
                 {
                     return Err(GateError::ReplayBoundGateMismatch { gate: gate_id });
                 }
-                if let Some(receipt) = &record.bound_receipt
-                    && !verify_bound_receipt(receipt, &existing.gate)?
-                {
-                    return Err(GateError::BoundReceiptMismatch);
+                if let Some(receipt) = &record.bound_receipt {
+                    if !verify_bound_receipt(receipt, &existing.gate)? {
+                        return Err(GateError::BoundReceiptMismatch);
+                    }
+                    if seen_receipts
+                        .insert(receipt.digest, gate_id)
+                        .is_some()
+                    {
+                        return Err(GateError::ReplayDuplicateBoundReceipt { gate: gate_id });
+                    }
                 }
                 match record.record.outcome {
                     GateOutcome::Approved
