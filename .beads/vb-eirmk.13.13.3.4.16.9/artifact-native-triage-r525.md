@@ -1,0 +1,11 @@
+# Artifact native triage r525
+
+Parent runtime unit execution reports 2490 passed and 79 failed, exit101. This task owns only the artifact/decode/evidence failure families and the dedicated strict public recovery controls. Avicenna exclusively owns the four SlotFlow factory groups prepared_inputs/fixtures.rs, recovery/input_binding/fixtures.rs, run_checkpoint symbol-prefix fixtures and bound-symbol duplicate-retry fixtures; do not edit those groups or their dependent oracles to bypass UninitializedRead.
+
+First-stage write fence is this contract plus ignored target/runtime-artifact-triage-r525 diagnostic source and receipts. No production or tracked Rust implementation change is authorized by this triage stage. Candidate fixture fences, only after a demonstrated cause, are admission/evidence_test_support.rs, recovery/full/admission_tests.rs and necessary existing artifact-store mock factories; preserve every test name, literal assertion, negative class, compatibility decision and error-precedence oracle.
+
+Inspect the actual canonical writer, strict versioned reader, expected-evidence comparison and registered/legacy profile dispatch before migration. The current admission evidence helper already calls prepare_compiled_artifact, so do not presume a flag-only fixture or flip any proof flag. Other historical mocks explicitly construct Unverified evidence and must be evaluated separately against their intended behavior.
+
+Generate one bounded Rust diagnostic on local5090 to call the existing helper, strict decode and public accepted-artifact verifier independently. Reading already compiled parent libraries is diagnostic evidence only, with exact library/source hashes and source provenance limitations; it is not native qualification of a new candidate. No database mutation, proof-gate relaxation, parser fallback, new API/schema/dependency or compatibility/error-order change is permitted.
+
+Any production defect requires a concrete source/error capsule and independent contract review before implementation. A legitimate obsolete fixture may be migrated only through existing canonical builders while preserving its original domain and assertions. The unchanged two Fjall acceptance scenarios remain byte-exact; no phase closure or all-79 acceptance follows from this bounded diagnosis.
