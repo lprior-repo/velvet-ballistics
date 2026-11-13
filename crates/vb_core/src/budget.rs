@@ -11,8 +11,11 @@ pub use aggregate::{
     AggregateBudgetError, AggregateReservation, AggregateResourceBudget, AggregateResourceCapacity,
     AggregateResourceUsage, ShardUsageSnapshot,
 };
-pub use aggregate_validate::{check_global_quota, check_tenant_quota, validate_aggregate_budget};
+pub use aggregate_validate::{
+    check_global_quota, check_tenant_quota, release_global_quota, validate_aggregate_budget,
+};
 pub use compute::WholeWorkflowBudget;
+pub use lifetime::{LifetimeBudgetError, RunLifetimeBudget};
 pub use validate::BoundednessPolicy;
 pub use validate_error::{BudgetDimension, BudgetError};
 
@@ -145,6 +148,7 @@ mod aggregate;
 mod aggregate_validate;
 mod compute;
 mod conditional_counter;
+mod lifetime;
 mod parallel;
 mod small_linear;
 mod traversal_error;

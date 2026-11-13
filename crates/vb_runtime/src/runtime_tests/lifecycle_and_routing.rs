@@ -61,9 +61,21 @@
         let encoded_bool = postcard::to_allocvec(&SlotValue::Bool(true))
             .map_err(|err| format!("bool slot serialization failed: {err:?}"))?;
 
+        let actual = journal
+            .snapshot()
+            .map_err(|error| format!("journal snapshot failed: {error:?}"))?;
+        let recorded_start = actual
+            .iter()
+            .find_map(|event| match event {
+                RuntimeJournalEvent::RunAdmission { admission } => {
+                    admission.run_started_millis()
+                }
+                _ => None,
+            })
+            .ok_or_else(|| String::from("RunAdmission must record the run start"))?;
         assert_eq!(
-            journal.snapshot(),
-            Ok(vec![
+            actual,
+            vec![
                 RuntimeJournalEvent::RunSubmitted {
                     run,
                     workflow: WorkflowDigest::from_bytes([2; 32]),
@@ -75,7 +87,8 @@
                         CapabilitySet::empty(),
                         RuntimePolicy::Relaxed,
                     )
-                    .with_attached_budget(expected_budget),
+                    .with_attached_budget(expected_budget)
+                    .with_run_started_millis(Some(recorded_start)),
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,
@@ -111,7 +124,7 @@
                     result: SlotIdx::ZERO,
                     attempt: 1
                 },
-            ])
+            ]
         );
         Ok(())
     }

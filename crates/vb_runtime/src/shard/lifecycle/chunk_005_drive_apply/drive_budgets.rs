@@ -28,25 +28,12 @@ impl Shard {
     }
 
     fn check_run_time_budget(state: &mut RunState) -> RuntimeEngineResult<()> {
-        let Some(admission) = state.admission.as_ref() else {
+        let Some(budget) = state
+            .admission
+            .as_ref()
+            .and_then(crate::admission::RunAdmission::budget)
+        else {
             return Ok(());
-        };
-        let Some(budget) = admission.budget() else {
-            return Ok(());
-        };
-        let started = match state.run_started_millis {
-            Some(started) => started,
-            None => {
-                let now = crate::shard::helpers::wall_clock_millis_since_epoch().ok_or(
-                    crate::engine::types::RuntimeEngineError::Core(
-                        vb_core::engine::EngineError::InternalInvariantViolation {
-                            reason: "wall clock unavailable".into(),
-                        },
-                    ),
-                )?;
-                state.run_started_millis = Some(now);
-                now
-            }
         };
         let now = crate::shard::helpers::wall_clock_millis_since_epoch().ok_or(
             crate::engine::types::RuntimeEngineError::Core(
@@ -55,19 +42,58 @@ impl Shard {
                 },
             ),
         )?;
-        let elapsed = now.saturating_sub(started);
-        let Some(limit_millis) = budget.max_run_time_seconds.checked_mul(1000) else {
-            return Ok(());
+        let started = match state.run_started_millis {
+            Some(started) => started,
+            None => {
+                state.run_started_millis = Some(now);
+                now
+            }
         };
-        if elapsed > limit_millis {
-            return Err(crate::engine::types::RuntimeEngineError::Core(
-                vb_core::engine::EngineError::BudgetExceeded {
-                    budget: "run_time",
-                    limit: budget.max_run_time_seconds,
-                },
-            ));
+        let Ok(lifetime) = vb_core::budget::RunLifetimeBudget::from_budget(started, &budget) else {
+            return Self::run_time_budget_exceeded(budget.max_run_time_seconds);
+        };
+        if lifetime.check(now).is_err() {
+            return Self::run_time_budget_exceeded(budget.max_run_time_seconds);
         }
         Ok(())
+    }
+
+    fn run_time_budget_exceeded(limit: u64) -> RuntimeEngineResult<()> {
+        Err(crate::engine::types::RuntimeEngineError::Core(
+            vb_core::engine::EngineError::BudgetExceeded {
+                budget: "run_time",
+                limit,
+            },
+        ))
+    }
+
+    /// Fails at most one live run whose admitted wall-clock lifetime has
+    /// expired. A suspended run holds no instruction budget and may never be
+    /// driven again, so a tick-time sweep is the only enforcement point that
+    /// bounds its wall-clock lifetime.
+    pub(crate) fn expire_overdue_run_lifetime(&mut self) -> RuntimeResult<()> {
+        let Some(now) = crate::shard::helpers::wall_clock_millis_since_epoch() else {
+            return Ok(());
+        };
+        let expired = self.runs.iter().find_map(|(&run, state)| {
+            let budget = state.admission.as_ref()?.budget()?;
+            let started = state.run_started_millis?;
+            match vb_core::budget::RunLifetimeBudget::from_budget(started, &budget) {
+                Ok(lifetime) if !lifetime.is_expired(now) => None,
+                _ => Some(run),
+            }
+        });
+        let Some(run) = expired else {
+            return Ok(());
+        };
+        let state = self.take_run_state(run)?;
+        match self.fail_run_state(run, state)? {
+            crate::shard::transitions::TransitionOutcome::Applied => Ok(()),
+            crate::shard::transitions::TransitionOutcome::JournalBudgetExceeded(state) => {
+                self.run_state_insert(run, *state)?;
+                Ok(())
+            }
+        }
     }
 
     fn check_suspension_budgets(

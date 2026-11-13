@@ -196,6 +196,20 @@ impl Shard {
                     unverified_admission
                 }
             };
+            let recovered_started = state_admission
+                .as_ref()
+                .and_then(crate::admission::RunAdmission::run_started_millis);
+            let budgeted = state_admission
+                .as_ref()
+                .is_some_and(|admission| admission.budget().is_some());
+            // A budgeted run recovered from evidence that predates the durable
+            // origin has no honest lifetime start. Treat it as already expired
+            // instead of restarting its clock.
+            let run_started_millis = match (recovered_started, budgeted) {
+                (Some(started), _) => Some(started),
+                (None, true) => Some(0),
+                (None, false) => None,
+            };
             crate::shard::types::RunState {
                 registered_execution,
                 frame,
@@ -204,7 +218,7 @@ impl Shard {
                 store,
                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
                 admission: state_admission,
-                run_started_millis: None,
+                run_started_millis,
                 collect_states,
                 journal_bytes_written: 0,
                 action_contracts: artifact.action_contracts.clone(),

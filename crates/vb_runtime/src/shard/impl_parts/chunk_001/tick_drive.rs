@@ -83,6 +83,8 @@ impl Shard {
             return Ok(false);
         }
 
+        self.expire_overdue_run_lifetime()?;
+
         let Some(cmd) = self.command_queue.pop() else {
             self.drive_one_ready_run()?;
             return Ok(true);

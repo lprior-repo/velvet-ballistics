@@ -24,7 +24,10 @@ impl Shard {
             vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
         }
         let digest = workflow.digest();
-        let admission = self.build_admission_with_budget(run, &workflow, caps)?;
+        let run_started_millis = crate::shard::helpers::wall_clock_millis_since_epoch();
+        let admission = self
+            .build_admission_with_budget(run, &workflow, caps)?
+            .map(|admission| admission.with_run_started_millis(run_started_millis));
         execution_binding::validate(
             self.artifact_store.as_ref(),
             self.policy,
@@ -108,7 +111,7 @@ impl Shard {
             store,
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
-            run_started_millis: crate::shard::helpers::wall_clock_millis_since_epoch(),
+            run_started_millis,
             collect_states: CollectStates::new(),
             journal_bytes_written: header_bytes,
             action_contracts: action_contracts.to_vec().into_boxed_slice(),

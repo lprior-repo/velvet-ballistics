@@ -697,6 +697,152 @@ fn drive_state_without_admitted_budget_ignores_run_time() {
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
+#[test]
+fn drive_state_run_time_overflow_fails_closed() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(760);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(u64::MAX),
+    ));
+    state.run_started_millis = Some(0);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(1);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "run_time",
+            limit: u64::MAX,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_run_time_exact_limit_is_live_and_plus_one_fails() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let digest = workflow.digest();
+
+    let run = RunId::new(761);
+    let mut exact = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    exact.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    exact.run_started_millis = Some(10_000);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_000);
+    let mut evidence = EvidenceCollector::new();
+    let exact_result = Shard::drive_state_with_manual_gates(&mut exact, 100, 0, &mut evidence);
+    assert!(matches!(exact_result, Ok(RuntimeSignal::Finished(_))));
+
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(762);
+    let mut over = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    over.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    over.run_started_millis = Some(10_000);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_001);
+    let mut evidence = EvidenceCollector::new();
+    let over_result = Shard::drive_state_with_manual_gates(&mut over, 100, 0, &mut evidence);
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert!(matches!(
+        over_result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "run_time",
+            limit: 10,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_run_time_repeated_checks_keep_original_origin() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(763);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    state.run_started_millis = Some(10_000);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_000);
+    assert!(Shard::check_run_time_budget(&mut state).is_ok());
+    assert_eq!(state.run_started_millis, Some(10_000));
+    assert!(Shard::check_run_time_budget(&mut state).is_ok());
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert_eq!(
+        state.run_started_millis,
+        Some(10_000),
+        "repeated checks must not restart the admitted origin"
+    );
+}
+
+#[test]
+fn suspended_run_over_lifetime_fails_on_tick() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let workflow = suspended_workflow().ok_or_else(|| "suspended workflow builds".to_string())?;
+    let run = RunId::new(764);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .ok_or_else(|| "run state builds".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    state.run_started_millis = Some(10_000);
+    state
+        .frame
+        .mark_running(StepIdx::ZERO)
+        .map_err(|error| format!("mark running failed: {error:?}"))?;
+    state
+        .frame
+        .mark_waiting(StepIdx::ZERO)
+        .map_err(|error| format!("mark waiting failed: {error:?}"))?;
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Resumable)
+        .map_err(|error| error.to_string())?;
+
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_001);
+    let ticked = shard.tick().map_err(|error| error.to_string())?;
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert!(ticked);
+    assert!(shard.terminal_runs_contains(run));
+    assert!(!shard.run_state_contains(run));
+    let events = journal.snapshot().map_err(|error| error.to_string())?;
+    assert!(
+        events.iter().any(
+            |event| matches!(event, RuntimeJournalEvent::RunFailed { run: failed, .. } if *failed == run)
+        ),
+        "lifetime expiry must journal RunFailed"
+    );
+    Ok(())
+}
+
 fn tiny_journal_contract() -> ResourceContract {
     ResourceContract {
         max_journal_batch_bytes: 1,

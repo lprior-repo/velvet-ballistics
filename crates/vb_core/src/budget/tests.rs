@@ -3,8 +3,9 @@
 use crate::budget::{
     AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
     AggregateResourceUsage, BoundednessPolicy, BudgetError, BudgetExhaustionOutcome,
-    RemainingBudget, RemainingBudgetError, ShardUsageSnapshot, WholeWorkflowBudget,
-    check_global_quota, check_tenant_quota, validate_aggregate_budget,
+    LifetimeBudgetError, RemainingBudget, RemainingBudgetError, RunLifetimeBudget,
+    ShardUsageSnapshot, WholeWorkflowBudget, check_global_quota, check_tenant_quota,
+    release_global_quota, validate_aggregate_budget,
 };
 use crate::engine::StepBudget;
 use crate::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, TenantId};
@@ -38,5 +39,7 @@ include!("tests/count_push_c2.rs");
 include!("tests/mutation_killing.rs");
 
 include!("tests/budget_dims.rs");
+
+include!("tests/lifetime.rs");
 
 include!("tests/whole_workflow.rs");

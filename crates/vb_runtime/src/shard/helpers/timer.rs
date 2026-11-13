@@ -86,8 +86,35 @@ pub fn validate_timer_fire(
 /// Current wall-clock time in milliseconds since the UNIX epoch, or None when
 /// the system clock is before the epoch or the value does not fit in a u64.
 pub fn wall_clock_millis_since_epoch() -> Option<u64> {
+    #[cfg(test)]
+    if let Some(millis) = test_wall_clock_millis() {
+        return Some(millis);
+    }
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .ok()
         .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+}
+
+#[cfg(test)]
+thread_local! {
+    static TEST_WALL_CLOCK_MILLIS: core::cell::Cell<Option<u64>> =
+        const { core::cell::Cell::new(None) };
+}
+
+#[cfg(test)]
+fn test_wall_clock_millis() -> Option<u64> {
+    TEST_WALL_CLOCK_MILLIS.with(|cell| cell.get())
+}
+
+/// Installs a deterministic wall clock for the current test thread.
+#[cfg(test)]
+pub(crate) fn install_wall_clock_millis_for_test(millis: u64) {
+    TEST_WALL_CLOCK_MILLIS.with(|cell| cell.set(Some(millis)));
+}
+
+/// Restores the real wall clock for the current test thread.
+#[cfg(test)]
+pub(crate) fn restore_wall_clock_for_test() {
+    TEST_WALL_CLOCK_MILLIS.with(|cell| cell.set(None));
 }
