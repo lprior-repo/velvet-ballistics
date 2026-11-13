@@ -22,6 +22,19 @@ pub enum SeparationOfDuties {
     DistinctFromRequester = 1,
 }
 
+/// Provenance of the operator identity attached to a bound gate decision.
+///
+/// V1 has no independent human authentication service. Both variants record a
+/// claimed identity, never an authenticated human.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum OperatorTrust {
+    /// Identity claimed by a process on the trusted local Unix socket.
+    LocalSocketClaim = 0,
+    /// Identity supplied by the in-process Rust API used by tests/embedders.
+    InProcessCaller = 1,
+}
+
 /// Structured decision options (MASTER §77.15). Closed: exactly five.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]

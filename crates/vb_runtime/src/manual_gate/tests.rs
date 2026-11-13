@@ -1,8 +1,8 @@
 use super::*;
 use vb_core::ids::{ActionId, RunId};
 use vb_core::manual_gate::{
-    ApproverId, ApproverRole, GateDecision, GateDecisionInput, GateDigest, GateId, GateOutcome,
-    ManualGate, RiskClass, SeparationOfDuties,
+    ApproverId, ApproverRole, BoundManualGate, GateBinding, GateDecision, GateDecisionInput,
+    GateDigest, GateId, GateOutcome, ManualGate, OperatorTrust, RiskClass, SeparationOfDuties,
 };
 
 fn digest(byte: u8) -> GateDigest {
@@ -35,6 +35,18 @@ fn gate() -> ManualGate {
     }
 }
 
+fn bound_gate() -> BoundManualGate {
+    BoundManualGate {
+        gate: gate(),
+        binding: GateBinding {
+            artifact_digest: digest(4),
+            policy_digest: digest(5),
+            input_digest: digest(6),
+            attempt: 1,
+        },
+    }
+}
+
 fn input(decision: GateDecision) -> GateDecisionInput {
     GateDecisionInput {
         gate: GateId::new(7),
@@ -54,7 +66,8 @@ fn input(decision: GateDecision) -> GateDecisionInput {
 #[test]
 fn approve_happy_path_yields_receipt_bound_to_gate() {
     let gate = gate();
-    let record = evaluate_decision(&gate, 0, &input(GateDecision::Approve)).unwrap();
+    let record =
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Approve)).unwrap();
     assert_eq!(record.outcome, GateOutcome::Approved);
     assert_eq!(record.decision, Some(GateDecision::Approve));
     let receipt = record.receipt.as_ref().unwrap();
@@ -77,7 +90,7 @@ fn deny_and_more_evidence_carry_no_receipt() {
             GateOutcome::MoreEvidenceRequested,
         ),
     ] {
-        let record = evaluate_decision(&gate, 0, &input(decision)).unwrap();
+        let record = evaluate_decision(&gate, 0, &person("bob"), &input(decision)).unwrap();
         assert_eq!(record.outcome, outcome);
         assert!(record.receipt.is_none());
         assert!(record.is_structurally_valid());
@@ -89,7 +102,7 @@ fn wrong_role_is_rejected() {
     let gate = gate();
     let mut bad = input(GateDecision::Approve);
     bad.approver_role = ApproverRole::new("viewer".to_string()).unwrap();
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert!(matches!(err, GateError::WrongRole { .. }));
 }
 
@@ -98,7 +111,7 @@ fn separation_of_duties_rejects_self_approval_for_high_risk() {
     let gate = gate();
     let mut bad = input(GateDecision::Approve);
     bad.approver = person("bob");
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert_eq!(err, GateError::SeparationOfDutiesViolation);
 }
 
@@ -108,11 +121,11 @@ fn separation_rule_extends_to_low_risk_when_gate_requires_it() {
     gate.risk = RiskClass::Low;
     let mut bad = input(GateDecision::Approve);
     bad.approver = person("bob");
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert_eq!(err, GateError::SeparationOfDutiesViolation);
 
     gate.separation_of_duties = SeparationOfDuties::Disabled;
-    let ok = evaluate_decision(&gate, 0, &input(GateDecision::Approve)).unwrap();
+    let ok = evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Approve)).unwrap();
     assert_eq!(ok.outcome, GateOutcome::Approved);
 }
 
@@ -121,7 +134,7 @@ fn evidence_digest_mismatch_is_rejected() {
     let gate = gate();
     let mut bad = input(GateDecision::Approve);
     bad.evidence_bundle_digest = digest(99);
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert_eq!(err, GateError::EvidenceDigestMismatch);
 }
 
@@ -130,12 +143,12 @@ fn evidence_not_shown_blocks_high_risk_non_compensatable_approval() {
     let gate = gate();
     let mut bad = input(GateDecision::Approve);
     bad.evidence_shown = false;
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert_eq!(err, GateError::EvidenceNotShown);
 
     let mut compensatable = gate.clone();
     compensatable.compensatable = true;
-    let ok = evaluate_decision(&compensatable, 0, &bad).unwrap();
+    let ok = evaluate_decision(&compensatable, 0, &person("bob"), &bad).unwrap();
     assert_eq!(ok.outcome, GateOutcome::Approved);
 }
 
@@ -144,10 +157,10 @@ fn approval_reason_required_is_enforced() {
     let gate = gate();
     let mut bad = input(GateDecision::Approve);
     bad.reason = Some("   ".to_string());
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert_eq!(err, GateError::ReasonRequired);
     bad.reason = None;
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert_eq!(err, GateError::ReasonRequired);
 }
 
@@ -155,17 +168,17 @@ fn approval_reason_required_is_enforced() {
 fn delegate_requires_target_distinct_from_approver() {
     let gate = gate();
     let missing = input(GateDecision::Delegate);
-    let err = evaluate_decision(&gate, 0, &missing).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &missing).unwrap_err();
     assert_eq!(err, GateError::DelegateTargetMissing);
 
     let mut self_target = input(GateDecision::Delegate);
     self_target.delegated_to = Some(person("alice"));
-    let err = evaluate_decision(&gate, 0, &self_target).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &self_target).unwrap_err();
     assert_eq!(err, GateError::DelegateTargetIsApprover);
 
     let mut ok_input = input(GateDecision::Delegate);
     ok_input.delegated_to = Some(person("carol"));
-    let record = evaluate_decision(&gate, 0, &ok_input).unwrap();
+    let record = evaluate_decision(&gate, 0, &person("bob"), &ok_input).unwrap();
     assert_eq!(record.outcome, GateOutcome::Delegated);
     assert_eq!(record.delegated_to, Some(person("carol")));
     assert!(record.receipt.is_none());
@@ -175,13 +188,13 @@ fn delegate_requires_target_distinct_from_approver() {
 fn break_glass_requires_permission_and_justification_and_audits() {
     let gate = gate();
     let mut no_justification = input(GateDecision::BreakGlass);
-    let err = evaluate_decision(&gate, 0, &no_justification).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &no_justification).unwrap_err();
     assert_eq!(err, GateError::BreakGlassJustificationRequired);
 
     no_justification.break_glass_justification = Some("prod is down".to_string());
     // Break-glass waives the role check: a viewer may break glass.
     no_justification.approver_role = ApproverRole::new("viewer".to_string()).unwrap();
-    let record = evaluate_decision(&gate, 0, &no_justification).unwrap();
+    let record = evaluate_decision(&gate, 0, &person("bob"), &no_justification).unwrap();
     assert_eq!(record.outcome, GateOutcome::BreakGlassApproved);
     assert!(record.break_glass);
     assert_eq!(
@@ -192,7 +205,7 @@ fn break_glass_requires_permission_and_justification_and_audits() {
 
     let mut disallowed = gate.clone();
     disallowed.break_glass_allowed = false;
-    let err = evaluate_decision(&disallowed, 0, &no_justification).unwrap_err();
+    let err = evaluate_decision(&disallowed, 0, &person("bob"), &no_justification).unwrap_err();
     assert_eq!(err, GateError::BreakGlassNotAllowed);
 }
 
@@ -202,7 +215,7 @@ fn break_glass_still_enforces_separation_for_high_risk() {
     let mut bad = input(GateDecision::BreakGlass);
     bad.break_glass_justification = Some("prod is down".to_string());
     bad.approver = person("bob");
-    let err = evaluate_decision(&gate, 0, &bad).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad).unwrap_err();
     assert_eq!(err, GateError::SeparationOfDutiesViolation);
 }
 
@@ -211,12 +224,12 @@ fn decision_after_deadline_is_rejected_and_timeout_escalates() {
     let gate = gate();
     let mut late = input(GateDecision::Approve);
     late.decided_at_ms = 1_001;
-    let err = evaluate_decision(&gate, 0, &late).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &late).unwrap_err();
     assert!(matches!(err, GateError::DecisionAfterTimeout { .. }));
 
     // Exactly at the deadline is still on time.
     late.decided_at_ms = 1_000;
-    assert!(evaluate_decision(&gate, 0, &late).is_ok());
+    assert!(evaluate_decision(&gate, 0, &person("bob"), &late).is_ok());
 
     // Timeout evaluation before the deadline fails closed.
     let err = evaluate_timeout(&gate, &person("bob"), 0, 1_000).unwrap_err();
@@ -284,7 +297,8 @@ fn receipt_digest_is_deterministic_and_sensitive() {
 #[test]
 fn receipt_verification_fails_on_tampered_digest() {
     let gate = gate();
-    let record = evaluate_decision(&gate, 0, &input(GateDecision::Approve)).unwrap();
+    let record =
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Approve)).unwrap();
     let mut receipt = record.receipt.unwrap();
     assert!(verify_receipt(&receipt, &gate).unwrap());
     receipt.digest = digest(77);
@@ -307,8 +321,9 @@ fn receipt_verification_fails_on_tampered_digest() {
 #[test]
 fn replay_reconstructs_history_without_effects() {
     let gate = gate();
-    let approved = evaluate_decision(&gate, 0, &input(GateDecision::Approve)).unwrap();
-    let denied = evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap();
+    let approved =
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Approve)).unwrap();
+    let denied = evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Deny)).unwrap();
     let escalated = evaluate_timeout(&gate, &person("bob"), 0, 2_000).unwrap();
 
     let replay = replay_gate_outcome(&approved, &gate).unwrap();
@@ -348,7 +363,8 @@ fn replay_reconstructs_history_without_effects() {
 #[test]
 fn journal_event_round_trips_through_postcard() {
     let gate = gate();
-    let record = evaluate_decision(&gate, 0, &input(GateDecision::Approve)).unwrap();
+    let record =
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Approve)).unwrap();
     let event = gate_decision_event(gate.run, vb_storage::EventSeq::new(1), record.clone());
     assert_eq!(event.run_id(), gate.run);
     assert_eq!(event.seq(), vb_storage::EventSeq::new(1));
@@ -401,7 +417,7 @@ fn reconstruct_open_gates_folds_open_and_close_in_order() {
     let denied = gate_decision_event(
         gate.run,
         vb_storage::EventSeq::new(3),
-        evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap(),
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Deny)).unwrap(),
     );
 
     let open = reconstruct_open_gates(&[opened.clone(), other_opened.clone()]).unwrap();
@@ -427,7 +443,7 @@ fn reconstruct_open_gates_folds_open_and_close_in_order() {
         let decided = gate_decision_event(
             gate.run,
             vb_storage::EventSeq::new(2),
-            evaluate_decision(&gate, 0, &decision_input).unwrap(),
+            evaluate_decision(&gate, 0, &person("bob"), &decision_input).unwrap(),
         );
         assert!(
             reconstruct_open_gates(&[opened, decided])
@@ -457,7 +473,13 @@ fn reconstruct_open_gates_keeps_gate_on_more_evidence_and_delegation() {
     let more = gate_decision_event(
         gate.run,
         vb_storage::EventSeq::new(2),
-        evaluate_decision(&gate, 0, &input(GateDecision::RequestMoreEvidence)).unwrap(),
+        evaluate_decision(
+            &gate,
+            0,
+            &person("bob"),
+            &input(GateDecision::RequestMoreEvidence),
+        )
+        .unwrap(),
     );
     let open = reconstruct_open_gates(&[opened.clone(), more]).unwrap();
     assert_eq!(open.len(), 1);
@@ -468,7 +490,7 @@ fn reconstruct_open_gates_keeps_gate_on_more_evidence_and_delegation() {
     let delegated = gate_decision_event(
         gate.run,
         vb_storage::EventSeq::new(3),
-        evaluate_decision(&gate, 0, &delegate_input).unwrap(),
+        evaluate_decision(&gate, 0, &person("bob"), &delegate_input).unwrap(),
     );
     let open = reconstruct_open_gates(&[opened, delegated]).unwrap();
     assert_eq!(open.len(), 1);
@@ -507,7 +529,7 @@ fn reconstruct_open_gates_ignores_decisions_for_unknown_gates() {
     let denied = gate_decision_event(
         gate.run,
         vb_storage::EventSeq::new(1),
-        evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap(),
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Deny)).unwrap(),
     );
     assert!(
         reconstruct_open_gates(std::slice::from_ref(&denied))
@@ -520,7 +542,7 @@ fn reconstruct_open_gates_ignores_decisions_for_unknown_gates() {
     let denied = gate_decision_event(
         gate.run,
         vb_storage::EventSeq::new(2),
-        evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap(),
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Deny)).unwrap(),
     );
     let reopened = gate_opened_event(
         gate.clone(),
@@ -537,8 +559,9 @@ fn reconstruct_open_gates_ignores_decisions_for_unknown_gates() {
 fn reconstruct_open_gates_rejects_invalid_decision_record() {
     let gate = gate();
     let opened = gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
-    let mut denied = evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap();
-    denied.receipt = evaluate_decision(&gate, 0, &input(GateDecision::Approve))
+    let mut denied =
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Deny)).unwrap();
+    denied.receipt = evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Approve))
         .unwrap()
         .receipt;
     assert!(!denied.is_structurally_valid());
@@ -552,13 +575,261 @@ fn gate_id_mismatch_and_invalid_identities_are_rejected() {
     let gate = gate();
     let mut wrong_gate = input(GateDecision::Approve);
     wrong_gate.gate = GateId::new(8);
-    let err = evaluate_decision(&gate, 0, &wrong_gate).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &wrong_gate).unwrap_err();
     assert!(matches!(err, GateError::GateIdMismatch { .. }));
 
     let mut bad_approver = input(GateDecision::Approve);
     bad_approver.approver = ApproverId {
         value: String::new(),
     };
-    let err = evaluate_decision(&gate, 0, &bad_approver).unwrap_err();
+    let err = evaluate_decision(&gate, 0, &person("bob"), &bad_approver).unwrap_err();
     assert_eq!(err, GateError::InvalidApprover);
+}
+
+#[test]
+fn requester_spoofing_cannot_evade_separation_of_duties() {
+    let gate = gate();
+    // The approver is the durable requester, but the submission claims a
+    // different requester to try to pass the separation check.
+    let mut spoofed = input(GateDecision::Approve);
+    spoofed.approver = person("bob");
+    spoofed.requester = person("mallory");
+    let err = evaluate_decision(&gate, 0, &person("bob"), &spoofed).unwrap_err();
+    assert_eq!(err, GateError::RequesterMismatch);
+}
+
+#[test]
+fn break_glass_requires_evidence_display_for_high_risk_non_compensatable() {
+    let gate = gate();
+    let mut input = input(GateDecision::BreakGlass);
+    input.break_glass_justification = Some("prod is down".to_string());
+    input.evidence_shown = false;
+    let err = evaluate_decision(&gate, 0, &person("bob"), &input).unwrap_err();
+    assert_eq!(err, GateError::EvidenceNotShown);
+
+    input.evidence_shown = true;
+    let record = evaluate_decision(&gate, 0, &person("bob"), &input).unwrap();
+    assert_eq!(record.outcome, GateOutcome::BreakGlassApproved);
+}
+
+#[test]
+fn replay_rejects_duplicate_approval_receipts() {
+    let gate = gate();
+    let approved =
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Approve)).unwrap();
+    let events = vec![
+        gate_decision_event(gate.run, vb_storage::EventSeq::new(1), approved.clone()),
+        gate_decision_event(gate.run, vb_storage::EventSeq::new(2), approved),
+    ];
+    let err = replay_gate_history(&events).unwrap_err();
+    assert_eq!(err, GateError::ReplayDuplicateReceipt { gate: 7 });
+}
+
+#[test]
+fn reconstruct_rejects_requester_that_differs_from_durable_opening() {
+    let gate = gate();
+    let opened = gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+    let mut record =
+        evaluate_decision(&gate, 0, &person("bob"), &input(GateDecision::Deny)).unwrap();
+    record.requester = person("mallory");
+    assert!(record.is_structurally_valid());
+    let decision = gate_decision_event(gate.run, vb_storage::EventSeq::new(2), record);
+    let err = reconstruct_open_gates(&[opened, decision]).unwrap_err();
+    assert_eq!(err, GateError::RequesterMismatch);
+}
+
+#[test]
+fn bound_approve_binds_binding_trust_and_v2_receipt() {
+    let gate = bound_gate();
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::LocalSocketClaim,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    assert!(record.is_structurally_valid());
+    assert!(record.matches_bound_gate(&gate));
+    assert_eq!(record.binding, gate.binding);
+    assert_eq!(record.operator_trust, Some(OperatorTrust::LocalSocketClaim));
+    let receipt = record.bound_receipt.as_ref().unwrap();
+    assert_eq!(receipt.binding, gate.binding);
+    assert_eq!(receipt.requester, person("bob"));
+    assert_eq!(receipt.risk, gate.gate.risk);
+    assert_eq!(receipt.separation, gate.gate.separation_of_duties);
+    assert_eq!(receipt.action, gate.gate.action);
+    assert_ne!(receipt.digest, GateDigest::ZERO);
+    assert!(verify_bound_receipt(receipt, &gate).unwrap());
+    assert!(verify_receipt(&receipt.receipt, &gate.gate).unwrap());
+}
+
+#[test]
+fn bound_path_rejects_zero_binding_and_legacy_path_stays_legacy() {
+    let mut invalid = bound_gate();
+    invalid.binding.attempt = 0;
+    let err = evaluate_bound_decision(
+        &invalid,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap_err();
+    assert_eq!(err, GateError::InvalidGate);
+
+    // A bound gate is not a legacy ManualGate; the old evaluator cannot
+    // silently approve it because the binding is not part of the old type.
+    let legacy = evaluate_decision(
+        &invalid.gate,
+        0,
+        &person("bob"),
+        &input(GateDecision::Approve),
+    );
+    assert_eq!(legacy.unwrap().outcome, GateOutcome::Approved);
+}
+
+#[test]
+fn bound_replay_allows_gate_id_reuse_after_closure() {
+    let gate = bound_gate();
+    let first = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    let mut second_input = input(GateDecision::Approve);
+    second_input.decided_at_ms = 600;
+    let second = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &second_input,
+    )
+    .unwrap();
+    let events = vec![
+        bound_gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1)),
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(2), first),
+        bound_gate_opened_event(
+            gate.clone(),
+            700,
+            person("bob"),
+            vb_storage::EventSeq::new(3),
+        ),
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(4), second),
+    ];
+    let replay = replay_bound_gate_history(&events).unwrap();
+    assert_eq!(replay.len(), 2);
+    assert_eq!(replay[0].outcome, GateOutcome::Approved);
+    assert_eq!(replay[1].outcome, GateOutcome::Approved);
+}
+
+#[test]
+fn bound_replay_rejects_decision_that_does_not_match_opening() {
+    let gate = bound_gate();
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    let mut changed = gate.clone();
+    changed.binding.input_digest = digest(99);
+    let events = vec![
+        bound_gate_opened_event(changed, 0, person("bob"), vb_storage::EventSeq::new(1)),
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(2), record.clone()),
+    ];
+    let err = replay_bound_gate_history(&events).unwrap_err();
+    assert_eq!(err, GateError::ReplayBoundGateMismatch { gate: 7 });
+    let requester_changed = vec![
+        bound_gate_opened_event(
+            gate.clone(),
+            0,
+            person("carol"),
+            vb_storage::EventSeq::new(1),
+        ),
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(2), record),
+    ];
+    let err = replay_bound_gate_history(&requester_changed).unwrap_err();
+    assert_eq!(err, GateError::ReplayBoundGateMismatch { gate: 7 });
+}
+
+#[test]
+fn bound_receipt_rejects_stale_binding_and_duplicate_replay() {
+    let gate = bound_gate();
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    let mut stale = gate.clone();
+    stale.binding.input_digest = digest(99);
+    assert!(!verify_bound_receipt(record.bound_receipt.as_ref().unwrap(), &stale).unwrap());
+
+    let events = vec![
+        bound_gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1)),
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(2), record.clone()),
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(3), record),
+    ];
+    let err = replay_bound_gate_history(&events).unwrap_err();
+    assert_eq!(err, GateError::ReplayDuplicateBoundReceipt { gate: 7 });
+}
+
+#[test]
+fn bound_events_round_trip_and_legacy_replay_ignores_them() {
+    let gate = bound_gate();
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    let opened =
+        bound_gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+    let decision =
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(2), record.clone());
+    for event in [&opened, &decision] {
+        let bytes = postcard::to_allocvec(event).unwrap();
+        let decoded: vb_storage::JournalEvent = postcard::from_bytes(&bytes).unwrap();
+        assert_eq!(&decoded, event);
+    }
+    assert!(
+        replay_gate_history(&[opened.clone(), decision.clone()])
+            .unwrap()
+            .is_empty()
+    );
+    let bound = replay_bound_gate_history(&[opened, decision]).unwrap();
+    assert_eq!(bound.len(), 1);
+    assert_eq!(bound[0].outcome, GateOutcome::Approved);
+    assert_eq!(
+        bound[0].bound_receipt_digest,
+        record.bound_receipt.as_ref().map(|r| r.digest)
+    );
+}
+
+#[test]
+fn bound_break_glass_still_requires_evidence_display() {
+    let gate = bound_gate();
+    let mut break_glass = input(GateDecision::BreakGlass);
+    break_glass.break_glass_justification = Some("prod is down".to_string());
+    break_glass.evidence_shown = false;
+    let err = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &break_glass,
+    )
+    .unwrap_err();
+    assert_eq!(err, GateError::EvidenceNotShown);
 }

@@ -84,6 +84,33 @@ pub enum ShardCommand {
         /// Operator submission for the open gate.
         input: GateDecisionInput,
     },
+    /// Open a bound manual gate with artifact/policy/input/attempt binding.
+    OpenBoundGate {
+        /// Bound gate definition opened by the operator.
+        gate: BoundManualGate,
+        /// Opening time in milliseconds since the UNIX epoch.
+        opened_at_ms: u64,
+        /// Operator who requested the gated action.
+        requester: ApproverId,
+    },
+    /// Submit an operator decision to an open bound manual gate.
+    SubmitBoundGateDecision {
+        /// Run the gate belongs to.
+        run: RunId,
+        /// Operator submission for the open bound gate.
+        input: GateDecisionInput,
+        /// Boundary-supplied provenance of the claimed operator identity.
+        operator_trust: OperatorTrust,
+    },
+    /// Escalate an open bound manual gate whose deadline has passed.
+    EscalateBoundGate {
+        /// Run the gate belongs to.
+        run: RunId,
+        /// Gate to escalate.
+        gate: GateId,
+        /// Escalation time in milliseconds since the UNIX epoch.
+        now_ms: u64,
+    },
     /// Escalate an open manual gate whose deadline has passed.
     EscalateGate {
         /// Run the gate belongs to; the escalation counts against the
@@ -206,7 +233,11 @@ impl ShardCommand {
             Self::AskAnswered { answer } => Some(answer.ticket.run),
             Self::Recover { command } => Some(command.run),
             Self::OpenGate { gate, .. } => Some(gate.run),
-            Self::SubmitGateDecision { run, .. } | Self::EscalateGate { run, .. } => Some(*run),
+            Self::OpenBoundGate { gate, .. } => Some(gate.gate.run),
+            Self::SubmitGateDecision { run, .. }
+            | Self::EscalateGate { run, .. }
+            | Self::SubmitBoundGateDecision { run, .. }
+            | Self::EscalateBoundGate { run, .. } => Some(*run),
             Self::Shutdown => None,
         }
     }

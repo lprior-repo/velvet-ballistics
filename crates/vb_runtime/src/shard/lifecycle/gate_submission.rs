@@ -23,11 +23,14 @@
 // command can drive it either.
 
 use vb_core::manual_gate::{
-    ApproverId, GateDecision, GateDecisionInput, GateId, GateOutcomeRecord, ManualGate,
+    ApproverId, BoundGateOutcomeRecord, BoundManualGate, GateDecision, GateDecisionInput, GateId,
+    GateOutcomeRecord, ManualGate, OperatorTrust,
 };
 
-use crate::manual_gate::{evaluate_decision, evaluate_timeout};
-use crate::shard::types::OpenGate;
+use crate::manual_gate::{
+    evaluate_bound_decision, evaluate_bound_timeout, evaluate_decision, evaluate_timeout,
+};
+use crate::shard::types::{BoundOpenGate, OpenGate};
 
 impl Shard {
     /// Opens a manual gate for a run and suspends the run until decided.
@@ -55,7 +58,7 @@ impl Shard {
         if !self.run_state_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        if self.open_gates.contains_key(&gate.id) {
+        if self.open_gates.contains_key(&gate.id) || self.bound_open_gates.contains_key(&gate.id) {
             return Err(RuntimeError::GateAlreadyOpen { gate: gate.id });
         }
         self.check_gate_suspendable(run)?;
@@ -120,6 +123,13 @@ impl Shard {
         run: RunId,
         input: GateDecisionInput,
     ) -> RuntimeResult<GateOutcomeRecord> {
+        if self.bound_open_gates.contains_key(&input.gate) {
+            return Err(RuntimeError::GateEvaluationFailed {
+                source: crate::manual_gate::GateError::BoundGateRequired {
+                    gate: input.gate.get(),
+                },
+            });
+        }
         let open = self
             .open_gates
             .get(&input.gate)
@@ -140,7 +150,7 @@ impl Shard {
                 actual: input.approver.clone(),
             });
         }
-        let record = evaluate_decision(&open.gate, open.opened_at_ms, &input)
+        let record = evaluate_decision(&open.gate, open.opened_at_ms, &open.requester, &input)
             .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
         self.append_gate_decision_strict(record.clone())?;
         match input.decision {
@@ -175,6 +185,11 @@ impl Shard {
         gate: GateId,
         now_ms: u64,
     ) -> RuntimeResult<GateOutcomeRecord> {
+        if self.bound_open_gates.contains_key(&gate) {
+            return Err(RuntimeError::GateEvaluationFailed {
+                source: crate::manual_gate::GateError::BoundGateRequired { gate: gate.get() },
+            });
+        }
         let open = self
             .open_gates
             .get(&gate)
@@ -263,12 +278,21 @@ impl Shard {
     /// every open gate belongs to an active run, and the registry must
     /// stay bounded even for runs admitted without a budget.
     fn reserve_open_gate_slot(&mut self) -> RuntimeResult<()> {
-        if self.open_gates.len() >= self.max_active_runs {
+        let total = self
+            .open_gates
+            .len()
+            .saturating_add(self.bound_open_gates.len());
+        if total >= self.max_active_runs {
             return Err(RuntimeError::ActiveRunCapacityExceeded {
                 capacity: self.max_active_runs,
             });
         }
         self.open_gates
+            .try_reserve(1)
+            .map_err(|_| RuntimeError::ActiveRunCapacityExceeded {
+                capacity: self.max_active_runs,
+            })?;
+        self.bound_open_gates
             .try_reserve(1)
             .map_err(|_| RuntimeError::ActiveRunCapacityExceeded {
                 capacity: self.max_active_runs,

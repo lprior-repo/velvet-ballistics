@@ -40,6 +40,7 @@ include!("lifecycle/chunk_005_drive_apply/journal_bytes.rs");
 include!("lifecycle/chunk_005.rs");
 include!("lifecycle/chunk_004.rs");
 include!("lifecycle/gate_submission.rs");
+include!("lifecycle/gate_submission_bound.rs");
 
 #[cfg(test)]
 mod tests {
@@ -78,5 +79,9 @@ mod tests {
 
     mod gate_submission {
         include!("lifecycle_tests/gate_submission.rs");
+    }
+
+    mod gate_bound_submission {
+        include!("lifecycle_tests/gate_bound_submission.rs");
     }
 }

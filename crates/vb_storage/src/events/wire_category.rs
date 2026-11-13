@@ -95,6 +95,8 @@ fn is_policy_record(kind: RecordKind) -> bool {
         RecordKind::PolicyDecision
             | RecordKind::GateDecision
             | RecordKind::GateOpened
+            | RecordKind::GateOpenedBound
+            | RecordKind::GateDecisionBound
             | RecordKind::CapabilityGrant
     )
 }

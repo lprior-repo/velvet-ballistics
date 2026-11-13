@@ -81,6 +81,22 @@ pub(crate) struct OpenGate {
     pub(crate) delegated_to: Option<ApproverId>,
 }
 
+/// Bound operator-opened manual gate awaiting a decision.
+///
+/// Mirrors [`OpenGate`] with the additive `BoundManualGate` wrapper so a
+/// legacy gate can never silently become a bound approval and vice versa.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BoundOpenGate {
+    /// Bound gate definition as opened by the operator.
+    pub(crate) gate: vb_core::manual_gate::BoundManualGate,
+    /// Opening time in milliseconds since the UNIX epoch.
+    pub(crate) opened_at_ms: u64,
+    /// Operator who requested the gated action, from the durable opening.
+    pub(crate) requester: ApproverId,
+    /// Delegate target after a delegation decision.
+    pub(crate) delegated_to: Option<ApproverId>,
+}
+
 /// Explicit ask answer contract. The requested slot must match the AskTicket authority.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AskAnswer {

@@ -61,6 +61,7 @@ pub fn replay_gate_history(
     events: &[vb_storage::JournalEvent],
 ) -> Result<Vec<GateReplay>, GateError> {
     let mut replays = Vec::new();
+    let mut seen_receipts = IndexMap::new();
     for event in events {
         if let vb_storage::JournalEvent::GateDecisionEvent { record, .. } = event {
             if !record.is_structurally_valid() {
@@ -68,6 +69,11 @@ pub fn replay_gate_history(
             }
             let receipt_digest = match (&record.receipt, record.outcome) {
                 (Some(receipt), GateOutcome::Approved | GateOutcome::BreakGlassApproved) => {
+                    if seen_receipts.insert(receipt.digest, record.gate).is_some() {
+                        return Err(GateError::ReplayDuplicateReceipt {
+                            gate: record.gate.get(),
+                        });
+                    }
                     Some(receipt.digest)
                 }
                 (None, _) => None,
@@ -172,6 +178,11 @@ pub(crate) fn reconstruct_open_gates(
                 vb_storage::JournalEvent::GateDecisionEvent { record, .. } => {
                     if !record.is_structurally_valid() {
                         return Err(GateError::InvalidRecord);
+                    }
+                    if let Some(open_gate) = open.get(&record.gate)
+                        && record.requester != open_gate.requester
+                    {
+                        return Err(GateError::RequesterMismatch);
                     }
                     match record.outcome {
                         GateOutcome::Approved

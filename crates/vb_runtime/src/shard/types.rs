@@ -9,7 +9,9 @@ use vb_core::action::{ActionContract, ActionTicket};
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::{RunFrame, RunFrameCheckpointV1};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::manual_gate::{ApproverId, GateDecisionInput, GateId, ManualGate};
+use vb_core::manual_gate::{
+    ApproverId, BoundManualGate, GateDecisionInput, GateId, ManualGate, OperatorTrust,
+};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;

@@ -7,7 +7,7 @@
 
 use crate::EventSeq;
 use chrono::{DateTime, Utc};
-use vb_core::manual_gate::{ApproverId, ManualGate};
+use vb_core::manual_gate::{ApproverId, BoundGateOutcomeRecord, BoundManualGate, ManualGate};
 use vb_core::{
     ActionId, ActionTicket, AggregateResourceBudget, CapabilitySet, ConstValue, RunId,
     RuntimePolicy, SlotIdx, StepIdx, Taint, TenantId, WorkflowDigest,
@@ -471,5 +471,29 @@ pub enum JournalEvent {
         tenant: TenantId,
         /// Admitted cost units charged to the tenant.
         cost_units: u64,
+    },
+    /// Bound manual gate opened (MASTER §77.15). Additive record kind 54; the
+    /// embedded `ManualGate` keeps its original layout. Carries no effect
+    /// authority: opening suspends the run.
+    GateOpenedBoundEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Unchanged V1 gate plus its artifact/policy/input/attempt binding.
+        gate: BoundManualGate,
+        /// Opening time in milliseconds since the UNIX epoch.
+        opened_at_ms: u64,
+        /// Operator who requested the gated action.
+        requester: ApproverId,
+    },
+    /// Bound manual gate decision (MASTER §77.15). Additive record kind 55.
+    GateDecisionBoundEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Unchanged V1 outcome plus its binding, trust, and bound receipt.
+        record: Box<BoundGateOutcomeRecord>,
     },
 }

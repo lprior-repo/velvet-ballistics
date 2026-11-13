@@ -1,7 +1,10 @@
 #![forbid(unsafe_code)]
 
 use super::super::super::JournalEvent;
-use super::super::tags::{TAG_GATE_DECISION, TAG_GATE_OPENED, TAG_POLICY_DECISION};
+use super::super::tags::{
+    TAG_GATE_DECISION, TAG_GATE_DECISION_BOUND, TAG_GATE_OPENED, TAG_GATE_OPENED_BOUND,
+    TAG_POLICY_DECISION,
+};
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use serde::Serializer;
 
@@ -59,6 +62,42 @@ where
                 TAG_GATE_OPENED,
                 "GateOpenedEvent",
                 &(run, seq, gate, opened_at_ms, requester),
+            )
+        }
+        JournalEvent::GateOpenedBoundEvent {
+            run,
+            seq,
+            gate,
+            opened_at_ms,
+            requester,
+        } => {
+            if gate.gate.run != *run {
+                return Err(serde::ser::Error::custom(format_args!(
+                    "GateOpenedBoundEvent outer run {} must equal gate.run {}",
+                    run.get(),
+                    gate.gate.run.get()
+                )));
+            }
+            serialize_record_kind_variant(
+                serializer,
+                TAG_GATE_OPENED_BOUND,
+                "GateOpenedBoundEvent",
+                &(run, seq, gate, opened_at_ms, requester),
+            )
+        }
+        JournalEvent::GateDecisionBoundEvent { run, seq, record } => {
+            if record.record.run != *run {
+                return Err(serde::ser::Error::custom(format_args!(
+                    "GateDecisionBoundEvent outer run {} must equal record.run {}",
+                    run.get(),
+                    record.record.run.get()
+                )));
+            }
+            serialize_record_kind_variant(
+                serializer,
+                TAG_GATE_DECISION_BOUND,
+                "GateDecisionBoundEvent",
+                &(run, seq, record),
             )
         }
         _ => serialize_routing_error::<S>(),

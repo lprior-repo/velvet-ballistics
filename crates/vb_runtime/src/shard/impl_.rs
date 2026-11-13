@@ -17,6 +17,7 @@ include!("impl_parts/chunk_003.rs");
 include!("impl_parts/policy_decision.rs");
 include!("impl_parts/gate_decision.rs");
 include!("impl_parts/gate_opened.rs");
+include!("impl_parts/gate_bound.rs");
 
 #[cfg(test)]
 mod tests {

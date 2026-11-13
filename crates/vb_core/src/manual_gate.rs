@@ -13,6 +13,8 @@
 //! grant (a later batch consumes [`ApprovalReceipt::digest`]).
 
 mod approver;
+mod binding;
+mod bound;
 mod decision;
 mod gate;
 mod identifiers;
@@ -21,10 +23,14 @@ mod receipt;
 mod record;
 
 pub use approver::{ApproverId, ApproverRole, MAX_APPROVER_TEXT_LEN};
+pub use binding::GateBinding;
+pub use bound::{
+    BoundApprovalReceipt, BoundGateOutcomeRecord, BoundManualGate, BoundReceiptBinding,
+};
 pub use decision::GateDecisionInput;
 pub use gate::ManualGate;
 pub use identifiers::{GateDigest, GateId};
-pub use kinds::{GateDecision, GateOutcome, RiskClass, SeparationOfDuties};
+pub use kinds::{GateDecision, GateOutcome, OperatorTrust, RiskClass, SeparationOfDuties};
 pub use receipt::ApprovalReceipt;
 pub use record::GateOutcomeRecord;
 

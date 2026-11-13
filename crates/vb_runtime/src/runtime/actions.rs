@@ -122,6 +122,25 @@ impl Runtime {
         shard.enqueue(ShardCommand::SubmitGateDecision { run, input })
     }
 
+    /// Submits an operator decision to an open bound manual gate.
+    ///
+    /// Bound gates carry artifact/policy/input/attempt binding. A legacy gate
+    /// submitted here is rejected with a typed legacy-without-binding error.
+    pub fn submit_bound_gate_decision(
+        &self,
+        run: RunId,
+        input: GateDecisionInput,
+        operator_trust: vb_core::manual_gate::OperatorTrust,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for_run(run)?;
+        shard.validate_open_bound_gate_decision(run, &input)?;
+        shard.enqueue(ShardCommand::SubmitBoundGateDecision {
+            run,
+            input,
+            operator_trust,
+        })
+    }
+
     /// Legacy run-only timer delivery is fail-closed because it carries no authority.
     pub fn timer_fired(&self, run: RunId) -> RuntimeResult<()> {
         let _shard = self.shard_for_run(run)?;
