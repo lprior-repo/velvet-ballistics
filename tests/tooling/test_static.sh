@@ -4,6 +4,9 @@ set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 PASSED=0; FAILED=0
+SCRATCH_ROOT="$ROOT/target/native-tools/tests/static"
+mkdir -p -- "$SCRATCH_ROOT"
+export TMPDIR="$SCRATCH_ROOT" TMP="$SCRATCH_ROOT" TEMP="$SCRATCH_ROOT"
 
 run_test() {
   local name="$1" func="$2"
@@ -40,7 +43,9 @@ test_s02() {
 test_s03() {
   local sp="$ROOT/schemas/kani-list.schema.json"
   [ -f "$sp" ] || { printf '  SKIP: schema not found\n'; return 0; }
-  python3 -m json.tool "$sp" >/dev/null 2>&1 || { printf '  schema is not valid JSON\n'; return 1; }
+  source "$ROOT/scripts/kani-json-helper.sh"
+  local helper_bin; helper_bin="$(kani_json_helper_build)"
+  "$helper_bin" validate-json "$sp" || { printf '  schema is not valid JSON\n'; return 1; }
 }
 
 test_s04() {

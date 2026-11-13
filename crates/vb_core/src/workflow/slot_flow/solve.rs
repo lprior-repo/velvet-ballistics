@@ -149,7 +149,7 @@ fn check(
     Ok(())
 }
 
-fn evaluate(
+pub(super) fn evaluate(
     parts: &WorkflowParts,
     node: &CompiledNode,
     input: &[Fact],
@@ -174,6 +174,17 @@ fn evaluate(
         facts::merge(&mut partial, &ctx.partial);
         result.push((edge.target, ctx.state));
     }
+    if let Some(edge) = error_edge(parts, node, partial)? {
+        result.push(edge);
+    }
+    Ok(result)
+}
+
+pub(super) fn error_edge(
+    parts: &WorkflowParts,
+    node: &CompiledNode,
+    mut partial: Facts,
+) -> FlowResult<Option<(StepIdx, Facts)>> {
     if let Some(handler) = node.routing.error.handler() {
         let error_slot = crate::workflow::resolved_error_slot(&parts.nodes, node);
         if let Some(slot) = error_slot {
@@ -181,12 +192,12 @@ fn evaluate(
                 .get_mut(slot.as_usize())
                 .ok_or_else(|| invalid(node.id))? = Fact::assigned(Fact::I64);
         }
-        result.push((handler, partial));
+        return Ok(Some((handler, partial)));
     }
-    Ok(result)
+    Ok(None)
 }
 
-fn context<'a>(
+pub(super) fn context<'a>(
     parts: &'a WorkflowParts,
     node: &'a CompiledNode,
     input: &[Fact],

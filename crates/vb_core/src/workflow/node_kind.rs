@@ -178,4 +178,33 @@ pub enum CompiledNodeKind {
         /// Result slot.
         result: SlotIdx,
     },
+    /// Start concurrent for-each: spawn lanes at `at_once`, each running `body`
+    /// until `limit` items consumed; join when all lanes complete.
+    ForEachConcurrentStart {
+        input: SlotIdx,
+        item_slot: SlotIdx,
+        limit: FanoutLimit,
+        at_once: BranchCount,
+        body: StepIdx,
+        join: StepIdx,
+    },
+    /// Start fan-out: execute each branch concurrently; join when all complete.
+    TogetherConcurrentStart {
+        branches: Box<[StepIdx]>,
+        join: StepIdx,
+    },
+    /// Race branches: execute all concurrently; first success wins and cancels
+    /// the rest; join step runs regardless of which branch won.
+    FirstSuccessStart {
+        branches: Box<[StepIdx]>,
+        join: StepIdx,
+    },
+    /// One lane finished; signal the scheduler. The `owner` field identifies
+    /// the concurrent construct for bookkeeping; it is not an execution edge.
+    ConcurrentLaneEnd {
+        owner: StepIdx,
+        result: Option<SlotIdx>,
+    },
+    /// All lanes of a concurrent construct are complete; resume at `join`.
+    ConcurrentGroupJoin { owner: StepIdx },
 }

@@ -12,6 +12,9 @@ use super::reachable::compute_reachable_metrics;
 use super::small_linear::SmallLinearGraph;
 use super::successors::bounded_tracking_vec;
 
+#[path = "concurrent/mod.rs"]
+mod concurrent;
+
 /// Computed budget for an entire workflow, derived by walking the IR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WholeWorkflowBudget {
@@ -115,6 +118,10 @@ impl WholeWorkflowBudget {
         let node_count = nodes.len();
         if entry.as_usize() >= node_count {
             return Err(BudgetTraversalError::EntryOutOfBounds { entry });
+        }
+
+        if concurrent::contains_new_nodes(nodes) {
+            return concurrent::compute(nodes, entry, contract);
         }
 
         if let Some(graph) = SmallLinearGraph::new(nodes) {
@@ -249,4 +256,23 @@ pub(super) fn derive_budget_dimensions(
         max_incident_emissions: max_total_steps,
         max_cost_units,
     })
+}
+
+pub(super) fn concurrent_peak(
+    nodes: &[&crate::workflow::CompiledNode],
+) -> Result<Option<u64>, BudgetTraversalError> {
+    if !nodes.iter().any(|node| {
+        matches!(
+            node.kind,
+            crate::workflow::CompiledNodeKind::ForEachConcurrentStart { .. }
+                | crate::workflow::CompiledNodeKind::TogetherConcurrentStart { .. }
+                | crate::workflow::CompiledNodeKind::FirstSuccessStart { .. }
+                | crate::workflow::CompiledNodeKind::ConcurrentLaneEnd { .. }
+                | crate::workflow::CompiledNodeKind::ConcurrentGroupJoin { .. }
+        )
+    }) {
+        return Ok(None);
+    }
+    let graph: Vec<_> = nodes.iter().map(|node| (*node).clone()).collect();
+    concurrent::peak(&graph).map(Some)
 }
