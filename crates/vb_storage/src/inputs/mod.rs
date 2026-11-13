@@ -123,6 +123,36 @@ impl RunInputsRecord {
     }
 }
 
+/// Validates retained input identity against the exact admission authority being committed.
+pub(crate) fn validate_admission_inputs(
+    events: &[crate::JournalEvent],
+    inputs: &RunInputsRecord,
+) -> Result<(), JournalError> {
+    let mut admission = None;
+    for event in events {
+        if event.run_id() != inputs.run() {
+            return Err(JournalError::InvalidEvent);
+        }
+        match event {
+            crate::JournalEvent::RunAccepted { workflow, .. }
+                if *workflow != inputs.workflow_digest() =>
+            {
+                return Err(JournalError::PayloadDigestMismatch);
+            }
+            crate::JournalEvent::RunAdmission { .. }
+            | crate::JournalEvent::RunAdmissionBudget { .. }
+                if admission.is_some() =>
+            {
+                return Err(JournalError::PayloadDigestMismatch);
+            }
+            crate::JournalEvent::RunAdmission { .. }
+            | crate::JournalEvent::RunAdmissionBudget { .. } => admission = Some(event),
+            _ => {}
+        }
+    }
+    inputs.validate_admission(admission.ok_or(JournalError::PayloadDigestMismatch)?)
+}
+
 impl EnforceKindParity for RunInputsRecord {
     fn enforce_kind_parity(
         envelope: &crate::RecordEnvelope,
@@ -167,6 +197,8 @@ impl FjallJournal {
     }
 }
 
+#[cfg(test)]
+mod atomic_admission_review_tests;
 #[cfg(test)]
 mod receipt_tests;
 #[cfg(test)]

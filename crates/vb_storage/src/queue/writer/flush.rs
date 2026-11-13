@@ -83,10 +83,11 @@ fn prepare_batch(
         has_strict: durability == FlushDurability::SyncAll,
     };
     let mut staged_keys = std::collections::HashSet::new();
+    let mut staged_inputs = std::collections::HashMap::new();
     for item in state.pending.iter().take(length) {
         prepared.has_strict |= item.profile == DurabilityProfile::Strict;
         if let Some(inputs) = item.retained_inputs.as_ref() {
-            stage_queued_inputs(&mut prepared.batch, journal, inputs)?;
+            stage_queued_inputs(&mut prepared.batch, journal, inputs, &mut staged_inputs)?;
         }
         stage_queued_event(
             &mut prepared.batch,
