@@ -753,6 +753,23 @@ tasks:
       - 'crates/**/*'
       - '.moon/tasks/all.yml'
 
+  audit-spec-citations:
+    script: |
+      set -euo pipefail
+      rustup run nightly-2026-04-28 cargo fetch --locked
+      python3 scripts/audit-spec-citations.py .
+    inputs:
+      - 'verification/verus/**/*.rs'
+      - 'crates/**/*.rs'
+      - 'contracts/**/*.rs'
+      - 'specs/**/*.rs'
+      - 'scripts/audit-spec-citations.py'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   verify-verus-production-binding:
     script: |
       set -euo pipefail
