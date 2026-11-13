@@ -128,8 +128,7 @@ fn emit_body(
     )
 }
 
-/// Emitted `at_once` for a raw source value: serial for absent/one, otherwise
-/// the positive capacity clamped to the resource contract's fanout limit.
+/// Emits concurrent lowering only when the body has no suspension boundary.
 pub(super) fn lower_bounded_for_each(
     index: usize,
     id: StepIdx,
@@ -140,7 +139,12 @@ pub(super) fn lower_bounded_for_each(
     let (input, init, limit) = resolve_input(index, id, &config, builder)?;
     let width = super::super::part_14::iteration_body_width(config.body)
         .map_err(|e| CompileErrors(vec![e]))?;
-    match emitted_at_once(index, config.at_once, builder.resource_contract.max_fanout)? {
+    match emitted_at_once(
+        index,
+        config.at_once,
+        builder.resource_contract.max_fanout,
+        config.body,
+    )? {
         Some(at_once) => emit_concurrent(&config, init, input, limit, at_once, width, builder),
         None => emit_serial(&config, init, input, limit, width, builder),
     }
