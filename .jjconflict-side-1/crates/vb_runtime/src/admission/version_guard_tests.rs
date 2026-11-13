@@ -93,15 +93,8 @@ fn version_guard_outer_checksum_precedes_unknown3() -> FixtureResult {
 }
 
 #[test]
-fn version_guard_known2_wrong_wire_fails_inner_evidence() -> FixtureResult {
-    let mut artifact = legacy(RuntimePolicy::Strict)?;
-    artifact.artifact_version = SchemaVersion::new(2, 0, 0);
-    rejected(
-        rebind(artifact)?,
-        RuntimePolicy::Strict,
-        AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" },
-    );
-    Ok(())
+fn version_guard_known2_raw_carrier_preserves_none() -> FixtureResult {
+    carrier_tests::raw_supported()
 }
 
 #[test]
@@ -229,3 +222,6 @@ fn version_guard_relaxed_retains_no_load_behavior() {
     assert_eq!(simple(&store, RuntimePolicy::Relaxed, digest), expected);
     assert_eq!(full(&store, RuntimePolicy::Relaxed, digest), expected);
 }
+
+#[path = "version_guard_carrier_tests.rs"]
+mod carrier_tests;

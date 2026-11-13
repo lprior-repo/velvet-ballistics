@@ -38,7 +38,7 @@ fn submit_until_action(
     Ok(ticket)
 }
 
-fn check(workflow: CompiledWorkflow) -> TestResult<()> {
+pub(super) fn check(workflow: CompiledWorkflow) -> TestResult<()> {
     let directory = tempfile::tempdir()?;
     let journal = Arc::new(vb_storage::FjallJournal::open(directory.path(), None)?);
     let ticket = submit_until_action(journal.clone(), workflow.clone())?;

@@ -29,6 +29,7 @@ pub(super) fn parts(count: u32) -> WorkflowParts {
         name: "versioned-admission".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         nodes: nodes(),
         expressions: Box::new([]),

@@ -26,8 +26,8 @@ fn v1_none_binding_on_decode() -> TestResult {
 }
 
 #[test]
-fn v1_outer_version_1_2_0_accepted() -> TestResult {
-    assert_v1(0, Some(SchemaVersion::new(1, 2, 0)))
+fn v1_raw_carrier_current_outer_accepted() -> TestResult {
+    assert_v1(0, Some(CURRENT_IR_VERSION))
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use super::*;
-use crate::compat::{CompatibilityClass, SchemaVersion};
+use crate::compat::{CURRENT_IR_VERSION, CompatibilityClass, SchemaVersion};
 use crate::{AcceptedArtifact, EventSeq};
 use vb_core::workflow::WorkflowIrV2;
 
@@ -81,14 +81,18 @@ pub(super) fn future_rejection(policy: RuntimePolicy) -> TestResult {
 fn exact_malformed(error: JournalError) -> TestResult {
     match error {
         JournalError::ArtifactMalformed => Ok(()),
-        other => Err(format!("expected outer2/V1 mismatch, found {other:?}").into()),
+        other => Err(format!("expected corrupt reserved escape rejection, found {other:?}").into()),
     }
 }
 
 pub(super) fn wrong_wire_rejection(policy: RuntimePolicy) -> TestResult {
-    let workflow = super::super::tests::workflow()?;
+    let workflow = bound_workflow()?;
     let mut artifact = crate::admission::prepare_compiled_artifact(&workflow, policy, &[])?;
-    artifact.artifact_version = SchemaVersion::new(2, 0, 0);
+    if let Some(byte) = artifact.ir.get_mut(3) {
+        *byte = b'C';
+    } else {
+        return Err("missing escape header byte at index 3".into());
+    }
     rejected_without_writes(&workflow, artifact, exact_malformed)
 }
 
@@ -149,4 +153,35 @@ fn check_retained(
         .ok_or("missing retained source")?;
     assert_eq!(source.source, b"original source fixture");
     Ok(())
+}
+
+fn raw_assertions(workflow: &CompiledWorkflow, artifact: &AcceptedArtifact) -> TestResult {
+    let raw = postcard::to_allocvec(&workflow.to_parts())?;
+    assert_eq!(raw, artifact.ir);
+    let decoded = crate::admission::verify_accepted_artifact(artifact)?;
+    assert_eq!(&decoded, workflow);
+    assert_eq!(decoded.symbol_payloads(), None);
+    Ok(())
+}
+
+pub(super) fn raw_submission(policy: RuntimePolicy) -> TestResult {
+    let workflow = super::super::tests::workflow()?;
+    let artifact = crate::admission::prepare_compiled_artifact(&workflow, policy, &[])?;
+    assert_eq!(artifact.artifact_version, CURRENT_IR_VERSION);
+    assert_eq!(artifact.artifact_version, SchemaVersion::new(2, 0, 0));
+    raw_assertions(&workflow, &artifact)?;
+    let directory = tempfile::tempdir()?;
+    let journal = FjallJournal::open(directory.path(), None)?;
+    let submission = construct(&workflow, artifact.clone(), 5)?;
+    journal.commit_run_submission(&submission, policy)?;
+    let expected_events = if policy == RuntimePolicy::Relaxed {
+        0
+    } else {
+        3
+    };
+    assert_eq!(
+        journal.events_for_run(RunId::new(7))?.len(),
+        expected_events
+    );
+    check_retained(&journal, &workflow, &artifact)
 }

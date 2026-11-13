@@ -110,7 +110,18 @@ fn future_major_ir_version_is_rejected_before_any_write() -> TestResult {
 }
 
 #[test]
-fn supported_v2_rejects_legacy_wire_before_any_write() -> TestResult {
+fn supported_v2_raw_submission_preserves_binding() -> TestResult {
+    [
+        RuntimePolicy::Journaled,
+        RuntimePolicy::Strict,
+        RuntimePolicy::Relaxed,
+    ]
+    .into_iter()
+    .try_for_each(version_support::raw_submission)
+}
+
+#[test]
+fn supported_v2_corrupt_escape_is_rejected_before_any_write() -> TestResult {
     [
         RuntimePolicy::Journaled,
         RuntimePolicy::Strict,
@@ -124,7 +135,7 @@ fn supported_v2_rejects_legacy_wire_before_any_write() -> TestResult {
 fn relaxed_supported_v1_submission_preserves_no_events() -> TestResult {
     let workflow = super::tests::workflow()?;
     assert_eq!(workflow.symbol_payloads(), None);
-    version_support::relaxed_submission(&workflow, crate::compat::SchemaVersion::new(1, 0, 0))
+    version_support::relaxed_submission(&workflow, crate::compat::CURRENT_IR_VERSION)
 }
 
 #[test]

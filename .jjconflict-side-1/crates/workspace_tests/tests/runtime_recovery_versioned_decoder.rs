@@ -5,7 +5,7 @@ use vb_core::{CompiledWorkflow, RunId, RuntimePolicy, WorkflowDigest};
 use vb_runtime::{
     RuntimeError, journal::StorageRuntimeJournal, runtime::Runtime, shard::ShardConfig,
 };
-use vb_storage::compat::{CompatibilityClass, SchemaVersion};
+use vb_storage::compat::{CURRENT_IR_VERSION, CompatibilityClass, SchemaVersion};
 use vb_storage::{
     AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
     RunInputBinding, RunPolicyPin,
@@ -27,6 +27,7 @@ enum Hostile {
     V2WithV1,
     BadPrefix,
     LegacyBlob,
+    ShortEscape,
 }
 
 fn open(journal: Arc<FjallJournal>) -> Runtime {
@@ -68,9 +69,9 @@ fn tamper(artifact: &mut AcceptedArtifact, kind: Hostile) -> TestResult {
         Hostile::V1WithV2 => artifact.artifact_version = SchemaVersion::new(1, 0, 0),
         Hostile::V2WithV1 => artifact.artifact_version = SchemaVersion::new(2, 0, 0),
         Hostile::BadPrefix => *artifact.ir.get_mut(3).ok_or("missing V2 prefix")? = b'C',
+        Hostile::ShortEscape => artifact.ir = vec![1, 255, 86],
         Hostile::LegacyBlob => return Err("raw IR is not an artifact envelope".into()),
     }
-    // Hostile outer binding only: inner IR, digest and proof evidence are not repaired.
     fixture::rebind(artifact)?;
     Ok(())
 }
@@ -91,10 +92,29 @@ fn reject_future(result: Result<CompiledWorkflow, JournalError>) -> TestResult {
     }
 }
 
+fn reject_outer1(result: Result<CompiledWorkflow, JournalError>) -> TestResult {
+    match result {
+        Err(JournalError::ArtifactVersionIncompatible {
+            held,
+            required,
+            class,
+        }) => {
+            assert_eq!(held, SchemaVersion::new(1, 0, 0));
+            assert_eq!(required, SchemaVersion::new(2, 0, 0));
+            assert_eq!(class, CompatibilityClass::Rejected);
+            Ok(())
+        }
+        other => Err(format!("expected exact outer-1 rejection, got {other:?}").into()),
+    }
+}
+
 fn check_codec_rejection(artifact: &AcceptedArtifact, kind: Hostile) -> TestResult {
     let result = vb_storage::decode_compiled_ir(&artifact.ir, Some(artifact.artifact_version));
     if matches!(kind, Hostile::Future) {
         return reject_future(result);
+    }
+    if matches!(kind, Hostile::V1WithV2) {
+        return reject_outer1(result);
     }
     match result {
         Err(JournalError::ArtifactMalformed) => Ok(()),
@@ -105,7 +125,7 @@ fn check_codec_rejection(artifact: &AcceptedArtifact, kind: Hostile) -> TestResu
 fn legacy_record(workflow: &CompiledWorkflow) -> TestResult<CompiledIrRecord> {
     let ir = vb_storage::encode_compiled_ir(workflow)?.into_vec();
     assert_eq!(
-        vb_storage::decode_compiled_ir(&ir, Some(SchemaVersion::new(1, 0, 0)))?,
+        vb_storage::decode_compiled_ir(&ir, Some(CURRENT_IR_VERSION))?,
         *workflow
     );
     Ok(CompiledIrRecord {
@@ -181,6 +201,21 @@ fn reject(kind: Hostile) -> TestResult {
     Ok(())
 }
 
+fn assert_current_raw(workflow: &CompiledWorkflow) -> TestResult {
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        workflow,
+        RuntimePolicy::Journaled,
+        &[contract()?],
+    )?;
+    assert_eq!(artifact.artifact_version, CURRENT_IR_VERSION);
+    assert_eq!(artifact.artifact_version, SchemaVersion::new(2, 0, 0));
+    assert_eq!(artifact.ir, postcard::to_allocvec(&workflow.to_parts())?);
+    let decoded = vb_storage::decode_compiled_ir(&artifact.ir, Some(artifact.artifact_version))?;
+    assert_eq!(&decoded, workflow);
+    assert_eq!(decoded.symbol_payloads(), None);
+    Ok(())
+}
+
 #[test]
 fn future_version_rejected() -> TestResult {
     reject(Hostile::Future)
@@ -192,8 +227,10 @@ fn v1_with_v2_rejected() -> TestResult {
 }
 
 #[test]
-fn v2_with_v1_rejected() -> TestResult {
-    reject(Hostile::V2WithV1)
+fn v2_with_v1_current_outer_recovers() -> TestResult {
+    let workflow = workflow(Hostile::V2WithV1)?;
+    assert_current_raw(&workflow)?;
+    positive::check(workflow)
 }
 
 #[test]
@@ -204,4 +241,9 @@ fn bad_prefix_rejected() -> TestResult {
 #[test]
 fn legacy_blob_rejected() -> TestResult {
     reject(Hostile::LegacyBlob)
+}
+
+#[test]
+fn truncated_reserved_escape_rejected() -> TestResult {
+    reject(Hostile::ShortEscape)
 }

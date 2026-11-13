@@ -1,5 +1,6 @@
 use super::*;
 use crate::compat::SchemaVersion;
+use crate::compat::{CURRENT_IR_VERSION, CompatibilityClass};
 use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -37,25 +38,19 @@ fn roundtrip(workflow: CompiledWorkflow, wire: Vec<u8>, held: SchemaVersion) -> 
 #[test]
 fn versioned_codec_v1_zero_symbol_cold_roundtrip() -> TestResult {
     let workflow = legacy(0)?;
-    assert_eq!(
-        artifact(&workflow)?.artifact_version,
-        SchemaVersion::new(1, 0, 0)
-    );
-    roundtrip(
-        workflow.clone(),
-        postcard::to_allocvec(&workflow.to_parts())?,
-        SchemaVersion::new(1, 0, 0),
-    )
+    assert_eq!(artifact(&workflow)?.artifact_version, CURRENT_IR_VERSION);
+    assert_eq!(CURRENT_IR_VERSION, SchemaVersion::new(2, 0, 0));
+    assert_eq!(workflow.symbol_payloads(), None);
+    let wire = postcard::to_allocvec(&workflow.to_parts())?;
+    roundtrip(workflow.clone(), wire, CURRENT_IR_VERSION)
 }
 
 #[test]
 fn versioned_codec_v1_nonzero_symbols_preserve_raw_wire() -> TestResult {
     let workflow = legacy(1)?;
-    roundtrip(
-        workflow.clone(),
-        postcard::to_allocvec(&workflow.to_parts())?,
-        SchemaVersion::new(1, 0, 0),
-    )
+    assert_eq!(workflow.symbol_payloads(), None);
+    let wire = postcard::to_allocvec(&workflow.to_parts())?;
+    roundtrip(workflow, wire, CURRENT_IR_VERSION)
 }
 
 #[test]
@@ -90,18 +85,50 @@ fn versioned_codec_v2_some_empty_stays_bound() -> TestResult {
     )
 }
 
-#[test]
-fn versioned_codec_v1_minor_and_patch_are_not_normalized() -> TestResult {
+fn exact_version_error(held: SchemaVersion, error: JournalError) -> TestResult {
+    match error {
+        JournalError::ArtifactVersionIncompatible {
+            held: actual,
+            required,
+            class,
+        } => {
+            if actual != held {
+                return Err(format!("held mismatch: {actual:?} vs {held:?}").into());
+            }
+            if required != SchemaVersion::new(2, 0, 0) {
+                return Err(format!("required mismatch: {required:?}").into());
+            }
+            if class != CompatibilityClass::Rejected {
+                return Err(format!("class mismatch: {class:?}").into());
+            }
+            Ok(())
+        }
+        other => Err(format!("expected ArtifactVersionIncompatible, found {other:?}").into()),
+    }
+}
+
+fn reject_legacy_outer(held: SchemaVersion) -> TestResult {
     let workflow = legacy(0)?;
+    let mut artifact = prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
+    artifact.artifact_version = held;
+    bind_artifact_digest(&mut artifact)?;
+    assert_error(&artifact, |error| exact_version_error(held, error))
+}
+
+#[test]
+fn versioned_codec_outer1_minor_and_patch_are_rejected() -> TestResult {
     [SchemaVersion::new(1, 2, 0), SchemaVersion::new(1, 0, 1)]
         .into_iter()
-        .try_for_each(|held| {
-            roundtrip(
-                workflow.clone(),
-                postcard::to_allocvec(&workflow.to_parts())?,
-                held,
-            )
-        })
+        .try_for_each(reject_legacy_outer)
+}
+
+#[test]
+fn versioned_codec_raw_current2_minor_and_patch_are_not_normalized() -> TestResult {
+    let workflow = legacy(0)?;
+    let wire = postcard::to_allocvec(&workflow.to_parts())?;
+    [SchemaVersion::new(2, 2, 0), SchemaVersion::new(2, 0, 1)]
+        .into_iter()
+        .try_for_each(|held| roundtrip(workflow.clone(), wire.clone(), held))
 }
 
 #[test]
