@@ -261,13 +261,13 @@ fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_deni
     // and MUST NOT fabricate a `Capability::__capability_count_mismatch__` /
     // `ActionId::new(0)` sentinel and mislabel the error as `CapabilityDenied`.
     //
-    // The production path at `admission.rs:740-750` runs the per-capability
+    // The production path at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:153-163` runs the per-capability
     // loop FIRST, so the cardinality check is only reached when granted is
     // a superset of required. We exercise that reachable case (required=3,
     // granted=4 with membership ⊇ required) and also assert the operator
     // diagnostic surface: the typed `AdmissionError` maps to the typed
     // `RuntimeError::AdmissionCapabilityCountMismatch` (diagnostic code
-    // 0x201F, set in `error/diagnostics.rs:32`).
+    // 0x201F, set in `error/diagnostics.rs:33-35`).
     let network = Capability::new("network.github".into(), ActionId::new(7));
     let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
     let kv = Capability::new("kv.write".into(), ActionId::new(9));

@@ -1109,7 +1109,7 @@ fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
 // as `JournalError::PostcardEncodeFailed(_)`, NOT collapse it into the generic
 // `ArtifactMalformed` bucket. Forces a deterministic postcard failure via
 // `to_slice` against a zero-length output buffer (the production code at
-// admission.rs:222 uses the same `to_slice` call shape).
+// `crates/vb_storage/src/admission/digest.rs:59-66` uses the same `to_slice` call shape).
 // =========================================================================
 
 #[test]
@@ -1117,7 +1117,7 @@ fn admission_postcard_encode_failed_surfaces_typed_variant() {
     use vb_core::workflow::ResourceContract;
 
     // (1) Force a deterministic postcard encode failure with the same
-    // `to_slice` call shape used at admission.rs:222. A zero-length output
+    // `to_slice` call shape used at `crates/vb_storage/src/admission/digest.rs:59-66`. A zero-length output
     // buffer cannot fit any postcard payload, so postcard deterministically
     // returns `Error::SerializeBufferFull`.
     let mut zero_len_buffer: [u8; 0] = [];
@@ -1125,9 +1125,13 @@ fn admission_postcard_encode_failed_surfaces_typed_variant() {
     let source_err = to_slice_result.expect_err("zero-length buffer must fail to_slice");
 
     // (2) Apply the SA-015 wrapping pattern: `map_err(JournalError::PostcardEncodeFailed)`,
-    // the same transformation now used at the seven postcard sites in
-    // `submit_artifact_with_contracts` (lines 340/354/371/385/398) and
-    // `admit_compiled_artifact` (lines 521/528).
+    // the same transformation now used at the nine postcard sites on the two
+    // paths: seven in `submit_artifact_with_contracts` (via
+    // `prepare_compiled_artifact`:
+    // `crates/vb_storage/src/admission/verification.rs:37, 182, 196-197, 199`,
+    // `crates/vb_storage/src/admission/verification/ledger.rs:13, 60`,
+    // `crates/vb_storage/src/admission/digest.rs:23`) and two in
+    // `admit_compiled_artifact` (`crates/vb_storage/src/admission.rs:205, 212`).
     let journal_err: JournalError =
         match postcard::to_slice(&ResourceContract::DEFAULT, &mut zero_len_buffer) {
             Ok(_) => panic!("zero-length buffer must not succeed"),

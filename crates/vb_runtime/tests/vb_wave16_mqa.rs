@@ -246,8 +246,8 @@ fn mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5() {
 //   Author: RA018Fix
 //
 // Note: the literal shape "required=3, granted=2" is intercepted by the
-// per-capability loop in admission.rs:740-742 (under-grant, missing the
-// third required capability). The cardinality check at admission.rs:743-750
+// per-capability loop in `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:153-155` (under-grant, missing the
+// third required capability). The cardinality check at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:156-163`
 // is reachable only when granted is a SUPERSET of required. The typed
 // `CapabilityCountMismatch` variant applies to the over-grant shape. We
 // exercise both:
