@@ -130,11 +130,22 @@ fn failed_runtime_admission_batch_publishes_neither_event_nor_inputs() -> TestRe
         &workflow,
         Box::from([(SlotIdx::new(0), SlotValue::I64(73))]),
     )?;
-    let events = [JournalEvent::RunAccepted {
-        run,
-        seq: crate::EventSeq::new(0),
-        workflow: workflow.digest(),
-    }];
+    let events = [
+        JournalEvent::RunAccepted {
+            run,
+            seq: crate::EventSeq::new(0),
+            workflow: workflow.digest(),
+        },
+        JournalEvent::RunAdmission {
+            run,
+            seq: crate::EventSeq::new(1),
+            artifact_digest: artifact.digest,
+            input_digest: crate::RunInputBinding::Digest(inputs.input_digest()),
+            granted_capabilities: vb_core::CapabilitySet::empty(),
+            policy: RuntimePolicy::Strict,
+            policy_pin: crate::RunPolicyPin::Unverified,
+        },
+    ];
 
     journal.fail_next_batch_commit_for_test();
     assert!(matches!(
