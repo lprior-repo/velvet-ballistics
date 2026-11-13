@@ -211,7 +211,7 @@ fn complete_action_over_socket_persists_exact_numeric_outcome_after_cold_pending
         IpcPayload::CompleteAction {
             run_id: run,
             ticket: u64::from(ticket.step.get()),
-            output,
+            output: output.clone(),
         },
     )?;
     // Then its durable completion includes the literal output and a terminal result.
@@ -243,6 +243,52 @@ fn complete_action_over_socket_persists_exact_numeric_outcome_after_cold_pending
     assert_eq!(completed[0].3, &Taint::Clean);
     assert_eq!(recorded.iter().filter(|event| matches!(event, JournalEvent::RunFinished { run: r, result, attempt: 1, .. } if *r == run && *result == SlotIdx::new(1))).count(), 1);
     assert_eq!(runtime.lookup_pending_action_ticket(run, 1), None);
+    let completed_pending = runtime.pending_boundary_snapshot(16);
+    assert_eq!(
+        request(
+            &mut server,
+            &mut runtime,
+            &path,
+            IpcCommand::CompleteAction,
+            61062,
+            IpcPayload::CompleteAction {
+                run_id: run,
+                ticket: u64::from(ticket.step.get()),
+                output: output.clone(),
+            }
+        )?,
+        IpcResponse::BadRequest
+    );
+    assert_eq!(events(&journal, run)?, recorded);
+    assert_eq!(runtime.pending_boundary_snapshot(16), completed_pending);
+    assert!(matches!(
+        runtime.inspect_run_state(run),
+        Err(vb_runtime::RuntimeError::RunNotFound)
+    ));
+    drop(runtime);
+    drop(journal);
+    let terminal_rows = raw_rows(dir.path())?;
+    let (journal, mut runtime) = open(dir.path())?;
+    assert_eq!(
+        request(
+            &mut server,
+            &mut runtime,
+            &path,
+            IpcCommand::CompleteAction,
+            61063,
+            IpcPayload::CompleteAction {
+                run_id: run,
+                ticket: u64::from(ticket.step.get()),
+                output,
+            }
+        )?,
+        IpcResponse::BadRequest
+    );
+    assert_eq!(events(&journal, run)?, recorded);
+    assert_eq!(runtime.lookup_pending_action_ticket(run, 1), None);
+    drop(runtime);
+    drop(journal);
+    assert_eq!(raw_rows(dir.path())?, terminal_rows);
     Ok(())
 }
 
@@ -388,6 +434,20 @@ fn inspect_cancel_and_invalid_action_commands_preserve_or_transition_durable_sta
         IpcPayload::InspectRun {
             run_id: RunId::new(9999),
         },
+        IpcPayload::CompleteAction {
+            run_id: target,
+            ticket: u64::from(ticket.step.get()),
+            output: postcard::to_allocvec(&IpcActionOutputPayload {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(42),
+                taint: Taint::Clean,
+            })?,
+        },
+        IpcPayload::CompleteAction {
+            run_id: RunId::new(9999),
+            ticket: u64::from(ticket.step.get()),
+            output: output.clone(),
+        },
     ]
     .into_iter()
     .enumerate()
@@ -414,6 +474,9 @@ fn inspect_cancel_and_invalid_action_commands_preserve_or_transition_durable_sta
             },
             4 => IpcResponse::RuntimeError {
                 message: String::from("run not found"),
+            },
+            5 => IpcResponse::RuntimeError {
+                message: String::from("invalid action completion"),
             },
             _ => IpcResponse::BadRequest,
         };

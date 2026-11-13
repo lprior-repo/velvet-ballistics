@@ -101,10 +101,22 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
             message: String::from("action output exceeds maximum allowed size"),
         };
     }
-    let output_len = payload_len(output.len());
     let decoded_output = match decode_payload::<crate::IpcActionOutputPayload>(&output) {
         Ok(d) => d,
         Err(response) => return response,
+    };
+    let Some(output_len) = postcard::serialize_with_flavor(
+        &decoded_output.value,
+        postcard::ser_flavors::Size::default(),
+    )
+    .ok()
+    .and_then(|len| u32::try_from(len).ok()) else {
+        return IpcResponse::PayloadError {
+            diagnostic: crate::IpcError::PayloadEncodeFailed
+                .diagnostic_code()
+                .code(),
+            message: crate::IpcError::PayloadEncodeFailed.to_string(),
+        };
     };
     match runtime
         .complete_action_with_output(action_ticket, decoded_output.into_action_output(output_len))
