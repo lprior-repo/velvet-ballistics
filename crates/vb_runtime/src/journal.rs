@@ -11,6 +11,8 @@ include!("journal/chunk_003.rs");
 
 #[cfg(test)]
 mod tests {
+    #[path = "atomic_review.rs"]
+    mod atomic_review;
     include!("journal/tests/chunk_001.rs");
     include!("journal/tests/chunk_002.rs");
     include!("journal/tests/chunk_003.rs");
