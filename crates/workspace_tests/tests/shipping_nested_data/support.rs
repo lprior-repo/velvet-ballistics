@@ -1,5 +1,6 @@
 //! Source fixture assembly, owned admission, terminal evidence, and step lookup.
 
+use std::time::{SystemTime, UNIX_EPOCH};
 use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::value::join_taint;
 use vb_core::value_store::ValueStoreCheckpointV1;
@@ -15,6 +16,11 @@ use vb_storage::{
 use crate::source::{compound, indent};
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+fn current_time_millis() -> TestResult<u64> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    Ok(u64::try_from(millis)?)
+}
 
 pub(crate) const RUN: RunId = RunId::new(7_113);
 const LEAF: &str = "- id: leaf\n  set: {output: leaf, value: '9'}\n";
@@ -41,6 +47,8 @@ pub(crate) struct Observed {
     pub full_replay_selected: bool,
     pub cut_completed: u64,
     pub leaf_terminal: Option<(SlotValue, Taint)>,
+    pub budget_gather_pages: u32,
+    pub budget_gather_items: u32,
 }
 
 pub(crate) struct Prepared {
@@ -111,7 +119,7 @@ pub(crate) fn prepare_with_contracts(
         workflow_id: WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: current_time_millis()?,
     };
     let submission = RunSubmission::owned(source_record, artifact, inputs, header)?;
     Ok(Prepared {

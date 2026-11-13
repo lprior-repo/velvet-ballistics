@@ -16,6 +16,13 @@ use vb_storage::{
 
 use super::fixtures::{RUN, TestResult, runtime};
 
+fn current_time_millis() -> TestResult<u64> {
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_millis();
+    Ok(u64::try_from(millis)?)
+}
+
 pub(super) struct Cut {
     pub(super) directory: tempfile::TempDir,
     pub(super) workflow: CompiledWorkflow,
@@ -100,7 +107,7 @@ pub(super) fn cut_with_actions_nth(
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: current_time_millis()?,
     };
     let submission = RunSubmission::owned(source_record, artifact, inputs, header)?;
     let directory = tempfile::tempdir()?;
@@ -252,7 +259,7 @@ pub(super) fn accepted_run(
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: current_time_millis()?,
     };
     let submission = RunSubmission::owned(source_record, artifact, inputs, header)?;
     let directory = tempfile::tempdir()?;

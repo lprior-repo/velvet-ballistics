@@ -533,6 +533,16 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     valid_failed
         .frame
         .mark_failed(vb_core::ids::StepIdx::ZERO)?;
+    let valid_budget = vb_core::AggregateResourceBudget::from_workflow(&valid_failed.workflow)?;
+    let valid_admission = valid_failed
+        .admission
+        .take()
+        .ok_or("positive control admission")?
+        .with_attached_budget(valid_budget);
+    valid_failed.admission = Some(valid_admission);
+    valid_failed.run_started_millis = Some(
+        crate::shard::helpers::wall_clock_millis_since_epoch().ok_or("wall clock unavailable")?,
+    );
 
     let valid_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
         run_id,
@@ -585,8 +595,8 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
 
     // Admission restored exactly from the valid checkpoint.
     assert_eq!(
-        restored.admission, original.admission,
-        "positive control: admission must match original (Unverified, correct run/artifact/policy)"
+        restored.admission, valid_failed.admission,
+        "positive control: admission must match the valid budgeted checkpoint"
     );
 
     assert_eq!(

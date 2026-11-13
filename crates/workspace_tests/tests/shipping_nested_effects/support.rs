@@ -7,6 +7,7 @@
 
 use std::num::NonZeroUsize;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::root_bundle::OwnedRootBundle;
@@ -24,6 +25,11 @@ use vb_storage::{
 };
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+fn current_time_millis() -> TestResult<u64> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    Ok(u64::try_from(millis)?)
+}
 
 /// One owned submission whose Fjall directory survives runtime drops.
 pub(crate) struct Case {
@@ -81,7 +87,7 @@ impl Case {
                 workflow_id: vb_core::WorkflowId::new(0),
                 compiled_digest: workflow.digest(),
                 status: 0,
-                accepted_at_ms: 123,
+                accepted_at_ms: current_time_millis()?,
             },
         )?;
         let directory = tempfile::tempdir()?;

@@ -156,6 +156,15 @@ fn collect_involving_owned_cells_recover_with_exact_evidence() -> TestResult {
                             observed.leaf_terminal
                         ));
                     }
+                    if outer == "for_each"
+                        && inner == "collect"
+                        && (observed.budget_gather_pages, observed.budget_gather_items) != (4, 4)
+                    {
+                        failures.push(format!(
+                            "for_each/collect gather budget {}/{} != 4/4",
+                            observed.budget_gather_pages, observed.budget_gather_items
+                        ));
+                    }
                     results.push(format!(
                         "GREEN {outer}/{inner}: replay cut={} full={} terminal={:?}/{:?} leaf={}",
                         observed.cut_replay_selected,

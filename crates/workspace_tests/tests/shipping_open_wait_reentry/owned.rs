@@ -1,5 +1,4 @@
 use super::*;
-
 pub(super) struct OwnedInput {
     pub(super) slot: vb_core::SlotIdx,
     pub(super) list: vb_core::ListId,
@@ -12,6 +11,7 @@ pub(super) fn commit_owned_input(
     source: &str,
     run: RunId,
     contracts: &[ActionContract],
+    accepted_at_ms: u64,
 ) -> TestResult<OwnedInput> {
     let slot = workflow
         .input_slots()
@@ -51,7 +51,7 @@ pub(super) fn commit_owned_input(
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms,
         },
     )?;
     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;

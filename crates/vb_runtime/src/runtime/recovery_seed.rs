@@ -176,6 +176,7 @@ impl Runtime {
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
         let open_gates = crate::manual_gate::reconstruct_open_gates(&context.prefix.events)
             .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
+        let frame_step_count = frame.step_count();
         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
             crate::recovery::ResumableRecoveryProduct::new(
                 crate::recovery::ResumableRecoveryParts {
@@ -190,6 +191,15 @@ impl Runtime {
                     retry_checkpoint: None,
                     open_gates,
                     admission: context.prefix.admission.clone(),
+                    run_started_millis: context.prefix.run_started_millis,
+                    recovered_action_attempts: Some(crate::recovery::recover_action_attempts(
+                        &context.prefix.events,
+                        frame_step_count,
+                    )),
+                    recovered_journal_bytes_written: Some(
+                        crate::recovery::recover_journal_bytes_written(&context.prefix.events)?,
+                    ),
+                    recovered_tenant: crate::recovery::hydrate_run_tenant(&context.prefix.events),
                     restored_store: context
                         .recovered_store
                         .clone()

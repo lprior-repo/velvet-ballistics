@@ -14,6 +14,7 @@ impl Runtime {
             prefix.admission.artifact_digest(),
         )?;
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
+        let prefix = self.validate_recovery_budget_origin(run, prefix)?;
         self.shard_for(run)?
             .validate_secret_presence(&recovered.workflow)?;
         if crate::recovery::run_is_currently_terminal(&prefix.events)
@@ -53,7 +54,22 @@ impl Runtime {
             admission,
             workflow_digest,
             next_seq,
+            run_started_millis: None,
         })
+    }
+
+    fn validate_recovery_budget_origin(
+        &self,
+        run: RunId,
+        mut prefix: RecoveryPrefixEvidence,
+    ) -> RuntimeResult<RecoveryPrefixEvidence> {
+        let origin =
+            crate::recovery::recover_run_budget_origin(&prefix.events, run, &prefix.admission)?;
+        prefix.run_started_millis = crate::recovery::validate_recovered_lifetime_at_wall_clock(
+            Some(&prefix.admission),
+            origin,
+        )?;
+        Ok(prefix)
     }
 
     fn recovery_prefix_identity(

@@ -45,6 +45,22 @@ fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool 
                 limit: f,
             },
         ) => a == d && b == e && c == f,
+        (
+            RuntimeError::ResourceQuotaExceeded {
+                resource: a,
+                requested: b,
+                available: c,
+            },
+            RuntimeError::ResourceQuotaExceeded {
+                resource: d,
+                requested: e,
+                available: f,
+            },
+        ) => a == d && b == e && c == f,
+        (
+            RuntimeError::ResourceAccountingUnderflow { resource: a },
+            RuntimeError::ResourceAccountingUnderflow { resource: b },
+        ) => a == b,
         _ => false,
     }
 }

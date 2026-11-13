@@ -1,7 +1,12 @@
 //! Shared Repeat recovery fixtures: compile, live drive, journal lifecycle,
 //! replay and exact-divergence helpers.
 
-use std::{num::NonZeroUsize, path::Path, sync::Arc};
+use std::{
+    num::NonZeroUsize,
+    path::Path,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use vb_core::{
     CapabilitySet, CompiledNodeKind as K, CompiledWorkflow, RunFrame, RunId, RuntimePolicy,
@@ -17,6 +22,11 @@ use vb_runtime::{
 use vb_storage::{FjallJournal, JournalEvent as E, RunSubmission};
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+fn current_time_millis() -> TestResult<u64> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    Ok(u64::try_from(millis)?)
+}
 
 pub(crate) const RUN: RunId = RunId::new(842);
 pub(crate) const SOURCE: &str = "version: velvet-ballistics/v1\nname: shipping_repeat_recovery\nwhen: {manual: {}}\nsteps:\n  - id: seed\n    set: {output: base, value: '7'}\n  - id: r\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: leaf\n          set: {output: leaf_out, value: '9'}\n  - id: done\n    finish: {result: '$step.r'}\n";
@@ -107,7 +117,7 @@ pub(crate) fn submission(source: &str, workflow: &CompiledWorkflow) -> TestResul
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms: current_time_millis()?,
         },
     )?)
 }

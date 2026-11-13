@@ -7,6 +7,8 @@ mod prepare;
 
 use crate::shard::{RuntimeState, Shard};
 use crate::{RuntimeError, RuntimeResult};
+#[cfg(test)]
+pub(crate) use prefix::validate_pristine_prefix_events;
 use vb_core::{RunId, RuntimePolicy, WorkflowDigest};
 
 impl Shard {
@@ -29,7 +31,21 @@ impl Shard {
         self.prepare_run_slots(run)?;
         let next_seq = accepted.next_seq;
         let state = self.prepare_owned_state(run, accepted)?;
-        self.publish_owned_state(run, state, next_seq)?;
+        let owned_quota = state.admission.as_ref().and_then(|admission| {
+            admission
+                .budget()
+                .map(|budget| (admission.tenant(), budget.max_cost_units))
+        });
+        if let Some((tenant, cost_units)) = owned_quota
+            && let Err(error) = self.reserve_admission_quota(run, tenant, cost_units)
+        {
+            self.release_frame(state.frame);
+            return Err(error);
+        }
+        if let Err(error) = self.publish_owned_state(run, state, next_seq) {
+            self.release_admission_quota(run)?;
+            return Err(error);
+        }
         self.trace_ring
             .push(crate::trace::TraceEvent::RunSubmitted { run });
         self.counters.inc_submitted();
@@ -37,6 +53,7 @@ impl Shard {
             Ok(()) => Ok(()),
             Err(error) => {
                 if !self.run_state_contains(run) {
+                    self.release_admission_quota(run)?;
                     self.discard_journal_sequence(run);
                 }
                 Err(error)

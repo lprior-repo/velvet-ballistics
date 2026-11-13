@@ -31,6 +31,8 @@ include!("types/pending_timer.rs");
 
 include!("types/commands.rs");
 
+include!("types/pending_quota.rs");
+
 include!("types/recover.rs");
 
 include!("types/ask.rs");
@@ -40,6 +42,8 @@ include!("types/inspect.rs");
 include!("types/introspection.rs");
 
 include!("types/command_queue.rs");
+
+include!("types/command_queue_quota.rs");
 
 include!("types/run_aggregate.rs");
 

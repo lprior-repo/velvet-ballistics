@@ -19,6 +19,10 @@ impl Shard {
             }
         }
         let step_count = frame.step_count();
+        let run_started_millis = crate::recovery::resolve_run_started_millis(
+            Some(&accepted.admission),
+            accepted.run_started_millis,
+        )?;
         Ok(RunState {
             registered_execution: RegisteredExecutionMode::Live,
             frame,
@@ -27,9 +31,9 @@ impl Shard {
             store,
             action_attempts: crate::shard::helpers::new_action_attempts(step_count),
             admission: Some(accepted.admission),
-            run_started_millis: None,
+            run_started_millis,
             collect_states: crate::primitives::collect::CollectStates::new(),
-            journal_bytes_written: 0,
+            journal_bytes_written: accepted.journal_bytes_written,
             action_contracts: accepted.contracts,
         })
     }

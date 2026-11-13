@@ -7,8 +7,12 @@ use vb_storage::{AcceptedArtifact, EventSeq, FjallJournal, JournalEvent};
 
 #[path = "prefix/artifact.rs"]
 mod artifact;
+#[path = "prefix/events.rs"]
+mod events;
 #[path = "prefix/identity.rs"]
 mod identity;
+#[path = "prefix/trailing.rs"]
+mod trailing;
 
 pub(super) struct PreparedOwnedActivation {
     pub(super) workflow: CompiledWorkflow,
@@ -16,6 +20,17 @@ pub(super) struct PreparedOwnedActivation {
     pub(super) admission: RunAdmission,
     pub(super) contracts: Box<[vb_core::ActionContract]>,
     pub(super) next_seq: EventSeq,
+    pub(super) run_started_millis: Option<u64>,
+    pub(super) journal_bytes_written: u64,
+}
+
+struct PristinePrefix {
+    workflow_digest: WorkflowDigest,
+    admission: JournalEvent,
+    next_seq: EventSeq,
+    run_started_millis: Option<u64>,
+    journal_bytes_written: u64,
+    tenant: Option<vb_core::ids::TenantId>,
 }
 
 pub(super) fn load(
@@ -29,7 +44,21 @@ pub(super) fn load(
         .ok_or(RuntimeError::UnsupportedOperation {
             operation: "owned_activation_requires_storage",
         })?;
-    let (workflow_digest, admission_event, next_seq) = pristine(&journal, run)?;
+    let prefix = pristine(&journal, run)?;
+    if let Some(origin) = prefix.run_started_millis {
+        let now = crate::shard::helpers::wall_clock_millis_since_epoch().ok_or(
+            RuntimeError::RecoveryCannotResume {
+                reason: String::from("wall_clock_unavailable"),
+            },
+        )?;
+        let budget = match &prefix.admission {
+            JournalEvent::RunAdmissionBudget { budget, .. } => Some(budget),
+            _ => None,
+        };
+        crate::recovery::validate_lifetime_budget(budget, origin, now)?;
+    }
+    let workflow_digest = prefix.workflow_digest;
+    let admission_event = prefix.admission.clone();
     let header = journal.run_header(run)?.ok_or(RuntimeError::RunNotFound)?;
     identity::header(&header, run, workflow_digest)?;
     identity::source(&journal, source)?;
@@ -52,86 +81,36 @@ pub(super) fn load(
         &workflow,
         &artifact.action_contracts,
     )?;
-    owned(
-        &journal,
-        run,
-        source,
-        workflow,
-        artifact,
-        admission_event,
-        next_seq,
-    )
+    owned(&journal, run, source, workflow, artifact, prefix)
 }
 
-fn pristine(
-    journal: &FjallJournal,
-    run: RunId,
-) -> RuntimeResult<(WorkflowDigest, JournalEvent, EventSeq)> {
-    let limit = vb_storage::EventReplayLimit::new(3).ok_or(RuntimeError::UnsupportedOperation {
+fn pristine(journal: &FjallJournal, run: RunId) -> RuntimeResult<PristinePrefix> {
+    let limit = vb_storage::EventReplayLimit::new(5).ok_or(RuntimeError::UnsupportedOperation {
         operation: "owned_activation_prefix_limit",
     })?;
     let events = journal.events_for_run_full_bounded(run, limit)?;
-    if events.is_empty() {
-        return Err(RuntimeError::RunNotFound);
-    }
-    let (accepted, admission) = match events.as_slice() {
-        [accepted, admission, decision] => {
-            let JournalEvent::CompatibilityDecisionEvent {
-                run: decision_run,
-                seq: decision_seq,
-                ..
-            } = decision
-            else {
-                return Err(RuntimeError::UnsupportedOperation {
-                    operation: "owned_activation_requires_pristine_prefix",
-                });
-            };
-            if *decision_run != run || decision_seq.get() != 2 {
-                return Err(identity::mismatch());
-            }
-            (accepted, admission)
-        }
-        _ => {
-            return Err(RuntimeError::UnsupportedOperation {
-                operation: "owned_activation_requires_pristine_prefix",
-            });
-        }
-    };
-    let next_seq = events
-        .last()
-        .ok_or(RuntimeError::RunNotFound)?
-        .seq()
-        .get()
-        .checked_add(1)
-        .map(EventSeq::new)
-        .ok_or(vb_storage::JournalError::SequenceOverflow)?;
-    let JournalEvent::RunAccepted {
-        run: accepted_run,
-        seq: accepted_seq,
-        workflow,
-    } = accepted
-    else {
-        return Err(RuntimeError::UnsupportedOperation {
-            operation: "owned_activation_requires_pristine_prefix",
-        });
-    };
-    let (admitted_run, admitted_seq) = match admission {
-        JournalEvent::RunAdmission { run, seq, .. }
-        | JournalEvent::RunAdmissionBudget { run, seq, .. } => (run, seq),
-        _ => {
-            return Err(RuntimeError::UnsupportedOperation {
-                operation: "owned_activation_requires_pristine_prefix",
-            });
-        }
-    };
-    if *accepted_run != run
-        || *admitted_run != run
-        || accepted_seq.get() != 0
-        || admitted_seq.get() != 1
-    {
-        return Err(identity::mismatch());
-    }
-    Ok((*workflow, admission.clone(), next_seq))
+    pristine_events(run, &events)
+}
+
+fn pristine_events(run: RunId, events: &[JournalEvent]) -> RuntimeResult<PristinePrefix> {
+    let prefix = events::parse(run, events)?;
+    let trailing = trailing::parse(run, prefix.trailing, prefix.budgeted)?;
+    let journal_bytes_written = crate::recovery::recover_journal_bytes_written(events)?;
+    Ok(PristinePrefix {
+        workflow_digest: prefix.workflow_digest,
+        admission: prefix.admission.clone(),
+        next_seq: trailing.next_seq,
+        run_started_millis: trailing.origin,
+        journal_bytes_written,
+        tenant: trailing.tenant,
+    })
+}
+#[cfg(test)]
+pub(crate) fn validate_pristine_prefix_events(
+    run: RunId,
+    events: &[JournalEvent],
+) -> RuntimeResult<()> {
+    pristine_events(run, events).map(|_| ())
 }
 
 fn owned(
@@ -140,9 +119,9 @@ fn owned(
     source: WorkflowDigest,
     workflow: CompiledWorkflow,
     artifact: AcceptedArtifact,
-    event: JournalEvent,
-    next_seq: EventSeq,
+    prefix: PristinePrefix,
 ) -> RuntimeResult<PreparedOwnedActivation> {
+    let event = prefix.admission;
     let record = journal
         .owned_run_inputs(run, artifact.digest, source, &workflow)?
         .ok_or(RuntimeError::UnsupportedOperation {
@@ -151,11 +130,17 @@ fn owned(
     record.validate_admission(&event)?;
     let bundle = record.restore(&workflow)?;
     let admission = identity::admission(run, &workflow, &artifact, &event)?;
+    let admission = match prefix.tenant {
+        Some(tenant) if admission.tenant().is_none() => admission.with_tenant(tenant),
+        _ => admission,
+    };
     Ok(PreparedOwnedActivation {
         workflow,
         bundle,
         admission,
         contracts: artifact.action_contracts,
-        next_seq,
+        next_seq: prefix.next_seq,
+        run_started_millis: prefix.run_started_millis,
+        journal_bytes_written: prefix.journal_bytes_written,
     })
 }

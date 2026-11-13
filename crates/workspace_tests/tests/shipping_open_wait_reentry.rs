@@ -82,8 +82,15 @@ fn repeat_reentry_open_wait_survives_fjall_cold_recovery() -> TestResult {
     let retained_input;
     {
         let mut open = open_runtime(dir.path(), RuntimePolicy::Strict, Durability::Strict)?;
-        retained_input =
-            owned::commit_owned_input(&open.journal, &workflow, SOURCE, run, contracts.as_ref())?;
+        let accepted_at_ms = current_time_millis()?;
+        retained_input = owned::commit_owned_input(
+            &open.journal,
+            &workflow,
+            SOURCE,
+            run,
+            contracts.as_ref(),
+            accepted_at_ms,
+        )?;
         open.runtime
             .activate_owned_submission(run, retained_input.source_digest)?;
         let first_ticket = tick_until_action(
@@ -232,12 +239,20 @@ fn repeat_reentry_open_wait_survives_fjall_cold_recovery() -> TestResult {
         RuntimePolicy::Strict,
         Durability::Strict,
     )?;
+    let accepted_at_ms = baseline_events
+        .iter()
+        .find_map(|event| match event {
+            JournalEvent::RunBudgetOriginEvent { started_millis, .. } => Some(*started_millis),
+            _ => None,
+        })
+        .ok_or("baseline admission origin missing")?;
     owned::commit_owned_input(
         &corrupted.journal,
         &workflow,
         SOURCE,
         run,
         &[action_contract()?],
+        accepted_at_ms,
     )?;
     let prefix = events(&corrupted.journal, run)?;
     let prefix_len = prefix.len();
@@ -297,4 +312,11 @@ fn repeat_reentry_open_wait_survives_fjall_cold_recovery() -> TestResult {
     let raw_after = owned::raw_event_bytes(&cold.journal, run, &corrupt_events)?;
     assert_eq!(raw_after, raw_before);
     Ok(())
+}
+
+fn current_time_millis() -> TestResult<u64> {
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_millis();
+    Ok(u64::try_from(millis)?)
 }

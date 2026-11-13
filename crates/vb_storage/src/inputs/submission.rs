@@ -4,7 +4,7 @@ use crate::{
     AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
     RunHeaderRecord, WorkflowSourceRecord,
 };
-use vb_core::RuntimePolicy;
+use vb_core::{AggregateResourceBudget, RuntimePolicy};
 
 /// Complete prepared admission. Private members prevent partial publication.
 pub struct RunSubmission {
@@ -12,6 +12,8 @@ pub struct RunSubmission {
     artifact: AcceptedArtifact,
     inputs: SubmissionInputs,
     header: RunHeaderRecord,
+    budget: Option<AggregateResourceBudget>,
+    budget_origin_millis: Option<u64>,
 }
 
 impl RunSubmission {
@@ -22,11 +24,17 @@ impl RunSubmission {
         inputs: RunInputsRecord,
         header: RunHeaderRecord,
     ) -> Result<Self, JournalError> {
+        let workflow = crate::admission::verify_accepted_artifact(&artifact)?;
+        let budget = AggregateResourceBudget::from_workflow(&workflow)
+            .map_err(|_| JournalError::ArtifactMalformed)?;
+        let budget_origin_millis = header.accepted_at_ms;
         let submission = Self {
             source,
             artifact,
             inputs: SubmissionInputs::Scalar(inputs),
             header,
+            budget: Some(budget),
+            budget_origin_millis: Some(budget_origin_millis),
         };
         submission.validate_binding()?;
         Ok(submission)
@@ -39,10 +47,15 @@ impl RunSubmission {
         inputs: OwnedRunInputsRecordV1,
         header: RunHeaderRecord,
     ) -> Result<Self, JournalError> {
+        let workflow = crate::admission::verify_accepted_artifact(&artifact)?;
+        let budget = AggregateResourceBudget::from_workflow(&workflow)
+            .map_err(|_| JournalError::ArtifactMalformed)?;
         let submission = Self {
             source,
             artifact,
             inputs: SubmissionInputs::Owned(inputs),
+            budget: Some(budget),
+            budget_origin_millis: Some(header.accepted_at_ms),
             header,
         };
         submission.validate_binding()?;
@@ -145,7 +158,15 @@ impl RunSubmission {
         }
         batch.append_event(&self.accepted_event())?;
         batch.append_event(&self.admission_event(policy))?;
-        batch.append_event(&self.compatibility_event())
+        batch.append_event(&self.compatibility_event())?;
+        if let Some(started_millis) = self.budget_origin_millis {
+            batch.append_event(&JournalEvent::RunBudgetOriginEvent {
+                run: self.header.run,
+                seq: EventSeq::new(3),
+                started_millis,
+            })?;
+        }
+        Ok(())
     }
 
     fn compatibility_event(&self) -> JournalEvent {
@@ -165,16 +186,52 @@ impl RunSubmission {
     }
 
     fn admission_event(&self, policy: RuntimePolicy) -> JournalEvent {
-        JournalEvent::RunAdmission {
-            input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
-            run: self.header.run,
-            seq: EventSeq::new(1),
-            artifact_digest: self.artifact.digest,
-            policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
-            granted_capabilities: vb_core::CapabilitySet::empty(),
-            policy,
+        match self.budget {
+            Some(budget) => JournalEvent::RunAdmissionBudget {
+                run: self.header.run,
+                seq: EventSeq::new(1),
+                artifact_digest: self.artifact.digest,
+                input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
+                policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
+                granted_capabilities: vb_core::CapabilitySet::empty(),
+                policy,
+                budget,
+            },
+            None => JournalEvent::RunAdmission {
+                input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
+                run: self.header.run,
+                seq: EventSeq::new(1),
+                artifact_digest: self.artifact.digest,
+                policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
+                granted_capabilities: vb_core::CapabilitySet::empty(),
+                policy,
+            },
         }
     }
+}
+
+fn validate_budget_origin(origin: u64, now: u64) -> Result<(), JournalError> {
+    if origin > now {
+        return Err(JournalError::InvalidConfig {
+            field: "run_budget_origin",
+            reason: "future",
+        });
+    }
+    Ok(())
+}
+
+fn validate_submission_origin(submission: &RunSubmission) -> Result<(), JournalError> {
+    let Some(origin) = submission.budget_origin_millis else {
+        return Ok(());
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| JournalError::ClockUnavailable)?;
+    let now = u64::try_from(now.as_millis()).map_err(|_| JournalError::InvalidConfig {
+        field: "run_budget_origin",
+        reason: "clock_overflow",
+    })?;
+    validate_budget_origin(origin, now)
 }
 
 impl FjallJournal {
@@ -185,6 +242,7 @@ impl FjallJournal {
         submission: &RunSubmission,
         policy: RuntimePolicy,
     ) -> Result<(), JournalError> {
+        validate_submission_origin(submission)?;
         submission.validate_policy(policy)?;
         let _guard = self
             .write_lock
