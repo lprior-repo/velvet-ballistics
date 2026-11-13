@@ -1,6 +1,6 @@
 //! Atomic bounded queue commits and explicit durability selection.
 use super::group::selected_flush_len;
-use super::stage::stage_queued_event;
+use super::stage::{stage_queued_event, stage_queued_inputs};
 use super::{
     DurabilityProfile, FjallJournal, JournalError, JournalWriterFlushReport, JournalWriterQueue,
     JournalWriterQueueState,
@@ -85,6 +85,9 @@ fn prepare_batch(
     let mut staged_keys = std::collections::HashSet::new();
     for item in state.pending.iter().take(length) {
         prepared.has_strict |= item.profile == DurabilityProfile::Strict;
+        if let Some(inputs) = item.retained_inputs.as_ref() {
+            stage_queued_inputs(&mut prepared.batch, journal, inputs)?;
+        }
         stage_queued_event(
             &mut prepared.batch,
             journal,

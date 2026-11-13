@@ -1,5 +1,6 @@
 use crate::{
-    error::JournalError, events::JournalEvent, journal::FjallJournal, keys::run_event_key,
+    error::JournalError, events::JournalEvent, inputs::RunInputsRecord, journal::FjallJournal,
+    keys::run_event_key, types::DurabilityProfile,
 };
 
 impl FjallJournal {
@@ -79,6 +80,32 @@ impl FjallJournal {
             batch.append_event(event)?;
         }
         batch.strict().commit()
+    }
+    /// Atomically commits admission events and their digest-bound scalar inputs.
+    pub fn append_runtime_admission_batch(
+        &self,
+        events: &[JournalEvent],
+        inputs: &RunInputsRecord,
+        profile: DurabilityProfile,
+    ) -> Result<(), JournalError> {
+        if events.is_empty() || events.iter().any(|event| event.run_id() != inputs.run()) {
+            return Err(JournalError::InvalidEvent);
+        }
+        if let Some(existing) = self.run_inputs(inputs.run())?
+            && existing != *inputs
+        {
+            return Err(JournalError::PayloadDigestMismatch);
+        }
+        let mut batch = self.batch();
+        for event in events {
+            batch.append_event(event)?;
+        }
+        batch.put_run_inputs(inputs)?;
+        if profile == DurabilityProfile::Strict {
+            batch.strict().commit()
+        } else {
+            batch.commit()
+        }
     }
 
     /// Forces a strict durability barrier.

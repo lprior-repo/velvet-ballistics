@@ -214,6 +214,15 @@ impl RuntimeJournal for StorageRuntimeJournal {
         Self::append_runtime_event_batch(self.journal.as_ref(), self.profile, events, start_seq)
     }
 
+    fn append_admission_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        Self::append_runtime_admission_batch(&self.journal, self.profile, events, start_seq, inputs)
+    }
+
     fn probe(&self) -> RuntimeResult<()> {
         self.journal.probe_health().map_err(RuntimeError::from)
     }

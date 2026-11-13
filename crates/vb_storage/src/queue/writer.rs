@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use crate::{
     error::JournalError,
     events::JournalEvent,
+    inputs::RunInputsRecord,
     journal::FjallJournal,
     types::{
         DurabilityProfile, JournalBatchSize, JournalQueueCapacity, JournalWriterFlushReport,
@@ -21,6 +22,7 @@ use self::group::{QueuedJournalGroup, count_profile};
 #[derive(Debug, Clone)]
 struct QueuedJournalEvent {
     event: JournalEvent,
+    retained_inputs: Option<RunInputsRecord>,
     record_bytes: u64,
     profile: DurabilityProfile,
     group: QueuedJournalGroup,
@@ -90,10 +92,18 @@ impl JournalWriterQueue {
         self.enqueue(event, DurabilityProfile::Journaled)
     }
 
-    /// Enqueues a same-run batch for journaled append without permitting a
-    /// later flush to split the batch across durable commits.
+    /// Enqueues a same-run batch for journaled append without permitting a later flush to split it.
     pub fn enqueue_journaled_batch(&self, events: Vec<JournalEvent>) -> Result<(), JournalError> {
         self.enqueue_batch(events, DurabilityProfile::Journaled)
+    }
+
+    /// Enqueues admission events and their retained inputs as one bounded group.
+    pub fn enqueue_journaled_admission_batch(
+        &self,
+        events: Vec<JournalEvent>,
+        inputs: RunInputsRecord,
+    ) -> Result<(), JournalError> {
+        self.enqueue_admission_batch(events, inputs, DurabilityProfile::Journaled)
     }
 
     /// Enqueues an event for strict append.
@@ -123,6 +133,7 @@ impl JournalWriterQueue {
         state.pending_bytes = pending_bytes;
         state.pending.push_back(QueuedJournalEvent {
             event,
+            retained_inputs: None,
             record_bytes,
             profile,
             group: QueuedJournalGroup::Single,
