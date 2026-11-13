@@ -5,11 +5,11 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind as Kind, CompiledWorkflow, ResourceContract, WorkflowParts, node};
-use vb_runtime::engine::{
-    EvidenceCollector, RetryPolicy, RuntimeSignal, drive_deterministic_full,
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind as Kind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::engine::types::EvidenceEvent;
+use vb_runtime::engine::{EvidenceCollector, RetryPolicy, RuntimeSignal, drive_deterministic_full};
 use vb_runtime::primitives::collect::CollectStates;
 
 fn nested_fixed_group_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
@@ -40,7 +40,14 @@ fn nested_fixed_group_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Err
             None,
             None,
         ),
-        step(2, Kind::SetConst { value: vb_core::ids::ConstIdx::new(0) }, Some(0), Some(3)),
+        step(
+            2,
+            Kind::SetConst {
+                value: vb_core::ids::ConstIdx::new(0),
+            },
+            Some(0),
+            Some(3),
+        ),
         step(
             3,
             Kind::ConcurrentLaneEnd {
@@ -50,7 +57,14 @@ fn nested_fixed_group_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Err
             None,
             Some(6),
         ),
-        step(4, Kind::SetConst { value: vb_core::ids::ConstIdx::new(1) }, Some(0), Some(5)),
+        step(
+            4,
+            Kind::SetConst {
+                value: vb_core::ids::ConstIdx::new(1),
+            },
+            Some(0),
+            Some(5),
+        ),
         step(
             5,
             Kind::ConcurrentLaneEnd {
@@ -62,7 +76,9 @@ fn nested_fixed_group_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Err
         ),
         step(
             6,
-            Kind::ConcurrentGroupJoin { owner: StepIdx::new(1) },
+            Kind::ConcurrentGroupJoin {
+                owner: StepIdx::new(1),
+            },
             Some(1),
             Some(7),
         ),
@@ -77,7 +93,9 @@ fn nested_fixed_group_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Err
         ),
         step(
             8,
-            Kind::ConcurrentGroupJoin { owner: StepIdx::new(0) },
+            Kind::ConcurrentGroupJoin {
+                owner: StepIdx::new(0),
+            },
             Some(2),
             Some(9),
         ),
@@ -98,7 +116,10 @@ fn nested_fixed_group_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Err
         nodes,
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: Box::new([vb_core::value::ConstValue::I64(10), vb_core::value::ConstValue::I64(20)]),
+        constants: Box::new([
+            vb_core::value::ConstValue::I64(10),
+            vb_core::value::ConstValue::I64(20),
+        ]),
         slot_count: 3,
         symbols_count: 0,
         entry: StepIdx::ZERO,
@@ -112,7 +133,8 @@ fn nested_fixed_group_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Err
 }
 
 #[test]
-fn checked_nested_fixed_group_preserves_budget_exhaustion_signal() -> Result<(), Box<dyn std::error::Error>> {
+fn checked_nested_fixed_group_preserves_budget_exhaustion_signal()
+-> Result<(), Box<dyn std::error::Error>> {
     for budget_size in [1_u64, 2, 4] {
         assert_nested_budget(budget_size)?;
     }
@@ -121,7 +143,12 @@ fn checked_nested_fixed_group_preserves_budget_exhaustion_signal() -> Result<(),
 
 fn assert_nested_budget(budget_size: u64) -> Result<(), Box<dyn std::error::Error>> {
     let plan = nested_fixed_group_plan()?;
-    let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, plan.node_count(), plan.slot_count())?;
+    let mut run = RunFrame::new(
+        RunId::new(1),
+        StepIdx::ZERO,
+        plan.node_count(),
+        plan.slot_count(),
+    )?;
     let mut store = ValueStore::new();
     let mut evidence = EvidenceCollector::new();
     let mut collect_states = CollectStates::new();
@@ -149,8 +176,14 @@ fn assert_nested_budget(budget_size: u64) -> Result<(), Box<dyn std::error::Erro
     }
     let result = finished.ok_or("nested fixed group did not finish")?;
     assert_eq!(store.list(result)?, &[SlotValue::I64(10)]);
-    assert_eq!(run.read_taint(vb_core::ids::SlotIdx::new(2))?, vb_core::value::Taint::Clean);
-    assert_eq!(run.step_state(StepIdx::new(1))?, vb_core::StepState::Succeeded);
+    assert_eq!(
+        run.read_taint(vb_core::ids::SlotIdx::new(2))?,
+        vb_core::value::Taint::Clean
+    );
+    assert_eq!(
+        run.step_state(StepIdx::new(1))?,
+        vb_core::StepState::Succeeded
+    );
 
     let events = evidence.drain();
     let started_steps: Vec<_> = events
@@ -195,7 +228,9 @@ fn assert_nested_budget(budget_size: u64) -> Result<(), Box<dyn std::error::Erro
 fn count_started(events: &[EvidenceEvent], step: StepIdx) -> usize {
     events
         .iter()
-        .filter(|event| matches!(event, EvidenceEvent::StepStarted { step: found } if *found == step))
+        .filter(
+            |event| matches!(event, EvidenceEvent::StepStarted { step: found } if *found == step),
+        )
         .count()
 }
 
@@ -212,4 +247,3 @@ fn count_written(events: &[EvidenceEvent], slot: vb_core::ids::SlotIdx) -> usize
         .filter(|event| matches!(event, EvidenceEvent::SlotWritten { slot: found, .. } if *found == slot))
         .count()
 }
-

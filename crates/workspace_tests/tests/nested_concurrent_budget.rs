@@ -16,8 +16,13 @@ mod nested_fixed_group_budget;
 #[test]
 fn nested_concurrent_groups_resume_under_each_small_budget() -> Result<(), String> {
     let plan = compile_workflow(SOURCE.as_bytes()).map_err(|errors| format!("{errors:?}"))?;
-    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), plan.node_count(), plan.slot_count())
-        .map_err(|error| format!("{error}"))?;
+    let mut run = RunFrame::new(
+        RunId::new(1),
+        StepIdx::new(0),
+        plan.node_count(),
+        plan.slot_count(),
+    )
+    .map_err(|error| format!("{error}"))?;
     let mut store = ValueStore::new();
     let mut evidence = EvidenceCollector::new();
     let mut collect_states = CollectStates::new();
@@ -63,7 +68,9 @@ fn nested_concurrent_groups_resume_under_each_small_budget() -> Result<(), Strin
     let Some(SlotValue::List(outer_result)) = finished else {
         return Err("nested concurrent source did not finish with a list".into());
     };
-    let outer_values = store.list(outer_result).map_err(|error| error.to_string())?;
+    let outer_values = store
+        .list(outer_result)
+        .map_err(|error| error.to_string())?;
     assert_eq!(outer_values.len(), 2);
     for (ordinal, expected) in [(0_u32, [11_i64, 21]), (1_u32, [12_i64, 22])] {
         let (outer_item, outer_taint) = store
@@ -71,10 +78,17 @@ fn nested_concurrent_groups_resume_under_each_small_budget() -> Result<(), Strin
             .map_err(|error| error.to_string())?;
         assert_eq!(outer_taint, vb_core::value::Taint::Clean);
         let SlotValue::List(inner_result) = outer_item else {
-            return Err(format!("outer result {ordinal} was not a list: {outer_item:?}"));
+            return Err(format!(
+                "outer result {ordinal} was not a list: {outer_item:?}"
+            ));
         };
-        let inner_values = store.list(inner_result).map_err(|error| error.to_string())?;
-        assert_eq!(inner_values, &[SlotValue::I64(expected[0]), SlotValue::I64(expected[1])]);
+        let inner_values = store
+            .list(inner_result)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            inner_values,
+            &[SlotValue::I64(expected[0]), SlotValue::I64(expected[1])]
+        );
         for inner_ordinal in [0_u32, 1] {
             let (_, inner_taint) = store
                 .list_item_with_taint(inner_result, inner_ordinal)

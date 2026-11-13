@@ -12,7 +12,11 @@ use vb_runtime::primitives::collect::CollectStates;
 
 fn plan(first_success: bool) -> Result<vb_core::CompiledWorkflow, String> {
     concurrent_ir(
-        if first_success { "resume_first_success" } else { "resume_together" },
+        if first_success {
+            "resume_first_success"
+        } else {
+            "resume_together"
+        },
         two_lane_nodes(first_success),
         vec![ConstValue::I64(10), ConstValue::I64(20)],
         3,
@@ -78,7 +82,9 @@ fn replay_result(first_success: bool) -> Result<(SlotValue, Vec<SlotValue>), Str
     let mut states = ReplayCollectStates::new();
     let mut pc = StepIdx::new(0);
     for _ in 0..100 {
-        let node = plan.node(pc).ok_or_else(|| format!("missing node {pc:?}"))?;
+        let node = plan
+            .node(pc)
+            .ok_or_else(|| format!("missing node {pc:?}"))?;
         match replay_step_with_collect(node, &mut run, &mut store, &plan, &mut states)
             .map_err(|error| format!("{error:?}"))?
         {
@@ -127,7 +133,12 @@ fn together_budget_one_resumes_each_lane_once_and_matches_replay() -> Result<(),
     let (replay_value, replay_values) = replay_result(false)?;
     assert!(matches!(replay_value, SlotValue::List(_)));
     assert_eq!(replay_values, values);
-    for step in [StepIdx::new(1), StepIdx::new(2), StepIdx::new(3), StepIdx::new(4)] {
+    for step in [
+        StepIdx::new(1),
+        StepIdx::new(2),
+        StepIdx::new(3),
+        StepIdx::new(4),
+    ] {
         assert_eq!(step_count(&events, step, true), 1, "start {step:?}");
         assert_eq!(step_count(&events, step, false), 1, "success {step:?}");
     }
