@@ -107,6 +107,10 @@ name = "vb_c1s0_orchestration_runtime_tests"
 path = "tests/vb_c1s0_orchestration_runtime_tests.rs"
 
 [[test]]
+name = "shipping_ipc_command_behaviors"
+path = "tests/shipping_ipc_command_behaviors.rs"
+
+[[test]]
 name = "vb_te1i_binary_ipc_acceptance"
 path = "tests/vb_te1i_binary_ipc_acceptance.rs"
 
