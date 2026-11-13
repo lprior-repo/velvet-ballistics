@@ -1135,10 +1135,10 @@ verus_registry:
     production: crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
 
   - id: PO-VERUS-029
-    description: "Diagnostic envelope construction soundness: public CLI exit codes exactly bounded by 0..=8; schema version invariant (INV-001, INV-005)."
+    description: "Diagnostic envelope construction soundness: public CLI exit codes exactly bounded by 0..=9; schema version invariant (INV-001, INV-005)."
     verus: verification/verus/diagnostic_envelope_verus.rs
     production: crates/velvet_ballistics/src/exit_code.rs
-    note: "Production drift: CliExitCode gained a 10th variant LifecycleError = 9 (exit_code.rs:33), so the 0..=8 bound no longer matches production; the Verus spec still proves 0..=8. Needs a spec decision (lane C)."
+    note: "Resolved by #449: CliExitCode has 10 variants (0..=9) with LifecycleError = 9 (exit_code.rs:33), and the Verus spec now proves 0..=9 (diagnostic_envelope_verus.rs:4), matching production. The 0..=8 bound was superseded by the #449 merge."
 
   - id: PO-VERUS-030
     description: "Cancel/kill lattice: cancel/kill only on live runs (REQ-cancel-kill-live-only), exactly one terminal event per run (REQ-single-terminal-winner), cancel/kill invalidates stale authority (REQ-stale-authority-cleanup); bound to production handle_cancel/handle_kill at crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:183-243 (PO-VERUS-001..003)."
