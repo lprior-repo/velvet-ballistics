@@ -40,7 +40,12 @@ fn direct_api_terminal_replays_after_cold_reopen_matrix() -> TestResult {
         }
         other => return Err(format!("completed run recovered as {other:?}").into()),
     }
-    assert!(open.runtime.recover_and_resume(run).is_err());
+    assert_eq!(
+        open.runtime.recover_and_resume(run),
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("terminal_state"),
+        })
+    );
     Ok(())
 }
 

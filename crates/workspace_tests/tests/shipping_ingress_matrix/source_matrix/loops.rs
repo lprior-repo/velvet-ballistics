@@ -9,8 +9,7 @@ use vb_core::{CompiledWorkflow, RunId, RuntimePolicy, SlotValue, ValueStore};
 use vb_storage::{RunSubmission, WorkflowSourceRecord};
 
 use crate::source_matrix::{
-    HEADER, assert_single_success, consecutive_unique, decoded_writes, seed_and_finish, step_id,
-    succeeded_count,
+    HEADER, assert_single_success, decoded_writes, seed_and_finish, step_id, succeeded_count,
 };
 use crate::support::{
     self, Durability, TestResult, compile, events, open_runtime, persist_artifact,
@@ -48,7 +47,7 @@ fn for_each_executes_body_once_per_item_matrix() -> TestResult {
         .map(|(_, value)| value)
         .collect();
     assert_eq!(
-        consecutive_unique(seen),
+        seen,
         vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
     );
     Ok(())
@@ -135,15 +134,27 @@ fn together_executes_all_branches_matrix() -> TestResult {
     let right = step_id(&workflow, "right_value").ok_or("missing right_value")?;
     assert_eq!(succeeded_count(&durable, run, left), 1);
     assert_eq!(succeeded_count(&durable, run, right), 1);
-    let branch_values: Vec<SlotValue> = decoded_writes(&durable, run)?
-        .into_iter()
-        .map(|(_, value)| value)
-        .filter(|value| matches!(value, SlotValue::I64(7 | 9)))
+    let left_slot = workflow
+        .node(vb_core::StepIdx::new(left))
+        .and_then(|node| node.output.slot())
+        .ok_or("left branch has no output slot")?;
+    let right_slot = workflow
+        .node(vb_core::StepIdx::new(right))
+        .and_then(|node| node.output.slot())
+        .ok_or("right branch has no output slot")?;
+    let writes = decoded_writes(&durable, run)?;
+    let left_writes: Vec<SlotValue> = writes
+        .iter()
+        .filter(|(slot, _)| *slot == left_slot)
+        .map(|(_, value)| *value)
         .collect();
-    assert_eq!(
-        consecutive_unique(branch_values),
-        vec![SlotValue::I64(7), SlotValue::I64(9)]
-    );
+    let right_writes: Vec<SlotValue> = writes
+        .iter()
+        .filter(|(slot, _)| *slot == right_slot)
+        .map(|(_, value)| *value)
+        .collect();
+    assert_eq!(left_writes, vec![SlotValue::I64(7)]);
+    assert_eq!(right_writes, vec![SlotValue::I64(9)]);
     Ok(())
 }
 
@@ -187,14 +198,23 @@ fn reduce_accumulates_every_item_matrix() -> TestResult {
         Taint::Clean,
         &workflow,
     )?;
-    let running_writes: Vec<SlotValue> = decoded_writes(&durable, run)?
-        .into_iter()
-        .map(|(_, value)| value)
-        .filter(|value| matches!(value, SlotValue::I64(1 | 2 | 3)))
-        .collect();
-    assert_eq!(
-        consecutive_unique(running_writes),
-        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
+    let mut per_slot: std::collections::BTreeMap<vb_core::SlotIdx, Vec<SlotValue>> =
+        std::collections::BTreeMap::new();
+    for (slot, value) in decoded_writes(&durable, run)? {
+        per_slot.entry(slot).or_default().push(value);
+    }
+    assert!(
+        per_slot.values().any(|writes| {
+            writes.as_slice()
+                == [
+                    SlotValue::I64(0),
+                    SlotValue::I64(1),
+                    SlotValue::I64(2),
+                    SlotValue::I64(3),
+                    SlotValue::I64(3),
+                ]
+        }),
+        "missing exact accumulator sequence 0,1,2,3: {per_slot:?}"
     );
     Ok(())
 }
@@ -224,11 +244,15 @@ fn bounded_repeat_runs_body_max_attempts_matrix() -> TestResult {
     )?;
     let body = step_id(&workflow, "body").ok_or("missing body step")?;
     assert_eq!(succeeded_count(&durable, run, body), 2);
+    let body_slot = workflow
+        .node(vb_core::StepIdx::new(body))
+        .and_then(|node| node.output.slot())
+        .ok_or("body step has no output slot")?;
     let ticks: Vec<SlotValue> = decoded_writes(&durable, run)?
         .into_iter()
+        .filter(|(slot, _)| *slot == body_slot)
         .map(|(_, value)| value)
-        .filter(|value| *value == SlotValue::I64(7))
         .collect();
-    assert!(!ticks.is_empty());
+    assert_eq!(ticks, vec![SlotValue::I64(7), SlotValue::I64(7)]);
     Ok(())
 }

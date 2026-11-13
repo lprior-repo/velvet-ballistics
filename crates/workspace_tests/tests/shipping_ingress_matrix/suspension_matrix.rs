@@ -195,6 +195,39 @@ fn journaled_durability_reopen_preserves_completed_terminal() -> TestResult {
 }
 
 #[test]
+fn journaled_suspended_wait_recovers_and_finishes() -> TestResult {
+    let yaml = wait_workflow("0");
+    let workflow = compile(&yaml)?;
+    let dir = tempfile::tempdir()?;
+    let run = RunId::new(111);
+    {
+        let mut open = open_runtime(dir.path(), RuntimePolicy::Journaled, Durability::Journaled)?;
+        persist_artifact(&open.journal, &workflow, RuntimePolicy::Journaled, &[])?;
+        open.runtime.submit_compiled(run, workflow.clone())?;
+        let _entry = tick_until_timer(&mut open.runtime, run)?;
+        let _report = open.runtime.shutdown_graceful()?;
+    }
+    let mut open = open_runtime(dir.path(), RuntimePolicy::Journaled, Durability::Journaled)?;
+    match open.runtime.recover_product(run)? {
+        RuntimeRecoveryProduct::Resumable(product) => {
+            assert_eq!(
+                product.boundary_kind(),
+                RecoveredRunBoundaryKind::WaitingTimer
+            );
+        }
+        other => return Err(format!("journaled wait recovered as {other:?}").into()),
+    }
+    open.runtime.recover_and_resume(run)?;
+    let entry = tick_until_timer(&mut open.runtime, run)?;
+    open.runtime.timer_entry_fired(entry)?;
+    tick_until_terminal(&mut open.runtime, run, 64)?;
+    let durable = events(&open.journal, run)?;
+    assert_eq!(terminal(&durable, run)?.value, SlotValue::I64(42));
+    assert_ordering(&durable, run)?;
+    Ok(())
+}
+
+#[test]
 fn ask_answer_taint_passes_through_finish() -> TestResult {
     let yaml = format!(
         "{HEADER}vars:\n  prompt_text: 'input?'\nsteps:\n  - id: question\n    ask: {{prompt: '$vars.prompt_text'}}\n  - id: done\n    finish: {{result: '$step.question'}}\n"
@@ -221,6 +254,14 @@ fn ask_answer_taint_passes_through_finish() -> TestResult {
     ))?;
     tick_until_terminal(&mut open.runtime, run, 64)?;
     let durable = events(&open.journal, run)?;
+    assert_eq!(
+        support::count_where(&durable, |event| matches!(
+            event,
+            vb_storage::JournalEvent::AskScheduledEvent { run: actual, step, .. }
+                if *actual == run && *step == ask_step
+        )),
+        1
+    );
     let result = terminal(&durable, run)?;
     assert_eq!(result.value, SlotValue::I64(5));
     assert_eq!(result.taint, Taint::DerivedFromSecret);

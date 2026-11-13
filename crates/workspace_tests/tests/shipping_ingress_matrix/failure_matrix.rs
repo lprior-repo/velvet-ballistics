@@ -53,7 +53,7 @@ fn queue_full_rejects_second_submit_and_preserves_first() -> TestResult {
         open.runtime.snapshot_run(RunId::new(201), 0)?,
         vb_runtime::shard::InspectResponse::Found(_)
     ));
-    assert!(events(&open.journal, RunId::new(202))?.is_empty());
+    assert_eq!(events(&open.journal, RunId::new(202))?, Vec::new());
     Ok(())
 }
 
@@ -142,7 +142,12 @@ fn recovery_rejects_mismatched_workflow_digest_without_mutation() -> TestResult 
         "unexpected recovery error: {error:?}"
     );
     assert_eq!(events(&open.journal, run)?, before);
-    assert!(open.runtime.recover_and_resume(run).is_err());
+    assert_eq!(
+        open.runtime.recover_and_resume(run),
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("workflow_digest_mismatch"),
+        })
+    );
     assert_eq!(events(&open.journal, run)?, before);
     Ok(())
 }

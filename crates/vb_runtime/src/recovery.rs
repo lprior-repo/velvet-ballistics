@@ -13,9 +13,9 @@ use vb_storage::recovery::{
 };
 
 pub use full::{
-    NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredOpenWaitEvent, RecoveredRunBoundary,
-    RecoveredRunBoundaryKind, RecoveredTimerSuspension, ResumableRecoveryProduct,
-    RuntimeRecoveryProduct, SummaryRecoveryProduct,
+    NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
+    RecoveredTimerSuspension, ResumableRecoveryProduct, RuntimeRecoveryProduct,
+    SummaryRecoveryProduct,
 };
 pub(crate) use full::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, RecoveredPendingActionTicket,

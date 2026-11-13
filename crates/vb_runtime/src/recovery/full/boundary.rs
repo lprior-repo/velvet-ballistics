@@ -3,6 +3,7 @@
 use vb_core::ids::StepIdx;
 
 use super::RecoveredPendingActionTicket;
+use super::event_wait::RecoveredOpenWaitEvent;
 
 /// Numeric authority accepted only with its failure-bound complete checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -246,30 +247,6 @@ impl RecoveredOpenAsk {
     #[must_use]
     pub(crate) const fn boundary_seq(self) -> vb_storage::EventSeq {
         self.boundary_seq
-    }
-}
-
-/// Durable proof that a `WaitEvent` with no timeout suspended the run.
-///
-/// Authority is the latest durable `StepStarted` for the wait step plus a
-/// compiled untimed `WaitEvent` node at the recovered pc, with no unresolved
-/// `WaitScheduledEvent`. There is no timer and no public event-delivery API in
-/// v1, so recovery restores the same waiting boundary without re-driving the
-/// node and without fabricating a terminal state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RecoveredOpenWaitEvent {
-    step: StepIdx,
-}
-
-impl RecoveredOpenWaitEvent {
-    #[must_use]
-    pub(crate) const fn new(step: StepIdx) -> Self {
-        Self { step }
-    }
-
-    #[must_use]
-    pub const fn step(self) -> StepIdx {
-        self.step
     }
 }
 

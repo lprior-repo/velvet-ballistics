@@ -131,16 +131,6 @@ fn decoded_writes(
     Ok(writes)
 }
 
-fn consecutive_unique(values: Vec<SlotValue>) -> Vec<SlotValue> {
-    let mut unique = Vec::new();
-    for value in values {
-        if unique.last() != Some(&value) {
-            unique.push(value);
-        }
-    }
-    unique
-}
-
 #[test]
 fn set_const_copy_expression_list_object_finish_matrix() -> TestResult {
     let yaml = format!(

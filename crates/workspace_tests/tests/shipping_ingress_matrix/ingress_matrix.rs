@@ -227,8 +227,18 @@ fn binary_ipc_submit_health_shutdown_and_cold_replay() -> TestResult {
         let result = terminal(&durable, run)?;
         assert_eq!(result.value, SlotValue::I64(42));
         assert_eq!(result.taint, Taint::Clean);
-        assert!(open.runtime.recover_product(run).is_ok());
-        assert!(open.runtime.recover_and_resume(run).is_err());
+        match open.runtime.recover_product(run)? {
+            vb_runtime::recovery::RuntimeRecoveryProduct::CannotResume(product) => {
+                assert_eq!(product.reason(), "terminal_state");
+            }
+            other => return Err(format!("completed IPC run recovered as {other:?}").into()),
+        }
+        assert_eq!(
+            open.runtime.recover_and_resume(run),
+            Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+                reason: String::from("terminal_state"),
+            })
+        );
     }
     Ok(())
 }

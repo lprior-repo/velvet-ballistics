@@ -2,7 +2,8 @@ use vb_core::ids::StepIdx;
 use vb_core::{CompiledNodeKind, CompiledWorkflow};
 use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 
-use super::boundary::{RecoveredOpenAsk, RecoveredOpenWaitEvent, RecoveredTimerSuspension};
+use super::boundary::{RecoveredOpenAsk, RecoveredTimerSuspension};
+use super::event_wait::RecoveredOpenWaitEvent;
 use super::full_ask_schedule::pending_ask_schedule_for_step;
 use super::full_wait_schedule::pending_wait_schedule_for_step;
 
@@ -112,24 +113,23 @@ pub(super) fn recoverable_open_wait_event_boundary(
     let CompiledNodeKind::WaitEvent { timeout_slot, .. } = node.kind else {
         return None;
     };
-    if timeout_slot.slot().is_some() {
+    if timeout_slot.slot().is_some() || node.routing.next.step().is_none() {
         return None;
     }
-    node.routing.next.step()?;
     if pending_wait_schedule_for_step(events, step).is_some() {
         return None;
     }
-    events
-        .iter()
-        .rev()
-        .any(|event| {
-            matches!(
-                event,
-                vb_storage::JournalEvent::StepStarted { step: started_step, .. }
-                    if *started_step == step
-            )
-        })
-        .then_some(RecoveredOpenWaitEvent::new(step))
+    has_durable_wait_start(events, step).then_some(RecoveredOpenWaitEvent::new(step))
+}
+
+fn has_durable_wait_start(events: &[vb_storage::JournalEvent], step: StepIdx) -> bool {
+    events.iter().any(|event| {
+        matches!(
+            event,
+            vb_storage::JournalEvent::StepStarted { step: started_step, .. }
+                if *started_step == step
+        )
+    })
 }
 
 pub(super) fn recoverable_waiting_timer_boundary(
@@ -156,9 +156,10 @@ pub(super) fn recoverable_waiting_timer_boundary(
 
 /// Validates a suspended wait against the compiled workflow and the durable
 /// wait schedule. Only timer-registering waits (`WaitUntil`, or `WaitEvent`
-/// with a timeout slot) journal a `WaitScheduledEvent`, so only those can
-/// produce a recoverable boundary; an untimed `WaitEvent` suspends without
-/// durable schedule evidence and is re-driven instead.
+/// with a timeout slot) journal a `WaitScheduledEvent` and recover as
+/// `WaitingTimer`. An untimed `WaitEvent` is handled by
+/// `recoverable_open_wait_event_boundary`: it recovers as `OpenWaitEvent` and
+/// is never re-driven.
 fn recoverable_waiting_timer(
     seed: &RecoveryFrameSeed,
     workflow: &CompiledWorkflow,

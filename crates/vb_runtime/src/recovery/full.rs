@@ -3,6 +3,7 @@
 mod admission;
 mod arena;
 mod boundary;
+mod event_wait;
 mod full_ask_schedule;
 mod full_wait_schedule;
 mod pending;
@@ -27,8 +28,7 @@ pub(crate) use admission::{
 };
 pub(crate) use boundary::RecoveredRetryTimer;
 pub use boundary::{
-    RecoveredOpenAsk, RecoveredOpenWaitEvent, RecoveredRunBoundary, RecoveredRunBoundaryKind,
-    RecoveredTimerSuspension,
+    RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind, RecoveredTimerSuspension,
 };
 pub(crate) use pending::pending_action_ticket_from_events;
 pub(crate) use product::ResumableRecoveryParts;
