@@ -107,7 +107,7 @@ pub(super) struct Server {
 }
 impl Server {
     pub(super) fn start(db: &Path, keys: &[&str]) -> TestResult<Self> {
-        let socket_directory = tempfile::tempdir_in("/tmp")?;
+        let socket_directory = tempfile::tempdir()?;
         let socket = socket_directory.path().join("ipc.sock");
         let mut command = command();
         command

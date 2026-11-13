@@ -144,20 +144,20 @@ fn nested_parens_override_all_precedence() -> Result<(), String> {
 fn unary_negation_has_highest_precedence() -> Result<(), String> {
     // -1 + 2 => the negation is applied to 1 first
     let (ops, constants, _max_stack) = lower("-1 + 2")?;
-    // Const 0, Const 1, Sub, Const 2, Add
+    // Const -1, Const 1, Mul, Const 2, Add
     adv_ensure(
-        constants == vec![ConstValue::I64(0), ConstValue::I64(1), ConstValue::I64(2)],
-        "negation constants should be 0, 1, 2",
+        constants == vec![ConstValue::I64(-1), ConstValue::I64(1), ConstValue::I64(2)],
+        "negation constants should be -1, 1, 2",
     )?;
-    let sub_pos = ops
+    let mul_pos = ops
         .iter()
-        .position(|op| matches!(op, ExprOp::Sub))
-        .ok_or("no Sub")?;
+        .position(|op| matches!(op, ExprOp::Mul))
+        .ok_or("no Mul")?;
     let add_pos = ops
         .iter()
         .position(|op| matches!(op, ExprOp::Add))
         .ok_or("no Add")?;
-    adv_ensure(sub_pos < add_pos, "Sub (negation) should come before Add")?;
+    adv_ensure(mul_pos < add_pos, "Mul (negation) should come before Add")?;
     Ok(())
 }
 
@@ -182,21 +182,21 @@ fn not_has_higher_precedence_than_comparison() -> Result<(), String> {
 #[test]
 fn helper_with_negated_argument() -> Result<(), String> {
     let (ops, constants, _max_stack) = lower("exists(-1)")?;
-    // Const 0, Const 1, Sub, Exists
-    adv_ensure(constants.len() == 2, "should have 2 constants (0 and 1)")?;
-    let has_sub = ops.iter().any(|op| matches!(op, ExprOp::Sub));
+    // Const -1, Const 1, Mul, Exists
+    adv_ensure(constants.len() == 2, "should have 2 constants (-1 and 1)")?;
+    let has_mul = ops.iter().any(|op| matches!(op, ExprOp::Mul));
     let has_exists = ops.iter().any(|op| matches!(op, ExprOp::Exists));
-    adv_ensure(has_sub, "should contain Sub for negation")?;
+    adv_ensure(has_mul, "should contain Mul for negation")?;
     adv_ensure(has_exists, "should contain Exists")?;
     let exists_pos = ops
         .iter()
         .position(|op| matches!(op, ExprOp::Exists))
         .ok_or("no Exists")?;
-    let sub_pos = ops
+    let mul_pos = ops
         .iter()
-        .position(|op| matches!(op, ExprOp::Sub))
-        .ok_or("no Sub")?;
-    adv_ensure(sub_pos < exists_pos, "Sub should come before Exists")?;
+        .position(|op| matches!(op, ExprOp::Mul))
+        .ok_or("no Mul")?;
+    adv_ensure(mul_pos < exists_pos, "Mul should come before Exists")?;
     Ok(())
 }
 
@@ -262,10 +262,10 @@ fn nested_helpers_in_binary_expression() -> Result<(), String> {
 fn double_negation_in_helper() -> Result<(), String> {
     // exists(--5) => exists evaluated on (-(- 5))
     let (ops, constants, _max_stack) = lower("exists(--5)")?;
-    // Const 0, Const 0, Const 5, Sub, Sub, Exists
+    // Const -1, Const -1, Const 5, Mul, Mul, Exists
     adv_ensure(constants.len() == 3, "should have 3 constants")?;
-    let sub_count = ops.iter().filter(|op| matches!(op, ExprOp::Sub)).count();
-    adv_ensure(sub_count == 2, "should have 2 Sub ops for double negation")?;
+    let mul_count = ops.iter().filter(|op| matches!(op, ExprOp::Mul)).count();
+    adv_ensure(mul_count == 2, "should have 2 Mul ops for double negation")?;
     let has_exists = ops.iter().any(|op| matches!(op, ExprOp::Exists));
     adv_ensure(has_exists, "should contain Exists")?;
     Ok(())
@@ -473,25 +473,25 @@ fn mixed_add_mul_left_assoc_same_precedence() -> Result<(), String> {
 
 #[test]
 fn negation_of_helper_result_produces_sub() -> Result<(), String> {
-    // -length(1) => Const 0, Const 1, Length, Sub
+    // -length(1) => Const -1, Const 1, Length, Mul
     let (ops, constants, _max_stack) = lower("-length(1)")?;
     adv_ensure(
-        constants.first() == Some(&ConstValue::I64(0)),
-        "first constant should be 0 for negation",
+        constants.first() == Some(&ConstValue::I64(-1)),
+        "first constant should be -1 for negation",
     )?;
     let has_length = ops.iter().any(|op| matches!(op, ExprOp::Length));
-    let has_sub = ops.iter().any(|op| matches!(op, ExprOp::Sub));
+    let has_mul = ops.iter().any(|op| matches!(op, ExprOp::Mul));
     adv_ensure(has_length, "should contain Length")?;
-    adv_ensure(has_sub, "should contain Sub for negation")?;
-    let sub_pos = ops
+    adv_ensure(has_mul, "should contain Mul for negation")?;
+    let mul_pos = ops
         .iter()
-        .position(|op| matches!(op, ExprOp::Sub))
-        .ok_or("no Sub")?;
+        .position(|op| matches!(op, ExprOp::Mul))
+        .ok_or("no Mul")?;
     let length_pos = ops
         .iter()
         .position(|op| matches!(op, ExprOp::Length))
         .ok_or("no Length")?;
-    adv_ensure(length_pos < sub_pos, "Length should come before Sub")?;
+    adv_ensure(length_pos < mul_pos, "Length should come before Mul")?;
     Ok(())
 }
 

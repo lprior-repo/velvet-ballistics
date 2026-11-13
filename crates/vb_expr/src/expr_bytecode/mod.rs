@@ -199,10 +199,10 @@ fn lower_negation(
     ops: &mut Vec<ExprOp>,
     resolver: &impl ReferenceResolver,
 ) -> ExprResult<()> {
-    let zero = push_constant(ConstValue::I64(0), constants)?;
-    ops.push(ExprOp::LoadConst(zero));
+    let negative_one = push_constant(ConstValue::I64(-1), constants)?;
+    ops.push(ExprOp::LoadConst(negative_one));
     lower_expr(inner, constants, ops, resolver)?;
-    ops.push(ExprOp::Sub);
+    ops.push(ExprOp::Mul);
     Ok(())
 }
 

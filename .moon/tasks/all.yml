@@ -762,14 +762,23 @@ tasks:
   audit-spec-citations:
     script: |
       set -euo pipefail
+      mkdir -p target/gate-tools target/tmp
+      export TMPDIR="$PWD/target/tmp" TMP="$PWD/target/tmp" TEMP="$PWD/target/tmp"
       rustup run nightly-2026-04-28 cargo fetch --locked
-      python3 scripts/audit-spec-citations.py .
+      rustup run nightly-2026-04-28 rustc --edition=2024 -Dwarnings scripts/audit-spec-citations.rs -o target/gate-tools/audit-spec-citations
+      rustup run nightly-2026-04-28 rustc --edition=2024 -Dwarnings --test scripts/audit-spec-citations.rs -o target/gate-tools/audit-spec-citations-unit-tests
+      target/gate-tools/audit-spec-citations-unit-tests
+      rustup run nightly-2026-04-28 rustc --edition=2024 -Dwarnings --test scripts/audit_spec_citations/test.rs -o target/gate-tools/audit-spec-citations-cli-tests
+      target/gate-tools/audit-spec-citations-cli-tests --test-threads=1
+      target/gate-tools/audit-spec-citations .
     inputs:
       - 'verification/verus/**/*.rs'
       - 'crates/**/*.rs'
       - 'contracts/**/*.rs'
       - 'specs/**/*.rs'
-      - 'scripts/audit-spec-citations.py'
+      - 'scripts/audit-spec-citations.rs'
+      - 'scripts/audit_spec_citations/**/*.rs'
+      - 'rust-toolchain.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.moon/tasks/all.yml'
@@ -824,7 +833,7 @@ tasks:
   benchmark-regression-policy:
     script: |
       set -euo pipefail
-      python3 scripts/check-benchmark-regression-policy.py --budget contracts/perf-budget.yaml --evidence evidence/benchmark-evidence.jsonl
+      rustup run nightly-2026-04-28 cargo run --quiet --locked -p velvet-ballistics-workspace-tests --bin benchmark-policy --all-features -- --budget contracts/perf-budget.yaml --evidence evidence/benchmark-evidence.jsonl
     deps:
       - 'bench-build'
     inputs:
@@ -834,7 +843,10 @@ tasks:
       - 'contracts/perf-budget.yaml'
       - 'evidence/benchmark-evidence.jsonl'
       - 'evidence/benchmark-logs/**/*'
-      - 'scripts/check-benchmark-regression-policy.py'
+      - 'crates/workspace_tests/Cargo.toml'
+      - 'crates/workspace_tests/src/bin/benchmark-policy.rs'
+      - 'crates/workspace_tests/src/benchmark_policy/**/*.rs'
+      - 'crates/workspace_tests/src/benchmark_policy/fixtures/DerivedNumericType-16.0.0.txt'
       - '.moon/tasks/all.yml'
     options:
       cache: false

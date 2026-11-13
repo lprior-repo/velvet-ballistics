@@ -10,8 +10,6 @@ use super::*;
 /// validation, decode succeeds and preserves all header fields.
 #[kani::proof]
 fn decode_roundtrip_valid_flags() {
-    use crate::constants::{IPC_MAGIC, IPC_VERSION};
-
     // --- Select command symbolically ---
     let cmd_raw: u16 = kani::any();
     kani::assume(cmd_raw >= 1 && cmd_raw <= 11);

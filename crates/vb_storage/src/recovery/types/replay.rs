@@ -4,26 +4,6 @@ use super::{RecoveryError, RecoveryResult};
 use crate::EventSeq;
 use vb_core::{ActionId, ActionTicket, RunId, SlotIdx, StepIdx, Taint, WorkflowDigest};
 
-#[cfg(kani)]
-#[derive(Debug, Clone, Default)]
-struct ReplayResolutionSet(Vec<(ActionId, StepIdx)>);
-
-#[cfg(kani)]
-impl ReplayResolutionSet {
-    fn insert(&mut self, value: (ActionId, StepIdx)) -> bool {
-        if self.contains(&value) {
-            false
-        } else {
-            self.0.push(value);
-            true
-        }
-    }
-
-    fn contains(&self, value: &(ActionId, StepIdx)) -> bool {
-        self.0.iter().any(|entry| entry == value)
-    }
-}
-
 /// Snapshot of a run's runtime state at a specific event sequence.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RunSnapshot {

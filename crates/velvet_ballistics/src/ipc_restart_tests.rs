@@ -201,7 +201,7 @@ fn assert_open_ask_history(events: &[vb_storage::JournalEvent]) {
 
 #[test]
 fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> TestResult {
-    let mut dir = tempfile::Builder::new().prefix("vb68-").tempdir()?;
+    let dir = tempfile::Builder::new().prefix("vb68-").tempdir()?;
     if dir
         .path()
         .join("second.sock")
@@ -210,9 +210,7 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
         .len()
         >= 108
     {
-        dir = tempfile::Builder::new()
-            .prefix("vb68-")
-            .tempdir_in("/tmp")?;
+        return Err("configured scratch path exceeds Unix socket limit".into());
     }
     let db = dir.path().join("journal");
     let first_socket = dir.path().join("first.sock");

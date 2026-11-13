@@ -84,6 +84,18 @@ pub(super) fn validate_reachability(parts: &WorkflowParts) -> Result<(), Workflo
 /// loop body/done, jump target, etc.) but NOT the `next` field.
 pub(super) fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
     match kind {
+        CompiledNodeKind::ForEachConcurrentStart { body, join, .. } => {
+            targets.push(*body);
+            targets.push(*join);
+        }
+        CompiledNodeKind::TogetherConcurrentStart { branches, join, .. }
+        | CompiledNodeKind::FirstSuccessStart { branches, join, .. } => {
+            collect_together_start_targets(branches, *join, targets);
+        }
+        CompiledNodeKind::ConcurrentLaneEnd { .. }
+        | CompiledNodeKind::ConcurrentGroupJoin { .. } => {
+            // Owner backlink is metadata; no execution/structural jump.
+        }
         CompiledNodeKind::Nop
         | CompiledNodeKind::SetConst { .. }
         | CompiledNodeKind::Copy { .. }

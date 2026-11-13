@@ -7,6 +7,10 @@ use crate::workflow::{CompiledNode, CompiledNodeKind};
 pub(super) fn compute_peak<'a>(
     nodes: impl IntoIterator<Item = &'a CompiledNode>,
 ) -> Result<u64, BudgetTraversalError> {
+    let nodes: Vec<_> = nodes.into_iter().collect();
+    if let Some(peak) = super::compute::concurrent_peak(&nodes)? {
+        return Ok(peak);
+    }
     let mut owners = Vec::new();
     for node in nodes {
         if let CompiledNodeKind::TogetherStart { branches, join } = &node.kind {

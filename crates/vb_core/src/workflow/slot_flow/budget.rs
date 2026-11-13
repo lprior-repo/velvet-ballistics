@@ -38,7 +38,7 @@ impl Budget {
         Ok(())
     }
 
-    fn scratch(&self, additional: usize) -> FlowResult<()> {
+    pub(super) fn scratch(&self, additional: usize) -> FlowResult<()> {
         let cells = self
             .states
             .checked_add(additional)
@@ -117,15 +117,29 @@ fn edges(node: &CompiledNode) -> FlowResult<usize> {
     let branches = match &node.kind {
         K::Choose { branches, .. } => branches.len(),
         K::ChooseSlot { branches, .. } => branches.len(),
+        K::TogetherConcurrentStart { branches, .. } | K::FirstSuccessStart { branches, .. } => {
+            branches.len()
+        }
         _ => 0,
     };
     if branches > usize::from(crate::limits::MAX_FANOUT) {
         return Err(capacity());
     }
-    let count = super::graph::successors(node)?.len();
+    let count = edge_count(node)?;
     count
         .checked_add(usize::from(node.routing.error.handler().is_some()))
         .ok_or_else(capacity)
+}
+
+fn edge_count(node: &CompiledNode) -> FlowResult<usize> {
+    match &node.kind {
+        K::ForEachConcurrentStart { .. } => Ok(2),
+        K::TogetherConcurrentStart { branches, .. } | K::FirstSuccessStart { branches, .. } => {
+            branches.len().checked_add(1).ok_or_else(capacity)
+        }
+        K::ConcurrentLaneEnd { .. } | K::ConcurrentGroupJoin { .. } => Ok(1),
+        _ => Ok(super::graph::successors(node)?.len()),
+    }
 }
 
 #[cfg(test)]

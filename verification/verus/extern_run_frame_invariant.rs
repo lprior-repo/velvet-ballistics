@@ -25,8 +25,8 @@
 //   - `RunFrame`                                <- crates/vb_core/src/frame.rs:106-116
 //   - `StepState`                               <- crates/vb_core/src/frame.rs:51-68
 //   - `is_valid_step_state_transition`          <- crates/vb_core/src/frame.rs:72-102
-//   - `RunFrame::new`                           <- crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33
-//   - `RunFrame::reinitialize`                  <- crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70
+//   - `RunFrame::new`                           <- crates/vb_core/src/frame/parts/impl_001_construct.rs:35-55
+//   - `RunFrame::reinitialize`                  <- crates/vb_core/src/frame/parts/impl_001_construct.rs:60-94
 //   - `RunFrame::pc`                            <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12; returns StepIdx
 //   - `RunFrame::step_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24
 //   - `RunFrame::slot_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:28-30
@@ -45,8 +45,9 @@
 // TRUST BOUNDARY
 // ============================================================================
 // The production bodies of every fn in the production mirror are NOT
-// verified by Verus. Each exec fn is `#[verifier::external]` so Verus
-// skips body verification, and the contracts attached via
+// verified by Verus. Mirrored frame operations are external; the local
+// allocation helpers stay inside the existing external constructor. The
+// contracts attached via
 // `assume_specification` in the companion spec file state the
 // trusted mirror contracts. The proofs establish math-layer consequences;
 // they do not prove those contracts against production bodies. This is

@@ -21,27 +21,18 @@ if ! cargo kani --version >/dev/null 2>&1; then
   exit 1
 fi
 
+source "$SCRIPT_DIR/kani-json-helper.sh"
+helper_bin="$(kani_json_helper_build)"
+
 mkdir -p -- "$OUTPUT_DIR"
 
-metadata_file="$(mktemp)"
+mkdir -p -- "$ROOT/target/native-tools/tmp"
+metadata_file="$(mktemp "$ROOT/target/native-tools/tmp/kani-metadata.XXXXXXXX")"
 trap 'rm -f -- "$metadata_file"' EXIT
 cargo metadata --no-deps --format-version 1 >"$metadata_file"
 
 for package in "$@"; do
-  manifest_path="$(python3 - "$metadata_file" "$package" <<'PY'
-import json
-import sys
-
-metadata_path, requested = sys.argv[1:3]
-with open(metadata_path, encoding="utf-8") as handle:
-    metadata = json.load(handle)
-
-matches = [pkg for pkg in metadata["packages"] if pkg["name"] == requested]
-if len(matches) != 1:
-    raise SystemExit(f"expected exactly one package named {requested!r}, found {len(matches)}")
-print(matches[0]["manifest_path"])
-PY
-)"
+  manifest_path="$("$helper_bin" manifest-path "$metadata_file" "$package")"
   package_dir="$(dirname -- "$manifest_path")"
   target_file="$OUTPUT_DIR/$package.json"
 
@@ -60,7 +51,7 @@ PY
     exit 1
   fi
   mv -f -- "$package_dir/kani-list.json" "$target_file"
-  python3 -m json.tool "$target_file" >/dev/null
+  "$helper_bin" validate-json "$target_file"
 done
 
 printf 'KANI_LIST_OK output_dir=%s packages=%s\n' "$OUTPUT_DIR" "$*"
