@@ -20,10 +20,49 @@ fn versioned_codec_packed_v2_bound_and_empty_cold_reopen() -> TestResult {
 
 #[test]
 fn versioned_codec_packed_held_minor_and_patch_versions() -> TestResult {
-    cold_roundtrip(PackedFixture::new()?, SchemaVersion::new(1, 2, 0))?;
-    cold_roundtrip(PackedFixture::new()?, SchemaVersion::new(1, 0, 1))?;
+    reject_raw_held(SchemaVersion::new(1, 2, 0))?;
+    reject_raw_held(SchemaVersion::new(1, 0, 1))?;
+    cold_roundtrip(PackedFixture::new()?, SchemaVersion::new(2, 2, 0))?;
+    cold_roundtrip(PackedFixture::new()?, SchemaVersion::new(2, 0, 1))?;
     cold_roundtrip(bound_fixture(&["key"])?, SchemaVersion::new(2, 1, 0))?;
     cold_roundtrip(bound_fixture(&[])?, SchemaVersion::new(2, 0, 1))
+}
+
+fn reject_raw_held(held: SchemaVersion) -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let mut accepted = fixture.prepare(RuntimePolicy::Strict)?;
+    assert_eq!(fixture.workflow.symbol_payloads(), None);
+    assert_eq!(
+        accepted.ir,
+        postcard::to_allocvec(&fixture.workflow.to_parts())?
+    );
+    accepted.artifact_version = held;
+    admission::bind_artifact_digest(&mut accepted)?;
+    exact_raw_version_error(
+        held,
+        fixture
+            .catalog
+            .verify_artifact(&accepted, RuntimePolicy::Strict),
+    )
+}
+
+fn exact_raw_version_error(
+    held: SchemaVersion,
+    result: Result<vb_core::CompiledWorkflow, ExecutorError>,
+) -> TestResult {
+    match result {
+        Err(ExecutorError::Artifact(JournalError::ArtifactVersionIncompatible {
+            held: actual,
+            required,
+            class,
+        })) => {
+            assert_eq!(actual, held);
+            assert_eq!(required, SchemaVersion::new(2, 0, 0));
+            assert_eq!(class, CompatibilityClass::Rejected);
+            Ok(())
+        }
+        other => Err(format!("unexpected version result: {other:?}").into()),
+    }
 }
 
 #[test]
