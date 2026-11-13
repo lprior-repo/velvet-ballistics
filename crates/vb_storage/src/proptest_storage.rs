@@ -24,16 +24,9 @@ mod storage_tests {
         (temp, journal)
     }
 
-    // =========================================================================
-    // Proptest 1: Journal append-read roundtrip
-    // =========================================================================
-
-    proptest! {
-        #[test]
-        fn journal_append_read_roundtrip_with_arbitrary_run(
-            run_val in 1u64..10000u64,
-            event_count in 1u16..50u16,
-        ) {
+    #[test]
+    fn journal_append_read_roundtrip_with_arbitrary_run() {
+        proptest!(|(run_val in 1u64..10000u64, event_count in 1u16..50u16)| {
             let (_temp, journal) = temp_journal();
             let run = RunId::new(run_val);
             let mut events = Vec::new();
@@ -57,12 +50,12 @@ mod storage_tests {
                 prop_assert_eq!(ev.seq(), EventSeq::new(i as u64));
                 prop_assert_eq!(ev, &events[i]);
             }
-        }
+        });
+    }
 
-        #[test]
-        fn journal_append_read_roundtrip_mixed_kinds(
-            run_val in 1u64..1000u64,
-        ) {
+    #[test]
+    fn journal_append_read_roundtrip_mixed_kinds() {
+        proptest!(|(run_val in 1u64..1000u64)| {
             let (_temp, journal) = temp_journal();
             let run = RunId::new(run_val);
             let digest = WorkflowDigest::from_bytes([0x42; 32]);
@@ -105,18 +98,17 @@ mod storage_tests {
             journal.append_strict_batch(&events).unwrap();
             let replayed = journal.events_for_run(run).unwrap();
             prop_assert_eq!(replayed, events);
-        }
+        });
+    }
 
-        // =========================================================================
-        // Proptest 2: Codec encode-decode roundtrip (exhaustive)
-        // =========================================================================
-        #[test]
-        fn codec_encode_decode_roundtrip_all_kinds(
+    #[test]
+    fn codec_encode_decode_roundtrip_all_kinds() {
+        proptest!(|(
             kind_id in proptest::sample::select(&[10u16, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31]),
             run_val in 1u64..1000u64,
             seq_val in 0u64..100u64,
             attempt_val in 1u16..10u16,
-        ) {
+        )| {
             let _attempt = attempt_val;
             let run = RunId::new(run_val);
             let seq = EventSeq::new(seq_val);
@@ -171,12 +163,12 @@ mod storage_tests {
             prop_assert_eq!(envelope.record_kind, kind.id());
             prop_assert_eq!(envelope.sequence, seq_val);
             prop_assert_eq!(decoded_event, event);
-        }
+        });
+    }
 
-        #[test]
-        fn codec_blob_roundtrip_with_arbitrary_bytes(
-            blob_bytes in proptest::collection::vec(any::<u8>(), 0..4096usize),
-        ) {
+    #[test]
+    fn codec_blob_roundtrip_with_arbitrary_bytes() {
+        proptest!(|(blob_bytes in proptest::collection::vec(any::<u8>(), 0..4096usize))| {
             let digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
             let record = BlobRecord {
                 digest,
@@ -189,12 +181,12 @@ mod storage_tests {
             let Ok((_, decoded_record)) = decoded else { return Ok(()) };
 
             prop_assert_eq!(decoded_record, record);
-        }
+        });
+    }
 
-        #[test]
-        fn codec_decode_never_panics_on_any_bytes(
-            data in proptest::collection::vec(any::<u8>(), 0..1024usize),
-        ) {
+    #[test]
+    fn codec_decode_never_panics_on_any_bytes() {
+        proptest!(|(data in proptest::collection::vec(any::<u8>(), 0..1024usize))| {
             let _ = decode_record::<JournalEvent>(
                 &data,
                 MAGIC_JOURNAL_EVENT,
@@ -217,16 +209,12 @@ mod storage_tests {
                 crate::MAX_WORKFLOW_SOURCE_BYTES,
             );
             let _ = crate::decode_record_header(&data, MAGIC_JOURNAL_EVENT, 1024);
-        }
+        });
+    }
 
-        // =========================================================================
-        // Proptest 3: Queue FIFO ordering
-        // =========================================================================
-        #[test]
-        fn queue_fifo_ordering_invariant(
-            num_events in 1usize..8usize,
-            run_val in 1u64..1000u64,
-        ) {
+    #[test]
+    fn queue_fifo_ordering_invariant() {
+        proptest!(|(num_events in 1usize..8usize, run_val in 1u64..1000u64)| {
             let (_temp, journal) = temp_journal();
             let queue = JournalWriterQueue::new(16, 8, StorageLimits::DEFAULT).unwrap();
             let run = RunId::new(run_val);
@@ -248,13 +236,12 @@ mod storage_tests {
                 prop_assert_eq!(ev.seq(), EventSeq::new(i as u64));
                 prop_assert_eq!(ev.run_id(), run);
             }
-        }
+        });
+    }
 
-        #[test]
-        fn queue_fifo_preserved_across_multiple_batches(
-            num_events in 4usize..16usize,
-            run_val in 1u64..1000u64,
-        ) {
+    #[test]
+    fn queue_fifo_preserved_across_multiple_batches() {
+        proptest!(|(num_events in 4usize..16usize, run_val in 1u64..1000u64)| {
             let (_temp, journal) = temp_journal();
             let queue = JournalWriterQueue::new(32, 3, StorageLimits::DEFAULT).unwrap();
             let run = RunId::new(run_val);
@@ -275,12 +262,12 @@ mod storage_tests {
             for (i, ev) in events.iter().enumerate() {
                 prop_assert_eq!(ev.seq(), EventSeq::new(i as u64));
             }
-        }
+        });
+    }
 
-        #[test]
-        fn queue_capacity_limit_never_exceeded(
-            capacity in 1usize..8usize,
-        ) {
+    #[test]
+    fn queue_capacity_limit_never_exceeded() {
+        proptest!(|(capacity in 1usize..8usize)| {
             let queue = JournalWriterQueue::new(capacity, capacity, StorageLimits::DEFAULT).unwrap();
             let run = RunId::new(42);
 
@@ -303,17 +290,16 @@ mod storage_tests {
                     );
                 }
             }
-        }
+        });
+    }
 
-        // =========================================================================
-        // Proptest 4: Trimming preserves recent events
-        // =========================================================================
-        #[test]
-        fn trimming_preserves_events_after_snapshot(
+    #[test]
+    fn trimming_preserves_events_after_snapshot() {
+        proptest!(|(
             run_val in 1u64..5000u64,
             snapshot_seq_val in 5u64..10u64,
             tail_count in 1u16..5u16,
-        ) {
+        )| {
             use crate::recovery::RunSnapshot;
             use crate::trimming::TrimPolicy;
 
@@ -377,7 +363,7 @@ mod storage_tests {
             let policy = TrimPolicy::default();
             let diagnostic = journal.trim_eligibility_diagnostic(policy).unwrap();
             let eligible_has_run = diagnostic.runs.iter().any(|e| match e {
-                crate::TrimEligibility::Eligible { run: r, ..  } => *r == run,
+                crate::TrimEligibility::Eligible { run: r, .. } => *r == run,
                 _ => false,
             });
 
@@ -396,46 +382,38 @@ mod storage_tests {
                     }
                 }
             }
-        }
+        });
+    }
 
-        // =====================================================================
-        // PO-PROP-004: Kind 28 (RunKilled) admission and round-trip (vb-b8i8f)
-        // =====================================================================
+    #[test]
+    fn prop_kind_28_id_is_stable() {
+        assert_eq!(RecordKind::RunKilled.id(), 28);
+    }
 
-        /// Verify that RecordKind::RunKilled.id() == 28 is stable.
-        #[test]
-        fn prop_kind_28_id_is_stable() {
-            prop_assert_eq!(RecordKind::RunKilled.id(), 28);
-        }
+    #[test]
+    fn prop_kind_28_is_known_record_kind() {
+        assert!(
+            crate::codec::validation::is_known_record_kind(28),
+            "is_known_record_kind(28) must return true for RunKilled"
+        );
+    }
 
-        /// Verify that is_known_record_kind(28) returns true.
-        /// BLOCK-001/B-004 FIXED: validation.rs now accepts 10..=29.
-        #[test]
-        fn prop_kind_28_is_known_record_kind() {
-            let known = crate::codec::validation::is_known_record_kind(28);
-            prop_assert!(known, "BLOCK-001 FIXED: is_known_record_kind(28) must return true for RunKilled");
-        }
-
-        /// Verify encode/decode round-trip for JournalEvent::RunKilled.
-        #[test]
-        fn prop_runkilled_encode_decode_roundtrip(
+    #[test]
+    fn prop_runkilled_encode_decode_roundtrip() {
+        proptest!(|(
             run_val in 1u64..u64::MAX,
             seq_val in 0u64..(u64::MAX - 1),
             attempt_val in 1u16..1000u16,
-        ) {
+        )| {
             let event = JournalEvent::RunKilled {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(seq_val),
                 attempt: attempt_val,
             };
 
-            // Verify structural validity
             prop_assert!(event.is_valid(), "RunKilled with valid fields must be valid");
-
-            // Verify record kind mapping
             prop_assert_eq!(event.record_kind(), RecordKind::RunKilled);
 
-            // Encode then decode round-trip
             let max_payload = MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
             let encoded = encode_record(
                 MAGIC_JOURNAL_EVENT,
@@ -444,40 +422,37 @@ mod storage_tests {
                 &event,
                 max_payload,
             );
-            // BLOCK-001 FIXED: validate_kind_family now accepts kind 28 for MAGIC_JOURNAL_EVENT.
-            prop_assert!(encoded.is_ok(),
-                "BLOCK-001 FIXED: encode of RunKilled must succeed with kind 28");
+            prop_assert!(encoded.is_ok(), "encode of RunKilled must succeed with kind 28");
             let bytes = encoded.unwrap();
             let decoded = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, max_payload);
-            prop_assert!(decoded.is_ok(),
-                "BLOCK-001 FIXED: decode of RunKilled must succeed with kind 28");
+            prop_assert!(decoded.is_ok(), "decode of RunKilled must succeed with kind 28");
             let (_envelope, decoded_event) = decoded.unwrap();
-            prop_assert_eq!(decoded_event, event,
-                "RunKilled round-trip must preserve all fields");
-        }
+            prop_assert_eq!(decoded_event, event, "RunKilled round-trip must preserve all fields");
+        });
+    }
 
-        /// Verify that kind 28 with MAGIC_SNAPSHOT is rejected.
-        #[test]
-        fn prop_kind_28_rejected_for_wrong_magic(run_val in 1u64..10000u64) {
+    #[test]
+    fn prop_kind_28_rejected_for_wrong_magic() {
+        proptest!(|(run_val in 1u64..10000u64)| {
             let event = JournalEvent::RunKilled {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(0),
                 attempt: 1,
             };
             let result = encode_record(
-                MAGIC_SNAPSHOT,
+                crate::MAGIC_SNAPSHOT,
                 event.record_kind(),
                 event.seq().get(),
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            prop_assert!(result.is_err(),
-                "kind 28 with MAGIC_SNAPSHOT must return Err(RecordKindFamilyMismatch)");
-        }
+            prop_assert!(result.is_err(), "kind 28 with MAGIC_SNAPSHOT must return Err");
+        });
+    }
 
-        /// Verify that kind 28 with MAGIC_BLOB is rejected.
-        #[test]
-        fn prop_kind_28_rejected_for_blob_magic(run_val in 1u64..10000u64) {
+    #[test]
+    fn prop_kind_28_rejected_for_blob_magic() {
+        proptest!(|(run_val in 1u64..10000u64)| {
             let event = JournalEvent::RunKilled {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(0),
@@ -490,26 +465,17 @@ mod storage_tests {
                 &event,
                 MAX_BLOB_BYTES,
             );
-            prop_assert!(result.is_err(),
-                "kind 28 with MAGIC_BLOB must return Err(RecordKindFamilyMismatch)");
-        }
+            prop_assert!(result.is_err(), "kind 28 with MAGIC_BLOB must return Err");
+        });
+    }
 
-        // =====================================================================
-        // PO-PROP-005: Replay ordinal contiguity with RunKilled (vb-b8i8f)
-        // =====================================================================
-
-        /// Verify that a contiguous mixed-event list preserves sequence order.
-        #[test]
-        fn prop_replay_contiguity_mixed_kinds(
-            run_val in 1u64..10000u64,
-            event_count in 2usize..8usize,
-        ) {
+    #[test]
+    fn prop_replay_contiguity_mixed_kinds() {
+        proptest!(|(run_val in 1u64..10000u64, event_count in 2usize..8usize)| {
             let (_temp, journal) = temp_journal();
             let run = RunId::new(run_val);
             let mut seq: u64 = 0;
 
-            // Build a mixed event list with contiguous sequence numbers.
-            // Include RunKilled at a random position in the sequence.
             let kill_position = event_count / 2;
 
             for i in 0..event_count {
@@ -532,27 +498,21 @@ mod storage_tests {
             }
 
             let replayed = journal.events_for_run(run).unwrap();
-            prop_assert_eq!(replayed.len(), event_count,
-                "replay must recover all events");
+            prop_assert_eq!(replayed.len(), event_count, "replay must recover all events");
 
-            // Verify contiguity: each event's seq is exactly i
             for (i, ev) in replayed.iter().enumerate() {
-                prop_assert_eq!(ev.seq().get(), i as u64,
-                    "event at index {} must have seq={}", i, i);
-                prop_assert_eq!(ev.run_id(), run,
-                    "all events must belong to the correct run");
+                prop_assert_eq!(ev.seq().get(), i as u64, "event at index {} must have seq={}", i, i);
+                prop_assert_eq!(ev.run_id(), run, "all events must belong to the correct run");
             }
-        }
+        });
+    }
 
-        /// Verify that a non-contiguous sequence is detected as having a gap.
-        #[test]
-        fn prop_replay_gap_detection(
-            run_val in 1u64..10000u64,
-        ) {
+    #[test]
+    fn prop_replay_gap_detection() {
+        proptest!(|(run_val in 1u64..10000u64)| {
             let (_temp, journal) = temp_journal();
             let run = RunId::new(run_val);
 
-            // Append events with a deliberate gap
             let events = vec![
                 JournalEvent::StepStarted {
                     run,
@@ -571,47 +531,54 @@ mod storage_tests {
                 journal.append_journaled(ev).unwrap();
             }
 
-            let replayed = journal.events_for_run(run).unwrap();
-            prop_assert_eq!(replayed.len(), 2);
+            match journal.events_for_run(run) {
+                Err(crate::JournalError::SequenceGap { expected, actual }) => {
+                    prop_assert_eq!(expected, EventSeq::new(1));
+                    prop_assert_eq!(actual, EventSeq::new(2));
+                }
+                other => prop_assert!(
+                    false,
+                    "sequence [0, 2] must be detected as SequenceGap, got {:?}",
+                    other
+                ),
+            }
+        });
+    }
 
-            // Verify the gap exists: seq 0 then seq 2 (skipping 1)
-            let has_gap = replayed[0].seq().get() + 1 != replayed[1].seq().get();
-            prop_assert!(has_gap, "sequence [0, 2] must be detected as having a gap");
-        }
-
-        /// Verify that a sequence with duplicate seq values is detected.
-        #[test]
-        fn prop_replay_duplicate_detection(
-            run_val in 1u64..10000u64,
-        ) {
+    #[test]
+    fn prop_duplicate_seq_rejected_at_append() {
+        proptest!(|(run_val in 1u64..10000u64)| {
             let (_temp, journal) = temp_journal();
             let run = RunId::new(run_val);
 
-            // Append events with duplicate sequence numbers
-            let events = vec![
-                JournalEvent::StepStarted {
-                    run,
-                    seq: EventSeq::new(0),
-                    step: StepIdx::new(0),
-                    attempt: 1,
-                },
-                JournalEvent::RunKilled {
-                    run,
-                    seq: EventSeq::new(0), // duplicate seq
-                    attempt: 1,
-                },
-            ];
+            let first = JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                attempt: 1,
+            };
+            journal.append_journaled(&first).unwrap();
 
-            for ev in &events {
-                journal.append_journaled(ev).unwrap();
+            let duplicate = JournalEvent::RunKilled {
+                run,
+                seq: EventSeq::new(0),
+                attempt: 1,
+            };
+            match journal.append_journaled(&duplicate) {
+                Err(crate::JournalError::DuplicateEvent { run: r, seq: s }) => {
+                    prop_assert_eq!(r, run);
+                    prop_assert_eq!(s, EventSeq::new(0));
+                }
+                other => prop_assert!(
+                    false,
+                    "duplicate seq must be rejected as DuplicateEvent, got {:?}",
+                    other
+                ),
             }
 
             let replayed = journal.events_for_run(run).unwrap();
-            prop_assert_eq!(replayed.len(), 2);
-
-            // Both events have the same sequence number
-            let has_duplicate = replayed[0].seq().get() == replayed[1].seq().get();
-            prop_assert!(has_duplicate, "duplicate seq values detected in replay");
-        }
+            prop_assert_eq!(replayed.len(), 1);
+            prop_assert_eq!(&replayed[0], &first);
+        });
     }
 }
