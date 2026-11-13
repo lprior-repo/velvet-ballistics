@@ -32,13 +32,24 @@ fn read_log_file(path: &Path) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&bytes).to_string())
 }
 
+fn is_line_boundary(prefix: &str) -> bool {
+    prefix.is_empty() || prefix.ends_with('\n') || prefix.ends_with('\r')
+}
+
+fn is_binding_start(prefix: &str) -> bool {
+    is_line_boundary(prefix)
+        || prefix
+            .strip_suffix("# provenance binding ")
+            .is_some_and(is_line_boundary)
+}
+
 fn has_exact_binding(text: &str, expected: &str) -> bool {
     text.match_indices(expected).any(|(offset, matched)| {
         let before = text.get(..offset);
         let after = offset
             .checked_add(matched.len())
             .and_then(|end| text.get(end..));
-        before.is_some_and(|part| part.is_empty() || part.ends_with('\n') || part.ends_with('\r'))
+        before.is_some_and(is_binding_start)
             && after.is_some_and(|part| {
                 part.is_empty() || part.starts_with('\n') || part.starts_with('\r')
             })

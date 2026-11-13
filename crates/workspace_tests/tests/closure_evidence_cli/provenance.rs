@@ -255,3 +255,53 @@ fn exact_provenance_retains_line_endings_eof_and_multiline_values() {
     }
     cleanup_test(fixture);
 }
+
+#[test]
+fn canonical_commented_provenance_headers_bind_exact_values() {
+    let fixture = setup_test("provenance-comment-headers");
+    let response = children(&fixture);
+    let raw = format!("{}/raw.log", fixture.dir);
+    for command in ["cargo test", "cargo test\n  --lib"] {
+        let row = make_row(&fixture, command, &raw);
+        let manifest = write_manifest(&fixture.dir, &[row]);
+        for separator in ["\n", "\r\n", "\r"] {
+            let text = format!(
+                "# raw evidence{separator}# provenance binding command: {command}{separator}# provenance binding cwd: {}{separator}# provenance binding timestamp: 2026-01-01T00:00:00Z{separator}# provenance binding exit_code: 0",
+                fixture.dir
+            );
+            write_file(&raw, &text);
+            assert_eq!(
+                run_checker(&fixture, &response, &manifest),
+                (
+                    0,
+                    "VB_JPQ7_CLOSURE_EVIDENCE_PASS closed_children=1\n".into(),
+                    String::new()
+                ),
+                "command={command:?} separator={separator:?}"
+            );
+            for binding in [
+                format!("command: {command}"),
+                format!("cwd: {}", fixture.dir),
+                "timestamp: 2026-01-01T00:00:00Z".to_string(),
+                "exit_code: 0".to_string(),
+            ] {
+                let header = format!("# provenance binding {binding}");
+                for spoof in [format!("embedded {header}"), format!("{header}-suffix")] {
+                    write_file(&raw, &text.replacen(&header, &spoof, 1));
+                    assert_eq!(
+                        run_checker(&fixture, &response, &manifest),
+                        (
+                            1,
+                            format!(
+                                "VB_JPQ7_CLOSURE_EVIDENCE_FAIL\n- manifest row 1: raw_log_path lacks provenance binding {binding}\n"
+                            ),
+                            String::new()
+                        ),
+                        "spoof={spoof:?} separator={separator:?}"
+                    );
+                }
+            }
+        }
+    }
+    cleanup_test(fixture);
+}
