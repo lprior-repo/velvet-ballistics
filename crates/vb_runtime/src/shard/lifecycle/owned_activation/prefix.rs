@@ -18,6 +18,15 @@ pub(super) struct PreparedOwnedActivation {
     pub(super) next_seq: EventSeq,
 }
 
+struct PristinePrefix {
+    run: RunId,
+    source: WorkflowDigest,
+    workflow_digest: WorkflowDigest,
+    admission_event: JournalEvent,
+    compatibility_event: JournalEvent,
+    next_seq: EventSeq,
+}
+
 pub(super) fn load(
     shard: &Shard,
     run: RunId,
@@ -29,11 +38,11 @@ pub(super) fn load(
         .ok_or(RuntimeError::UnsupportedOperation {
             operation: "owned_activation_requires_storage",
         })?;
-    let (workflow_digest, admission_event, next_seq) = pristine(&journal, run)?;
+    let prefix = pristine(&journal, run, source)?;
     let header = journal.run_header(run)?.ok_or(RuntimeError::RunNotFound)?;
-    identity::header(&header, run, workflow_digest)?;
+    identity::header(&header, run, prefix.workflow_digest)?;
     identity::source(&journal, source)?;
-    let artifact = artifact::load(shard, &journal, &admission_event)?;
+    let artifact = artifact::load(shard, &journal, &prefix.admission_event)?;
     let workflow = crate::admission::verify_stored_artifact(
         shard.artifact_store.as_ref(),
         &artifact,
@@ -42,7 +51,9 @@ pub(super) fn load(
     .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
         digest: artifact.digest,
     })?;
-    if workflow.digest() != workflow_digest || artifact.source_digest != workflow_digest {
+    if workflow.digest() != prefix.workflow_digest
+        || artifact.source_digest != prefix.workflow_digest
+    {
         return Err(identity::mismatch());
     }
     shard.validate_secret_presence(&workflow)?;
@@ -52,21 +63,14 @@ pub(super) fn load(
         &workflow,
         &artifact.action_contracts,
     )?;
-    owned(
-        &journal,
-        run,
-        source,
-        workflow,
-        artifact,
-        admission_event,
-        next_seq,
-    )
+    owned(&journal, workflow, artifact, prefix)
 }
 
 fn pristine(
     journal: &FjallJournal,
     run: RunId,
-) -> RuntimeResult<(WorkflowDigest, JournalEvent, EventSeq)> {
+    source: WorkflowDigest,
+) -> RuntimeResult<PristinePrefix> {
     let limit = vb_storage::EventReplayLimit::new(3).ok_or(RuntimeError::UnsupportedOperation {
         operation: "owned_activation_prefix_limit",
     })?;
@@ -74,13 +78,13 @@ fn pristine(
     if events.is_empty() {
         return Err(RuntimeError::RunNotFound);
     }
-    let (accepted, admission) = match events.as_slice() {
-        [accepted, admission, decision] => {
+    let (accepted, admission, compatibility) = match events.as_slice() {
+        [accepted, admission, compatibility] => {
             let JournalEvent::CompatibilityDecisionEvent {
                 run: decision_run,
                 seq: decision_seq,
                 ..
-            } = decision
+            } = compatibility
             else {
                 return Err(RuntimeError::UnsupportedOperation {
                     operation: "owned_activation_requires_pristine_prefix",
@@ -89,7 +93,7 @@ fn pristine(
             if *decision_run != run || decision_seq.get() != 2 {
                 return Err(identity::mismatch());
             }
-            (accepted, admission)
+            (accepted, admission, compatibility)
         }
         _ => {
             return Err(RuntimeError::UnsupportedOperation {
@@ -131,31 +135,41 @@ fn pristine(
     {
         return Err(identity::mismatch());
     }
-    Ok((*workflow, admission.clone(), next_seq))
+    Ok(PristinePrefix {
+        run,
+        source,
+        workflow_digest: *workflow,
+        admission_event: admission.clone(),
+        compatibility_event: compatibility.clone(),
+        next_seq,
+    })
 }
 
 fn owned(
     journal: &FjallJournal,
-    run: RunId,
-    source: WorkflowDigest,
     workflow: CompiledWorkflow,
     artifact: AcceptedArtifact,
-    event: JournalEvent,
-    next_seq: EventSeq,
+    prefix: PristinePrefix,
 ) -> RuntimeResult<PreparedOwnedActivation> {
     let record = journal
-        .owned_run_inputs(run, artifact.digest, source, &workflow)?
+        .owned_run_inputs(prefix.run, artifact.digest, prefix.source, &workflow)?
         .ok_or(RuntimeError::UnsupportedOperation {
             operation: "owned_activation_requires_retained_owned_inputs",
         })?;
-    record.validate_admission(&event)?;
+    record.validate_admission(&prefix.admission_event)?;
     let bundle = record.restore(&workflow)?;
-    let admission = identity::admission(run, &workflow, &artifact, &event)?;
+    let admission = identity::admission(
+        prefix.run,
+        &workflow,
+        &artifact,
+        &prefix.admission_event,
+        &prefix.compatibility_event,
+    )?;
     Ok(PreparedOwnedActivation {
         workflow,
         bundle,
         admission,
         contracts: artifact.action_contracts,
-        next_seq,
+        next_seq: prefix.next_seq,
     })
 }

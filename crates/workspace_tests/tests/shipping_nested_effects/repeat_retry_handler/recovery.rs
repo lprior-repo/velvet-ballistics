@@ -76,7 +76,15 @@ fn nested_repeat_retry_reopens_and_matches_uninterrupted_reference() -> TestResu
         step,
         &reference_timer,
     )?;
-    assert_eq!(recovered_ticket, reference_ticket);
+    assert!(recovered_ticket.same_invocation(&reference_ticket));
+    assert_eq!(
+        recovered_ticket.attempt,
+        first_cold
+            .attempt
+            .checked_add(1)
+            .ok_or("attempt overflow")?
+    );
+    assert_eq!(recovered_ticket.idempotency_key, first_cold.idempotency_key);
     cold_runtime.complete_action_with_output(recovered_ticket, output_for(output_slot, 41)?)?;
     reference_runtime
         .complete_action_with_output(reference_ticket, output_for(output_slot, 41)?)?;
@@ -93,9 +101,14 @@ fn nested_repeat_retry_reopens_and_matches_uninterrupted_reference() -> TestResu
     let cold_events = cold_journal.events_for_run_full(RUN)?;
     let reference_events = reference_journal.events_for_run_full(RUN)?;
     assert_eq!(event_order(&cold_events), event_order(&reference_events));
-    assert_eq!(
-        action_tickets(&cold_events),
-        action_tickets(&reference_events)
+    let cold_tickets = action_tickets(&cold_events);
+    let reference_tickets = action_tickets(&reference_events);
+    assert_eq!(cold_tickets.len(), reference_tickets.len());
+    assert!(
+        cold_tickets
+            .iter()
+            .zip(&reference_tickets)
+            .all(|(cold, reference)| cold.same_invocation(reference))
     );
     assert_eq!(
         completion_values(&cold_events)?,

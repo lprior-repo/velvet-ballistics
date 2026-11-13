@@ -108,12 +108,18 @@ impl OwnedCase {
     }
 
     pub(super) fn recover(&self) -> TestResult<(Arc<FjallJournal>, Runtime)> {
-        let (journal, runtime) = self.open()?;
-        match runtime.recover_product(self.run)? {
+        let (journal, mut runtime) = self.open()?;
+        match runtime
+            .recover_product(self.run)
+            .map_err(|error| format!("recover product failed: {error:?}"))?
+        {
             vb_runtime::recovery::RuntimeRecoveryProduct::Resumable(_) => {}
             other => return Err(format!("retry prefix not resumable: {other:?}").into()),
         }
-        runtime.recover_and_resume(self.run)?;
+        runtime
+            .recover_and_resume(self.run)
+            .map_err(|error| format!("recover and resume failed: {error:?}"))?;
+        runtime.tick_all()?;
         Ok((journal, runtime))
     }
 }
