@@ -3,7 +3,10 @@
 use super::*;
 use vb_core::ids::{ActionId, ListId, ObjectId, SlotIdx, SymbolId};
 use vb_core::policy::RuntimePolicy;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts, node};
+use vb_core::workflow::{
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, InputSlotKind,
+    ResourceContract, WorkflowParts, node,
+};
 use vb_core::{CapabilitySet, CoreError, SlotValue, Taint};
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -35,6 +38,7 @@ fn fixture_parts(symbols_count: u32) -> WorkflowParts {
         name: Box::from("checkpoint-prefix"),
         digest: WorkflowDigest::from_bytes([42; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: fixture_nodes(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -44,7 +48,11 @@ fn fixture_parts(symbols_count: u32) -> WorkflowParts {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-        input_slots: Box::new([]),
+        input_slots: Box::from([CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
     }
 }
 

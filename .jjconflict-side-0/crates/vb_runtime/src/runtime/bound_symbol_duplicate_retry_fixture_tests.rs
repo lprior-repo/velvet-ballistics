@@ -147,14 +147,11 @@ fn workflow() -> TestResult<CompiledWorkflow> {
 fn parts() -> TestResult<WorkflowParts> {
     Ok(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: "duplicate-tail-retry".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes(),
-        expressions: Box::from([ExprProgram::try_from_ops(Box::from([
-            ExprOp::LoadSlot(SlotIdx::ZERO),
-            ExprOp::LoadConst(ConstIdx::new(1)),
-            ExprOp::Has,
-        ]))?]),
+        expressions: Box::from([expression()?]),
         constants: Box::from([ConstValue::I64(11), ConstValue::Symbol(SymbolId::new(0))]),
         accessors: Box::default(),
         slot_count: 5,
@@ -165,9 +162,17 @@ fn parts() -> TestResult<WorkflowParts> {
         input_slots: Box::from([CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: InputSlotKind::Object,
-            constraint: CompiledInputConstraint::default(),
+            constraint: CompiledInputConstraint::required(),
         }]),
     })
+}
+
+fn expression() -> TestResult<ExprProgram> {
+    Ok(ExprProgram::try_from_ops(Box::from([
+        ExprOp::LoadSlot(SlotIdx::ZERO),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Has,
+    ]))?)
 }
 
 fn nodes() -> Box<[vb_core::CompiledNode]> {

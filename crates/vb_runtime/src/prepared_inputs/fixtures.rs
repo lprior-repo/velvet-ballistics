@@ -1,13 +1,37 @@
 use super::*;
-use vb_core::{CompiledNodeKind, ResourceContract, StepIdx, WorkflowDigest, WorkflowParts};
+use vb_core::{
+    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, InputSlotKind, ResourceContract,
+    SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+};
 
 pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+fn input_slots() -> Box<[CompiledInputSlot]> {
+    Box::from([
+        CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        },
+        CompiledInputSlot {
+            slot: SlotIdx::new(1),
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::unconstrained(),
+        },
+        CompiledInputSlot {
+            slot: SlotIdx::new(2),
+            kind: InputSlotKind::List,
+            constraint: CompiledInputConstraint::unconstrained(),
+        },
+    ])
+}
 
 fn parts(resource_contract: ResourceContract) -> WorkflowParts {
     WorkflowParts {
         name: "prepared".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         slot_count: 3,
         symbols_count: 0,
         nodes: Box::from([vb_core::workflow::node(
@@ -24,7 +48,7 @@ fn parts(resource_contract: ResourceContract) -> WorkflowParts {
         entry: StepIdx::new(0),
         resource_contract,
         step_names: Box::default(),
-        input_slots: Box::default(),
+        input_slots: input_slots(),
     }
 }
 

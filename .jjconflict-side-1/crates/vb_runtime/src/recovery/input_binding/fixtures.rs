@@ -22,6 +22,7 @@ fn parts() -> WorkflowParts {
         name: "cold-inputs".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([finish()]),
         expressions: Box::default(),
         accessors: Box::default(),
@@ -49,8 +50,8 @@ fn finish() -> vb_core::CompiledNode {
 fn input_slot() -> CompiledInputSlot {
     CompiledInputSlot {
         slot: SlotIdx::ZERO,
-        kind: InputSlotKind::Object,
-        constraint: CompiledInputConstraint::unconstrained(),
+        kind: InputSlotKind::Any,
+        constraint: CompiledInputConstraint::required(),
     }
 }
 
