@@ -1,15 +1,16 @@
 (* StepState.tla
  *
- * Per-step execution state machine from crates/vb_core/src/frame.rs:50-101.
+ * Per-step execution state machine from crates/vb_core/src/frame.rs:72
+ * (is_valid_step_state_transition; Succeeded -> Pending at :91).
  *
  * Valid transitions (matching Rust validate_transition()):
  *   Pending -> Running, Succeeded, Failed, Cancelled, Skipped
  *   Running  -> Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
  *   Waiting | Asking -> Running
+ *   Succeeded -> Pending (bounded loop body re-entry only), Succeeded
  *   state == next  (idempotent re-mark, always valid)
- *   Terminal states (Succeeded, Failed, Cancelled, Skipped) block outward transitions
- *   NOTE: live is_valid_step_state_transition() also admits Succeeded -> Pending;
- *   the model above does not cover that re-mark (Pt 23 open item).
+ *   Terminal states (Succeeded, Failed, Cancelled, Skipped) block outward
+ *   transitions, except Succeeded -> Pending (MASTER.md §45).
  *)
 
 ---- MODULE StepState ----
@@ -31,6 +32,7 @@ ValidNext(source) ==
       [] source = "Running"  -> {"Succeeded", "Failed", "Waiting", "Asking", "Cancelled", "Skipped"}
       [] source = "Waiting"  -> {"Running"}
       [] source = "Asking"  -> {"Running"}
+      [] source = "Succeeded" -> {"Pending"}
       [] OTHER              -> {}
 
 IsValidTransition(source, next) ==
@@ -44,7 +46,16 @@ TerminalStateBlocksOutwardTransitions ==
     \A step \in StepId :
         step_state[step] \in TerminalStates
             => \A next \in StateNames :
-                IsValidTransition(step_state[step], next) <=> (next = step_state[step])
+                IsValidTransition(step_state[step], next) <=> (next = step_state[step] \/ (step_state[step] = "Succeeded" /\ next = "Pending"))
+
+\* Mirrors Verus proof_succeeded_reentry_only_to_pending
+\* (verification/verus/step_state_machine.rs:473): from Succeeded, the
+\* only outward transition is back to Pending.
+SucceededReentryOnlyToPending ==
+    \A step \in StepId :
+        step_state[step] = "Succeeded"
+            => \A next \in StateNames :
+                IsValidTransition("Succeeded", next) <=> (next = "Succeeded" \/ next = "Pending")
 
 Init ==
     step_state = [step \in StepId |-> "Pending"]
@@ -66,10 +77,12 @@ Next ==
         \/ Transition(step, "Skipped")
         \/ Transition(step, "Waiting")
         \/ Transition(step, "Asking")
+        \/ Transition(step, "Pending")
 
 Spec == Init /\ [][Next]_step_state
 
 THEOREM Spec => []TypeInvariant
 THEOREM Spec => []TerminalStateBlocksOutwardTransitions
+THEOREM Spec => []SucceededReentryOnlyToPending
 
 ====
