@@ -143,3 +143,6 @@ fn first_success_budget_one_routes_real_expression_division_by_zero() -> Result<
 
 #[path = "first_success_failure.rs"]
 mod failure;
+
+#[path = "first_success_choose.rs"]
+mod choose;

@@ -9,8 +9,10 @@ use super::concurrent_validation::check_for_each_capacity;
 use super::dispatch::replay_step_with_collect;
 use super::types::{ReplayAction, ReplayCollectStates};
 
-fn first_success_can_continue(error: &ReplayError) -> bool {
-    matches!(error, ReplayError::ExpressionEvalFailed { .. })
+fn first_success_can_continue(node: Option<&CompiledNode>, error: &ReplayError) -> bool {
+    matches!((node, error),
+        (Some(node), ReplayError::ExpressionEvalFailed { step })
+            if node.id == *step && matches!(node.kind, CompiledNodeKind::EvalExpr { .. }))
 }
 
 fn invariant(reason: &'static str) -> ReplayError {
@@ -45,6 +47,7 @@ fn run_lane(
     entry: StepIdx,
     bound: usize,
 ) -> Result<Option<(SlotValue, Taint)>, ReplayError> {
+    run.set_pc(entry).map_err(engine_to_replay_err)?;
     let mut pc = entry;
     for _ in 0..bound {
         let node = plan
@@ -197,7 +200,8 @@ pub(super) fn replay_fixed_concurrent_start(
                     None => results.push((SlotValue::Null, Taint::Clean)),
                 }
             }
-            Err(error) if first_success && first_success_can_continue(&error) => {}
+            Err(error)
+                if first_success && first_success_can_continue(plan.node(run.pc()), &error) => {}
             Err(error) => return Err(error),
         }
     }
@@ -260,15 +264,21 @@ mod tests {
 
     #[test]
     fn first_success_continues_only_after_expression_failures() {
+        let node = super::jump_tests::eval_node();
         assert!(first_success_can_continue(
+            Some(&node),
             &ReplayError::ExpressionEvalFailed {
                 step: StepIdx::new(3),
             }
         ));
-        assert!(!first_success_can_continue(&ReplayError::Internal {
-            reason: "allocation",
-        }));
         assert!(!first_success_can_continue(
+            Some(&node),
+            &ReplayError::Internal {
+                reason: "allocation",
+            }
+        ));
+        assert!(!first_success_can_continue(
+            Some(&node),
             &ReplayError::SlotNotAvailable {
                 slot: crate::ids::SlotIdx::new(1),
             }

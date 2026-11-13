@@ -72,8 +72,7 @@ pub fn replay_choose_expr(
         let branch = branches.get(index).ok_or(ReplayError::Internal {
             reason: "choose_expr branch index checked by loop bound",
         })?;
-        let (value, _taint) = eval_expr_for_replay(plan, run, store, branch.condition)
-            .map_err(|_| ReplayError::ExpressionEvalFailed { step: run.pc() })?;
+        let (value, _taint) = eval_expr_for_replay(plan, run, store, branch.condition)?;
         match value {
             SlotValue::Bool(true) => {
                 run.set_pc(branch.target).map_err(engine_to_replay_err)?;

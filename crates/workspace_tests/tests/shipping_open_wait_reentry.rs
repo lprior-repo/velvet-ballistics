@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-#[path = "shipping_ingress_matrix/support.rs"]
+#[path = "shipping_open_wait_reentry/support.rs"]
 mod support;
 
 use vb_core::action::{
