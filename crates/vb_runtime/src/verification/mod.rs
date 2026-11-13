@@ -45,4 +45,6 @@ pub(crate) mod kani {
     pub(crate) mod kani_sxkz6_shard_for_run;
     #[cfg(feature = "kani-vb-4969v-aggregate-invariant")]
     pub(crate) mod kani_vb4969v_aggregate_invariant;
+    // VB-REPLAY-006: a terminal run never becomes running again.
+    pub(crate) mod kani_terminal_state;
 }

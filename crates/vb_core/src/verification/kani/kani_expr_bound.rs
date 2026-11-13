@@ -2,9 +2,10 @@
 
 #![forbid(unsafe_code)]
 
+use crate::errors::CoreError;
 use crate::ids::SlotIdx;
-use crate::limits::MAX_EXPRESSION_STACK;
-use crate::workflow::{ExprOp, check_expr_stack_bound};
+use crate::limits::{MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK};
+use crate::workflow::{check_expr_stack_bound, ExprOp};
 
 #[kani::proof]
 fn harness_empty_ops_returns_zero() {
@@ -208,4 +209,35 @@ fn harness_multiple_loads_max_correct() {
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "multiple loads should be valid");
     kani::assert(result.unwrap() == 4, "max depth before Add is 4");
+}
+
+const fn chain_ops<const N: usize>() -> [ExprOp; N] {
+    let mut ops = [ExprOp::LoadConst(crate::ids::ConstIdx::new(0)); N];
+    let mut index = 1usize;
+    while index < N {
+        if N % 2 == 0 && index == N - 1 {
+            ops[index] = ExprOp::Not;
+        } else if index % 2 == 1 {
+            ops[index] = ExprOp::LoadConst(crate::ids::ConstIdx::new(0));
+        } else {
+            ops[index] = ExprOp::Add;
+        }
+        index += 1;
+    }
+    ops
+}
+
+const OVER_BOUND_OPS: [ExprOp; MAX_EXPRESSION_OPS + 1] = chain_ops::<{ MAX_EXPRESSION_OPS + 1 }>();
+
+/// The over-bound program is rejected by the op-count check before the
+/// stack loop runs, so the loop is unreachable on this path; unwind(2)
+/// only bounds dead-code unrolling and does not weaken the proof.
+#[kani::proof]
+#[kani::unwind(2)]
+fn harness_expr_ops_over_bound_rejected() {
+    let result = check_expr_stack_bound(&OVER_BOUND_OPS, MAX_EXPRESSION_STACK);
+    kani::assert(
+        matches!(result, Err(CoreError::ResourceLimitExceeded { .. })),
+        "257 ops rejected as resource limit",
+    );
 }

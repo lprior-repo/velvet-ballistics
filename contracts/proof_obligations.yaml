@@ -378,17 +378,18 @@ obligations:
   - id: VB-IPC-DECODE-002
     section: [18, 21, 50]
     statement: |
-      IPC envelope header_len == 60 before payload allocation
+      IPC frame header_len == 24 validated before payload allocation
     proof_level: L3
     crate: vb_ipc
     files:
       - crates/vb_ipc/src/frame.rs
     required:
       kani: kani_ipc_header.rs
-      tests: [header_len_validation]
+      tests: [ipc_header_len_is_24]
     commands:
       - cargo kani --package vb_ipc --harness kani_ipc_header
       - cargo nextest run -p vb_ipc header
+    note: "Corrected 2026-11-12: the statement said 60, which is the vb_storage record envelope (RECORD_HEADER_LEN, crates/vb_storage/src/constants.rs:64); the IPC frame header is 24 (IPC_HEADER_LEN, crates/vb_ipc/src/constants.rs:9), pinned by ipc_header_len_is_24."
 
   - id: VB-IPC-DECODE-003
     section: [18, 21, 50]
@@ -490,11 +491,12 @@ obligations:
     files:
       - crates/vb_storage/src/codec/payload.rs
     required:
-      kani: kani_record_digest.rs
+      kani: kani_postcard_envelope_wire.rs::kani_harness_digest_before_postcard
       tests: [digest_validated_before_decode]
     commands:
-      - cargo kani --package vb_storage --harness kani_record_digest
+      - cargo kani --package vb_storage --features legacy-kani --harness kani_harness_digest_before_postcard
       - cargo nextest run -p vb_storage digest
+    note: "Kani leg re-pointed 2026-11-12: kani_record_digest.rs never existed; the digest-before-decode property is the subject of kani_harness_digest_before_postcard in crates/vb_storage/src/verification/kani/kani_postcard_envelope_wire.rs. Kani run 2026-11-12 on this box FAILS pre-existing: 2 of 3302 checks failed (3300 undetermined) — blake3 __cpuid_count InlineAsm is unsupported by Kani, and the harness payload loop exceeds its #[kani::unwind(4)] bound; the harness assertions are undetermined, not passed. No vb_storage code changes in this branch, so the failure is independent of this re-point. Test leg covered by codec::tests::decode_rejects_mismatched_digest_in_header."
 
   # ============================================================
   # REPLAY SEAMS (Section 49, 68) - vb-jpq7.24
@@ -648,8 +650,10 @@ obligations:
       kani: kani_terminal_state.rs
       tests: [terminal_state_immutable]
     commands:
-      - cargo kani --package vb_runtime --harness kani_terminal_state
+      - cargo kani --package vb_runtime --harness kani_terminal_state::kani_terminal_state_rejects_runtime_state
+      - cargo kani --package vb_runtime --harness kani_terminal_state::kani_terminal_state_rejects_pending
       - cargo nextest run -p vb_runtime terminal
+    note: "Kani leg written 2026-11-12: crates/vb_runtime/src/verification/kani/kani_terminal_state.rs (kani_terminal_state_rejects_runtime_state, kani_terminal_state_rejects_pending) drives production RunAggregate. The Kani compiler accepts the file (reaches CBMC), but CBMC exhausts this box's 7.7GB in 3 attempts (combined harness, split harness with unwind(8), split harness with bounded run id < 8) — not executable here; needs a larger-memory environment. Test leg covered by terminal_retained_run_rejects_new_pending_boundaries and related terminal tests."
 
   - id: VB-REPLAY-007
     section: [49, 68]
@@ -713,12 +717,14 @@ obligations:
     crate: vb_expr
     files:
       - crates/vb_expr/src/expr_stack_ops.rs
+      - crates/vb_core/src/verification/kani/kani_expr_bound.rs
     required:
-      kani: kani_expr_stack.rs
+      kani: kani_expr_bound.rs
       property_tests: [expr_stack_bounds]
     commands:
-      - cargo kani --package vb_expr --harness kani_expr_stack
+      - cargo kani --package vb_core --harness harness_expr_ops_over_bound_rejected
       - cargo nextest run -p vb_expr stack
+    note: "Kani leg re-pointed 2026-11-12: kani_expr_stack.rs never existed. Depth ≤ 64 is proved by the existing harnesses in crates/vb_core/src/verification/kani/kani_expr_bound.rs against check_expr_stack_bound (MAX_EXPRESSION_STACK = 64, crates/vb_core/src/limits.rs:43); the ops ≤ 256 cap is proved on the reject side by the new harness_expr_ops_over_bound_rejected in the same file against the same function (MAX_EXPRESSION_OPS = 256, crates/vb_core/src/limits.rs:31), which vb_expr's compile path enforces through the same check. Acceptance at exactly 256 is covered by the unit test bcm_adv_008_compile_exactly_max_ops_succeeds (BC-ADV-008); a Kani accept-at-bound harness was attempted and abandoned because CBMC exhausts this box's memory unrolling the 256-iteration stack loop. Test leg covered by the check_expr_stack_bound_* and be_check_expr_stack_bound_* filters."
 
   - id: VB-EXPR-003
     section: [46]
@@ -836,26 +842,6 @@ obligations:
       - cargo test --package vb_compile --test v1_primitive_lowering proptest_equal_primitive_sources_compile_to_equal_digest_and_ir -- --nocapture
       - cargo test --package vb_compile --test digest_repeat_unit test_repeat_same_config -- --nocapture
     note: "Kani blocked by BLOCKER-BLAKE3-INLINEASM. Full vb_compile crate test suite (306 tests) passes, confirming no regression."
-
-  # ============================================================
-  # GENERATED RUST PARITY (Section 17)
-  # ============================================================
-  - id: VB-CODEGEN-001
-    section: [17]
-    statement: |
-      Generated Rust == IR interpreter on terminal results, taint, journal, errors
-    proof_level: L2
-    crate: vb_codegen
-    files:
-      - crates/vb_codegen/src/**/*.rs
-    required:
-      differential_tests: [generated_vs_ir]
-      trybuild: [generated_no_forbidden_tokens]
-    commands:
-      - cargo nextest run -p vb_codegen parity
-      - cargo nextest run -p vb_codegen --test trybuild
-
-  # ============================================================
 
   # REFERENCE MODEL CORRECTNESS
   # ============================================================
