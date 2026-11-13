@@ -188,10 +188,15 @@ fn corrupt_owned_foreach_evidence_is_rejected_typed() -> TestResult {
         ),
         "recovery product must not install a run before resume"
     );
-    assert!(matches!(
-        runtime.recover_product(RUN),
-        Err(vb_runtime::RuntimeError::Recovery { .. })
-    ));
+    let recovery_result = runtime.recover_product(RUN);
+    assert!(
+        matches!(
+            recovery_result,
+            Err(vb_runtime::RuntimeError::Recovery { ref error })
+                if error == "postcard payload decode failed: Serde Deserialization Error"
+        ),
+        "malformed persisted event must preserve its exact decode failure: {recovery_result:?}"
+    );
     assert_eq!(
         snapshot_bytes()?,
         tampered_prefix_bytes,
@@ -239,6 +244,7 @@ fn owned_foreach_action_ticket_corruption_is_rejected_typed() -> TestResult {
         "attempt",
         "idempotency",
         "capacity",
+        "zero_capacity",
     ] {
         let mut events = cut.events.clone();
         let ticket = events
@@ -265,7 +271,12 @@ fn owned_foreach_action_ticket_corruption_is_rejected_typed() -> TestResult {
                     .filter(|capacity| *capacity >= ticket.attempt)
                     .ok_or("retry policy does not permit a positive unequal capacity")?;
                 assert_ne!(ticket.capacity, retry_capacity);
-                assert!(ticket.capacity > 0 && ticket.capacity >= ticket.attempt);
+                assert_eq!(ticket.capacity, 2);
+                assert_eq!(ticket.capacity >= ticket.attempt, true);
+            }
+            "zero_capacity" => {
+                assert_eq!(ticket.capacity, retry_capacity);
+                ticket.capacity = 0;
             }
             "idempotency" => ticket.idempotency_key ^= 1,
             _ => return Err("unknown ticket corruption".into()),
@@ -275,6 +286,7 @@ fn owned_foreach_action_ticket_corruption_is_rejected_typed() -> TestResult {
             "run" => "action ticket run mismatch",
             "attempt" => "action ticket attempt bounds invalid",
             "capacity" => "action ticket differs from compiled Do",
+            "zero_capacity" => "action ticket attempt bounds invalid",
             "step" => "action schedule authority mismatch",
             "action" | "idempotency" => "action ticket idempotency key mismatch",
             _ => return Err("unknown ticket corruption".into()),
