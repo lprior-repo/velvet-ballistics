@@ -221,14 +221,23 @@ impl Shard {
         // fails instead of driving a gated run or dropping the gate. The
         // run stays suspended (AwaitAction) and is not driven; the gate
         // decision resumes or fails it through the normal submission flow.
-        if !command.open_gates.is_empty() {
+        if !command.open_gates.is_empty() || !command.bound_open_gates.is_empty() {
             if boundary.kind() != crate::recovery::RecoveredRunBoundaryKind::None {
                 return Err(RuntimeError::Recovery {
                     error: "recovered run has both an open gate and a suspended boundary"
                         .to_string(),
                 });
             }
-            self.restore_open_gates(run, &command.open_gates)?;
+            if !command.open_gates.is_empty() && !command.bound_open_gates.is_empty() {
+                return Err(RuntimeError::Recovery {
+                    error: "recovered run has both legacy and bound open gates".to_string(),
+                });
+            }
+            if command.open_gates.is_empty() {
+                self.restore_bound_open_gates(run, &command.bound_open_gates)?;
+            } else {
+                self.restore_open_gates(run, &command.open_gates)?;
+            }
             self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
             return Ok(());
         }

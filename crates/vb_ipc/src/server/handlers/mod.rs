@@ -8,7 +8,10 @@ pub mod queries;
 pub mod runs;
 pub mod session;
 
-pub use command::{handle_answer_ask, handle_complete_action, handle_fail_action};
+pub use command::{
+    handle_answer_ask, handle_complete_action, handle_fail_action,
+    handle_submit_bound_gate_decision,
+};
 pub use queries::{handle_cancel_run, handle_inspect_run, handle_list_events};
 pub use runs::{handle_submit_run, handle_submit_run_inline};
 pub use session::{handle_health, handle_ping, handle_shutdown};

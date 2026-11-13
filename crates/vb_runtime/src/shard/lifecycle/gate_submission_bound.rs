@@ -14,7 +14,7 @@ impl Shard {
         requester: ApproverId,
     ) -> RuntimeResult<()> {
         let run = gate.gate.run;
-        if !gate.is_structurally_valid() {
+        if !gate.is_structurally_valid() || !requester.is_valid() {
             return Err(RuntimeError::InvalidGateOpenedRecord);
         }
         if !self.run_state_contains(run) {

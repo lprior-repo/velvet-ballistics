@@ -34,6 +34,13 @@ impl BoundJournal {
             .map(|calls| calls.clone())
             .map_err(|_| RuntimeError::JournalPoisoned)
     }
+
+    fn opened(&self) -> RuntimeResult<Vec<(BoundManualGate, u64, ApproverId)>> {
+        self.opened
+            .lock()
+            .map(|calls| calls.clone())
+            .map_err(|_| RuntimeError::JournalPoisoned)
+    }
 }
 
 impl RuntimeJournal for BoundJournal {
@@ -214,6 +221,58 @@ fn make_shard(run: RunId) -> Result<(Shard, Arc<BoundJournal>), Box<dyn std::err
     })?;
     shard.tick()?;
     Ok((shard, journal))
+}
+
+#[test]
+fn open_bound_gate_rejects_each_zero_digest_before_journal() -> Result<(), Box<dyn std::error::Error>>
+{
+    for field in 0..3 {
+        let run = RunId::new(94010 + field);
+        let journal = BoundJournal::shared();
+        let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+        let workflow = require_workflow("chain", chain_workflow())?;
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            caps: CapabilitySet::empty(),
+            action_contracts: Box::from([]),
+            inputs: Box::from([]),
+        })?;
+        shard.tick()?;
+        let mut gate = bound_gate(run);
+        match field {
+            0 => gate.binding.artifact_digest = GateDigest::from_bytes([0; 32]),
+            1 => gate.binding.policy_digest = GateDigest::from_bytes([0; 32]),
+            _ => gate.binding.input_digest = GateDigest::from_bytes([0; 32]),
+        }
+        shard.enqueue(ShardCommand::OpenBoundGate {
+            gate,
+            opened_at_ms: 0,
+            requester: person("bob"),
+        })?;
+        let err = shard.tick().unwrap_err();
+        assert!(matches!(err, RuntimeError::InvalidGateOpenedRecord));
+        assert!(journal.opened()?.is_empty());
+        assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Running));
+    }
+    Ok(())
+}
+
+#[test]
+fn resume_rejects_bound_gate_without_decision() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(94009);
+    let (mut shard, journal) = make_shard(run)?;
+    let err = shard
+        .handle_resume(run)
+        .expect_err("bound gate must block resume");
+    assert!(matches!(
+        err,
+        crate::shard::types::ResumeError::GateOpen { gate, .. } if gate == GateId::new(7)
+    ));
+    assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Resumable));
+    assert!(journal.decisions()?.is_empty(), "resume must not journal");
+    assert!(shard.bound_open_gates.contains_key(&GateId::new(7)));
+    Ok(())
 }
 
 #[test]

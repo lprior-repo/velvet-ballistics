@@ -92,7 +92,9 @@ impl Runtime {
         .map_err(|_| invalid("checkpoint collect state"))?;
         let open_gates = crate::manual_gate::reconstruct_open_gates(&prefix.events)
             .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
-        if !open_gates.is_empty() {
+        let bound_open_gates = crate::manual_gate::reconstruct_bound_open_gates(&prefix.events)
+            .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
+        if !open_gates.is_empty() || !bound_open_gates.is_empty() {
             return Err(invalid("timer conflicts with an open gate"));
         }
         let summary = Self::recover_frame_seed_from_events(&prefix.events)?.summary();
@@ -109,6 +111,7 @@ impl Runtime {
                 retry_checkpoint: Some(checkpoint),
                 restored_store: None,
                 open_gates,
+                bound_open_gates,
                 admission: prefix.admission.clone(),
             }),
         )))

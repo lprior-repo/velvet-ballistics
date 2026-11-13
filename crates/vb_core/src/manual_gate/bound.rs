@@ -1,6 +1,6 @@
 use super::{
-    ApprovalReceipt, ApproverId, ApproverRole, GateBinding, GateDecision, GateDigest,
-    GateOutcomeRecord, ManualGate, OperatorTrust, RiskClass, SeparationOfDuties,
+    ApprovalReceipt, ApproverId, ApproverRole, GateBinding, GateDigest, GateOutcomeRecord,
+    ManualGate, OperatorTrust, RiskClass, SeparationOfDuties,
 };
 use crate::ids::ActionId;
 use serde::{Deserialize, Serialize};
@@ -24,23 +24,6 @@ impl BoundManualGate {
     pub fn is_structurally_valid(&self) -> bool {
         self.gate.is_structurally_valid() && self.binding.is_valid()
     }
-}
-
-/// Borrowed inputs that bind one bound approval to its gate and requester.
-#[derive(Debug, Clone, Copy)]
-pub struct BoundReceiptBinding<'a> {
-    /// Bound gate being approved.
-    pub gate: &'a BoundManualGate,
-    /// Approval decision: approve or break-glass only.
-    pub decision: GateDecision,
-    /// Approving operator.
-    pub approver: &'a ApproverId,
-    /// Durable requester from the gate opening.
-    pub requester: &'a ApproverId,
-    /// Boundary-supplied provenance of the claimed approver identity.
-    pub operator_trust: OperatorTrust,
-    /// Approval time in milliseconds since the UNIX epoch.
-    pub decided_at_ms: u64,
 }
 
 /// Additive approval receipt that binds the V1 receipt plus every remaining
@@ -68,38 +51,6 @@ pub struct BoundApprovalReceipt {
 }
 
 impl BoundApprovalReceipt {
-    /// Binds a bound receipt, or `None` for non-approval decisions. The
-    /// returned digest is [`GateDigest::ZERO`] until the runtime computes it.
-    #[must_use]
-    pub fn bind(binding: BoundReceiptBinding<'_>) -> Option<Self> {
-        match binding.decision {
-            GateDecision::Approve | GateDecision::BreakGlass => {
-                let receipt = ApprovalReceipt::bind(
-                    binding.gate.gate.id,
-                    binding.gate.gate.run,
-                    binding.decision,
-                    binding.approver.clone(),
-                    binding.gate.gate.evidence_bundle_digest,
-                    binding.gate.gate.prompt_digest,
-                    binding.decided_at_ms,
-                    GateDigest::ZERO,
-                )?;
-                Some(Self {
-                    receipt,
-                    action: binding.gate.gate.action,
-                    requester: binding.requester.clone(),
-                    approver_role: binding.gate.gate.required_role.clone(),
-                    risk: binding.gate.gate.risk,
-                    separation: binding.gate.gate.separation_of_duties,
-                    binding: binding.gate.binding,
-                    operator_trust: binding.operator_trust,
-                    digest: GateDigest::ZERO,
-                })
-            }
-            GateDecision::Deny | GateDecision::RequestMoreEvidence | GateDecision::Delegate => None,
-        }
-    }
-
     /// Returns the V2 digest consumed by a bound capability grant.
     #[must_use]
     pub const fn digest(&self) -> GateDigest {
@@ -133,6 +84,14 @@ impl BoundGateOutcomeRecord {
             self.record.outcome,
             super::GateOutcome::Approved | super::GateOutcome::BreakGlassApproved
         );
+        let escalated = self.record.outcome == super::GateOutcome::Escalated;
+        if escalated {
+            if self.operator_trust.is_some() || self.bound_receipt.is_some() {
+                return false;
+            }
+        } else if self.operator_trust.is_none() {
+            return false;
+        }
         match (&self.bound_receipt, approval) {
             (Some(bound), true) => self.bound_receipt_matches(bound),
             (None, false) => true,
@@ -141,7 +100,8 @@ impl BoundGateOutcomeRecord {
     }
 
     fn bound_receipt_matches(&self, bound: &BoundApprovalReceipt) -> bool {
-        self.record.decision == Some(bound.receipt.decision)
+        self.record.receipt.as_ref() == Some(&bound.receipt)
+            && self.record.decision == Some(bound.receipt.decision)
             && self.record.gate == bound.receipt.gate
             && self.record.run == bound.receipt.run
             && self.record.action == bound.action

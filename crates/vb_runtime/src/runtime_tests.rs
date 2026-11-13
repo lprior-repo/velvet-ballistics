@@ -28,8 +28,9 @@ mod tests {
     use std::num::NonZeroUsize;
     use vb_core::ids::RunId;
     use vb_core::manual_gate::{
-        ApproverId, ApproverRole, GateDecision, GateDecisionInput, GateDigest, GateId, GateOutcome,
-        GateOutcomeRecord, ManualGate, RiskClass, SeparationOfDuties,
+        ApproverId, ApproverRole, BoundGateOutcomeRecord, BoundManualGate, GateBinding,
+        GateDecision, GateDecisionInput, GateDigest, GateId, GateOutcome, GateOutcomeRecord,
+        ManualGate, OperatorTrust, RiskClass, SeparationOfDuties,
     };
 
     use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};

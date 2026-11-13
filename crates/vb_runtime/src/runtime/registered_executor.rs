@@ -88,6 +88,9 @@ impl Runtime {
             .scoped
             .verify_for_execute(presented.dispatch, presented.revoked_ids)
             .map_err(ExecutorError::Grant)?;
+        if let Some(approval) = presented.gate_approval {
+            verify_bound_gate_approval(approval, presented.scoped, ticket)?;
+        }
         self.require_narrowed_scope(presented.scoped, &context.artifact, ticket, grant)?;
         Ok(())
     }
@@ -200,6 +203,39 @@ impl Runtime {
             })?;
         Ok(())
     }
+}
+
+/// Binds a presented bound approval to the scoped grant, live ticket, and
+/// artifact. The receipt authorizes at most the grant's existing capability
+/// and scope; it never broadens either.
+fn verify_bound_gate_approval(
+    approval: &vb_core::manual_gate::BoundApprovalReceipt,
+    scoped: &ScopedGrant,
+    ticket: ActionTicket,
+) -> Result<(), RegisteredExecutionError> {
+    let digest_ok = crate::manual_gate::compute_bound_receipt_digest(approval)
+        .is_ok_and(|digest| digest == approval.digest);
+    let legacy_digest_ok = crate::manual_gate::compute_receipt_digest(
+        approval.receipt.gate.get(),
+        approval.receipt.run,
+        approval.receipt.decision,
+        &approval.receipt.approver,
+        approval.receipt.evidence_bundle_digest,
+        approval.receipt.prompt_digest,
+        approval.receipt.decided_at_ms,
+    )
+    .is_ok_and(|digest| digest == approval.receipt.digest);
+    if !digest_ok
+        || !legacy_digest_ok
+        || approval.receipt.run != ticket.run
+        || approval.action != ticket.action
+        || approval.binding.artifact_digest.as_bytes() != scoped.artifact.as_bytes()
+        || !approval.binding.is_valid()
+        || scoped.approval_receipt != approval.digest
+    {
+        return Err(ExecutorError::Unauthorized.into());
+    }
+    Ok(())
 }
 
 fn require_canonical_scoped_binding(

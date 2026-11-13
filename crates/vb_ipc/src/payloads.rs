@@ -84,6 +84,13 @@ pub enum IpcPayload {
     Health,
     /// Graceful shutdown request.
     Shutdown,
+    /// Submit a bound manual-gate operator decision.
+    SubmitBoundGateDecision {
+        /// Target run identifier.
+        run_id: RunId,
+        /// Operator decision bound to the gate.
+        input: vb_core::manual_gate::GateDecisionInput,
+    },
 }
 
 /// Typed trace event returned by `ListEvents`.

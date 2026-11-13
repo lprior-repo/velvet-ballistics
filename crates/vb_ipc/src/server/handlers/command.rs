@@ -118,6 +118,27 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
     }
 }
 
+/// Handles a bound manual-gate decision submitted over IPC.
+pub fn handle_submit_bound_gate_decision(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+    let Ok(crate::IpcPayload::SubmitBoundGateDecision { run_id, input }) =
+        decode_payload::<crate::IpcPayload>(payload)
+    else {
+        return IpcResponse::BadRequest;
+    };
+    match runtime.submit_bound_gate_decision(
+        run_id,
+        input,
+        vb_core::manual_gate::OperatorTrust::LocalSocketClaim,
+    ) {
+        Ok(()) => IpcResponse::AcceptedRun {
+            run_id: run_id.get(),
+        },
+        Err(e) => IpcResponse::RuntimeError {
+            message: sanitize_runtime_error(&e),
+        },
+    }
+}
+
 /// Handles fail-action.
 pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let Ok(crate::IpcPayload::FailAction {

@@ -94,6 +94,8 @@
     struct GateDecisionTestJournal {
         decisions: Mutex<Vec<GateOutcomeRecord>>,
         opened: Mutex<Vec<(ManualGate, u64, ApproverId)>>,
+        bound_decisions: Mutex<Vec<BoundGateOutcomeRecord>>,
+        bound_opened: Mutex<Vec<(BoundManualGate, u64, ApproverId)>>,
     }
 
     impl GateDecisionTestJournal {
@@ -103,6 +105,13 @@
 
         fn decisions(&self) -> crate::RuntimeResult<Vec<GateOutcomeRecord>> {
             self.decisions
+                .lock()
+                .map(|calls| calls.clone())
+                .map_err(|_| RuntimeError::JournalPoisoned)
+        }
+
+        fn bound_decisions(&self) -> crate::RuntimeResult<Vec<BoundGateOutcomeRecord>> {
+            self.bound_decisions
                 .lock()
                 .map(|calls| calls.clone())
                 .map_err(|_| RuntimeError::JournalPoisoned)
@@ -148,6 +157,32 @@
                 .lock()
                 .map_err(|_| RuntimeError::JournalPoisoned)?
                 .push((gate, opened_at_ms, requester));
+            Ok(())
+        }
+
+        fn append_gate_opened_bound_strict(
+            &self,
+            gate: BoundManualGate,
+            opened_at_ms: u64,
+            requester: ApproverId,
+            _seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            self.bound_opened
+                .lock()
+                .map_err(|_| RuntimeError::JournalPoisoned)?
+                .push((gate, opened_at_ms, requester));
+            Ok(())
+        }
+
+        fn append_gate_decision_bound_strict(
+            &self,
+            record: BoundGateOutcomeRecord,
+            _seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            self.bound_decisions
+                .lock()
+                .map_err(|_| RuntimeError::JournalPoisoned)?
+                .push(record);
             Ok(())
         }
 
@@ -260,6 +295,121 @@
             .expect("single-shard runtime must hold one shard");
         assert_eq!(shard.open_gate(gate, 0, gate_person("bob")), Ok(()));
         (runtime, journal)
+    }
+
+    fn bound_gate_fixture(run: RunId, id: u64) -> BoundManualGate {
+        BoundManualGate {
+            gate: gate_fixture(run, id),
+            binding: GateBinding {
+                artifact_digest: gate_digest(4),
+                policy_digest: gate_digest(5),
+                input_digest: gate_digest(6),
+                attempt: 1,
+            },
+        }
+    }
+
+    fn running_runtime_with_open_bound_gate(
+        run: RunId,
+        gate_id: u64,
+    ) -> (Runtime, Arc<GateDecisionTestJournal>) {
+        let shard_count = NonZeroUsize::new(1).expect("one shard");
+        let journal = GateDecisionTestJournal::shared();
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let workflow = gate_chain_workflow().expect("chain workflow must compile");
+        assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.open_bound_gate(
+                run,
+                bound_gate_fixture(run, gate_id),
+                0,
+                gate_person("bob")
+            ),
+            Ok(())
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        (runtime, journal)
+    }
+
+    #[test]
+    fn runtime_submit_bound_gate_decision_approves_open_bound_gate() {
+        let run = RunId::new(93101);
+        let (mut runtime, journal) = running_runtime_with_open_bound_gate(run, 7);
+        assert_eq!(
+            runtime.submit_bound_gate_decision(
+                run,
+                gate_input_fixture(7, GateDecision::Approve),
+                OperatorTrust::InProcessCaller,
+            ),
+            Ok(())
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let shard = runtime.shards.first().expect("single shard");
+        assert_eq!(shard.open_gate_for(run), None);
+        assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Running));
+        let decisions = journal.bound_decisions().expect("bound journal");
+        assert_eq!(decisions.len(), 1);
+        assert_eq!(decisions[0].record.outcome, GateOutcome::Approved);
+        assert!(decisions[0].bound_receipt.is_some());
+    }
+
+    #[test]
+    fn runtime_submit_bound_gate_decision_rejects_unknown_gate() {
+        let run = RunId::new(93102);
+        let shard_count = NonZeroUsize::new(1).expect("one shard");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let workflow = gate_chain_workflow().expect("chain workflow must compile");
+        assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.submit_bound_gate_decision(
+                run,
+                gate_input_fixture(7, GateDecision::Approve),
+                OperatorTrust::InProcessCaller,
+            ),
+            Err(RuntimeError::GateNotOpen {
+                gate: GateId::new(7)
+            })
+        );
+    }
+
+    #[test]
+    fn runtime_submit_bound_gate_decision_rejects_run_mismatch() {
+        let run = RunId::new(93103);
+        let other = RunId::new(93104);
+        let (mut runtime, _journal) = running_runtime_with_open_bound_gate(run, 7);
+        let workflow = gate_chain_workflow().expect("chain workflow must compile");
+        assert_eq!(runtime.submit_compiled(other, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.submit_bound_gate_decision(
+                other,
+                gate_input_fixture(7, GateDecision::Approve),
+                OperatorTrust::InProcessCaller,
+            ),
+            Err(RuntimeError::GateRunMismatch {
+                gate: GateId::new(7),
+                expected: run,
+                actual: other,
+            })
+        );
+    }
+
+    #[test]
+    fn runtime_submit_bound_gate_decision_rejects_legacy_gate() {
+        let run = RunId::new(93105);
+        let (runtime, _journal) = running_runtime_with_open_gate(run, 7);
+        assert_eq!(
+            runtime.submit_bound_gate_decision(
+                run,
+                gate_input_fixture(7, GateDecision::Approve),
+                OperatorTrust::InProcessCaller,
+            ),
+            Err(RuntimeError::GateEvaluationFailed {
+                source: crate::manual_gate::GateError::LegacyGateWithoutBinding { gate: 7 }
+            })
+        );
     }
 
     #[test]

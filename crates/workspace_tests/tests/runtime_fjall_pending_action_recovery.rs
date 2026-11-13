@@ -8,7 +8,11 @@ use vb_core::action::{
     Idempotency, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ListId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, ListId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::manual_gate::{
+    ApproverId, ApproverRole, BoundManualGate, GateBinding, GateDigest, GateId, ManualGate,
+    RiskClass, SeparationOfDuties,
+};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -1811,5 +1815,118 @@ fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> 
 
     assert_eq!(recovered.counters_snapshot().runs_completed, 1);
     assert_eq!(recovered.list_active_runs(8, None), Vec::new());
+    Ok(())
+}
+
+fn chain_then_finish_workflow() -> Result<CompiledWorkflow, String> {
+    let mut nodes = Vec::new();
+    for index in 0..33_u16 {
+        nodes.push(node(
+            index,
+            Some(0),
+            Some(index + 1),
+            CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        ));
+    }
+    nodes.push(node(
+        33,
+        None,
+        None,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    ));
+    workflow_from_parts_with_inputs(
+        "fjall_bound_gate_recovery",
+        Box::from([]),
+        nodes.into_boxed_slice(),
+        Box::from([ConstValue::I64(0)]),
+        1,
+    )
+}
+
+fn gate_digest(byte: u8) -> GateDigest {
+    GateDigest::from_bytes([byte; 32])
+}
+
+fn person(value: &str) -> Result<ApproverId, String> {
+    ApproverId::new(value.to_string()).ok_or_else(|| String::from("invalid approver"))
+}
+
+fn bound_gate(run: RunId) -> Result<BoundManualGate, String> {
+    let role = ApproverRole::new(String::from("deploy-approver"))
+        .ok_or_else(|| String::from("invalid role"))?;
+    Ok(BoundManualGate {
+        gate: ManualGate {
+            id: GateId::new(7),
+            run,
+            action: ActionId::new(1),
+            risk: RiskClass::High,
+            compensatable: false,
+            required_role: role,
+            separation_of_duties: SeparationOfDuties::DistinctFromRequester,
+            evidence_bundle_digest: gate_digest(1),
+            prompt_digest: gate_digest(2),
+            timeout_ms: 60_000,
+            escalation_policy_digest: gate_digest(3),
+            break_glass_allowed: true,
+            approval_reason_required: true,
+        },
+        binding: GateBinding {
+            artifact_digest: gate_digest(4),
+            policy_digest: gate_digest(5),
+            input_digest: gate_digest(6),
+            attempt: 1,
+        },
+    })
+}
+
+#[test]
+fn runtime_recovers_bound_gate_and_blocks_resume_after_fjall_reopen() -> Result<(), String> {
+    let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
+    let run = RunId::new(8_801);
+    let workflow = chain_then_finish_workflow()?;
+
+    let journal = open_journal(temp.path())?;
+    let _artifact =
+        submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &Box::from([]))
+            .map_err(|err| err.to_string())?;
+    let shared = StorageRuntimeJournal::shared_strict(journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    runtime
+        .submit_direct_with_grants_and_contracts(
+            run,
+            workflow,
+            CapabilitySet::empty(),
+            Box::from([]),
+        )
+        .map_err(|err| err.to_string())?;
+    runtime.tick_all().map_err(|err| err.to_string())?;
+    runtime
+        .open_bound_gate(run, bound_gate(run)?, 0, person("bob")?)
+        .map_err(|err| err.to_string())?;
+    runtime.tick_all().map_err(|err| err.to_string())?;
+    drop(runtime);
+    drop(journal);
+
+    let journal = open_journal(temp.path())?;
+    let shared = StorageRuntimeJournal::shared_strict(journal);
+    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    recovered
+        .recover_and_resume(run)
+        .map_err(|err| err.to_string())?;
+    recovered.tick_all().map_err(|err| err.to_string())?;
+
+    recovered.resume_run(run).map_err(|err| err.to_string())?;
+    let err = recovered
+        .tick_all()
+        .expect_err("resume must not bypass a recovered bound gate");
+    assert!(matches!(
+        err,
+        RuntimeError::GateOpenBlocksResume { run: blocked, gate }
+            if blocked == run && gate == GateId::new(7)
+    ));
     Ok(())
 }

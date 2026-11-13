@@ -107,6 +107,35 @@ impl Runtime {
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
+    /// Opens a bound manual gate and suspends the run until an operator
+    /// decision. Bound gates carry artifact/policy/input/attempt binding;
+    /// the legacy path rejects them.
+    pub fn open_bound_gate(
+        &self,
+        run: RunId,
+        gate: vb_core::manual_gate::BoundManualGate,
+        opened_at_ms: u64,
+        requester: vb_core::manual_gate::ApproverId,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for_run(run)?;
+        shard.enqueue(ShardCommand::OpenBoundGate {
+            gate,
+            opened_at_ms,
+            requester,
+        })
+    }
+
+    /// Escalates an open bound gate after its deadline.
+    pub fn escalate_bound_gate(
+        &self,
+        run: RunId,
+        gate: vb_core::manual_gate::GateId,
+        now_ms: u64,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for_run(run)?;
+        shard.enqueue(ShardCommand::EscalateBoundGate { run, gate, now_ms })
+    }
+
     /// Submits an operator decision to an open manual gate.
     ///
     /// The gate must already be open for the run: the submission is

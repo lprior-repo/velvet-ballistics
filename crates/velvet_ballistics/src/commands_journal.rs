@@ -480,6 +480,53 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 ("requester", serde_json::Value::from(requester.value())),
             ],
         },
+        JournalEvent::GateDecisionBoundEvent { seq, run, record } => TraceEntry {
+            index: idx,
+            event_type: "GateDecisionBound",
+            step: None,
+            status: Some(match record.record.outcome {
+                vb_core::manual_gate::GateOutcome::Approved
+                | vb_core::manual_gate::GateOutcome::BreakGlassApproved => TraceStatus::Completed,
+                vb_core::manual_gate::GateOutcome::Denied => TraceStatus::Failed,
+                vb_core::manual_gate::GateOutcome::MoreEvidenceRequested
+                | vb_core::manual_gate::GateOutcome::Escalated => TraceStatus::WaitingAnswer,
+                vb_core::manual_gate::GateOutcome::Delegated => TraceStatus::Active,
+            }),
+            action: Some(record.record.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("gate", serde_json::Value::from(record.record.gate.get())),
+                (
+                    "decision",
+                    serde_json::Value::from(format!("{:?}", record.record.decision)),
+                ),
+                (
+                    "outcome",
+                    serde_json::Value::from(format!("{:?}", record.record.outcome)),
+                ),
+            ],
+        },
+        JournalEvent::GateOpenedBoundEvent {
+            seq,
+            run,
+            gate,
+            opened_at_ms,
+            requester,
+        } => TraceEntry {
+            index: idx,
+            event_type: "GateOpenedBound",
+            step: None,
+            status: Some(TraceStatus::WaitingAnswer),
+            action: Some(gate.gate.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("gate", serde_json::Value::from(gate.gate.id.get())),
+                ("opened_at_ms", serde_json::Value::from(*opened_at_ms)),
+                ("requester", serde_json::Value::from(requester.value())),
+            ],
+        },
         JournalEvent::CompatibilityDecisionEvent { seq, run, decision } => TraceEntry {
             index: idx,
             event_type: "CompatibilityDecision",

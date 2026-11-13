@@ -213,6 +213,9 @@ impl ShardCommand {
     /// than as a direct field; `Shutdown` carries no run.
     #[must_use]
     pub fn run_id(&self) -> Option<RunId> {
+        if let Some(run) = self.gate_command_run_id() {
+            return Some(run);
+        }
         match self {
             Self::ActivateOwnedSubmission { run, .. }
             | Self::Submit { run, .. }
@@ -232,13 +235,25 @@ impl ShardCommand {
             | Self::RuntimeActionFailed { ticket, .. } => Some(ticket.run),
             Self::AskAnswered { answer } => Some(answer.ticket.run),
             Self::Recover { command } => Some(command.run),
+            Self::Shutdown
+            | Self::OpenGate { .. }
+            | Self::OpenBoundGate { .. }
+            | Self::SubmitGateDecision { .. }
+            | Self::EscalateGate { .. }
+            | Self::SubmitBoundGateDecision { .. }
+            | Self::EscalateBoundGate { .. } => None,
+        }
+    }
+
+    fn gate_command_run_id(&self) -> Option<RunId> {
+        match self {
             Self::OpenGate { gate, .. } => Some(gate.run),
             Self::OpenBoundGate { gate, .. } => Some(gate.gate.run),
             Self::SubmitGateDecision { run, .. }
             | Self::EscalateGate { run, .. }
             | Self::SubmitBoundGateDecision { run, .. }
             | Self::EscalateBoundGate { run, .. } => Some(*run),
-            Self::Shutdown => None,
+            _ => None,
         }
     }
 }

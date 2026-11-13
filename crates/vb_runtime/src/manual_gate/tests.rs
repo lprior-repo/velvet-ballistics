@@ -665,6 +665,173 @@ fn bound_approve_binds_binding_trust_and_v2_receipt() {
 }
 
 #[test]
+fn bound_break_glass_records_claimed_role_outside_required_role() {
+    let gate = bound_gate();
+    let mut break_glass = input(GateDecision::BreakGlass);
+    break_glass.approver_role = ApproverRole::new(String::from("viewer")).expect("viewer role");
+    break_glass.break_glass_justification = Some(String::from("prod is down"));
+    break_glass.evidence_shown = true;
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &break_glass,
+    )
+    .expect("break-glass must accept a claimed role outside the required role");
+    assert_eq!(record.record.outcome, GateOutcome::BreakGlassApproved);
+    assert_eq!(
+        record
+            .bound_receipt
+            .as_ref()
+            .expect("break-glass receipt")
+            .approver_role
+            .name(),
+        "viewer"
+    );
+    assert!(verify_bound_receipt(record.bound_receipt.as_ref().expect("receipt"), &gate).unwrap());
+}
+
+#[test]
+fn bound_receipt_digest_is_deterministic_and_field_sensitive() {
+    let gate = bound_gate();
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    let base = record.bound_receipt.as_ref().unwrap();
+    let base_digest = compute_bound_receipt_digest(base).unwrap();
+    assert_eq!(
+        base_digest,
+        compute_bound_receipt_digest(base).unwrap(),
+        "same receipt must hash identically"
+    );
+    let mut changed = Vec::new();
+    let mut variant = base.clone();
+    variant.binding.artifact_digest = digest(90);
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.binding.policy_digest = digest(91);
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.binding.input_digest = digest(92);
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.binding.attempt = 2;
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.requester = person("carol");
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.approver_role = ApproverRole::new(String::from("viewer")).unwrap();
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.risk = RiskClass::Low;
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.separation = SeparationOfDuties::Disabled;
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.operator_trust = OperatorTrust::LocalSocketClaim;
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.action = ActionId::new(10);
+    changed.push(variant);
+    let mut variant = base.clone();
+    variant.receipt.decided_at_ms = 501;
+    changed.push(variant);
+    for variant in changed {
+        let changed_digest = compute_bound_receipt_digest(&variant).unwrap();
+        assert_ne!(base_digest, changed_digest);
+        assert!(!verify_bound_receipt(&variant, &gate).unwrap());
+    }
+    let mut tampered = base.clone();
+    tampered.digest = digest(99);
+    assert!(!verify_bound_receipt(&tampered, &gate).unwrap());
+}
+
+#[test]
+fn bound_receipt_rejects_wrong_role_even_with_recomputed_digest() {
+    let gate = bound_gate();
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    let mut forged = record.bound_receipt.clone().expect("approval receipt");
+    forged.approver_role = ApproverRole::new(String::from("viewer")).expect("viewer role");
+    forged.digest = compute_bound_receipt_digest(&forged).expect("recomputed digest");
+    assert!(!verify_bound_receipt(&forged, &gate).unwrap());
+}
+
+#[test]
+fn bound_replay_rejects_corrupted_receipt_digest() {
+    let gate = bound_gate();
+    let mut record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    record
+        .bound_receipt
+        .as_mut()
+        .expect("approval receipt")
+        .digest = digest(99);
+    let events = vec![
+        bound_gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1)),
+        bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(2), record),
+    ];
+    assert_eq!(
+        replay_bound_gate_history(&events).unwrap_err(),
+        GateError::BoundReceiptMismatch
+    );
+}
+
+#[test]
+fn bound_trust_direction_is_structurally_enforced() {
+    let gate = bound_gate();
+    let mut denied = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Deny),
+    )
+    .unwrap();
+    denied.operator_trust = None;
+    assert!(!denied.is_structurally_valid());
+
+    let mut escalated = evaluate_bound_timeout(&gate, &person("bob"), 0, 2_000).unwrap();
+    escalated.operator_trust = Some(OperatorTrust::InProcessCaller);
+    assert!(!escalated.is_structurally_valid());
+}
+
+#[test]
+fn bound_replay_ignores_decision_without_opening() {
+    let gate = bound_gate();
+    let record = evaluate_bound_decision(
+        &gate,
+        0,
+        &person("bob"),
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Approve),
+    )
+    .unwrap();
+    let decision = bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(1), record);
+    assert!(replay_bound_gate_history(&[decision]).unwrap().is_empty());
+}
+
+#[test]
 fn bound_path_rejects_zero_binding_and_legacy_path_stays_legacy() {
     let mut invalid = bound_gate();
     invalid.binding.attempt = 0;
