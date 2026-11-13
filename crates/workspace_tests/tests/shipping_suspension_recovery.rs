@@ -15,6 +15,9 @@ mod routing;
 #[path = "shipping_suspension_recovery/handlers.rs"]
 mod handlers;
 
+#[path = "shipping_suspension_recovery/handler_prefix.rs"]
+mod handler_prefix;
+
 #[path = "shipping_suspension_recovery/ask.rs"]
 mod ask;
 

@@ -14,6 +14,7 @@ use crate::engine::types::{
     EvidenceCollector, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };
 use crate::primitives::collect::CollectStates;
+use crate::recovery::handler_route_for_failure;
 
 /// Carries the per-step node reference plus its program counter through
 /// the begin/finish transition pair.
@@ -52,12 +53,17 @@ pub(super) fn begin_drive_step<'a>(
 /// `StepStarted` is already durable.
 ///
 /// A failure routed to an authored handler journals `ActionFailed` and then
-/// `StepStarted(handler)` before executing the handler. A crash in that window
-/// leaves the handler step `Running` with no handler effect, so recovery
-/// resumes it in place: re-emitting `StepStarted` would duplicate durable
-/// evidence, and no action ticket or completion exists for it. The node must
-/// still be the compiled handler of a step that is already `Failed`, so an
-/// unrelated `Running` node is never activated by this exemption.
+/// the resolved handler's `StepStarted` (and the `ErrorHandler` body's, when
+/// the handler is a legacy wrapper) before executing it. A crash in that
+/// window leaves those steps `Running` with no handler effect, so recovery
+/// resumes the journaled step in place: re-emitting `StepStarted` would
+/// duplicate durable evidence, and no action ticket or completion exists for
+/// it.
+///
+/// Targets are resolved with the same table the failure path and the replay
+/// repair use ([`handler_route_for_failure`]), so direct `on_error` routes and
+/// legacy wrapper jump targets are treated identically. The candidate step must
+/// already be `Failed`, so an unrelated `Running` node is never exempted.
 fn resumes_journaled_handler(
     plan: &CompiledWorkflow,
     node: &CompiledNode,
@@ -70,14 +76,17 @@ fn resumes_journaled_handler(
         let Some(candidate) = plan.node(StepIdx::new(raw)) else {
             continue;
         };
-        if candidate.routing.error.handler() != Some(node.id) {
-            continue;
-        }
         if run
             .step_state(candidate.id)
             .map_err(RuntimeEngineError::Core)?
-            == StepState::Failed
+            != StepState::Failed
         {
+            continue;
+        }
+        let Some(route) = handler_route_for_failure(plan, candidate.id) else {
+            continue;
+        };
+        if route.handler == node.id || route.handler_body == Some(node.id) {
             return Ok(true);
         }
     }

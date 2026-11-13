@@ -38,8 +38,11 @@ use crate::shard::helpers::find_error_handler_for_failure;
 enum FailureEvidence {
     /// Nothing follows the failure: the handler jump was lost.
     Unjournaled,
-    /// Exactly the handler's `StepStarted` follows the failure.
-    HandlerStarted(StepIdx),
+    /// The handler (and, for a wrapper, its jump target) was started.
+    Started {
+        first: StepIdx,
+        second: Option<StepIdx>,
+    },
 }
 
 /// Action failure whose handler transition is only partially journaled.
@@ -48,6 +51,39 @@ struct RoutedFailure {
     step: StepIdx,
     action: ActionId,
     evidence: FailureEvidence,
+}
+
+/// Handler route the live failure path resolves for a failed step.
+///
+/// `handler` is exactly what [`find_error_handler_for_failure`] returned and
+/// what the live preflight jumped to. When that node is a legacy
+/// `ErrorHandler`, the drive executes its `body` next, so `handler_body`
+/// records the engine's continuation step; `error_slot` is the route's
+/// authored failure slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct HandlerRoute {
+    pub(crate) handler: StepIdx,
+    pub(crate) handler_body: Option<StepIdx>,
+    pub(crate) error_slot: Option<SlotIdx>,
+}
+
+/// Resolves the full handler route for `failed`, including the legacy
+/// `ErrorHandler` body the drive executes after the resolved handler, without
+/// broadening handler authority.
+pub(crate) fn handler_route_for_failure(
+    workflow: &CompiledWorkflow,
+    failed: StepIdx,
+) -> Option<HandlerRoute> {
+    let (handler, error_slot) = find_error_handler_for_failure(workflow, failed)?;
+    let handler_body = match workflow.node(handler)?.kind {
+        CompiledNodeKind::ErrorHandler { body, .. } => Some(body),
+        _ => None,
+    };
+    Some(HandlerRoute {
+        handler,
+        handler_body,
+        error_slot,
+    })
 }
 
 /// Restores the journal-authorized handler route of a failed action without
@@ -63,27 +99,31 @@ pub(crate) fn restore_routed_action_failure(
     let Some(failed) = routed_failure_evidence(events) else {
         return Ok(());
     };
-    let Some((handler, error_slot)) = restorable_handler(seed, &failed, workflow) else {
+    let Some(route) = restorable_route(seed, &failed, workflow) else {
         return Ok(());
     };
     match failed.evidence {
-        FailureEvidence::Unjournaled => restore_unrouted(seed, &failed, handler, error_slot),
-        FailureEvidence::HandlerStarted(started) if started == handler => {
-            mark_failed(seed, failed.step);
-            seed.pc = handler;
+        FailureEvidence::Unjournaled => {
+            if seed.pc == failed.step {
+                restore_transition(seed, &failed, route.handler, &route);
+            }
         }
-        FailureEvidence::HandlerStarted(_) => {}
+        FailureEvidence::Started { first, second } => {
+            if let Some(pc) = resumed_step(first, second, &route) {
+                restore_transition(seed, &failed, pc, &route);
+            }
+        }
     }
     Ok(())
 }
 
 /// Guards the repair: the seed must still be parked on the resolved `Do` step
 /// in `Running` state, and the compiled workflow must route that failure.
-fn restorable_handler(
+fn restorable_route(
     seed: &RecoveryFrameSeed,
     failed: &RoutedFailure,
     workflow: &CompiledWorkflow,
-) -> Option<(StepIdx, Option<SlotIdx>)> {
+) -> Option<HandlerRoute> {
     if recovered_step_state(seed, failed.step) != Some(RecoveredStepState::Running) {
         return None;
     }
@@ -91,46 +131,55 @@ fn restorable_handler(
     if !matches!(node.kind, CompiledNodeKind::Do { action, .. } if action == failed.action) {
         return None;
     }
-    find_error_handler_for_failure(workflow, failed.step)
+    handler_route_for_failure(workflow, failed.step)
 }
 
-/// Rebuilds the lost jump: failed step, handler program counter, error slot.
-fn restore_unrouted(
+/// Program counter implied by the journaled start chain, when the chain is
+/// exactly the resolved handler (and, for a wrapper, its jump target).
+fn resumed_step(first: StepIdx, second: Option<StepIdx>, route: &HandlerRoute) -> Option<StepIdx> {
+    if first != route.handler {
+        return None;
+    }
+    match (second, route.handler_body) {
+        (None, _) => Some(first),
+        (Some(second), Some(inner)) if second == inner => Some(second),
+        _ => None,
+    }
+}
+
+/// Applies the recovered routing decision: failed step, program counter, and
+/// the error slot the live preflight wrote before driving the handler.
+fn restore_transition(
     seed: &mut RecoveryFrameSeed,
     failed: &RoutedFailure,
-    handler: StepIdx,
-    error_slot: Option<SlotIdx>,
+    pc: StepIdx,
+    route: &HandlerRoute,
 ) {
-    if seed.pc != failed.step {
-        return;
-    }
     mark_failed(seed, failed.step);
-    seed.pc = handler;
-    if let Some(slot) = error_slot {
+    seed.pc = pc;
+    if let Some(slot) = route.error_slot {
         record_error_slot(seed, slot, failed.step);
     }
 }
 
 /// Returns the last `ActionFailed` plus the evidence that follows it. Only an
-/// empty or single-`StepStarted(handler)` suffix is recoverable; any other
+/// empty or a start chain along the resolved handler is recoverable; any other
 /// later event proves the routing decision is already durable.
 fn routed_failure_evidence(events: &[JournalEvent]) -> Option<RoutedFailure> {
-    let (index, step, action) =
-        events
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(index, event)| match event {
-                JournalEvent::ActionFailedEvent { step, action, .. } => {
-                    Some((index, *step, *action))
-                }
-                _ => None,
-            })?;
+    let (index, step, action) = last_action_failed(events)?;
     let evidence = match events.get(index.checked_add(1)?..)? {
         [] => FailureEvidence::Unjournaled,
-        [JournalEvent::StepStarted { step: started, .. }] => {
-            FailureEvidence::HandlerStarted(*started)
-        }
+        [JournalEvent::StepStarted { step: first, .. }] => FailureEvidence::Started {
+            first: *first,
+            second: None,
+        },
+        [
+            JournalEvent::StepStarted { step: first, .. },
+            JournalEvent::StepStarted { step: second, .. },
+        ] => FailureEvidence::Started {
+            first: *first,
+            second: Some(*second),
+        },
         _ => return None,
     };
     Some(RoutedFailure {
@@ -138,6 +187,17 @@ fn routed_failure_evidence(events: &[JournalEvent]) -> Option<RoutedFailure> {
         action,
         evidence,
     })
+}
+
+fn last_action_failed(events: &[JournalEvent]) -> Option<(usize, StepIdx, ActionId)> {
+    events
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(index, event)| match event {
+            JournalEvent::ActionFailedEvent { step, action, .. } => Some((index, *step, *action)),
+            _ => None,
+        })
 }
 
 fn recovered_step_state(seed: &RecoveryFrameSeed, step: StepIdx) -> Option<RecoveredStepState> {
