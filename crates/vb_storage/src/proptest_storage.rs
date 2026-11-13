@@ -422,11 +422,11 @@ mod storage_tests {
                 &event,
                 max_payload,
             );
-            prop_assert!(encoded.is_ok(), "encode of RunKilled must succeed with kind 28");
-            let bytes = encoded.unwrap();
+            let bytes = encoded.map_err(|error|
+                proptest::test_runner::TestCaseError::fail(format!("specific encode failure: {error:?}")))?;
             let decoded = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, max_payload);
-            prop_assert!(decoded.is_ok(), "decode of RunKilled must succeed with kind 28");
-            let (_envelope, decoded_event) = decoded.unwrap();
+            let (_envelope, decoded_event) = decoded.map_err(|error|
+                proptest::test_runner::TestCaseError::fail(format!("specific decode failure: {error:?}")))?;
             prop_assert_eq!(decoded_event, event, "RunKilled round-trip must preserve all fields");
         });
     }
@@ -446,7 +446,11 @@ mod storage_tests {
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            prop_assert!(result.is_err(), "kind 28 with MAGIC_SNAPSHOT must return Err");
+            let projection = match result {
+                Err(crate::JournalError::RecordKindFamilyMismatch { magic, kind }) => Some((magic, kind)),
+                _ => None,
+            };
+            prop_assert_eq!(projection, Some((crate::MAGIC_SNAPSHOT, 28)));
         });
     }
 
@@ -465,7 +469,11 @@ mod storage_tests {
                 &event,
                 MAX_BLOB_BYTES,
             );
-            prop_assert!(result.is_err(), "kind 28 with MAGIC_BLOB must return Err");
+            let projection = match result {
+                Err(crate::JournalError::RecordKindFamilyMismatch { magic, kind }) => Some((magic, kind)),
+                _ => None,
+            };
+            prop_assert_eq!(projection, Some((MAGIC_BLOB, 28)));
         });
     }
 
@@ -543,6 +551,12 @@ mod storage_tests {
                 ),
             }
         });
+    }
+
+    #[test]
+    fn prop_replay_duplicate_detection() {
+        // Old registered test ID preserved as entry point.
+        prop_duplicate_seq_rejected_at_append();
     }
 
     #[test]
