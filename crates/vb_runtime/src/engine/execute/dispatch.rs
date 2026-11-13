@@ -126,6 +126,13 @@ fn execute_node_with_policy<P: BodyEntryPolicy>(
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::RepeatCheck { .. }
         | CompiledNodeKind::RepeatFinish { .. } => dispatch_repeat::<P>(ctx.run, ctx.node),
+        CompiledNodeKind::ForEachConcurrentStart { .. }
+        | CompiledNodeKind::TogetherConcurrentStart { .. }
+        | CompiledNodeKind::FirstSuccessStart { .. }
+        | CompiledNodeKind::ConcurrentLaneEnd { .. }
+        | CompiledNodeKind::ConcurrentGroupJoin { .. } => {
+            crate::engine::execute::handlers_concurrent::dispatch_concurrent(&mut ctx)
+        }
         _ => {
             let mut actx = ActionDispatchContext {
                 plan: ctx.plan,

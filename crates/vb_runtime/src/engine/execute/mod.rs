@@ -16,6 +16,7 @@ mod budget;
 mod dispatch;
 mod handlers;
 mod handlers_compound;
+pub(crate) mod handlers_concurrent;
 mod handlers_suspend;
 mod signals;
 
