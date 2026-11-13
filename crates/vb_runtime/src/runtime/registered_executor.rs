@@ -7,6 +7,8 @@ use vb_storage::executor::{ExecutorError, FjallRegister, RegisterGrant, Register
 
 #[path = "registered_executor/gate_approval.rs"]
 mod gate_approval;
+#[path = "registered_executor/gate_authority.rs"]
+mod gate_authority;
 
 /// Runtime authority failures and uncertain adapter outcomes remain distinct.
 #[derive(Debug, thiserror::Error)]

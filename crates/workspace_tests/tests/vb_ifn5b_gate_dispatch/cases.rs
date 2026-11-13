@@ -152,6 +152,7 @@ fn approval_for(
     gate_id: GateId,
     decision: GateDecision,
 ) -> Result<BoundApprovalReceipt, Box<dyn std::error::Error>> {
+    let _pending = gate_ticket_binding::pending_ticket_from_events(runtime, journal, run)?;
     let input = journal
         .events_for_run_full(run)?
         .iter()
@@ -216,12 +217,15 @@ fn approval_for(
         .events_for_run_full(run)?
         .iter()
         .find_map(|event| match event {
-            JournalEvent::GateDecisionBoundEvent { record, .. } => record.bound_receipt.clone(),
+            JournalEvent::GateDecisionBoundEvent { record, .. }
+                if record.record.gate == gate_id =>
+            {
+                record.bound_receipt.clone()
+            }
             _ => None,
         })
         .ok_or_else(|| "durable approval receipt missing".into())
 }
-
 fn pending_ticket(
     runtime: &mut Runtime,
     run: RunId,
@@ -266,7 +270,13 @@ mod gate_bound;
 mod gate_break_glass;
 #[path = "cases/gate_cold_recovery.rs"]
 mod gate_cold_recovery;
+#[path = "cases/gate_opening_metadata.rs"]
+mod gate_opening_metadata;
 #[path = "cases/gate_reconcile.rs"]
 mod gate_reconcile;
+#[path = "cases/gate_retry_ticket.rs"]
+mod gate_retry_ticket;
+#[path = "cases/gate_ticket_binding.rs"]
+mod gate_ticket_binding;
 #[path = "cases/owned_submission.rs"]
 mod owned_submission;

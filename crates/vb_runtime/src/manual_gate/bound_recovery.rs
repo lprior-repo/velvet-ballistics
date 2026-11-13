@@ -72,10 +72,10 @@ pub(crate) fn reconstruct_bound_open_gates(
                 {
                     return Err(GateError::ReplayBoundGateMismatch { gate: gate_id });
                 }
-                if let Some(receipt) = &record.bound_receipt {
-                    if !verify_bound_receipt(receipt, &existing.gate)? {
-                        return Err(GateError::BoundReceiptMismatch);
-                    }
+                if let Some(receipt) = &record.bound_receipt
+                    && !verify_bound_receipt(receipt, &existing.gate)?
+                {
+                    return Err(GateError::BoundReceiptMismatch);
                 }
                 match record.record.outcome {
                     GateOutcome::Approved

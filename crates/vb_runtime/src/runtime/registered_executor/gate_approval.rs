@@ -1,7 +1,7 @@
 use super::super::Runtime;
 use super::RegisteredExecutionError;
 use crate::shard::lifecycle::RegisteredActionContext;
-use vb_core::manual_gate::{BoundApprovalReceipt, GateBinding, GateDigest, GateOutcome};
+use vb_core::manual_gate::{BoundApprovalReceipt, GateBinding, GateDigest};
 use vb_core::{ActionTicket, ScopedDispatch, ScopedGrant, ScopedGrantAuthority};
 use vb_storage::executor::ExecutorError;
 use vb_storage::{JournalEvent, RunInputBinding, RunPolicyPin};
@@ -42,7 +42,7 @@ pub(super) fn verify_reconcile(
     match scoped.authority() {
         ScopedGrantAuthority::TrustedNonGate => reject_gated_action(&events, ticket),
         ScopedGrantAuthority::BoundGate { receipt_digest } => {
-            let approval = unique_durable_approval(&events, receipt_digest)?;
+            let approval = super::gate_authority::unique_durable_approval(&events, receipt_digest)?;
             verify_bound_dispatch(&events, approval, receipt_digest, scoped, context, ticket)
         }
         ScopedGrantAuthority::Untrusted => Err(ExecutorError::Unauthorized.into()),
@@ -102,7 +102,7 @@ fn verify_bound_dispatch(
 ) -> Result<(), RegisteredExecutionError> {
     verify_receipt_fields(approval, receipt_digest, scoped, ticket)?;
     verify_live_binding(events, approval, context, ticket)?;
-    verify_durable_pair(events, approval)?;
+    super::gate_authority::verify_durable_pair(events, approval, ticket)?;
     Ok(())
 }
 
@@ -203,96 +203,4 @@ fn admission_binding(
         RunPolicyPin::Unverified => return Err(ExecutorError::Unauthorized.into()),
     };
     Ok((input, policy))
-}
-
-fn verify_durable_pair(
-    events: &[JournalEvent],
-    approval: &BoundApprovalReceipt,
-) -> Result<(), RegisteredExecutionError> {
-    if unique_durable_approval(events, approval.digest)? != approval {
-        return Err(ExecutorError::Unauthorized.into());
-    }
-    let gate = unique_opening(events, approval)?;
-    verify_opening_matches(gate, approval)?;
-    verify_unique_decision(events, approval)
-}
-
-fn unique_opening<'a>(
-    events: &'a [JournalEvent],
-    approval: &BoundApprovalReceipt,
-) -> Result<&'a vb_core::manual_gate::BoundManualGate, RegisteredExecutionError> {
-    let mut openings = events.iter().filter_map(|event| match event {
-        JournalEvent::GateOpenedBoundEvent { run, seq, gate, .. }
-            if *run == approval.receipt.run && seq.get() == approval.opening_seq =>
-        {
-            Some(gate)
-        }
-        _ => None,
-    });
-    let gate = openings.next().ok_or(ExecutorError::Unauthorized)?;
-    if openings.next().is_some() {
-        return Err(ExecutorError::Unauthorized.into());
-    }
-    Ok(gate)
-}
-
-fn verify_opening_matches(
-    gate: &vb_core::manual_gate::BoundManualGate,
-    approval: &BoundApprovalReceipt,
-) -> Result<(), RegisteredExecutionError> {
-    if !gate.is_structurally_valid()
-        || gate.gate.action != approval.action
-        || gate.gate.id != approval.receipt.gate
-        || gate.binding != approval.binding
-        || !crate::manual_gate::verify_bound_receipt(approval, gate).is_ok_and(|valid| valid)
-    {
-        return Err(ExecutorError::Unauthorized.into());
-    }
-    Ok(())
-}
-
-fn verify_unique_decision(
-    events: &[JournalEvent],
-    approval: &BoundApprovalReceipt,
-) -> Result<(), RegisteredExecutionError> {
-    let mut decisions = events.iter().filter_map(|event| match event {
-        JournalEvent::GateDecisionBoundEvent { run, seq, record }
-            if *run == approval.receipt.run
-                && record.opening_seq == approval.opening_seq
-                && seq.get() > approval.opening_seq =>
-        {
-            Some(record.as_ref())
-        }
-        _ => None,
-    });
-    let record = decisions.next().ok_or(ExecutorError::Unauthorized)?;
-    if decisions.next().is_some()
-        || !record.is_structurally_valid()
-        || record.bound_receipt.as_ref() != Some(approval)
-        || !matches!(
-            record.record.outcome,
-            GateOutcome::Approved | GateOutcome::BreakGlassApproved
-        )
-    {
-        return Err(ExecutorError::Unauthorized.into());
-    }
-    Ok(())
-}
-
-fn unique_durable_approval(
-    events: &[JournalEvent],
-    digest: GateDigest,
-) -> Result<&BoundApprovalReceipt, RegisteredExecutionError> {
-    let mut approvals = events
-        .iter()
-        .filter_map(|event| match event {
-            JournalEvent::GateDecisionBoundEvent { record, .. } => record.bound_receipt.as_ref(),
-            _ => None,
-        })
-        .filter(|approval| approval.digest == digest);
-    let approval = approvals.next().ok_or(ExecutorError::Unauthorized)?;
-    if approvals.next().is_some() {
-        return Err(ExecutorError::Unauthorized.into());
-    }
-    Ok(approval)
 }

@@ -27,7 +27,7 @@ impl Shard {
         {
             return Err(RuntimeError::GateAlreadyOpen { gate: gate.gate.id });
         }
-        self.check_gate_suspendable(run)?;
+        self.check_bound_gate_suspendable(run, gate.gate.action)?;
         self.reserve_open_gate_slot()?;
         let opening_seq = self
             .append_gate_opened_bound_strict(gate.clone(), opened_at_ms, requester.clone())?
@@ -41,6 +41,29 @@ impl Shard {
             delegated_to: None,
         };
         self.bound_open_gates.insert(open.gate.gate.id, open);
+        Ok(())
+    }
+
+    fn check_bound_gate_suspendable(
+        &self,
+        run: RunId,
+        action: vb_core::ActionId,
+    ) -> RuntimeResult<()> {
+        let state = self.get_runtime_state_or_running(run);
+        let exact_pending = state == crate::shard::types::RuntimeState::Resumable
+            && self
+                .pending_action_get(run)
+                .is_some_and(|ticket| ticket.action == action);
+        let runnable = matches!(
+            state,
+            crate::shard::types::RuntimeState::Initial | crate::shard::types::RuntimeState::Running
+        ) && self.pending_action_get(run).is_none();
+        if (!exact_pending && !runnable)
+            || self.pending_timer_get(run).is_some()
+            || self.pending_ask_authorities.contains_key(&run)
+        {
+            return Err(RuntimeError::GateRunNotSuspendable { run, state });
+        }
         Ok(())
     }
 
