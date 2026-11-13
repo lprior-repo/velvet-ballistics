@@ -24,17 +24,19 @@
 // BINDING LEDGER
 // ============================================================================
 //   - `CompiledWorkflow::try_from_parts` exec signature
-//     <- crates/vb_core/src/workflow/compiled.rs:35-71
+//     <- crates/vb_core/src/workflow/compiled.rs:47-49
+//     Delegates to shared profile construction:
+//     crates/vb_core/src/workflow/profile_construct.rs:9-22
 //   - `validate_parts` structural validation
-//     <- crates/vb_core/src/workflow/validate.rs:20-45
+//     <- crates/vb_core/src/workflow/validate.rs:20-46
 //   - `validate_budget` budget policy validation
-//     <- crates/vb_core/src/workflow/validate.rs:112-118
+//     <- crates/vb_core/src/workflow/validate.rs:113-119
 //   - `validate_budget_result` budget error collapse
-//     <- crates/vb_core/src/workflow/validate.rs:120-129
+//     <- crates/vb_core/src/workflow/validate.rs:121-130
 //   - `WholeWorkflowBudget` field set
-//     <- crates/vb_core/src/budget/compute.rs:17-93
+//     <- crates/vb_core/src/budget/compute.rs:20-96
 //   - `WholeWorkflowBudget::compute`
-//     <- crates/vb_core/src/budget/compute.rs:100-106
+//     <- crates/vb_core/src/budget/compute.rs:103-109
 //   - `BoundednessPolicy` field set
 //     <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::DEFAULT`
@@ -56,11 +58,11 @@
 //   - `validate_resource_contract`
 //     <- crates/vb_core/src/workflow/resource_limits.rs:124-130
 //   - `validate_entry`
-//     <- crates/vb_core/src/workflow/validate.rs:146-148
+//     <- crates/vb_core/src/workflow/validate.rs:147-149
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
-//     <- crates/vb_core/src/workflow/validate.rs:150-155
-//     <- crates/vb_core/src/workflow/validate.rs:184-189
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:14-147
+//     <- crates/vb_core/src/workflow/validate.rs:151-170
+//     <- crates/vb_core/src/workflow/validate.rs:199-207
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:13-147
 //   - `validate_slots`
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:149-154
 //   - `validate_build_list`
@@ -93,11 +95,11 @@
 //     <- crates/vb_core/src/limits.rs:71-71
 //     <- crates/vb_core/src/limits.rs:75-75
 //   - `validate_reduce_branch_targets`
-//     <- crates/vb_core/src/workflow/validate.rs:157-170
+//     <- crates/vb_core/src/workflow/validate.rs:172-185
 //   - `validate_for_each_next_targets`
-//     <- crates/vb_core/src/workflow/validate.rs:172-182
+//     <- crates/vb_core/src/workflow/validate.rs:187-197
 //   - `validate_input_constraint`
-//     <- crates/vb_core/src/workflow/validate.rs:84-110
+//     <- crates/vb_core/src/workflow/validate.rs:85-111
 //   - `CompiledInputConstraint` field set
 //     <- crates/vb_core/src/workflow/input_constraint.rs:13-43
 //   - `validate_expr`, `validate_step`, `validate_slot`, `validate_const`
@@ -122,25 +124,25 @@
 //   - `validate_forward_edges`
 //     <- crates/vb_core/src/workflow/forward_edges.rs:13-41
 //   - `validate_kind_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:44-103
+//     <- crates/vb_core/src/workflow/forward_edges.rs:44-112
 //   - `validate_choose_slot_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:105-118
+//     <- crates/vb_core/src/workflow/forward_edges.rs:114-127
 //   - `validate_choose_expr_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:120-133
+//     <- crates/vb_core/src/workflow/forward_edges.rs:129-142
 //   - `validate_loop_done_only`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:135-137
+//     <- crates/vb_core/src/workflow/forward_edges.rs:144-146
 //   - `nearest_active_owner` (repeat_check_validate)
 //     <- crates/vb_core/src/workflow/repeat_check_validate.rs:11-29
 //   - `validate_loop_start_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:143-151
+//     <- crates/vb_core/src/workflow/forward_edges.rs:152-160
 //   - `validate_together_start_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:153-163
+//     <- crates/vb_core/src/workflow/forward_edges.rs:162-172
 //   - `validate_together_branch_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:165-173
+//     <- crates/vb_core/src/workflow/forward_edges.rs:174-182
 //   - `validate_forward_target`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:176-185
+//     <- crates/vb_core/src/workflow/forward_edges.rs:185-194
 //   - `push_loop_span`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:188-235
+//     <- crates/vb_core/src/workflow/forward_edges.rs:197-244
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
 //   - `walk_contains_together_start`
@@ -170,17 +172,17 @@
 //   - `validate_region_edges`
 //     <- crates/vb_core/src/workflow/loop_regions/edges.rs:14-39
 //   - `collect_kind_targets`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:41-60
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:41-62
 //   - `validate_edge`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:62-86
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:64-88
 //   - `owned_backedge`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:88-110
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:90-112
 //   - `validate_recovery_support`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:112-126
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:114-128
 //   - `is_finish`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:128-133
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:130-135
 //   - `collect_node_targets`
-//     <- crates/vb_core/src/workflow/traversal.rs:85-151
+//     <- crates/vb_core/src/workflow/traversal.rs:85-163
 //   - `crossing` (LoopRegionCrossing constructor)
 //     <- crates/vb_core/src/workflow/loop_regions.rs:157-163
 //   - `control_shape`
@@ -188,14 +190,14 @@
 //   - `start_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:54-67
 //   - `WorkflowError` discriminant set
-//     <- crates/vb_core/src/workflow/error.rs:13-250
+//     <- crates/vb_core/src/workflow/error.rs:13-265
 //   - `WorkflowParts` field set
 //     <- crates/vb_core/src/workflow/parts.rs:11-46
 //   - `ResourceContract` field set
 //     <- crates/vb_core/src/workflow/resource_contract.rs:8-45
 //   - `CompiledNode` / `CompiledNodeKind` discriminant set
 //     <- crates/vb_core/src/workflow/node.rs:14-25
-//     <- crates/vb_core/src/workflow/node_kind.rs:14-181
+//     <- crates/vb_core/src/workflow/node_kind.rs:14-210
 //   - `ExprProgram` / `ExprOp` discriminant set
 //     <- crates/vb_core/src/workflow/expr_program.rs:11-16
 //     <- crates/vb_core/src/workflow/expr_program.rs:41-100
@@ -227,7 +229,7 @@ pub mod production_try_from_parts;
 use vstd::prelude::*;
 
 /// Pins the `production_try_from_parts::CompiledNodeKind` payloads
-/// (`crates/vb_core/src/workflow/node_kind.rs:14-181`) so a field drift
+/// (`crates/vb_core/src/workflow/node_kind.rs:14-210`) so a field drift
 /// breaks the build. The `Do` / `SetConst` / `Finish` arms are the
 /// only kinds this mirror models; constructing each pins its field set.
 #[verifier::external]
@@ -248,7 +250,7 @@ fn compiled_node_kind_drift_check() {
 // Error discriminant mirror (SpecWorkflowError)
 // ============================================================================
 /// Mirrors the production `WorkflowError` discriminant set at
-/// `crates/vb_core/src/workflow/error.rs:13-250`. The projection collapses
+/// `crates/vb_core/src/workflow/error.rs:13-265`. The projection collapses
 /// all variants into one closed set; `Ok` is signalled separately so the
 /// decision fn has a single Ok / Err shape.
 #[derive(Clone, Copy)]
@@ -382,7 +384,7 @@ pub struct SpecResourceContract {
     pub allows_secret_results: bool,
 }
 /// Mirrors the production `CompiledNodeKind` discriminant set at
-/// `crates/vb_core/src/workflow/node_kind.rs:14-181`. Discriminant ordering
+/// `crates/vb_core/src/workflow/node_kind.rs:14-210`. Discriminant ordering
 /// matches the production source for binding-drift detection.
 /// `Box<[...]>` slices are flattened to `(vec_len, ptr-as-u32)` pairs;
 /// the projection only consumes slot/step indices, not element payload
@@ -581,7 +583,7 @@ pub struct SpecAccessor {
 /// Mirrors the four numeric bounds of the production
 /// `CompiledInputConstraint` at
 /// `crates/vb_core/src/workflow/input_constraint.rs:13-43`. Only the bounds
-/// `validate_input_constraint` (workflow/validate.rs:84-110) reads are
+/// `validate_input_constraint` (workflow/validate.rs:85-111) reads are
 /// mirrored; `optional`, `nullable`, `default_value`, `element`,
 /// `allow_extra`, and `secret` are out of scope for the validation
 /// decision. Flattened `has_` / value pairs follow the `SpecNodeMeta`
@@ -598,7 +600,7 @@ pub struct SpecInputConstraint {
     pub max_length: i64,
 }
 /// One ordered validation operation of production
-/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:14-147`)
+/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:13-147`)
 /// for a single node. The per-node `kind_refs` inventory lists these
 /// in the exact order production checks them, so the projection
 /// returns the same first failure production's `?`-propagation
@@ -621,9 +623,9 @@ pub enum SpecKindRef {
     NonZero(u32),
 }
 /// Mirrors the production `WholeWorkflowBudget` field set at
-/// `crates/vb_core/src/budget/compute.rs:17-93`: the computed budget
+/// `crates/vb_core/src/budget/compute.rs:20-96`: the computed budget
 /// `WholeWorkflowBudget::compute` derives by walking the IR
-/// (budget/compute.rs:100-106). Production `u64` fields stay `u64`;
+/// (budget/compute.rs:103-109). Production `u64` fields stay `u64`;
 /// production `u16` fields are promoted to `u32` per this
 /// file's numeric-mirror convention. The seven fields
 /// `BoundednessPolicy::DEFAULT.validate` never reads
@@ -693,7 +695,7 @@ pub struct SpecWorkflowParts {
     /// `out_error_slot[i]` = the slot index in `node.error_slot` if
     /// Some, else u32::MAX.
     /// `out_id[i]` = `node.id` (StepIdx as u32) — used by
-    /// `validate_node_id` (workflow/validate.rs:131-144).
+    /// `validate_node_id` (workflow/validate.rs:132-145).
     /// `out_kind_disc[i]` = closed-set discriminant for the node kind
     /// (see `spec_node_kind_disc`).
     /// `out_has_branch_table[i]` = 1 iff the kind carries a
@@ -708,12 +710,12 @@ pub struct SpecWorkflowParts {
     pub accessors: Vec<SpecAccessor>,
     pub resource_contract: SpecResourceContract,
     /// Flattened input slot indices consumed by `validate_input_slots`
-    /// (workflow/validate.rs:47-82). Each value is the slot index of one
+    /// (workflow/validate.rs:48-83). Each value is the slot index of one
     /// input slot declaration. The projection checks: all in-bounds,
     /// no duplicates, strictly increasing order.
     pub input_slots: Vec<u32>,
     /// Per-slot constraint inventory consumed by the per-slot
-    /// `validate_input_constraint` (workflow/validate.rs:84-110).
+    /// `validate_input_constraint` (workflow/validate.rs:85-111).
     /// `input_constraints[i]` is the constraint of `input_slots[i]`.
     /// The projection treats a missing entry (an
     /// `input_constraints` shorter than `input_slots`) as an
@@ -723,7 +725,7 @@ pub struct SpecWorkflowParts {
     /// edge closure (`validate_region_edges`,
     /// loop_regions/edges.rs:14-39). `kind_targets[i]` is node i's
     /// successor list in `collect_node_targets` order
-    /// (workflow/traversal.rs:85-151): branch targets then `otherwise`
+    /// (workflow/traversal.rs:85-163): branch targets then `otherwise`
     /// for Choose / ChooseSlot, branch entries then join for
     /// TogetherStart, body then done for the loop Start / Next /
     /// Attempt / RetryCheck kinds, done only for RepeatCheck, entry
@@ -732,7 +734,7 @@ pub struct SpecWorkflowParts {
     /// The projection treats a missing entry (a `kind_targets`
     /// shorter than `nodes_meta`) as an empty inventory for the
     /// tail nodes. The `try_reserve_exact` reservation inside
-    /// `collect_kind_targets` (edges.rs:41-60) has no projection
+    /// `collect_kind_targets` (edges.rs:41-62) has no projection
     /// counterpart: the inventory is caller-supplied, so the
     /// allocation step is out of scope.
     pub kind_targets: Vec<Vec<u32>>,
@@ -758,7 +760,7 @@ pub struct SpecWorkflowParts {
     /// `node.output.slot().is_none() && *source == slot` guard.
     pub written_slots: Vec<Vec<u32>>,
     /// Per-node ordered kind-reference inventory consumed by
-    /// `validate_node_kind` (workflow/validate_node_kind.rs:14-147).
+    /// `validate_node_kind` (workflow/validate_node_kind.rs:13-147).
     /// `kind_refs[i]` is node i's `SpecKindRef` list in the exact
     /// order production checks the kind payload: SetConst
     /// Const(value); Copy Slot(source); EvalExpr Expr(expr);
@@ -818,9 +820,9 @@ pub struct SpecWorkflowParts {
     /// symbol at or beyond `symbols_count`.
     pub build_object_field_symbols: Vec<Vec<u32>>,
     /// Caller-supplied computed budget consumed by step 4
-    /// (`validate_budget`, workflow/validate.rs:112-118). Production
+    /// (`validate_budget`, workflow/validate.rs:113-119). Production
     /// derives it with `WholeWorkflowBudget::compute`
-    /// (budget/compute.rs:100-106) and validates it against
+    /// (budget/compute.rs:103-109) and validates it against
     /// `BoundednessPolicy::DEFAULT` (budget/validate.rs:60-84); the
     /// projection checks the supplied value with `budget_error`
     /// instead, so the compute walk stays with the caller.
@@ -885,7 +887,7 @@ pub struct SpecNodeMeta {
     /// `body` step of the branch-target pair
     /// (`validate_reduce_branch_targets` /
     /// `validate_for_each_next_targets`,
-    /// workflow/validate.rs:157-170 / workflow/validate.rs:172-182).
+    /// workflow/validate.rs:172-185 / workflow/validate.rs:187-197).
     pub branch_body: u32,
     /// `done` step of the branch-target pair.
     pub branch_done: u32,
@@ -895,7 +897,7 @@ pub struct SpecNodeMeta {
 // ============================================================================
 /// Stable discriminant for `SpecNodeKind` mirroring the production
 /// `CompiledNodeKind` ordering at
-/// `crates/vb_core/src/workflow/node_kind.rs:14-181`. Used by the
+/// `crates/vb_core/src/workflow/node_kind.rs:14-210`. Used by the
 /// validator projection to switch on node kind without carrying
 /// the full enum payload. Each discriminant is exposed as a
 /// `const fn` (matching the established pattern in this repo for
@@ -945,14 +947,14 @@ pub const fn spec_node_kind_finish() -> u32 { 33 }
 /// node_count <= 65535) so it never collides with a real index.
 pub const fn spec_ref_none() -> u32 { u32::MAX }
 /// Discriminants for the `EdgeOrigin` of a loop-region edge check
-/// (`validate_edge`, loop_regions/edges.rs:62-86). The projection
+/// (`validate_edge`, loop_regions/edges.rs:64-88). The projection
 /// carries the origin as a `u32` so the spec layer can switch on it
 /// without importing the production enum.
 pub const fn spec_loop_edge_origin_next() -> u32 { 0 }
 pub const fn spec_loop_edge_origin_error() -> u32 { 1 }
 pub const fn spec_loop_edge_origin_kind() -> u32 { 2 }
 /// Mirrors the production `CompiledLoopRegion`
-/// (`crates/vb_core/src/workflow/loop_regions.rs:16-21`): the
+/// (`crates/vb_core/src/workflow/loop_regions.rs:14-19`): the
 /// owning start, first body step, unique control latch, and owning
 /// completion target of one validated loop backedge.
 #[derive(Clone, Copy)]
@@ -1014,8 +1016,8 @@ pub const fn spec_workflow_error_is_bound_violation(e: SpecWorkflowError) -> boo
 // Pure decision fn: branch-target alias
 // ============================================================================
 /// Pure projection of `validate_reduce_branch_targets`
-/// (workflow/validate.rs:157-170) and `validate_for_each_next_targets`
-/// (workflow/validate.rs:172-182). Returns the alias error when the
+/// (workflow/validate.rs:172-185) and `validate_for_each_next_targets`
+/// (workflow/validate.rs:187-197). Returns the alias error when the
 /// node's branch-target pair aliases (`body == done`); `None`
 /// otherwise, including when the caller supplied no branch targets
 /// (`has_branch_targets == 0`) or the kind carries no branch pair.
@@ -1037,7 +1039,7 @@ pub fn branch_target_alias_error(meta: SpecNodeMeta) -> Option<SpecWorkflowError
 // Pure decision fn: input-constraint consistency
 // ============================================================================
 /// Pure projection of `validate_input_constraint`
-/// (workflow/validate.rs:84-110), in production order: min/max range,
+/// (workflow/validate.rs:85-111), in production order: min/max range,
 /// then min_length/max_length range, then negative length bounds.
 /// Returns `InconsistentInputConstraint` for the first inconsistency;
 /// `None` when the constraint is consistent. The
@@ -1066,7 +1068,7 @@ pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWor
 // Pure decision fn: per-node validator
 // ============================================================================
 /// Pure projection of one ordered `SpecKindRef` inventory:
-/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:14-147`)
+/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:13-147`)
 /// checks the kind payload references in inventory order and returns
 /// the first failure production's `?`-propagation would return:
 /// `SlotOutOfBounds` (`validate_slot`, crates/vb_core/src/workflow/validate_refs.rs:56-62),
@@ -1137,7 +1139,7 @@ pub fn kind_ref_error(
 /// its `DEFAULT` cap (budget/validate.rs:60-84), or `None` when every
 /// dimension is within caps. Production collapses the typed
 /// `BudgetError` to `WorkflowError::BudgetPolicyExceeded`
-/// (`validate_budget_result`, workflow/validate.rs:120-129), so the
+/// (`validate_budget_result`, workflow/validate.rs:121-130), so the
 /// projection carries no dimension payload: the first-violation
 /// order is modelled by the check order itself. Caps, in
 /// production order: total steps 1_000_000, total slots 65_535,
@@ -1230,7 +1232,7 @@ pub fn budget_error(budget: SpecComputedBudget) -> Option<SpecWorkflowError> {
 }
 
 /// Pure projection of `validate_node_id`
-/// (workflow/validate.rs:131-144): returns `Some(NodeIdMismatch)`
+/// (workflow/validate.rs:132-145): returns `Some(NodeIdMismatch)`
 /// when the node's id differs from its table position, or `None`
 /// when they match. Production's `u16::try_from(index)` arm is
 /// unreachable on inputs that reach step 1e: step 1a caps
@@ -1417,7 +1419,7 @@ pub fn build_object_symbols_error(parts: &SpecWorkflowParts) -> Option<SpecWorkf
 
 /// Pure projection of `validate_node_common`, `validate_node_kind`,
 /// and the branch-target alias checks at
-/// `crates/vb_core/src/workflow/validate.rs:150-155`, applied to a
+/// `crates/vb_core/src/workflow/validate.rs:151-170`, applied to a
 /// single node's flattened metadata. The projection returns
 /// `None` when the node passes every per-node check; otherwise it
 /// returns the *first* specific failure the production body would
@@ -1445,7 +1447,7 @@ pub fn validate_node_pure(
     constants_len: u32,
     symbols_count: u32,
 ) -> Option<SpecWorkflowError> {
-    // 1. validate_node_common (workflow/validate.rs:184-189)
+    // 1. validate_node_common (workflow/validate.rs:199-207)
     if meta.has_output == 1 && meta.out_slot >= slot_count {
         return Some(SpecWorkflowError::SlotOutOfBounds);
     }
@@ -1458,7 +1460,7 @@ pub fn validate_node_pure(
     if meta.has_error_slot == 1 && meta.error_slot >= slot_count {
         return Some(SpecWorkflowError::SlotOutOfBounds);
     }
-    // 2. validate_node_kind (workflow/validate_node_kind.rs:14-147). Choose /
+    // 2. validate_node_kind (workflow/validate_node_kind.rs:13-147). Choose /
     // ChooseSlot run validate_branch_route first (EmptyBranchTable
     // when zero branches and no otherwise), then the ordered
     // kind-ref inventory; every other kind runs the inventory
@@ -1477,8 +1479,8 @@ pub fn validate_node_pure(
     ) {
         return Some(err);
     }
-    // 3. validate_reduce_branch_targets (workflow/validate.rs:157-170)
-    // + validate_for_each_next_targets (workflow/validate.rs:172-182).
+    // 3. validate_reduce_branch_targets (workflow/validate.rs:172-185)
+    // + validate_for_each_next_targets (workflow/validate.rs:187-197).
     // Production runs these after validate_node_kind, per node, in
     // node order; the projection calls the shared alias decision
     // here so the first aliasing node reports first.
@@ -1611,7 +1613,7 @@ pub fn loop_region_relations_error(parts: &SpecWorkflowParts) -> Option<SpecWork
 }
 
 /// Finds the cached region a node controls, if any
-/// (`regions.get(node.id)` in edges.rs:88-110). The table holds one
+/// (`regions.get(node.id)` in edges.rs:90-112). The table holds one
 /// entry per cached control, so the scan is unique when it hits.
 #[verifier::external]
 fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLoopRegion> {
@@ -1623,7 +1625,7 @@ fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLo
     None
 }
 
-/// Pure projection of `is_finish` (edges.rs:128-133): the step
+/// Pure projection of `is_finish` (edges.rs:130-135): the step
 /// names a `Finish` node. Production indexes the node table by
 /// position; the projection scans by id, which agrees on every
 /// input that reached this step because step 1e validates `meta.id`
@@ -1638,7 +1640,7 @@ fn is_finish_step(parts: &SpecWorkflowParts, step: u32) -> bool {
     false
 }
 
-/// Pure projection of `owned_backedge` (edges.rs:88-110): a
+/// Pure projection of `owned_backedge` (edges.rs:90-112): a
 /// backward edge inside a region is owned iff it comes from the
 /// origin production expects for the node's kind (`Next` for a
 /// RepeatCheck, `Kind` otherwise) and the source node itself
@@ -1668,7 +1670,7 @@ fn owned_backedge(
     }
 }
 
-/// Pure projection of `validate_edge` (edges.rs:62-86) for one edge
+/// Pure projection of `validate_edge` (edges.rs:64-88) for one edge
 /// `from -> to` against one region. An entry edge is allowed only
 /// as a `Kind` edge from the region's start to its body; an exit
 /// edge only to the region's done step or a `Finish` node; a
@@ -1710,7 +1712,7 @@ fn validate_loop_edge(
 /// node is checked in table order — routing `next` edge, routing
 /// error-handler edge, kind-target edges from the caller-supplied
 /// `kind_targets` inventory, then recovery support
-/// (`validate_recovery_support`, edges.rs:112-126): a node inside
+/// (`validate_recovery_support`, edges.rs:114-128): a node inside
 /// the region with an internal error handler, or an `ErrorHandler`
 /// node inside the region, returns `LoopRegionUnsupported`.
 /// Returns the first failure in that order, else `None`; `None`
@@ -1906,7 +1908,7 @@ pub fn repeat_counter_ownership_error(parts: &SpecWorkflowParts) -> Option<SpecW
 // Pure decision fns: validate_forward_edges
 // ============================================================================
 /// Pure projection of `validate_forward_target`
-/// (workflow/forward_edges.rs:176-185): a target step is strictly forward
+/// (workflow/forward_edges.rs:185-194): a target step is strictly forward
 /// from the current node iff it exceeds the node's id. The
 /// projection compares against `meta.id`, which step 1e validates
 /// against the table position; production compares
@@ -1921,7 +1923,7 @@ fn forward_target_error(target: u32, current: u32) -> Option<SpecWorkflowError> 
 }
 
 /// Pure projection of the loop-span end `push_loop_span` reads
-/// (workflow/forward_edges.rs:188-235): the `done` step of a loop start
+/// (workflow/forward_edges.rs:197-244): the `done` step of a loop start
 /// kind, or the `join` step of a `TogetherStart`, from the
 /// caller-supplied `kind_targets` inventory (`body` then `done`
 /// for loop starts, branch entries then `join` for
@@ -2048,7 +2050,7 @@ fn repeat_check_owner_error(
 }
 
 /// Pure projection of one `kind_targets` entry of
-/// `validate_kind_edges` (workflow/forward_edges.rs:44-103): the target
+/// `validate_kind_edges` (workflow/forward_edges.rs:44-112): the target
 /// at `pos` must point strictly forward from the node. A missing
 /// inventory entry, or a missing position, means the caller
 /// supplied no target there, so the check passes.
@@ -2072,8 +2074,8 @@ fn kind_target_forward_error(
 /// Pure projection of the forward check over every
 /// `kind_targets` entry of one node (`validate_choose_slot_edges`
 /// / `validate_choose_expr_edges` /
-/// `validate_together_start_edges`, workflow/forward_edges.rs:105-118,
-/// workflow/forward_edges.rs:120-133, workflow/forward_edges.rs:153-163): branch targets in inventory order,
+/// `validate_together_start_edges`, workflow/forward_edges.rs:114-127,
+/// workflow/forward_edges.rs:129-142, workflow/forward_edges.rs:162-172): branch targets in inventory order,
 /// then the fallback / join.
 #[verifier::external]
 fn kind_targets_forward_error(
@@ -2094,7 +2096,7 @@ fn kind_targets_forward_error(
 }
 
 /// Pure projection of `validate_kind_edges`
-/// (workflow/forward_edges.rs:44-103) for one node: which
+/// (workflow/forward_edges.rs:44-112) for one node: which
 /// `kind_targets` positions production checks depends on the
 /// kind. Loop `*Next` / `*Attempt` / `RetryCheck` / `RepeatCheck`
 /// / `ErrorHandler` kinds check only their forward target
@@ -2211,7 +2213,7 @@ pub fn forward_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowErro
 /// (workflow/traversal.rs:12-81): breadth-first walk from the entry
 /// over each node's routing `next` step, routing error handler,
 /// and kind targets (`collect_node_targets`,
-/// workflow/traversal.rs:85-151). Returns the first unreachable node
+/// workflow/traversal.rs:85-163). Returns the first unreachable node
 /// in table order, else `None`. An entry at or past the node
 /// count returns `None`, matching production (entry bounds are
 /// already enforced by step 1b); an out-of-range target is
@@ -2402,28 +2404,28 @@ pub fn nested_together_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowEr
 // Pure decision fn: top-level try_from_parts validation
 // ============================================================================
 /// Pure projection of `CompiledWorkflow::try_from_parts` validation
-/// at `crates/vb_core/src/workflow/compiled.rs:35-71`. The production
+/// at `crates/vb_core/src/workflow/compiled.rs:47-49`. The production
 /// body short-circuits via `?`-propagation in this order:
 ///
 ///   1. `validate_parts(&parts)?` — structural validation
-///      (workflow/validate.rs:20-45).
+///      (workflow/validate.rs:20-46).
 ///   2. `loop_regions::validate(&parts)?` — loop-region pairing,
 ///      relations, edge closure, and recovery support
-///      (loop_regions.rs:59-72). The projection models all four
+///      (loop_regions.rs:96-109). The projection models all four
 ///      sub-steps in production order: pairing
 ///      (`loop_pairing_error`), region relations
 ///      (`loop_region_relations_error`), edge closure
 ///      (`loop_region_edges_error`), and recovery support (inside
 ///      the edge step).
 ///   3. `loop_regions::nested_activation_map(&parts, &loop_regions)?`
-///      (loop_regions.rs:78-83). The map derives only
+///      (loop_regions.rs:115-120). The map derives only
 ///      `StepOutOfBounds` / `ResourceContractExceeded` failures from
 ///      already-validated region tables, so the projection treats it
 ///      as passing for inputs that reached this step.
 ///   4. `validate_budget(&parts)?` — whole-workflow budget
-///      (workflow/validate.rs:112-118).
+///      (workflow/validate.rs:113-119).
 ///   5. `validate_input_slots(&parts)?` — input slot bounds,
-///      duplicates, and ordering (workflow/validate.rs:47-82).
+///      duplicates, and ordering (workflow/validate.rs:48-83).
 ///
 /// `validate_parts` itself walks (in this order):
 ///   - empty nodes check,
@@ -2561,7 +2563,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if contract.max_transitions_per_tick == 0 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
-    // 1b. entry bounds (workflow/validate.rs:146-148, workflow/validate.rs:20-45).
+    // 1b. entry bounds (workflow/validate.rs:147-149, workflow/validate.rs:20-46).
     if parts.entry >= node_count {
         return SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds);
     }
@@ -2592,8 +2594,8 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // no kind-payload references.
     let empty_refs: Vec<SpecKindRef> = Vec::new();
     for (index, meta) in parts.nodes_meta.iter().enumerate() {
-        // validate_node_id (workflow/validate.rs:131-144), before
-        // validate_node for this node (workflow/validate.rs:150-155).
+        // validate_node_id (workflow/validate.rs:132-145), before
+        // validate_node for this node (workflow/validate.rs:151-170).
         if let Some(err) = node_id_error(*meta, index) {
             return SpecValidationResult::Err(err);
         }
@@ -2668,7 +2670,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(err);
     }
     // ---- Step 2: loop-region validation ----
-    // Production calls loop_regions::validate (loop_regions.rs:59-72)
+    // Production calls loop_regions::validate (loop_regions.rs:96-109)
     // next, in this order: pairing (`cache_control` +
     // `unique_owner`, crates/vb_core/src/workflow/loop_regions/pairing.rs:8-50), region relations
     // (`validate_region_relations`, crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71), then edge
@@ -2689,15 +2691,15 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(err);
     }
     // ---- Step 3: nested activation map ----
-    // Production derives nested_activation_map (loop_regions.rs:78-83)
+    // Production derives nested_activation_map (loop_regions.rs:115-120)
     // from the validated region table; it can only fail with
     // StepOutOfBounds / ResourceContractExceeded on tables built
     // from already-validated nodes, so the projection treats it as
     // passing for inputs that reached this step.
     // ---- Step 4: budget validation ----
-    // Production calls WholeWorkflowBudget::compute (budget/compute.rs:100-106)
-    // then BoundednessPolicy::DEFAULT.validate (budget/validate.rs:88-147);
-    // validate_budget_result (workflow/validate.rs:120-129) collapses
+    // Production calls WholeWorkflowBudget::compute (budget/compute.rs:103-109)
+    // then BoundednessPolicy::DEFAULT.validate (budget/validate.rs:88-146);
+    // validate_budget_result (workflow/validate.rs:121-130) collapses
     // any BudgetError to BudgetPolicyExceeded. The projection checks
     // the caller-supplied `computed_budget` inventory with
     // `budget_error`, which mirrors the 23 validated dimensions in
@@ -2708,10 +2710,10 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(err);
     }
     // ---- Step 5: input slot validation ----
-    // Production calls validate_input_slots(&parts)? (crates/vb_core/src/workflow/compiled.rs:35-71,
-    // body at workflow/validate.rs:47-82). The projection checks: all
+    // Production calls validate_input_slots(&parts)? (crates/vb_core/src/workflow/compiled.rs:47-49,
+    // body at workflow/validate.rs:48-83). The projection checks: all
     // input slot indices in-bounds, no duplicates, strictly increasing,
-    // then the per-slot validate_input_constraint (workflow/validate.rs:84-110) from the
+    // then the per-slot validate_input_constraint (workflow/validate.rs:85-111) from the
     // caller-supplied `input_constraints` inventory (a missing entry
     // is unconstrained).
     let mut prev_slot: Option<u32> = None;

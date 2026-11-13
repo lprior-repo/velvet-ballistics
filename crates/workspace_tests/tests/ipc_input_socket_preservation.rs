@@ -406,7 +406,7 @@ fn malformed_inputs_fail_before_any_submission_is_enqueued_or_journaled() -> Tes
 }
 
 fn socket_dir() -> TestResult<tempfile::TempDir> {
-    let mut dir = tempfile::Builder::new().prefix("vb-ipc-owned-").tempdir()?;
+    let dir = tempfile::Builder::new().prefix("vb-ipc-owned-").tempdir()?;
     if dir
         .path()
         .join("exchange.sock")
@@ -415,9 +415,7 @@ fn socket_dir() -> TestResult<tempfile::TempDir> {
         .len()
         >= 108
     {
-        dir = tempfile::Builder::new()
-            .prefix("vb-ipc-owned-")
-            .tempdir_in("/tmp")?;
+        return Err("configured scratch path exceeds Unix socket limit".into());
     }
     Ok(dir)
 }

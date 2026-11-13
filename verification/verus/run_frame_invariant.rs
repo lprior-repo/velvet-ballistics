@@ -31,9 +31,9 @@
 //
 // BINDING LEDGER:
 //   - `RunFrame::new`                   <- extern::run_frame_new
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:35-55)
 //   - `RunFrame::reinitialize`          <- extern::run_frame_reinitialize
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:60-94)
 //   - `RunFrame::step_count`            <- extern::run_frame_step_count
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24)
 //   - `RunFrame::slot_count`            <- extern::run_frame_slot_count
@@ -319,13 +319,15 @@ pub open spec fn spec_taint_valid_write(taint: Taint) -> bool {
 // exercise the contracts via the exec wrappers in the
 // "Production-bound exec fns" section.
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33)
+// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:35-55)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
 //     when step_count == 0.
 //   - Err(CoreError::InvalidProgramCounter { step: first_step })
 //     when step_count > 0 AND first_step.as_usize() >= step_count.
+//   - Err(CoreError::AllocationFailed) only after valid dimensions, when
+//     either frame array cannot be reserved at its exact capacity.
 //   - Ok(frame) AND spec_run_frame_new_postconditions(spec_from_run_frame(frame),
 //     step_count, slot_count) otherwise.
 pub assume_specification[ production::run_frame_new ](
@@ -345,6 +347,10 @@ pub assume_specification[ production::run_frame_new ](
                 &&& step.0 == first_step.0
                 &&& (first_step.0 as int) >= (step_count as int)
             },
+            Err(CoreError::AllocationFailed) => {
+                &&& step_count > 0
+                &&& (first_step.0 as int) < (step_count as int)
+            },
             Err(_) => false,
             Ok(frame) => spec_run_frame_new_postconditions(
                 spec_from_run_frame(frame),
@@ -355,7 +361,7 @@ pub assume_specification[ production::run_frame_new ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70)
+// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:60-94)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })

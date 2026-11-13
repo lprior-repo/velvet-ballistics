@@ -12,13 +12,13 @@ enum LoopState {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) struct LoopShape {
-    pub(super) body: StepIdx,
-    pub(super) done: StepIdx,
+pub(crate) struct LoopShape {
+    pub(crate) body: StepIdx,
+    pub(crate) done: StepIdx,
     state: LoopState,
 }
 
-pub(super) fn control_shape(node: &CompiledNode) -> Option<LoopShape> {
+pub(crate) fn control_shape(node: &CompiledNode) -> Option<LoopShape> {
     let (body, done) = match node.kind {
         CompiledNodeKind::ForEachNext { body, done, .. }
         | CompiledNodeKind::CollectNext { body, done, .. }
@@ -51,7 +51,7 @@ fn control_state(node: &CompiledNode) -> Option<LoopState> {
     }
 }
 
-pub(super) fn start_shape(node: &CompiledNode) -> Option<LoopShape> {
+pub(crate) fn start_shape(node: &CompiledNode) -> Option<LoopShape> {
     let (body, done) = match node.kind {
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::CollectStart { body, done, .. }

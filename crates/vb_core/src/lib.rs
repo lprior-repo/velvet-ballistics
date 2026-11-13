@@ -24,6 +24,7 @@ pub mod diagnostic;
 pub mod engine;
 pub mod error;
 pub mod errors;
+pub mod execution_lanes;
 pub mod frame;
 pub mod ids;
 pub mod input_schema;
