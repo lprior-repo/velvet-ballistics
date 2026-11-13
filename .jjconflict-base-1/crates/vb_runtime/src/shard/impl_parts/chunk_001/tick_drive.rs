@@ -66,7 +66,11 @@ impl Shard {
     }
 
     fn drive_one_due_timer(&mut self) -> RuntimeResult<()> {
-        self.drive_one_due_timer_at(std::time::Instant::now())
+        let now = std::time::Instant::now();
+        if self.run_aggregate.pending_timer_due_peek(now).is_some() {
+            return self.drive_one_due_timer_at(now);
+        }
+        self.drive_one_pending_run()
     }
 
     pub(super) fn drive_one_due_timer_at(&mut self, now: std::time::Instant) -> RuntimeResult<()> {
@@ -75,19 +79,6 @@ impl Shard {
             return Ok(());
         };
         self.handle_timer_at(entry.run, entry.generation, entry.deadline, entry.kind, now)
-    }
-
-    fn drive_one_ready_run(&mut self) -> RuntimeResult<()> {
-        let now = std::time::Instant::now();
-        let due = self
-            .pending_timer_iter()
-            .filter(|(_, timer)| timer.deadline <= now)
-            .min_by_key(|(run, timer)| (timer.deadline, run.get()))
-            .map(|(run, timer)| (*run, *timer));
-        let Some((run, timer)) = due else {
-            return self.drive_one_pending_run();
-        };
-        self.handle_timer(run, timer.generation, timer.deadline, timer.kind)
     }
 
     fn tick_inner(&mut self) -> RuntimeResult<bool> {
