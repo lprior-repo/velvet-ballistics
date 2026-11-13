@@ -108,7 +108,10 @@ pub(crate) fn validate_raw_log(
         Ok(t) => t,
         Err(msg) => return vec![format!("manifest row {}: raw_log_path {}", row_number, msg)],
     };
-    if text.trim().is_empty() {
+    if text
+        .trim_matches(crate::source_text::legacy_whitespace)
+        .is_empty()
+    {
         return vec![format!(
             "manifest row {}: raw_log_path is empty {}",
             row_number,

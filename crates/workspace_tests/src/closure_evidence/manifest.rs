@@ -35,7 +35,7 @@ fn parse_row(
             return;
         }
     };
-    let trimmed = line.trim();
+    let trimmed = line.trim_matches(crate::source_text::legacy_whitespace);
     if trimmed.is_empty() {
         return;
     }

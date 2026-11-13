@@ -8,6 +8,9 @@ use std::env;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+#[path = "../source_validators/text.rs"]
+mod source_text;
+
 #[path = "../source_validators/exhaustiveness/parser.rs"]
 mod exhaustiveness_parser;
 

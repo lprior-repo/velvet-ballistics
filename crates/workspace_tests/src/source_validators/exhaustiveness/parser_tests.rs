@@ -1,6 +1,33 @@
 use super::*;
 
 #[test]
+fn legacy_control_whitespace_does_not_hide_enum_variants() {
+    for blank in ["\u{1c}", "\u{1d}", "\u{1e}", "\u{1f}"] {
+        let body = format!("First,\n{blank}Second,\n");
+        assert_eq!(
+            extract_enum_variants(&body).expect("variants"),
+            vec!["First".to_string(), "Second".to_string()],
+            "blank={blank:?}"
+        );
+    }
+}
+
+#[test]
+fn legacy_line_separators_do_not_hide_enum_variants() {
+    for separator in [
+        "\n", "\r", "\r\n", "\u{b}", "\u{c}", "\u{1c}", "\u{1d}", "\u{1e}", "\u{85}", "\u{2028}",
+        "\u{2029}",
+    ] {
+        let body = format!("First,{separator}Second,");
+        assert_eq!(
+            extract_enum_variants(&body).expect("variants"),
+            vec!["First".to_string(), "Second".to_string()],
+            "separator={separator:?}"
+        );
+    }
+}
+
+#[test]
 fn strip_line_comments() {
     let input = "let x = 1; // comment";
     let result = strip_comments(input).expect("strip ok");

@@ -37,7 +37,12 @@ pub(crate) fn exit_code_is_zero(data: &serde_json::Map<String, serde_json::Value
 }
 
 pub(crate) fn is_value_missing(v: &serde_json::Value) -> bool {
-    v.is_null() || (v.is_string() && v.as_str().is_some_and(|s| s.trim().is_empty()))
+    v.is_null()
+        || (v.is_string()
+            && v.as_str().is_some_and(|s| {
+                s.trim_matches(crate::source_text::legacy_whitespace)
+                    .is_empty()
+            }))
 }
 
 pub(crate) fn string_field(

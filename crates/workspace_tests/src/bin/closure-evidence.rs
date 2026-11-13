@@ -8,6 +8,9 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[path = "../source_validators/text.rs"]
+mod source_text;
+
 #[path = "../closure_evidence/mod.rs"]
 mod closure_evidence;
 
@@ -123,7 +126,10 @@ fn resolve_path(root: &Path, raw_path: &str) -> PathBuf {
 }
 
 fn compact(text: &str) -> String {
-    let words: Vec<&str> = text.split_whitespace().collect();
+    let words: Vec<&str> = text
+        .split(source_text::legacy_whitespace)
+        .filter(|word| !word.is_empty())
+        .collect();
     words.join(" ").chars().take(500).collect()
 }
 

@@ -107,8 +107,11 @@ pub(crate) fn extract_enum_variants(body: &str) -> Result<Vec<String>, String> {
     let variant_re = Regex::new(r"^([A-Z][A-Za-z0-9_]*)\b(?:\s*[({,]|$)")
         .map_err(|e| format!("variant regex: {}", e))?;
     let variants = body
-        .lines()
-        .map(str::trim)
+        .split([
+            '\n', '\r', '\u{b}', '\u{c}', '\u{1c}', '\u{1d}', '\u{1e}', '\u{85}', '\u{2028}',
+            '\u{2029}',
+        ])
+        .map(|line| line.trim_matches(crate::source_text::legacy_whitespace))
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .filter_map(|line| variant_re.captures(line))
         .filter_map(|cap| cap.get(1).map(|name| name.as_str().to_owned()))

@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use crate::closure_evidence::checks::{exit_code_is_zero, string_field};
 
 fn is_blank(s: &str) -> bool {
-    s.trim().is_empty()
+    s.trim_matches(crate::source_text::legacy_whitespace)
+        .is_empty()
 }
 
 fn check_resolution_kind(row: usize, kind: &str) -> Option<String> {

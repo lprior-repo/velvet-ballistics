@@ -126,7 +126,8 @@ fn check_closure_prose(issue: &Issue) -> Option<String> {
 }
 
 fn is_blank(s: &str) -> bool {
-    s.trim().is_empty()
+    s.trim_matches(crate::source_text::legacy_whitespace)
+        .is_empty()
 }
 
 fn row_closes_or_links_followup(data: &serde_json::Map<String, serde_json::Value>) -> bool {
