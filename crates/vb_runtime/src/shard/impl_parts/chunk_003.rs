@@ -7,6 +7,7 @@ impl ShardConfig {
         trace_capacity: usize,
         step_budget_per_tick: u64,
         max_active_runs: usize,
+        max_open_gates: usize,
         policy: vb_core::policy::RuntimePolicy,
     ) -> RuntimeResult<Self> {
         if !is_valid_command_queue_capacity(command_queue_capacity) {
@@ -28,11 +29,15 @@ impl ShardConfig {
         if max_active_runs == 0 {
             return Err(RuntimeError::ActiveRunCapacityZero);
         }
+        if max_open_gates == 0 {
+            return Err(RuntimeError::OpenGateCapacityZero);
+        }
         Ok(Self {
             command_queue_capacity,
             trace_capacity,
             step_budget_per_tick,
             max_active_runs,
+            max_open_gates,
             policy,
         })
     }

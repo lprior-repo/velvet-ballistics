@@ -102,6 +102,7 @@ fn shard_fill_queue_to_capacity_returns_queue_full() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -187,6 +188,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
         trace_capacity: 4,
         step_budget_per_tick: 0,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -298,6 +300,7 @@ fn shard_enqueue_enforces_admitted_per_run_queue_depth() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);

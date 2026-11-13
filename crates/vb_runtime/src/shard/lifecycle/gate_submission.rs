@@ -43,8 +43,8 @@ impl Shard {
     /// budget's `max_open_gates` is not enforced here: the verifier
     /// derives it from reachable Ask nodes only, so it is zero for
     /// Ask-less workflows and cannot bound operator-opened gates. The
-    /// registry cap below is the bound; a distinct operator gate budget
-    /// is a policy decision for John.
+    /// registry cap below is the bound: the shard's configured
+    /// `max_open_gates` (1024 by default).
     pub(crate) fn open_gate(
         &mut self,
         gate: ManualGate,
@@ -259,19 +259,19 @@ impl Shard {
 
     /// Reserves one slot in the shard-wide open-gate registry.
     ///
-    /// Total open gates are capped at the shard's active-run capacity:
-    /// every open gate belongs to an active run, and the registry must
-    /// stay bounded even for runs admitted without a budget.
+    /// Total open gates are capped at the shard's configured
+    /// `max_open_gates`: the registry must stay bounded even for runs
+    /// admitted without a budget.
     fn reserve_open_gate_slot(&mut self) -> RuntimeResult<()> {
-        if self.open_gates.len() >= self.max_active_runs {
-            return Err(RuntimeError::ActiveRunCapacityExceeded {
-                capacity: self.max_active_runs,
+        if self.open_gates.len() >= self.max_open_gates {
+            return Err(RuntimeError::OpenGateCapacityExceeded {
+                capacity: self.max_open_gates,
             });
         }
         self.open_gates
             .try_reserve(1)
-            .map_err(|_| RuntimeError::ActiveRunCapacityExceeded {
-                capacity: self.max_active_runs,
+            .map_err(|_| RuntimeError::OpenGateCapacityExceeded {
+                capacity: self.max_open_gates,
             })
     }
 

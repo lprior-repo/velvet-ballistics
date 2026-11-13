@@ -96,6 +96,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
         trace_capacity: 16,
         step_budget_per_tick: 8,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -226,8 +227,9 @@ fn shard_config_new_at_max_capacity_boundary() {
         16,
         100,
         4,
-        vb_core::policy::RuntimePolicy::Relaxed,
-    );
+        4,
+
+        vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Ok(ShardConfig {
@@ -235,6 +237,7 @@ fn shard_config_new_at_max_capacity_boundary() {
             trace_capacity: 16,
             step_budget_per_tick: 100,
             max_active_runs: 4,
+            max_open_gates: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );
@@ -247,7 +250,8 @@ fn shard_config_new_at_max_capacity_boundary() {
 /// ShardConfig::new at the minimum valid capacity (1) succeeds.
 #[test]
 fn shard_config_new_at_minimum_capacity() {
-    let result = ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(1, 1, 1, 1, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Ok(ShardConfig {
@@ -255,6 +259,7 @@ fn shard_config_new_at_minimum_capacity() {
             trace_capacity: 1,
             step_budget_per_tick: 1,
             max_active_runs: 1,
+            max_open_gates: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );

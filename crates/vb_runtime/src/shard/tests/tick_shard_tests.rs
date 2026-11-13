@@ -64,6 +64,7 @@ fn runtime_config() -> ShardConfig {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     }
 }

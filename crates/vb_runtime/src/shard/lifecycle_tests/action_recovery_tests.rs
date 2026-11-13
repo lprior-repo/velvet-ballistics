@@ -132,6 +132,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     // vb-peb9u: Mocked store with internally consistent provenance. The artifact
@@ -506,6 +507,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let fresh_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
@@ -605,6 +607,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let positive_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
@@ -837,6 +840,7 @@ fn recovery_gate_shard() -> Result<
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let store = action_recovery_contract_store(
@@ -990,6 +994,7 @@ fn restore_open_gates_rejects_foreign_run_gate() -> Result<(), Box<dyn std::erro
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = crate::shard::Shard::new(config);
@@ -1017,6 +1022,7 @@ fn restore_open_gates_rejects_duplicate_gate_id() -> Result<(), Box<dyn std::err
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = crate::shard::Shard::new(config);
@@ -1044,7 +1050,8 @@ fn restore_open_gates_enforces_registry_cap() -> Result<(), Box<dyn std::error::
         command_queue_capacity: 64,
         trace_capacity: 64,
         step_budget_per_tick: 4,
-        max_active_runs: 2,
+        max_active_runs: 1,
+        max_open_gates: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = crate::shard::Shard::new(config);
@@ -1055,7 +1062,7 @@ fn restore_open_gates_enforces_registry_cap() -> Result<(), Box<dyn std::error::
     shard.restore_open_gates(run_id, &[first, second])?;
     assert_eq!(
         shard.restore_open_gates(run_id, std::slice::from_ref(&third)),
-        Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity: 2 }),
+        Err(crate::RuntimeError::OpenGateCapacityExceeded { capacity: 2 }),
         "restoring past the registry cap must fail"
     );
     assert_eq!(

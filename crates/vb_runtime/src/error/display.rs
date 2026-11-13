@@ -38,6 +38,7 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         }
         RuntimeError::InvalidRecoveryHydration => Some("invalid recovery frame hydration"),
         RuntimeError::ActiveRunCapacityZero => Some("active run capacity cannot be zero"),
+        RuntimeError::OpenGateCapacityZero => Some("open gate capacity cannot be zero"),
         RuntimeError::AdmissionArtifactNotFound { .. } => {
             Some("admission rejected: artifact not found")
         }
@@ -91,6 +92,9 @@ fn write_runtime_error_dynamic(
     match error {
         RuntimeError::ActiveRunCapacityExceeded { capacity } => {
             write!(f, "active run capacity exceeded: {capacity}")
+        }
+        RuntimeError::OpenGateCapacityExceeded { capacity } => {
+            write!(f, "open gate capacity exceeded: {capacity}")
         }
         RuntimeError::JournalFull { capacity } => {
             write!(f, "runtime journal capacity exhausted: {capacity}")

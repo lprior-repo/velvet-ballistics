@@ -128,6 +128,7 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 2,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -162,6 +163,7 @@ fn vb1u88_invariant_queue_len_never_exceeds_capacity() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -182,6 +184,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
         trace_capacity: 32,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

@@ -172,6 +172,7 @@ fn shard_config_equality_differs() {
         trace_capacity: 1,
         step_budget_per_tick: 1,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     // Then they are not equal

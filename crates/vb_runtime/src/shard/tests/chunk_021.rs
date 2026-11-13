@@ -90,7 +90,8 @@ fn shard_config_debug_format_contains_field_names() {
 
 #[test]
 fn shard_config_new_rejects_zero_trace_capacity_in_lifecycle_chunk() {
-    let result = ShardConfig::new(1, 0, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(1, 0, 1, 1, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Err(RuntimeError::UnsupportedOperation {
@@ -101,7 +102,8 @@ fn shard_config_new_rejects_zero_trace_capacity_in_lifecycle_chunk() {
 
 #[test]
 fn shard_config_new_rejects_zero_step_budget_in_lifecycle_chunk() {
-    let result = ShardConfig::new(1, 1, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(1, 1, 0, 1, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Err(RuntimeError::UnsupportedOperation {
@@ -112,7 +114,8 @@ fn shard_config_new_rejects_zero_step_budget_in_lifecycle_chunk() {
 
 #[test]
 fn shard_config_new_accepts_max_step_budget() {
-    let result = ShardConfig::new(1, 1, u64::MAX, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(1, 1, u64::MAX, 1, 1,
+ vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Ok(ShardConfig {
@@ -120,6 +123,7 @@ fn shard_config_new_accepts_max_step_budget() {
             trace_capacity: 1,
             step_budget_per_tick: u64::MAX,
             max_active_runs: 1,
+            max_open_gates: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );

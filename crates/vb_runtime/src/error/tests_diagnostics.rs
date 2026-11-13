@@ -64,6 +64,23 @@ fn runtime_error_runtime_code_is_absent_without_section_17_equivalent() {
 }
 
 #[test]
+fn open_gate_capacity_errors_have_stable_codes() {
+    assert_eq!(
+        RuntimeError::OpenGateCapacityExceeded { capacity: 2 }.diagnostic_code(),
+        DiagnosticCode::new(0x2027)
+    );
+    assert_eq!(
+        RuntimeError::OpenGateCapacityExceeded { capacity: 2 }.runtime_code(),
+        Some("QUEUE_FULL")
+    );
+    assert_eq!(
+        RuntimeError::OpenGateCapacityZero.diagnostic_code(),
+        DiagnosticCode::new(0x2028)
+    );
+    assert_eq!(RuntimeError::OpenGateCapacityZero.runtime_code(), None);
+}
+
+#[test]
 fn runtime_error_diagnostic_codes_are_unique() {
     let codes = [
         RuntimeError::QueueFull.diagnostic_code(),
