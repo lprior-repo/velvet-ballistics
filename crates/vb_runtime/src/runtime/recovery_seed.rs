@@ -6,14 +6,32 @@ impl Runtime {
     /// `recover_runtime_frame_seed_from_events_with_workflow` so the
     /// storage-classified cannot-resume/resumable product is the source
     /// of truth; the runtime never sees the raw DTO.
+    ///
+    /// The recovered seed is then passed through
+    /// [`crate::recovery::restore_routed_action_failure`], which rebuilds an
+    /// action failure's handler transition when the journal ends before that
+    /// transition was durable. Without it the seed still points at the resolved
+    /// `Do` step and recovery would reissue the action as a new external
+    /// effect.
     fn recover_seed_for_loaded_workflow(
         events: &[vb_storage::JournalEvent],
         workflow: &CompiledWorkflow,
     ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
-        vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(events, workflow)
-            .map_err(|error| RuntimeError::Recovery {
+        let product = vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(
+            events, workflow,
+        )
+        .map_err(|error| RuntimeError::Recovery {
+            error: error.to_string(),
+        })?;
+        let mut seed = product.seed().clone();
+        crate::recovery::restore_routed_action_failure(&mut seed, events, workflow).map_err(
+            |error| RuntimeError::Recovery {
                 error: error.to_string(),
-            })
+            },
+        )?;
+        Ok(vb_storage::recovery::RecoveryFrameSeedProduct::from_seed(
+            seed,
+        ))
     }
 
     /// Builds the recovered live-run boundary from the typed seed product.

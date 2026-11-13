@@ -22,7 +22,7 @@ pub(crate) use full::{
     RecoveredRetryTimer, ResumableRecoveryParts, action_abi_digests_from_contracts,
     action_contract_abi_digest, classify_full_recovery_resume,
     hydrate_frame_for_full_recovery_with_inputs, pending_action_ticket_from_events,
-    recovered_run_boundary_from_seed, run_is_currently_terminal,
+    recovered_run_boundary_from_seed, restore_routed_action_failure, run_is_currently_terminal,
     validate_recovered_admission_evidence,
 };
 
