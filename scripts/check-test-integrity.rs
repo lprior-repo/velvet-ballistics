@@ -83,6 +83,7 @@ mod check_test_integrity_justifications;
 mod check_test_integrity_paths;
 mod check_test_integrity_roots;
 mod check_test_integrity_scan;
+mod check_test_integrity_signal_cases;
 
 fn collect_findings(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<Finding>, String> {
     validate_base_revision(root, base, vcs)?;
@@ -171,6 +172,7 @@ fn self_test() -> i32 {
     all &= run_justification_tests();
     all &= run_justification_bypass_tests();
     all &= run_justification_lifecycle_tests();
+    all &= check_test_integrity_signal_cases::run_signal_cases();
 
     if all { 0 } else { 1 }
 }

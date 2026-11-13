@@ -249,7 +249,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         0x1315,
         CodeCategory::Accessor,
     ),
-    // ---- Runtime storage/journal errors (from RuntimeError): E20xx (0x2001–0x2028) ----
+    // ---- Runtime storage/journal errors (from RuntimeError): E20xx (0x2001–0x2029) ----
     active_code_entry("QUEUE_FULL", 0x2001, CodeCategory::Storage),
     active_code_entry("RUN_NOT_FOUND", 0x2002, CodeCategory::Storage),
     active_code_entry(
@@ -312,6 +312,11 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     active_code_entry("SHARD_NOT_FOUND", 0x201C, CodeCategory::Storage),
     active_code_entry("MIGRATE_SELF", 0x201D, CodeCategory::Storage),
     active_code_entry("JOURNAL_FULL", 0x201E, CodeCategory::Storage),
+    active_code_entry(
+        "ADMISSION_CAPABILITY_COUNT_MISMATCH",
+        0x201F,
+        CodeCategory::Storage,
+    ),
     active_code_entry("ROLLBACK_FAILED", 0x2020, CodeCategory::Storage),
     active_code_entry(
         "ADMISSION_ACTION_REGISTRY_MISMATCH",
@@ -337,6 +342,11 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     active_code_entry("SECRET_UNAVAILABLE", 0x2026, CodeCategory::Storage),
     active_code_entry("OPEN_GATE_CAPACITY_EXCEEDED", 0x2027, CodeCategory::Storage),
     active_code_entry("OPEN_GATE_CAPACITY_ZERO", 0x2028, CodeCategory::Storage),
+    active_code_entry(
+        "INTROSPECTION_EPOCH_EXHAUSTED",
+        0x2029,
+        CodeCategory::Storage,
+    ),
     // ---- Legacy storage infrastructure codes (relocated) ----
     active_code_entry("STORAGE_UNAVAILABLE", 0x2070, CodeCategory::Storage),
     active_code_entry("STORAGE_CORRUPTION", 0x2071, CodeCategory::Storage),
