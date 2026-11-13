@@ -10,13 +10,13 @@
 //   1. A `#[path]` inclusion of the in-tree production-source mirror
 //      at `verification/verus/production_inner/_exit_code_production.rs`.
 //      That mirror is a VERBATIM copy of the production
-//      `crates/velvet_ballistics/src/exit_code.rs:1-68` with three substitutions
+//      `crates/velvet_ballistics/src/exit_code.rs:1-71` with three substitutions
 //      to compile under `verus --crate-type=lib` without
 //      `vb_core` / `vb_storage` extern crate registration (no
 //      installs allowed by the task brief):
 //
 //        - The two non-test `From<...> for CliExitCode` impls at
-//          exit_code.rs:56-61 and exit_code.rs:63-68 originally
+//          exit_code.rs:59-64 and exit_code.rs:66-71 originally
 //          reference absolute extern-crate paths
 //          `vb_core::errors::CoreError` and
 //          `vb_storage::error::JournalError`. Rust treats these as
@@ -29,7 +29,7 @@
 //          From impls are preserved byte-for-byte (the production
 //          bodies always return a fixed `CliExitCode` regardless of
 //          the input via `let _ = err;`).
-//        - The `#[cfg(test)] mod tests` block at exit_code.rs:70-171
+//        - The `#[cfg(test)] mod tests` block at exit_code.rs:73-181
 //          is REMOVED (see the mirror file header for rationale).
 //
 //   2. The production mirror module is marked `#[verifier::external]`
@@ -56,7 +56,7 @@
 // =============================================================================
 // BINDING LEDGER
 // =============================================================================
-//   - `CliExitCode` enum (9 variants, repr(u8))
+//   - `CliExitCode` enum (10 variants, repr(u8))
 //                            <- crates/velvet_ballistics/src/exit_code.rs:12-34
 //   - `From<CliExitCode> for u8` (production impl)
 //                            <- crates/velvet_ballistics/src/exit_code.rs:42-57
@@ -70,15 +70,15 @@
 // Spec-side projection into mathematical Set algebra:
 //   - `spec_cli_exit_code_discriminant(code)` -> u8
 //                            <- the production `From<CliExitCode> for u8`
-//                               impl at exit_code.rs:42-53
-//   - `spec_cli_exit_code_in_range_0_to_8(code)` -> bool
+//                               impl at exit_code.rs:42-57
+//   - `spec_cli_exit_code_in_range_0_to_9(code)` -> bool
 //                            <- production test
-//                               `all_variants_are_public_range_0_to_8`
-//                               at exit_code.rs:155-170
+//                               `all_variants_are_public_range_0_to_9`
+//                               at exit_code.rs:165-180
 //   - `spec_cli_exit_code_distinct(code1, code2)` -> bool
 //                            <- production test
 //                               `all_variants_are_distinct` at
-//                               exit_code.rs:136-153
+//                               exit_code.rs:145-162
 //
 // =============================================================================
 // TRUST BOUNDARY
@@ -106,7 +106,7 @@ verus! {
 // The mirror is marked `#[verifier::external]` so Verus treats the
 // production bodies as opaque; only structural resolution is
 // checked. Drift between the mirror and the production source at
-// `crates/velvet_ballistics/src/exit_code.rs:1-68` breaks the Verus build.
+// `crates/velvet_ballistics/src/exit_code.rs:1-71` breaks the Verus build.
 //
 // The mirror declares its own local `CoreError` and `JournalError`
 // enum stubs inline (instead of referencing the production
@@ -124,7 +124,7 @@ pub mod production_exit_code;
 // Re-declared inside `verus!` so spec proofs and `assume_specification`
 // bridges can use it in spec mode. The variant set, variant order,
 // and repr(u8) discriminant tags match the production enum at
-// `crates/velvet_ballistics/src/exit_code.rs:9-32` byte-for-byte:
+// `crates/velvet_ballistics/src/exit_code.rs:12-34` byte-for-byte:
 //
 //   Success           -> 0
 //   RuntimeFailed     -> 1
@@ -135,6 +135,7 @@ pub mod production_exit_code;
 //   IpcError          -> 6
 //   ActionPolicyError -> 7
 //   ReplayDivergence  -> 8
+//   LifecycleError    -> 9
 //
 // NOTE: production declares `CliExitCode` as `pub(crate)` with
 // `#[allow(dead_code)]`. The mirror uses `pub` so the verification
@@ -158,8 +159,10 @@ pub enum CliExitCode {
     IpcError = 6,
     /// Production variant 7: `CliExitCode::ActionPolicyError` at exit_code.rs:28.
     ActionPolicyError = 7,
-    /// Production variant 8: `CliExitCode::ReplayDivergence` at exit_code.rs:30-31.
+    /// Production variant 8: `CliExitCode::ReplayDivergence` at exit_code.rs:31.
     ReplayDivergence = 8,
+    /// Production variant 9: `CliExitCode::LifecycleError` at exit_code.rs:33.
+    LifecycleError = 9,
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +170,7 @@ pub enum CliExitCode {
 // ---------------------------------------------------------------------------
 //
 // Mirror of the production `From<CliExitCode> for u8` impl at
-// `crates/velvet_ballistics/src/exit_code.rs:40-54`. The body is the trivial
+// `crates/velvet_ballistics/src/exit_code.rs:42-57`. The body is the trivial
 // match expression mapping each variant to its repr(u8) tag.
 //
 // Body skipped by Verus (`#[verifier::external]`); the spec contract
@@ -175,7 +178,7 @@ pub enum CliExitCode {
 // `diagnostic_envelope_verus.rs`.
 #[verifier::external]
 pub fn cli_exit_code_to_u8(code: CliExitCode) -> u8 {
-    // Mirror of production From<CliExitCode> for u8 at exit_code.rs:42-53.
+    // Mirror of production From<CliExitCode> for u8 at exit_code.rs:45-54.
     match code {
         CliExitCode::Success => 0,
         CliExitCode::RuntimeFailed => 1,
@@ -186,6 +189,7 @@ pub fn cli_exit_code_to_u8(code: CliExitCode) -> u8 {
         CliExitCode::IpcError => 6,
         CliExitCode::ActionPolicyError => 7,
         CliExitCode::ReplayDivergence => 8,
+        CliExitCode::LifecycleError => 9,
     }
 }
 
@@ -195,7 +199,7 @@ pub fn cli_exit_code_to_u8(code: CliExitCode) -> u8 {
 //
 // Mirror of the production
 // `From<vb_core::errors::CoreError> for CliExitCode` impl at
-// `crates/velvet_ballistics/src/exit_code.rs:56-61`. The production body always
+// `crates/velvet_ballistics/src/exit_code.rs:59-64`. The production body always
 // returns `CliExitCode::RuntimeFailed` regardless of the input
 // variant.
 //
@@ -216,7 +220,7 @@ pub fn core_error_to_cli_exit_code(err: production_exit_code::CoreError) -> CliE
 //
 // Mirror of the production
 // `From<vb_storage::error::JournalError> for CliExitCode` impl at
-// `crates/velvet_ballistics/src/exit_code.rs:63-68`. The production body always
+// `crates/velvet_ballistics/src/exit_code.rs:66-71`. The production body always
 // returns `CliExitCode::StorageError` regardless of the input
 // variant.
 //
