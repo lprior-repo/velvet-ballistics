@@ -2,7 +2,7 @@ use vb_core::ids::StepIdx;
 use vb_core::{CompiledNodeKind, CompiledWorkflow};
 use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 
-use super::boundary::{RecoveredOpenAsk, RecoveredTimerSuspension};
+use super::boundary::{RecoveredOpenAsk, RecoveredOpenWaitEvent, RecoveredTimerSuspension};
 use super::full_ask_schedule::pending_ask_schedule_for_step;
 use super::full_wait_schedule::pending_wait_schedule_for_step;
 
@@ -96,6 +96,40 @@ fn recoverable_ask_schedule(
         Some(CompiledNodeKind::AskResume { .. }) => pending_ask_schedule_for_step(events, step),
         _ => None,
     }
+}
+
+pub(super) fn recoverable_open_wait_event_boundary(
+    seed: &RecoveryFrameSeed,
+    workflow: &CompiledWorkflow,
+    events: &[vb_storage::JournalEvent],
+) -> Option<RecoveredOpenWaitEvent> {
+    let step = seed.pc;
+    let entry = seed.steps.iter().find(|entry| entry.step == step)?;
+    if entry.state != RecoveredStepState::Running {
+        return None;
+    }
+    let node = workflow.node(step)?;
+    let CompiledNodeKind::WaitEvent { timeout_slot, .. } = node.kind else {
+        return None;
+    };
+    if timeout_slot.slot().is_some() {
+        return None;
+    }
+    node.routing.next.step()?;
+    if pending_wait_schedule_for_step(events, step).is_some() {
+        return None;
+    }
+    events
+        .iter()
+        .rev()
+        .any(|event| {
+            matches!(
+                event,
+                vb_storage::JournalEvent::StepStarted { step: started_step, .. }
+                    if *started_step == step
+            )
+        })
+        .then_some(RecoveredOpenWaitEvent::new(step))
 }
 
 pub(super) fn recoverable_waiting_timer_boundary(

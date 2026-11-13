@@ -271,6 +271,26 @@ impl Shard {
                     return Ok(());
                 }
             }
+            crate::recovery::RecoveredRunBoundaryKind::OpenWaitEvent => {
+                // Restores the same untimed WaitEvent suspension. There is no
+                // timer and no public event-delivery API in v1, so recovery
+                // must not re-drive the node: doing so would execute the wait
+                // again without a durable schedule and fail the run. The run
+                // stays suspended with no journal mutation.
+                if let Some(wait) = boundary.open_wait_event() {
+                    let state = self
+                        .run_state_get_mut(run)
+                        .ok_or(RuntimeError::RunNotFound)?;
+                    state
+                        .frame
+                        .mark_waiting(wait.step())
+                        .map_err(|_| RuntimeError::Recovery {
+                            error: String::from("recover open wait frame state"),
+                        })?;
+                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
+                    return Ok(());
+                }
+            }
             crate::recovery::RecoveredRunBoundaryKind::WaitingTimer => {
                 // Re-arms the durable wait schedule as a live timer and leaves
                 // the run suspended. Recovery MUST NOT drive the wait node:

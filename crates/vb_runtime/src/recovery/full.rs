@@ -11,8 +11,8 @@ mod suspended;
 
 use arena::recovered_arena_handles_resolve;
 use suspended::{
-    recoverable_open_ask_boundary, recoverable_timed_ask_boundary,
-    recoverable_waiting_timer_boundary,
+    recoverable_open_ask_boundary, recoverable_open_wait_event_boundary,
+    recoverable_timed_ask_boundary, recoverable_waiting_timer_boundary,
 };
 
 use vb_core::CompiledWorkflow;
@@ -27,7 +27,8 @@ pub(crate) use admission::{
 };
 pub(crate) use boundary::RecoveredRetryTimer;
 pub use boundary::{
-    RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind, RecoveredTimerSuspension,
+    RecoveredOpenAsk, RecoveredOpenWaitEvent, RecoveredRunBoundary, RecoveredRunBoundaryKind,
+    RecoveredTimerSuspension,
 };
 pub(crate) use pending::pending_action_ticket_from_events;
 pub(crate) use product::ResumableRecoveryParts;
@@ -109,6 +110,9 @@ pub(crate) fn recovered_run_boundary_from_seed(
     }
     if let Some(ask) = recoverable_open_ask_boundary(seed, workflow, events) {
         return RecoveredRunBoundary::from_open_ask(ask);
+    }
+    if let Some(wait) = recoverable_open_wait_event_boundary(seed, workflow, events) {
+        return RecoveredRunBoundary::from_open_wait_event(wait);
     }
     if let Some(timer) = recoverable_waiting_timer_boundary(seed, workflow, events) {
         return RecoveredRunBoundary::from_waiting_timer(timer);
