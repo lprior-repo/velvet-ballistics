@@ -32,9 +32,22 @@ fn read_log_file(path: &Path) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&bytes).to_string())
 }
 
+fn has_exact_binding(text: &str, expected: &str) -> bool {
+    text.match_indices(expected).any(|(offset, matched)| {
+        let before = text.get(..offset);
+        let after = offset
+            .checked_add(matched.len())
+            .and_then(|end| text.get(end..));
+        before.is_some_and(|part| part.is_empty() || part.ends_with('\n') || part.ends_with('\r'))
+            && after.is_some_and(|part| {
+                part.is_empty() || part.starts_with('\n') || part.starts_with('\r')
+            })
+    })
+}
+
 fn check_string_binding(row: usize, field: &str, val: &str, text: &str) -> Option<String> {
     let expected = format!("{}: {}", field, val);
-    if text.contains(&expected) {
+    if has_exact_binding(text, &expected) {
         return None;
     }
     Some(format!(
@@ -77,7 +90,7 @@ fn check_exit_code_binding(
         ));
     }
     let expected = format!("exit_code: {}", exit_text);
-    if text.contains(&expected) {
+    if has_exact_binding(text, &expected) {
         return None;
     }
     Some(format!(

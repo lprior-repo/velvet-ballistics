@@ -10,6 +10,9 @@ use std::process;
 
 const TEST_ROOT: &str = ".evidence/vb-jpq7.48/scratch/closure-evidence-tests";
 
+#[path = "closure_evidence_cli/provenance.rs"]
+mod provenance;
+
 /// Create a unique test directory and private fake bd fixture.
 fn setup_test(name: &str) -> TestFixture {
     let pid = std::process::id();
