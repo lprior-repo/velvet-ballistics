@@ -46,7 +46,7 @@ fn check_split_followup(
     seen: &mut HashMap<(String, String), usize>,
 ) -> Vec<String> {
     let split = string_field(data, "split_bead_id");
-    let split_val = split.as_deref().unwrap_or("");
+    let split_val = split.as_deref().map_or("", |v| v);
     if is_blank(split_val) {
         return vec![format!(
             "manifest row {}: split_followup lacks split_bead_id",
@@ -70,7 +70,7 @@ fn check_approved_waiver(
     data: &serde_json::Map<String, serde_json::Value>,
 ) -> Option<String> {
     let waiver_id = string_field(data, "waiver_id");
-    let waiver_val = waiver_id.as_deref().unwrap_or("");
+    let waiver_val = waiver_id.as_deref().map_or("", |v| v);
     if is_blank(waiver_val) {
         return Some(format!(
             "manifest row {}: approved_waiver lacks waiver_id",
@@ -89,9 +89,9 @@ pub(crate) fn validate_resolution(
         return vec![];
     }
     let resolution_field = string_field(data, "resolution_kind");
-    let resolution = resolution_field.as_deref().unwrap_or("");
+    let resolution = resolution_field.as_deref().map_or("", |v| v);
     let rationale_field = string_field(data, "resolution_rationale");
-    let rationale = rationale_field.as_deref().unwrap_or("");
+    let rationale = rationale_field.as_deref().map_or("", |v| v);
     let mut failures = check_resolution_fields(row_number, resolution, rationale);
     if resolution == "split_followup" {
         failures.extend(check_split_followup(row_number, data, rationale, seen));

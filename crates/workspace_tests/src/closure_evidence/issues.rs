@@ -16,26 +16,23 @@ pub(crate) fn parse_issues(json_text: &str) -> Result<Vec<Issue>, String> {
         .as_array()
         .ok_or_else(|| "children JSON must be a list".to_string())?;
 
-    let mut issues = Vec::with_capacity(arr.len());
-    for raw in arr {
-        let obj = raw
-            .as_object()
-            .ok_or_else(|| "children JSON contains a non-object issue".to_string())?;
+    arr.iter().map(parse_issue).collect()
+}
 
-        let bead_id = get_string_field(obj, "id");
-        let status = get_string_field(obj, "status");
-        if bead_id.is_none() || status.is_none() {
-            return Err("child issue is missing id or status".to_string());
-        }
-
-        issues.push(Issue {
-            bead_id: bead_id.unwrap_or_default(),
-            status: status.unwrap_or_default(),
-            close_reason: get_string_field(obj, "close_reason").unwrap_or_default(),
-            notes: get_string_field(obj, "notes").unwrap_or_default(),
-        });
-    }
-    Ok(issues)
+fn parse_issue(raw: &serde_json::Value) -> Result<Issue, String> {
+    let obj = raw
+        .as_object()
+        .ok_or_else(|| "children JSON contains a non-object issue".to_string())?;
+    let bead_id = get_string_field(obj, "id")
+        .ok_or_else(|| "child issue is missing id or status".to_string())?;
+    let status = get_string_field(obj, "status")
+        .ok_or_else(|| "child issue is missing id or status".to_string())?;
+    Ok(Issue {
+        bead_id,
+        status,
+        close_reason: get_string_field(obj, "close_reason").map_or(String::new(), |v| v),
+        notes: get_string_field(obj, "notes").map_or(String::new(), |v| v),
+    })
 }
 
 fn get_string_field(

@@ -39,18 +39,19 @@ fn check_all_closed_issues(
     closed_issues: &[&Issue],
     by_bead: &HashMap<String, Vec<&serde_json::Value>>,
 ) -> Vec<String> {
-    let mut failures = Vec::new();
-    for issue in closed_issues {
-        failures.extend(check_single_closed_issue(issue, by_bead));
-    }
-    failures
+    closed_issues
+        .iter()
+        .flat_map(|issue| check_single_closed_issue(issue, by_bead))
+        .collect()
 }
 
 fn check_single_closed_issue(
     issue: &Issue,
     by_bead: &HashMap<String, Vec<&serde_json::Value>>,
 ) -> Vec<String> {
-    let issue_rows = by_bead.get(&issue.bead_id).cloned().unwrap_or_default();
+    let issue_rows = by_bead
+        .get(&issue.bead_id)
+        .map_or_else(Vec::new, Clone::clone);
     if issue_rows.is_empty() {
         return vec![format!(
             "{}: closed child lacks manifest row",
@@ -81,15 +82,16 @@ fn filter_closed_issues(issues: &[Issue]) -> Vec<&Issue> {
 fn build_bead_index(
     manifest_rows: &[(usize, serde_json::Value)],
 ) -> HashMap<String, Vec<&serde_json::Value>> {
-    let mut by_bead: HashMap<String, Vec<&serde_json::Value>> = HashMap::new();
-    for (_, data) in manifest_rows {
-        if let Some(obj) = data.as_object()
-            && let Some(bid) = string_field(obj, "bead_id")
-        {
-            by_bead.entry(bid).or_default().push(data);
-        }
-    }
-    by_bead
+    manifest_rows
+        .iter()
+        .fold(HashMap::new(), |mut by_bead, (_, data)| {
+            if let Some(obj) = data.as_object()
+                && let Some(bid) = string_field(obj, "bead_id")
+            {
+                by_bead.entry(bid).or_default().push(data);
+            }
+            by_bead
+        })
 }
 
 fn validate_all_rows(
@@ -97,22 +99,20 @@ fn validate_all_rows(
     manifest_rows: &[(usize, serde_json::Value)],
     seen_followups: &mut HashMap<(String, String), usize>,
 ) -> Vec<String> {
-    let mut failures = Vec::new();
-    for (row_number, data) in manifest_rows {
-        if let Some(obj) = data.as_object() {
-            failures.extend(validate_row_shape(root, *row_number, obj));
-            failures.extend(validate_resolution(*row_number, obj, seen_followups));
-        }
-    }
-    failures
+    manifest_rows
+        .iter()
+        .fold(Vec::new(), |mut failures, (row_number, data)| {
+            if let Some(obj) = data.as_object() {
+                failures.extend(validate_row_shape(root, *row_number, obj));
+                failures.extend(validate_resolution(*row_number, obj, seen_followups));
+            }
+            failures
+        })
 }
 
 fn has_passing_row(rows: &[&serde_json::Value]) -> bool {
-    rows.iter().any(|data| {
-        data.as_object()
-            .map(row_closes_or_links_followup)
-            .unwrap_or(false)
-    })
+    rows.iter()
+        .any(|data| data.as_object().is_some_and(row_closes_or_links_followup))
 }
 
 fn check_closure_prose(issue: &Issue) -> Option<String> {
@@ -137,12 +137,12 @@ fn row_closes_or_links_followup(data: &serde_json::Map<String, serde_json::Value
         return false;
     }
     let rationale = string_field(data, "resolution_rationale");
-    let rationale_val = rationale.as_deref().unwrap_or("");
+    let rationale_val = rationale.as_deref().map_or("", |v| v);
     if is_blank(rationale_val) {
         return false;
     }
     let resolution = string_field(data, "resolution_kind");
-    let resolution_val = resolution.as_deref().unwrap_or("");
+    let resolution_val = resolution.as_deref().map_or("", |v| v);
     if resolution_val == "approved_waiver" {
         return check_waiver_resolution(data);
     }
@@ -154,13 +154,13 @@ fn row_closes_or_links_followup(data: &serde_json::Map<String, serde_json::Value
 
 fn check_waiver_resolution(data: &serde_json::Map<String, serde_json::Value>) -> bool {
     let waiver_id = string_field(data, "waiver_id");
-    let waiver_val = waiver_id.as_deref().unwrap_or("");
+    let waiver_val = waiver_id.as_deref().map_or("", |v| v);
     !is_blank(waiver_val)
 }
 
 fn check_split_resolution(data: &serde_json::Map<String, serde_json::Value>) -> bool {
     let split_id = string_field(data, "split_bead_id");
-    let split_val = split_id.as_deref().unwrap_or("");
+    let split_val = split_id.as_deref().map_or("", |v| v);
     !is_blank(split_val)
 }
 
@@ -168,8 +168,8 @@ fn row_is_closure_pass(data: &serde_json::Map<String, serde_json::Value>) -> boo
     if exit_code_as_i64(data) != Some(0) {
         return false;
     }
-    let status = string_field(data, "status").unwrap_or_default();
-    let evidence_kind = string_field(data, "evidence_kind").unwrap_or_default();
+    let status = string_field(data, "status").map_or(String::new(), |v| v);
+    let evidence_kind = string_field(data, "evidence_kind").map_or(String::new(), |v| v);
     let upper = status.to_uppercase();
     CLOSURE_STATUSES.contains(&upper.as_str()) && EVIDENCE_KINDS.contains(&evidence_kind.as_str())
 }

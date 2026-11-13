@@ -37,9 +37,9 @@ fn report_failures(results: &[CaseResult]) -> Result<i32, String> {
     }
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
-    for result in &failures {
-        write_failure_report(&mut handle, result)?;
-    }
+    failures
+        .iter()
+        .try_for_each(|result| write_failure_report(&mut handle, result))?;
     Ok(1)
 }
 
@@ -88,11 +88,10 @@ fn run_test_cases(
         root
     );
     let p = Path::new(&manifest_path);
-    let mut results = Vec::new();
-    for case in cases {
-        results.push(run_single_case(children, case, p)?);
-    }
-    Ok(results)
+    cases
+        .iter()
+        .map(|case| run_single_case(children, case, p))
+        .collect()
 }
 
 fn run_single_case(
@@ -189,13 +188,13 @@ fn run_missing_child_case(children: &[Issue]) -> Result<Vec<CaseResult>, String>
 }
 
 fn serialize_rows(rows: &[serde_json::Value]) -> Result<String, String> {
-    let mut parts = Vec::with_capacity(rows.len());
-    for row in rows {
-        parts.push(
+    let parts = rows
+        .iter()
+        .map(|row| {
             serde_json::to_string(row)
-                .map_err(|e| format!("manifest row serialization failed: {}", e))?,
-        );
-    }
+                .map_err(|e| format!("manifest row serialization failed: {}", e))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(parts.join("\n"))
 }
 

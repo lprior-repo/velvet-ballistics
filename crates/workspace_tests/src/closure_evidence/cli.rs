@@ -24,47 +24,31 @@ fn collect_args() -> Result<Vec<String>, String> {
         .map_err(|e| format!("args_os error: {}", e))
 }
 
-fn apply_parsed_arg(
-    parsed: Option<ParsedArg>,
-    parent: &mut String,
-    manifest: &mut String,
-    bd_workdir: &mut String,
-    self_test: &mut bool,
-) {
+fn apply_parsed_arg(parsed: Option<ParsedArg>, args: &mut CliArgs) {
     match parsed {
-        Some(ParsedArg::Parent(v)) => *parent = v,
-        Some(ParsedArg::Manifest(v)) => *manifest = v,
-        Some(ParsedArg::BdWorkdir(v)) => *bd_workdir = v,
-        Some(ParsedArg::SelfTest) => *self_test = true,
+        Some(ParsedArg::Parent(v)) => args.parent = v,
+        Some(ParsedArg::Manifest(v)) => args.manifest = v,
+        Some(ParsedArg::BdWorkdir(v)) => args.bd_workdir = v,
+        Some(ParsedArg::SelfTest) => args.self_test = true,
         None => {}
     }
 }
 
 pub(crate) fn parse() -> Result<CliArgs, String> {
-    let args = collect_args()?;
-    let mut parent = DEFAULT_PARENT.to_string();
-    let mut manifest = DEFAULT_MANIFEST.to_string();
-    let mut bd_workdir = DEFAULT_BD_WORKDIR.to_string();
-    let mut self_test = false;
-
-    let mut iter = args.into_iter().skip(1);
-    while let Some(arg) = iter.next() {
-        let parsed = parse_option(&arg, &mut iter)?;
-        apply_parsed_arg(
-            parsed,
-            &mut parent,
-            &mut manifest,
-            &mut bd_workdir,
-            &mut self_test,
-        );
-    }
-
-    Ok(CliArgs {
-        parent,
-        manifest,
-        bd_workdir,
-        self_test,
-    })
+    let mut iter = collect_args()?.into_iter().skip(1);
+    let defaults = CliArgs {
+        parent: DEFAULT_PARENT.to_string(),
+        manifest: DEFAULT_MANIFEST.to_string(),
+        bd_workdir: DEFAULT_BD_WORKDIR.to_string(),
+        self_test: false,
+    };
+    std::iter::from_fn(|| iter.next().map(|arg| parse_option(&arg, &mut iter))).try_fold(
+        defaults,
+        |mut args, parsed| {
+            apply_parsed_arg(parsed?, &mut args);
+            Ok(args)
+        },
+    )
 }
 
 enum ParsedArg {

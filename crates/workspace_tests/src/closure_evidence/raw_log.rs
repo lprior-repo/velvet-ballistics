@@ -13,9 +13,9 @@ fn exit_code_text(data: &serde_json::Map<String, serde_json::Value>) -> String {
         return String::new();
     }
     if v.is_i64() {
-        return v.as_i64().map(|x| x.to_string()).unwrap_or_default();
+        return v.as_i64().map_or_else(String::new, |x| x.to_string());
     }
-    v.as_u64().map(|x| x.to_string()).unwrap_or_default()
+    v.as_u64().map_or_else(String::new, |x| x.to_string())
 }
 
 fn read_log_file(path: &Path) -> Result<String, String> {

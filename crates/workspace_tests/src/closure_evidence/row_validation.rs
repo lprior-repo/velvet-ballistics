@@ -43,24 +43,28 @@ fn check_required_fields(
     row_number: usize,
     data: &serde_json::Map<String, serde_json::Value>,
 ) -> Vec<String> {
-    let mut failures = Vec::new();
-    for field in REQUIRED_ROW_FIELDS {
-        let val = data.get(*field);
-        if val.is_none_or(is_value_missing) {
-            failures.push(format!(
-                "manifest row {}: missing required field {}",
-                row_number, field
-            ));
-        } else if let Some(val) = val.filter(|v| *field != "exit_code" && !v.is_string()) {
-            failures.push(format!(
-                "manifest row {}: required field {} must be string, got {}",
-                row_number,
-                field,
-                json_type_name(val)
-            ));
-        }
-    }
-    failures
+    REQUIRED_ROW_FIELDS
+        .iter()
+        .filter_map(|field| {
+            let val = data.get(*field);
+            if val.is_none_or(is_value_missing) {
+                Some(format!(
+                    "manifest row {}: missing required field {}",
+                    row_number, field
+                ))
+            } else {
+                val.filter(|v| *field != "exit_code" && !v.is_string())
+                    .map(|val| {
+                        format!(
+                            "manifest row {}: required field {} must be string, got {}",
+                            row_number,
+                            field,
+                            json_type_name(val)
+                        )
+                    })
+            }
+        })
+        .collect()
 }
 
 fn json_type_name(v: &serde_json::Value) -> &'static str {
@@ -136,13 +140,13 @@ fn check_rejected_markers(
     row_number: usize,
     data: &serde_json::Map<String, serde_json::Value>,
 ) -> Option<String> {
-    let mut combined = String::new();
-    for v in data.values() {
+    let combined = data.values().fold(String::new(), |mut combined, v| {
         if !combined.is_empty() {
             combined.push('\n');
         }
         combined.push_str(&v.to_string());
-    }
+        combined
+    });
     find_rejected_marker(&combined).map(|marker| {
         format!(
             "manifest row {}: rejected evidence marker present: {}",

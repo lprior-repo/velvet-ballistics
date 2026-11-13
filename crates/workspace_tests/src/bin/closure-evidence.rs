@@ -102,7 +102,7 @@ fn load_issues(parent: &str, workdir: &str) -> Result<Vec<closure_evidence::Issu
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!(
             "bd list failed exit={} stderr={}",
-            output.status.code().unwrap_or(-1),
+            output.status.code().map_or(-1, |code| code),
             compact(&stderr)
         ));
     }
@@ -139,10 +139,13 @@ fn write_pass_marker(closed_count: usize) {
 }
 
 fn write_failures(failures: &[String]) -> ! {
-    let mut msg = "VB_JPQ7_CLOSURE_EVIDENCE_FAIL\n".to_string();
-    for f in failures {
-        msg.push_str(&format!("- {}\n", f));
-    }
+    let msg = failures.iter().fold(
+        "VB_JPQ7_CLOSURE_EVIDENCE_FAIL\n".to_string(),
+        |mut msg, f| {
+            msg.push_str(&format!("- {}\n", f));
+            msg
+        },
+    );
     match write_stdout(&msg) {
         Ok(()) => exit_with_code(1),
         Err(e) => exit_error(1, format!("failed to write output: {}", e)),

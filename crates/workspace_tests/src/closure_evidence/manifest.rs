@@ -1,16 +1,20 @@
 //! Manifest JSONL parsing with checked row numbering.
 
 pub(crate) fn parse_manifest(jsonl_text: &str) -> (Vec<(usize, serde_json::Value)>, Vec<String>) {
-    let mut rows = Vec::new();
-    let mut errors = Vec::new();
-
-    for (idx, line) in jsonl_text.lines().enumerate() {
-        parse_row(line, idx, &mut rows, &mut errors);
-        if errors.iter().any(|e| e.contains("row numbering overflow")) {
-            break;
-        }
-    }
-
+    let parsed = jsonl_text.lines().enumerate().try_fold(
+        (Vec::new(), Vec::new()),
+        |(mut rows, mut errors), (idx, line)| {
+            parse_row(line, idx, &mut rows, &mut errors);
+            if errors.iter().any(|e| e.contains("row numbering overflow")) {
+                std::ops::ControlFlow::Break((rows, errors))
+            } else {
+                std::ops::ControlFlow::Continue((rows, errors))
+            }
+        },
+    );
+    let (rows, mut errors) = match parsed {
+        std::ops::ControlFlow::Break(state) | std::ops::ControlFlow::Continue(state) => state,
+    };
     if rows.is_empty() {
         errors.push("manifest has no evidence rows".to_string());
     }

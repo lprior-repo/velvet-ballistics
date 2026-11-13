@@ -40,10 +40,19 @@ pub(crate) fn make_good_row(root: &str, raw_log_path: &str) -> serde_json::Value
 }
 
 pub(crate) fn raw_log_text(row: &serde_json::Value) -> String {
-    let command = row.get("command").and_then(|v| v.as_str()).unwrap_or("");
-    let cwd = row.get("cwd").and_then(|v| v.as_str()).unwrap_or("");
-    let timestamp = row.get("timestamp").and_then(|v| v.as_str()).unwrap_or("");
-    let exit_code = row.get("exit_code").and_then(|v| v.as_i64()).unwrap_or(0);
+    let command = row
+        .get("command")
+        .and_then(|v| v.as_str())
+        .map_or("", |v| v);
+    let cwd = row.get("cwd").and_then(|v| v.as_str()).map_or("", |v| v);
+    let timestamp = row
+        .get("timestamp")
+        .and_then(|v| v.as_str())
+        .map_or("", |v| v);
+    let exit_code = row
+        .get("exit_code")
+        .and_then(|v| v.as_i64())
+        .map_or(0, |v| v);
     format!(
         "command: {}\ncwd: {}\ntimestamp: {}\nexit_code: {}\nstdout: command output observed\nstderr: command error stream observed\n",
         command, cwd, timestamp, exit_code
