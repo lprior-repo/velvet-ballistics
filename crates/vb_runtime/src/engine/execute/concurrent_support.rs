@@ -116,3 +116,6 @@ pub(crate) fn ordinary_lane_failure(
         Some(vb_core::CompiledNodeKind::EvalExpr { .. })
     ) && matches!(error, RuntimeEngineError::Core(error) if vb_core::engine::is_ordinary_expression_failure(error))
 }
+
+#[cfg(test)]
+mod ordinary_lane_failure_tests;
