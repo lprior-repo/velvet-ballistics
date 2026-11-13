@@ -30,6 +30,7 @@ impl Shard {
             counters: ShardCounters::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
+            max_open_gates: config.max_open_gates,
             policy: config.policy,
             artifact_store,
             inspect_response: None,

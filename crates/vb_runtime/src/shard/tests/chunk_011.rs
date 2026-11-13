@@ -6,6 +6,7 @@ fn shard_step_budget_one_does_not_recount_completed_steps_on_later_ticks() -> Re
         trace_capacity: 16,
         step_budget_per_tick: 1,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -266,6 +267,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), Strin
         trace_capacity: 0,
         step_budget_per_tick: 4,
         max_active_runs: 2,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -302,6 +304,7 @@ fn shard_command_queue_len_increments_on_enqueue() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);

@@ -7,6 +7,7 @@
             trace_capacity: 64,
             step_budget_per_tick: 4,
             max_active_runs: 8,
+            max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         crate::shard::Shard::new(config)

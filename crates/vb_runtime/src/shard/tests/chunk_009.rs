@@ -227,6 +227,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
         trace_capacity: 2,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

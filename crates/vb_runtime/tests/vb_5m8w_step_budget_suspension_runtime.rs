@@ -368,6 +368,7 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
         trace_capacity: 8,
         step_budget_per_tick: 0,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -406,6 +407,7 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         trace_capacity: 8,
         step_budget_per_tick: 8,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

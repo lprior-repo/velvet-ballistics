@@ -25,6 +25,7 @@ fn queue_capacity_one_succeeds() {
         trace_capacity: 64,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let shard = Shard::new(config);
@@ -38,6 +39,7 @@ fn queue_capacity_max_succeeds() {
         trace_capacity: 64,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let shard = Shard::new(config);
@@ -51,6 +53,7 @@ fn queue_capacity_at_limit_accepts_enqueue() {
         trace_capacity: 64,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let shard = Shard::new(config);
@@ -106,6 +109,7 @@ fn shard_status_reports_command_queue_capacity() {
         trace_capacity: 256,
         step_budget_per_tick: 50,
         max_active_runs: 32,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let shard = Shard::new(config);
@@ -123,6 +127,7 @@ fn shard_status_reports_step_budget() {
         trace_capacity: 128,
         step_budget_per_tick: 200,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let shard = Shard::new(config);

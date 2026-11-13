@@ -126,6 +126,7 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
         trace_capacity: 8,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

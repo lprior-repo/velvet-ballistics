@@ -64,6 +64,42 @@ fn runtime_error_active_run_capacity_exceeded_display_includes_capacity() {
 }
 
 #[test]
+fn runtime_error_open_gate_capacity_exceeded_display_includes_capacity() {
+    assert_eq!(
+        format!("{}", RuntimeError::OpenGateCapacityExceeded { capacity: 2 }),
+        "open gate capacity exceeded: 2"
+    );
+}
+
+#[test]
+fn runtime_error_open_gate_capacity_zero_display_matches() {
+    assert_eq!(
+        format!("{}", RuntimeError::OpenGateCapacityZero),
+        "open gate capacity cannot be zero"
+    );
+}
+
+#[test]
+fn runtime_error_open_gate_capacity_equality() {
+    assert_eq!(
+        RuntimeError::OpenGateCapacityExceeded { capacity: 2 },
+        RuntimeError::OpenGateCapacityExceeded { capacity: 2 }
+    );
+    assert_ne!(
+        RuntimeError::OpenGateCapacityExceeded { capacity: 2 },
+        RuntimeError::OpenGateCapacityExceeded { capacity: 3 }
+    );
+    assert_eq!(
+        RuntimeError::OpenGateCapacityZero,
+        RuntimeError::OpenGateCapacityZero
+    );
+    assert_ne!(
+        RuntimeError::OpenGateCapacityZero,
+        RuntimeError::ActiveRunCapacityZero
+    );
+}
+
+#[test]
 fn runtime_error_unsupported_operation_display_includes_operation() {
     assert_eq!(
         format!(

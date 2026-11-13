@@ -17,6 +17,7 @@ pub struct Shard {
     pub(crate) counters: ShardCounters,
     pub(crate) step_budget_per_tick: u64,
     pub(crate) max_active_runs: usize,
+    pub(crate) max_open_gates: usize,
     pub(crate) policy: vb_core::policy::RuntimePolicy,
     pub(crate) artifact_store: crate::admission::SharedAcceptedArtifactStore,
     pub(crate) inspect_response: Option<InspectResponse>,
@@ -76,6 +77,8 @@ pub struct ShardConfig {
     pub step_budget_per_tick: u64,
     /// Maximum active runs admitted to this shard.
     pub max_active_runs: usize,
+    /// Maximum operator-opened manual gates held by this shard.
+    pub max_open_gates: usize,
     /// Admission policy governing artifact verification.
     pub policy: vb_core::policy::RuntimePolicy,
 }
@@ -99,6 +102,7 @@ impl Default for ShardConfig {
             trace_capacity: 4096,
             step_budget_per_tick: 1000,
             max_active_runs: 1024,
+            max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Strict,
         }
     }

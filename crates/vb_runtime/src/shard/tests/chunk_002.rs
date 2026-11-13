@@ -5,6 +5,7 @@ fn shard_rejects_active_run_capacity_overflow() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -45,6 +46,7 @@ fn inspect_command_stores_retrievable_snapshot() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -85,6 +87,7 @@ fn enqueue_shutdown_sets_shutting_down_flag() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -122,6 +125,7 @@ fn counters_reflect_submitted_after_submit_tick() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -150,6 +154,7 @@ fn inspect_nonexistent_run_returns_not_found() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

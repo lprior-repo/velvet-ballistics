@@ -328,6 +328,7 @@ fn submission_journals_ir_compat_decision() -> Result<(), String> {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let store: crate::admission::SharedAcceptedArtifactStore =

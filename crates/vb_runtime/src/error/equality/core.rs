@@ -20,6 +20,10 @@ fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool 
             RuntimeError::ActiveRunCapacityExceeded { capacity: a },
             RuntimeError::ActiveRunCapacityExceeded { capacity: b },
         ) => a == b,
+        (
+            RuntimeError::OpenGateCapacityExceeded { capacity: a },
+            RuntimeError::OpenGateCapacityExceeded { capacity: b },
+        ) => a == b,
         (RuntimeError::JournalFull { capacity: a }, RuntimeError::JournalFull { capacity: b }) => {
             a == b
         }
