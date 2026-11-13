@@ -311,6 +311,138 @@ mod error_code_tests {
         );
     }
 
+    /// Previously unregistered journal codes map to their specific
+    /// symbolic codes instead of the `INTERNAL_INVARIANT` fallback,
+    /// through both the name-based inherent `symbolic_code` and the
+    /// numeric `HasSymbolicCode` path.
+    #[test]
+    fn previously_unregistered_journal_codes_map_to_specific_symbolic_codes() {
+        use vb_core::{HasSymbolicCode, SymbolicCode};
+
+        let cases: [(JournalError, &str, u16); 6] = [
+            (
+                JournalError::InvalidConfig {
+                    field: "f",
+                    reason: "r",
+                },
+                "INVALID_CONFIG",
+                0x4033,
+            ),
+            (
+                JournalError::UnsupportedReadOnly,
+                "UNSUPPORTED_READ_ONLY",
+                0x4034,
+            ),
+            (
+                JournalError::ReplayKeyMismatch {
+                    run: RunId::new(1),
+                    key_seq: 0,
+                    payload_seq: 1,
+                },
+                "REPLAY_KEY_PAYLOAD_MISMATCH",
+                0x4040,
+            ),
+            (
+                JournalError::ReplayEnvelopeSequenceMismatch {
+                    run: RunId::new(12),
+                    envelope_seq: 4,
+                    payload_seq: 6,
+                },
+                "REPLAY_ENVELOPE_SEQUENCE_MISMATCH",
+                0x4041,
+            ),
+            (
+                JournalError::EmergencyDenyMarkerUnsupportedVersion { version: 9 },
+                "EMERGENCY_DENY_UNSUPPORTED_VERSION",
+                0x4042,
+            ),
+            (
+                JournalError::EmergencyDenyMarkerMalformed,
+                "EMERGENCY_DENY_MALFORMED",
+                0x4043,
+            ),
+        ];
+        for (err, symbolic, numeric) in cases {
+            assert_eq!(err.diagnostic_code(), DiagnosticCode::new(numeric));
+            assert_eq!(err.symbolic_code().as_str(), symbolic);
+            assert_eq!(
+                <JournalError as HasSymbolicCode>::symbolic_code(&err).as_str(),
+                symbolic
+            );
+            assert_eq!(
+                DiagnosticCode::new(numeric)
+                    .symbolic_code()
+                    .map(SymbolicCode::as_str),
+                Some(symbolic)
+            );
+            assert_eq!(
+                SymbolicCode::from_static(symbolic).and_then(SymbolicCode::numeric_code),
+                Some(numeric)
+            );
+        }
+    }
+
+    /// Previously unregistered trim and warning codes resolve to their
+    /// specific symbolic codes instead of the `INTERNAL_INVARIANT`
+    /// fallback: trim errors through the `JournalError::Trim` wrapper,
+    /// the warning through its numeric code.
+    #[test]
+    fn previously_unregistered_trim_and_warning_codes_resolve_symbolically() {
+        use crate::error::warnings::VerificationWarning;
+        use core::str::FromStr;
+        use vb_core::{HasSymbolicCode, SymbolicCode};
+
+        let trim_cases: [(TrimError, &str, u16); 3] = [
+            (
+                TrimError::NoDurableSnapshot { run: RunId::new(7) },
+                "NO_DURABLE_SNAPSHOT",
+                0x4101,
+            ),
+            (
+                TrimError::IncompleteTrim { deleted_count: 0 },
+                "INCOMPLETE_TRIM",
+                0x4102,
+            ),
+            (
+                TrimError::RetentionPolicyBlocks {
+                    run: RunId::new(11),
+                },
+                "RETENTION_POLICY_BLOCKS",
+                0x4103,
+            ),
+        ];
+        for (inner, symbolic, numeric) in trim_cases {
+            assert_eq!(inner.diagnostic_code(), DiagnosticCode::new(numeric));
+            let wrapped = JournalError::Trim(Box::new(inner));
+            assert_eq!(
+                <JournalError as HasSymbolicCode>::symbolic_code(&wrapped).as_str(),
+                symbolic
+            );
+            assert_eq!(
+                DiagnosticCode::new(numeric)
+                    .symbolic_code()
+                    .map(SymbolicCode::as_str),
+                Some(symbolic)
+            );
+        }
+
+        let warning = VerificationWarning::SchemaVersionMismatch {
+            found: 1,
+            current: 2,
+        };
+        assert_eq!(warning.diagnostic_code(), DiagnosticCode::new(0x5001));
+        assert_eq!(
+            DiagnosticCode::new(0x5001)
+                .symbolic_code()
+                .map(SymbolicCode::as_str),
+            Some("VERIFICATION_WARNING_SCHEMA_MISMATCH")
+        );
+        assert_eq!(
+            DiagnosticCode::from_str("E5001"),
+            Ok(DiagnosticCode::new(0x5001))
+        );
+    }
+
     #[test]
     fn artifact_version_incompatible_maps_to_artifact_malformed_code() {
         let err = JournalError::ArtifactVersionIncompatible {

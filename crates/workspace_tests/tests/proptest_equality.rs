@@ -17,7 +17,7 @@
 //! - `vb_runtime::RuntimeError` — hand-written `PartialEq` at
 //!   `crates/vb_runtime/src/error/equality.rs:7-13`. Not `Hash`-able.
 //! - `vb_core::diagnostic::DiagnosticCode` — derived `PartialEq + Eq + Hash`
-//!   at `crates/vb_core/src/diagnostic.rs:937`.
+//!   at `crates/vb_core/src/diagnostic.rs:977`.
 //! - `vb_core::diagnostic::CodeCategory` — derived `PartialEq + Eq + Hash`
 //!   at `crates/vb_core/src/diagnostic.rs:22`.
 //!
@@ -53,7 +53,7 @@ fn hash_of<T: Hash>(value: &T) -> u64 {
 }
 
 // ---------------------------------------------------------------------------
-// Source: crates/vb_core/src/diagnostic.rs:937
+// Source: crates/vb_core/src/diagnostic.rs:977
 // pub struct DiagnosticCode(u16);
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
 //          Serialize, Deserialize)]

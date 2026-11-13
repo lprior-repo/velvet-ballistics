@@ -228,6 +228,39 @@ mod tests {
     }
 
     #[test]
+    fn registry_storage_codes_4033_4043_4101_4103_5001_are_registered() {
+        let expected: [(&str, u16); 10] = [
+            ("INVALID_CONFIG", 0x4033),
+            ("UNSUPPORTED_READ_ONLY", 0x4034),
+            ("REPLAY_KEY_PAYLOAD_MISMATCH", 0x4040),
+            ("REPLAY_ENVELOPE_SEQUENCE_MISMATCH", 0x4041),
+            ("EMERGENCY_DENY_UNSUPPORTED_VERSION", 0x4042),
+            ("EMERGENCY_DENY_MALFORMED", 0x4043),
+            ("NO_DURABLE_SNAPSHOT", 0x4101),
+            ("INCOMPLETE_TRIM", 0x4102),
+            ("RETENTION_POLICY_BLOCKS", 0x4103),
+            ("VERIFICATION_WARNING_SCHEMA_MISMATCH", 0x5001),
+        ];
+        for (symbolic, numeric) in expected {
+            assert_eq!(symbolic_to_numeric(symbolic), Some(numeric));
+            assert_eq!(numeric_to_symbolic(numeric), Some(symbolic));
+            let entry = CODE_REGISTRY
+                .iter()
+                .find(|entry| entry.numeric == numeric)
+                .expect("registered storage code must have a registry entry");
+            assert!(!entry.deprecated);
+            assert_eq!(entry.category, CodeCategory::RuntimeBoundary);
+            let code = DiagnosticCode::new(numeric);
+            assert_eq!(
+                code.symbolic_code().map(SymbolicCode::as_str),
+                Some(symbolic)
+            );
+            assert_eq!(code.category(), Some(CodeCategory::RuntimeBoundary));
+            assert_eq!(DiagnosticCode::from_str(&code.to_string()), Ok(code));
+        }
+    }
+
+    #[test]
     fn diagnostic_code_symbolic_lookup_known_code() {
         let dc = DiagnosticCode::new(0x0101);
         let sc = dc.symbolic_code();
