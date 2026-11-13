@@ -18,7 +18,10 @@
 // `verification_proof_core` at crates/vb_storage/src/admission/proof.rs:103-118,
 // with only bounded_claimed and idempotency_verified_claimed set by
 // `prepare_with_profile` at
-// crates/vb_storage/src/admission/verification.rs:30-56).
+// crates/vb_storage/src/admission/verification.rs:30-56), and the
+// payload-tag surface (`PayloadTag`, `classify_accepted_artifact`,
+// `is_strict_accepted_artifact_tag` at
+// crates/vb_storage/src/admission/payload_tag.rs:10-39).
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -35,10 +38,14 @@ pub use prod::{
     all_required_gates_accepted,
     artifact_matches_header_and_source,
     bind_accepted_at_seq,
+    classify_accepted_artifact,
     is_strict_accepted_artifact_tag,
     required_index_preconditions,
     valid_commit_input,
+    AcceptedArtifact,
+    CURRENT_IR_VERSION,
     PayloadTag,
+    SchemaVersion,
 };
 
 } // verus!
