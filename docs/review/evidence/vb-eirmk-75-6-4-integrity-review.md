@@ -1,15 +1,18 @@
 # Test-integrity heuristic review proposal
 
-**Status: unapplied proposal for human review.** This receipt documents the exact remaining `check-test-integrity.sh` findings at source pin `55c7569d0071e9db27a72e0538730395d92f6ce9` against base `25d7d327574d4e5fee7d0260727932af72b2ff3d`. It does not modify the gate or its justification TSV and does not claim canonical acceptance.
+**Status: unapplied proposal for human review.** This receipt documents the exact remaining `check-test-integrity.sh` findings at source pin `b43efaff9ff57c679a4c6975d178419da0141d5a` (tree `f081fe663cf45cb33492a0076aca3cfe526bc60d`) against base `25d7d327574d4e5fee7d0260727932af72b2ff3d`. It does not modify the gate or its justification TSV and does not claim canonical acceptance.
 
 ## Reproduction
 
-Command: `bash scripts/check-test-integrity.sh --base 25d7d327574d4e5fee7d0260727932af72b2ff3d`. Observed exit: 1. Complete stdout is preserved at `.evidence/r9/test-integrity-final.log`. The gate reported one `WeakenedAssertion` finding and seven `IgnoredOrSkippedTest` findings; all are enumerated below. The proposal adds hash-bound records for review, but remains unapplied pending human approval.
+Command: `bash scripts/check-test-integrity.sh --base 25d7d327574d4e5fee7d0260727932af72b2ff3d`. Observed exit: 1. Complete stdout is preserved at `.evidence/r9/test-integrity-final-timer.log`. The gate reported one `WeakenedAssertion` finding and seven `IgnoredOrSkippedTest` findings; all are enumerated below. The proposal adds hash-bound records for review, but remains unapplied pending human approval.
 
 Focused registered-suite evidence from the source pin:
 
 - `CI=1 CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$PWD/.evidence/r9/target" TMPDIR="$PWD/.evidence/r9/scratch" TMP="$PWD/.evidence/r9/scratch" TEMP="$PWD/.evidence/r9/scratch" cargo test -p velvet-ballistics-workspace-tests --test shipping_nested_data --test shipping_open_wait_reentry --test shipping_repeat_recovery --test shipping_together_recovery -- --test-threads=1` exited 0: 36/36 passed. Raw output: `.evidence/r9/integrity-finding-suites.log`.
 - `CI=1 CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$PWD/.evidence/r9/target" TMPDIR="$PWD/.evidence/r9/scratch" TMP="$PWD/.evidence/r9/scratch" TEMP="$PWD/.evidence/r9/scratch" cargo test -p velvet-ballistics-workspace-tests --test shipping_foreach_recovery --test shipping_nested_effects --test shipping_nested_data --test shipping_open_wait_reentry -- --test-threads=1` exited 0: 42/42 passed. Raw output: `.evidence/r9/nested-foreach-r9-focused-rerun.log`.
+- `cargo test -p vb_runtime pending_boundary_snapshot_reports_populated_boundaries -- --exact` exited 0: 1/1 passed. Raw output: `.evidence/r9/timer-boundary-green.log`.
+- `cargo test -p vb_runtime shard_pending_timer_generation_overflow_fails_closed_without_wrap -- --exact` exited 0: 1/1 passed. Raw output: `.evidence/r9/timer-overflow-green.log`.
+- The persisted retry authority and restart controls exited 0: `vb_f1_retry` 8/8, `vb_f1_retry_restart` 7/7, `shipping_nested_effects` 6/6. Raw output: `.evidence/r9/timer-authority-integration.log`.
 
 ## Finding-by-finding basis
 
@@ -26,7 +29,7 @@ No finding represents an `#[ignore]`, early `return`, removed test, or missing a
 
 ## Hash bindings and proposed disposition
 
-Base: `25d7d327574d4e5fee7d0260727932af72b2ff3d`. Source/test candidate: `55c7569d0071e9db27a72e0538730395d92f6ce9` (tree `284b4485ce849b91e46dabce7aef4444695b00d0`). The affected test files were absent at base; their candidate Git blob IDs are:
+Base: `25d7d327574d4e5fee7d0260727932af72b2ff3d`. Source/test candidate: `b43efaff9ff57c679a4c6975d178419da0141d5a` (tree `f081fe663cf45cb33492a0076aca3cfe526bc60d`). The affected test files were absent at base; their candidate Git blob IDs are:
 
 | Path | Candidate blob |
 | --- | --- |
