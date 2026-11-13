@@ -19,6 +19,9 @@ use crate::recovery::types::{
     RecoveryFrameSeedProduct, RecoveryResult, UnsupportedRecoveryState,
 };
 
+#[path = "owned_for_each/supported_route.rs"]
+mod supported_route;
+
 /// A complete deterministic owned-arena replay.
 #[derive(Debug)]
 pub struct OwnedForEachReplay {
@@ -162,8 +165,7 @@ fn retained_handles_require_store(initial_inputs: &[(SlotIdx, SlotValue, Taint)]
 fn eligibility(plan: &CompiledWorkflow) -> Option<bool> {
     (0..plan.node_count()).try_fold(false, |saw_control, raw| {
         let node = plan.node(StepIdx::new(raw))?;
-        let valid_route =
-            node.routing.error.handler().is_none() && node.routing.error.error_slot().is_none();
+        let valid_route = supported_route::supports(node);
         valid_route.then_some(())?;
         Some(saw_control || owned_node_kind(&node.kind)?)
     })

@@ -14,6 +14,8 @@ mod branches;
 mod evidence;
 #[path = "shipping_together_recovery/failure.rs"]
 mod failure;
+#[path = "shipping_together_recovery/failure_cuts.rs"]
+mod failure_cuts;
 #[path = "shipping_together_recovery/recovery.rs"]
 mod recovery;
 #[path = "shipping_together_recovery/replay.rs"]

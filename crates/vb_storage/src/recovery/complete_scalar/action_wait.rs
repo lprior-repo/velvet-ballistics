@@ -7,7 +7,10 @@ use crate::recovery::RecoveryResult;
 use crate::recovery::hydrate_support::verify_action_ticket_event;
 use vb_core::action::ActionTicket;
 use vb_core::replay::{ReplayAction, SuspensionKind};
-use vb_core::{CompiledNodeKind as K, Deadline, SlotIdx, StepIdx, StepState, WorkflowDigest};
+use vb_core::{
+    CompiledNodeKind as K, CompiledWorkflow, Deadline, RunFrame, SlotIdx, SlotValue, StepIdx,
+    StepState, WorkflowDigest,
+};
 
 /// One scheduled action boundary awaiting its durable completion envelope.
 #[derive(Debug)]
@@ -121,6 +124,7 @@ impl Driver<'_> {
         self.frame
             .mark_failed(step)
             .map_err(|e| invalid(step, e.to_string()))?;
+        route_action_failure(self.plan, &mut self.frame, step)?;
         self.action = None;
         self.active = None;
         Ok(())
@@ -243,4 +247,27 @@ impl Driver<'_> {
         self.answered = true;
         Ok(())
     }
+}
+
+fn route_action_failure(
+    plan: &CompiledWorkflow,
+    frame: &mut RunFrame,
+    failed: StepIdx,
+) -> RecoveryResult<()> {
+    let node = plan
+        .node(failed)
+        .ok_or_else(|| invalid(failed, "failed action node missing"))?;
+    let Some(handler) = node.routing.error.handler() else {
+        return Ok(());
+    };
+    if let Some(slot) = plan.resolved_error_slot(node) {
+        frame
+            .write_slot(slot, SlotValue::I64(i64::from(failed.get())))
+            .map_err(|error| invalid(failed, error.to_string()))?;
+    }
+    vb_core::engine::abandon_together_scopes(plan, frame, failed, handler)
+        .map_err(|error| invalid(failed, error.to_string()))?;
+    frame
+        .set_pc(handler)
+        .map_err(|error| invalid(failed, error.to_string()))
 }

@@ -109,139 +109,25 @@ impl StorageRuntimeJournal {
         event: RuntimeJournalEvent,
         seq: EventSeq,
     ) -> RuntimeResult<Option<JournalEvent>> {
+        use RuntimeJournalEvent::*;
         match event {
-            RuntimeJournalEvent::RunSubmitted { run, workflow } => {
-                Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
+            RunAdmission { admission } => Ok(Some(Self::admission_storage_event(admission, seq))),
+            event
+            @ (RunSubmitted { .. } | RunFailed { .. } | RunKilled { .. } | Resumed { .. }) => {
+                Self::run_status_event(event, seq)
             }
-            RuntimeJournalEvent::RunAdmission { admission } => {
-                if let Some(budget) = admission.budget() {
-                    Ok(Some(JournalEvent::RunAdmissionBudget {
-                        input_digest: admission.input_digest(),
-                        run: admission.run_id(),
-                        seq,
-                        artifact_digest: admission.artifact_digest(),
-                        policy_pin: admission.policy_pin(),
-                        granted_capabilities: admission.granted_capabilities().clone(),
-                        policy: admission.policy(),
-                        budget,
-                    }))
-                } else {
-                    Ok(Some(JournalEvent::RunAdmission {
-                        input_digest: admission.input_digest(),
-                        run: admission.run_id(),
-                        seq,
-                        artifact_digest: admission.artifact_digest(),
-                        policy_pin: admission.policy_pin(),
-                        granted_capabilities: admission.granted_capabilities().clone(),
-                        policy: admission.policy(),
-                    }))
-                }
+            event @ RunFinished { .. } => Self::run_finished_event(event, seq),
+            event @ RunCancelled { .. } => Self::run_cancelled_event(event, seq),
+            event @ RetryCheckpoint { .. } => Self::run_retry_event(event, seq),
+            event @ (CompatibilityDecision { .. } | RunBudgetOrigin { .. }) => {
+                Self::run_compatibility_event(event, seq)
             }
-            RuntimeJournalEvent::RetryCheckpoint {
-                run,
-                attempt,
-                step,
-                payload_digest,
-                payload,
-            } => Ok(Some(JournalEvent::RetryCheckpoint {
-                run,
-                seq,
-                attempt,
-                step,
-                payload_digest,
-                payload,
-            })),
-            RuntimeJournalEvent::RunFinished {
-                run,
-                result,
-                attempt,
-            } => Ok(Some(JournalEvent::RunFinished {
-                run,
-                seq,
-                result,
-                attempt,
-            })),
-            RuntimeJournalEvent::CompatibilityDecision { run, decision } => {
-                Ok(Some(JournalEvent::CompatibilityDecisionEvent {
-                    run,
-                    seq,
-                    decision,
-                }))
+            event @ TenantAdmission { .. } => Self::run_tenant_event(event, seq),
+            event @ (StepStarted { .. } | StepFailed { .. }) => {
+                Self::run_step_status_event(event, seq)
             }
-            RuntimeJournalEvent::TenantAdmission {
-                run,
-                tenant,
-                cost_units,
-            } => Ok(Some(JournalEvent::TenantAdmissionEvent {
-                run,
-                seq,
-                tenant,
-                cost_units,
-            })),
-            RuntimeJournalEvent::RunBudgetOrigin {
-                run,
-                started_millis,
-            } => Ok(Some(JournalEvent::RunBudgetOriginEvent {
-                run,
-                seq,
-                started_millis,
-            })),
-            RuntimeJournalEvent::RunFailed { run, attempt } => {
-                Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
-            }
-            RuntimeJournalEvent::RunCancelled {
-                run,
-                reason,
-                attempt,
-            } => Ok(Some(JournalEvent::RunCancelled {
-                run,
-                seq,
-                attempt,
-                reason,
-            })),
-            RuntimeJournalEvent::RunKilled { run, attempt } => {
-                Ok(Some(JournalEvent::RunKilled { run, seq, attempt }))
-            }
-            RuntimeJournalEvent::Resumed { run, timestamp } => {
-                resumed_storage_event(run, seq, timestamp).map(Some)
-            }
-            RuntimeJournalEvent::StepStarted { run, step, attempt } => {
-                Ok(Some(JournalEvent::StepStarted {
-                    run,
-                    seq,
-                    step,
-                    attempt,
-                }))
-            }
-            RuntimeJournalEvent::StepFailed { run, step, attempt } => {
-                Ok(Some(JournalEvent::StepFailed {
-                    run,
-                    seq,
-                    step,
-                    attempt,
-                }))
-            }
-            RuntimeJournalEvent::StepSucceeded {
-                run, step, output, ..
-            } => Ok(Some(JournalEvent::StepSucceeded {
-                run,
-                seq,
-                step,
-                output,
-            })),
-            RuntimeJournalEvent::ActionScheduled { .. }
-            | RuntimeJournalEvent::ActionCompleted { .. }
-            | RuntimeJournalEvent::ActionScheduledTicket { .. }
-            | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
-            | RuntimeJournalEvent::ActionFailed { .. }
-            | RuntimeJournalEvent::ActionAbandoned { .. }
-            | RuntimeJournalEvent::RetryTimerScheduled { .. }
-            | RuntimeJournalEvent::WaitScheduled { .. }
-            | RuntimeJournalEvent::WaitResolved { .. }
-            | RuntimeJournalEvent::AskScheduled { .. }
-            | RuntimeJournalEvent::AskAnswered { .. }
-            | RuntimeJournalEvent::AskTimedOut { .. }
-            | RuntimeJournalEvent::SlotWritten { .. } => Ok(None),
+            event @ StepSucceeded { .. } => Self::run_step_success_event(event, seq),
+            _ => Ok(None),
         }
     }
 }

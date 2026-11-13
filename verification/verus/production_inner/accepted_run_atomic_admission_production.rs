@@ -12,6 +12,9 @@
 //     (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2)
 //   - `vb_storage::admission::submit_artifact_with_contracts`
 //     (crates/vb_storage/src/admission.rs:96-121)
+//   - `vb_storage::admission::PayloadTag`, `classify_accepted_artifact`,
+//     `is_strict_accepted_artifact_tag`
+//     (crates/vb_storage/src/admission/payload_tag.rs:10-39)
 //
 // The 15-gate shape is NOT what production constructs or validates:
 // `submit_artifact_with_contracts` performs no gate/flag validation.
@@ -38,6 +41,8 @@
 //     <- crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
 //   - `submit_artifact_with_contracts`
 //     <- crates/vb_storage/src/admission.rs:96-121
+//   - `PayloadTag`, `classify_accepted_artifact`, `is_strict_accepted_artifact_tag`
+//     <- crates/vb_storage/src/admission/payload_tag.rs:10-39
 // Regenerate this file whenever production changes. Any rename of
 // `PayloadTag::AcceptedArtifact` or body change in the submit path
 // breaks the `extern_run_atomic_admission` Verus build.
@@ -54,10 +59,11 @@
 // Verus' `external_body` erasure issues with `pub const` items in
 // included modules; the named const lives spec-side only.
 
-// Production mirror: payload tag discriminant. Mirrors the
-// accepted-artifact payload tag in
-// `vb_storage::admission::AcceptedArtifact` and the strict-policy
-// branch of `submit_artifact_with_contracts`.
+use vstd::prelude::*;
+
+verus! {
+
+// Production `crates/vb_storage/src/admission/payload_tag.rs:10-23`
 #[derive(Clone, Copy)]
 pub enum PayloadTag {
     AcceptedArtifact,
@@ -66,6 +72,35 @@ pub enum PayloadTag {
     Malformed,
 }
 
+// Local stubs for the production types `classify_accepted_artifact`
+// reads: `SchemaVersion` and `CURRENT_IR_VERSION` from
+// `vb_storage::compat`, `AcceptedArtifact` from `vb_storage::admission`.
+#[derive(Clone, Copy)]
+pub struct SchemaVersion {
+    pub major: u16,
+    pub minor: u16,
+    pub patch: u16,
+}
+
+pub const CURRENT_IR_VERSION: SchemaVersion = SchemaVersion { major: 2, minor: 0, patch: 0 };
+
+pub struct AcceptedArtifact {
+    pub artifact_version: SchemaVersion,
+}
+
+// Production `crates/vb_storage/src/admission/payload_tag.rs:27-33`
+#[verifier::external]
+pub fn classify_accepted_artifact(artifact: &AcceptedArtifact) -> PayloadTag {
+    if artifact.artifact_version.major == CURRENT_IR_VERSION.major
+        && artifact.artifact_version.minor == CURRENT_IR_VERSION.minor
+        && artifact.artifact_version.patch == CURRENT_IR_VERSION.patch {
+        PayloadTag::AcceptedArtifact
+    } else {
+        PayloadTag::LegacyCompiledIr
+    }
+}
+
+// Production `crates/vb_storage/src/admission/payload_tag.rs:37-39`
 #[verifier::external]
 pub fn is_strict_accepted_artifact_tag(tag: PayloadTag) -> bool {
     matches!(tag, PayloadTag::AcceptedArtifact)
@@ -112,19 +147,12 @@ pub fn valid_commit_input(
     has_runtime_policy: bool,
     has_capabilities: bool,
 ) -> bool {
-    same_run
-        && same_workflow
-        && artifact_matches_header_and_source(
-            artifact_digest_matches,
-            workflow_digest_matches,
-            proof_matches,
-            capability_set_matches,
-        )
-        && has_source
-        && has_artifact
-        && has_header
-        && has_runtime_policy
-        && has_capabilities
+    same_run && same_workflow && artifact_matches_header_and_source(
+        artifact_digest_matches,
+        workflow_digest_matches,
+        proof_matches,
+        capability_set_matches,
+    ) && has_source && has_artifact && has_header && has_runtime_policy && has_capabilities
 }
 
 #[verifier::external]
@@ -146,3 +174,5 @@ pub fn required_index_preconditions(
 ) -> bool {
     committed && status_points_to_run && workflow_points_to_run && action_points_to_run
 }
+
+} // verus!

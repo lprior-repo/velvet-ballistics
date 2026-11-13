@@ -17,7 +17,7 @@
 //! - `vb_runtime::RuntimeError` — hand-written `PartialEq` at
 //!   `crates/vb_runtime/src/error/equality.rs:7-13`. Not `Hash`-able.
 //! - `vb_core::diagnostic::DiagnosticCode` — derived `PartialEq + Eq + Hash`
-//!   at `crates/vb_core/src/diagnostic.rs:903`.
+//!   at `crates/vb_core/src/diagnostic.rs:937`.
 //! - `vb_core::diagnostic::CodeCategory` — derived `PartialEq + Eq + Hash`
 //!   at `crates/vb_core/src/diagnostic.rs:22`.
 //!
@@ -53,7 +53,7 @@ fn hash_of<T: Hash>(value: &T) -> u64 {
 }
 
 // ---------------------------------------------------------------------------
-// Source: crates/vb_core/src/diagnostic.rs:903
+// Source: crates/vb_core/src/diagnostic.rs:937
 // pub struct DiagnosticCode(u16);
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
 //          Serialize, Deserialize)]
@@ -160,7 +160,7 @@ fn arb_runtime_error() -> impl Strategy<Value = RuntimeError> {
         // `_ => None` arm, so `runtime_error_unit_eq` returns `false` for
         // any `ShardNotFound` pair. Equality is then decided by the
         // `ShardNotFound { shard: a } == ShardNotFound { shard: b }` field
-        // arm in `runtime_error_core_field_eq` at equality.rs:120-122.
+        // arm in `runtime_error_core_field_eq` at `crates/vb_runtime/src/error/equality/core.rs:202-203`.
         // This is consistent with every other field-bearing variant
         // (`ActiveRunCapacityExceeded { capacity }`, `JournalFull { capacity }`,
         // `UnsupportedOperation { operation }`, ...). The dedicated

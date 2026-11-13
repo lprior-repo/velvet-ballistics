@@ -24,3 +24,6 @@ mod together_choose_do;
 
 #[path = "shipping_nested_effects/nested_together.rs"]
 mod nested_together;
+
+#[path = "shipping_nested_effects/repeat_retry_handler.rs"]
+mod repeat_retry_handler;

@@ -2,7 +2,6 @@
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
-#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_verify)]
 #[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out =>
     ensures out == match candidate { Some(value) => Some(value), None => previous },
 ))]
@@ -13,7 +12,6 @@ pub(crate) fn keep_last<T>(previous: Option<T>, candidate: Option<T>) -> Option<
     }
 }
 
-#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_verify)]
 #[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out =>
     ensures out == match input {
         Err(error) => Err(error), Ok(None) => Ok(None),
@@ -28,7 +26,6 @@ pub(crate) fn strip_type<S, T, E>(input: Result<Option<(S, T)>, E>) -> Result<Op
     }
 }
 
-#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_verify)]
 #[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out =>
     ensures match out {
         Some(value) => value as int == left as int + right as int,

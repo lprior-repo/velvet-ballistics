@@ -30,6 +30,9 @@
 //     prepared shape by recompute-and-compare, any deviation returned as
 //     ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
+//   - `vb_storage::admission::PayloadTag`, `classify_accepted_artifact`,
+//     `is_strict_accepted_artifact_tag` at
+//     crates/vb_storage/src/admission/payload_tag.rs:10-39.
 use vstd::prelude::*;
 
 verus! {
@@ -45,6 +48,12 @@ mod production;
 // vb_storage::admission::submit_artifact_with_contracts strict branch.
 pub fn is_strict_accepted_artifact_tag(tag: production::PayloadTag) -> bool {
     production::is_strict_accepted_artifact_tag(tag)
+}
+
+pub fn classify_accepted_artifact(
+    artifact: &production::AcceptedArtifact,
+) -> production::PayloadTag {
+    production::classify_accepted_artifact(artifact)
 }
 
 pub fn all_required_gates_accepted(
@@ -141,6 +150,24 @@ pub assume_specification[ production::is_strict_accepted_artifact_tag ](
         ),
 ;
 
+pub assume_specification[ production::classify_accepted_artifact ](
+    artifact: &production::AcceptedArtifact,
+) -> (r: production::PayloadTag)
+    ensures
+        match r {
+            production::PayloadTag::AcceptedArtifact => SpecPayloadTag::AcceptedArtifact,
+            production::PayloadTag::RawWorkflowParts => SpecPayloadTag::RawWorkflowParts,
+            production::PayloadTag::LegacyCompiledIr => SpecPayloadTag::LegacyCompiledIr,
+            production::PayloadTag::Malformed => SpecPayloadTag::Malformed,
+        } == spec_classify_accepted_artifact(
+            SpecSchemaVersion {
+                major: artifact.artifact_version.major,
+                minor: artifact.artifact_version.minor,
+                patch: artifact.artifact_version.patch,
+            },
+        ),
+;
+
 pub assume_specification[ production::all_required_gates_accepted ](
     gate_count: u8,
     all_required_gate_proofs_accepted: bool,
@@ -232,6 +259,24 @@ pub enum SpecPayloadTag {
     LegacyCompiledIr,
     Malformed,
 }
+
+pub struct SpecSchemaVersion {
+    pub major: u16,
+    pub minor: u16,
+    pub patch: u16,
+}
+
+pub const SPEC_CURRENT_IR_VERSION: SpecSchemaVersion = SpecSchemaVersion {
+    major: 2,
+    minor: 0,
+    patch: 0,
+};
+
+pub const SPEC_LEGACY_IR_VERSION: SpecSchemaVersion = SpecSchemaVersion {
+    major: 1,
+    minor: 0,
+    patch: 0,
+};
 
 pub enum SpecFailureCause {
     InvalidAcceptedArtifact,
@@ -336,6 +381,14 @@ pub open spec fn spec_strict_payload_is_accepted_artifact(tag: SpecPayloadTag) -
         SpecPayloadTag::RawWorkflowParts => false,
         SpecPayloadTag::LegacyCompiledIr => false,
         SpecPayloadTag::Malformed => false,
+    }
+}
+
+pub open spec fn spec_classify_accepted_artifact(version: SpecSchemaVersion) -> SpecPayloadTag {
+    if version == SPEC_CURRENT_IR_VERSION {
+        SpecPayloadTag::AcceptedArtifact
+    } else {
+        SpecPayloadTag::LegacyCompiledIr
     }
 }
 
@@ -530,6 +583,45 @@ pub proof fn proof_raw_workflow_parts_rejected()
     assert(!spec_strict_payload_is_accepted_artifact(SpecPayloadTag::LegacyCompiledIr));
     assert(!spec_strict_payload_is_accepted_artifact(SpecPayloadTag::Malformed));
     assert(spec_strict_payload_is_accepted_artifact(SpecPayloadTag::AcceptedArtifact));
+}
+
+// Non-vacuous: a current-IR-version artifact classifies AcceptedArtifact.
+pub proof fn proof_classify_current_version_accepted()
+    ensures
+        spec_classify_accepted_artifact(SPEC_CURRENT_IR_VERSION)
+            == SpecPayloadTag::AcceptedArtifact,
+{
+    reveal(spec_classify_accepted_artifact);
+    assert(spec_classify_accepted_artifact(SPEC_CURRENT_IR_VERSION)
+        == SpecPayloadTag::AcceptedArtifact);
+}
+
+// Non-vacuous: a legacy-IR-version artifact classifies LegacyCompiledIr.
+pub proof fn proof_classify_legacy_version_rejected()
+    ensures
+        spec_classify_accepted_artifact(SPEC_LEGACY_IR_VERSION) == SpecPayloadTag::LegacyCompiledIr,
+{
+    reveal(spec_classify_accepted_artifact);
+    assert(spec_classify_accepted_artifact(SPEC_LEGACY_IR_VERSION)
+        == SpecPayloadTag::LegacyCompiledIr);
+}
+
+// Non-vacuous: strict admission accepts exactly the classify result of a
+// current-version artifact.
+pub proof fn proof_strict_accepts_only_classified_current(version: SpecSchemaVersion)
+    ensures
+        spec_strict_payload_is_accepted_artifact(spec_classify_accepted_artifact(version)) == (
+        version == SPEC_CURRENT_IR_VERSION),
+{
+    reveal(spec_classify_accepted_artifact);
+    reveal(spec_strict_payload_is_accepted_artifact);
+    if version == SPEC_CURRENT_IR_VERSION {
+        assert(spec_classify_accepted_artifact(version) == SpecPayloadTag::AcceptedArtifact);
+        assert(spec_strict_payload_is_accepted_artifact(SpecPayloadTag::AcceptedArtifact));
+    } else {
+        assert(spec_classify_accepted_artifact(version) == SpecPayloadTag::LegacyCompiledIr);
+        assert(!spec_strict_payload_is_accepted_artifact(SpecPayloadTag::LegacyCompiledIr));
+    }
 }
 
 // Non-vacuous: derives each precondition conjunct.
