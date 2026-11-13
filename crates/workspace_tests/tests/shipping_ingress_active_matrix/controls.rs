@@ -197,7 +197,24 @@ fn exercise_case(case_index: usize, case: ControlCase) -> TestResult {
         );
     }
     support::tick_until_terminal(&mut reopened.runtime, run, 512)?;
-    let actual = support::events(&reopened.journal, run)?;
+    let mut actual = support::events(&reopened.journal, run)?;
+    if case.source.contains("collect:") {
+        let slot = workflow.node(body).and_then(|node| node.output.slot()).ok_or("body slot")?;
+        let wrong_index = live_store.lists.iter().position(|list| list.as_ref() == [SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]).ok_or("input list")?;
+        let wrong_value = SlotValue::List(vb_core::ids::ListId::new(u32::try_from(wrong_index)?));
+        let mut changed = 0;
+        for event in actual.iter_mut().skip(prefix.len()) {
+            if let JournalEvent::SlotWrittenEvent { slot: written, value, extra, attempt, .. } = event
+                && *written == slot
+            {
+                *value = Some(postcard::to_allocvec(&wrong_value)?);
+                *extra = Some(vb_storage::slot_extra::encode_slot_written_extra(Taint::Secret, None).map_err(|error| format!("{error:?}"))?);
+                *attempt = 99;
+                changed += 1;
+            }
+        }
+        assert_eq!(changed, 1, "probe must corrupt exactly the final body write");
+    }
     support::assert_ordering(&actual, run)?;
     let result = support::terminal(&actual, run)?;
     let expected_result = if case.name == "outer" && case.source.contains("collect:") {
@@ -297,6 +314,7 @@ fn cut_inside_control(
         observations.push(state.frame.checkpoint_v1().states);
         if state.frame.step_state(body)? == StepState::Succeeded
             && state.frame.step_state(finish)? == StepState::Pending
+            && (run != RunId::new(0xA100) || state.frame.pc() == finish)
         {
             return Ok((
                 state.frame.checkpoint_v1(),
