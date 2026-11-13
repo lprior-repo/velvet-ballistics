@@ -89,7 +89,7 @@ full-gate-evidence-refresh
 
 Codegen and UI gaps are cleanup debt unless a bead explicitly deletes or quarantines residue. They are not reactivation tracks in the current master scope.
 
-The previous `error-variant-completeness-audit` gap has Round 2 implementation evidence in `tests/error_variant_completeness_test.rs` and `docs/error-variant-completeness.md`; it remains subject to the full gate matrix like every other test surface.
+The previous `error-variant-completeness-audit` gap has Round 2 implementation evidence in the per-crate completeness suites listed in `docs/error-variant-completeness.md`; it remains subject to the full gate matrix like every other test surface.
 
 Required first beads:
 
