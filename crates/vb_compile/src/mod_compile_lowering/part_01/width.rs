@@ -34,7 +34,7 @@ pub(in crate::mod_compile_lowering) fn body_width(
                 } => {
                     let tracked = super::part_14::iteration_body::needs_tracking(body);
                     pending.push((body, tracked));
-                    super::part_14::for_each_overhead(*at_once)
+                    super::part_14::for_each_overhead(*at_once, body)
                         .checked_add(super::list_input::source_width(input))
                         .and_then(|n| n.checked_add(usize::from(tracked)))
                         .ok_or(CompileError::StepIndexOutOfRange { value: width })?

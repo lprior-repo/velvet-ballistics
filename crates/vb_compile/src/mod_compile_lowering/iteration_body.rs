@@ -40,12 +40,56 @@ pub(in crate::mod_compile_lowering) fn needs_tracking(body: &[crate::StepAst]) -
     })
 }
 
+pub(in crate::mod_compile_lowering) fn uses_concurrent_lowering(
+    at_once: Option<u32>,
+    body: &[crate::StepAst],
+) -> bool {
+    at_once.is_some_and(|value| value > 1) && supports_concurrent_body(body)
+}
+
+fn supports_concurrent_body(body: &[crate::StepAst]) -> bool {
+    let mut pending = body.iter().collect::<Vec<_>>();
+    while let Some(step) = pending.pop() {
+        if matches!(
+            step.primitive,
+            crate::StepPrimitive::Do { .. }
+                | crate::StepPrimitive::Ask { .. }
+                | crate::StepPrimitive::Wait { .. }
+        ) {
+            return false;
+        }
+        pending.extend(nested_steps(step));
+    }
+    true
+}
+
+fn nested_steps(step: &crate::StepAst) -> Vec<&crate::StepAst> {
+    match &step.primitive {
+        crate::StepPrimitive::ForEach { body, .. }
+        | crate::StepPrimitive::Collect { body, .. }
+        | crate::StepPrimitive::Aggregate { body, .. }
+        | crate::StepPrimitive::Repeat { body, .. } => body.iter().collect(),
+        crate::StepPrimitive::Choose { branches, .. } => branches
+            .iter()
+            .flat_map(|branch| branch.steps.iter())
+            .collect(),
+        crate::StepPrimitive::Together { branches } => branches
+            .iter()
+            .flat_map(|branch| branch.steps.iter())
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
 /// Node overhead of one `for_each` construct.
 ///
 /// Serial lowering emits list initialization, source taint, start, append,
 /// advance and join. Concurrent lowering emits start, lane end and join.
-pub(in crate::mod_compile_lowering) fn for_each_overhead(at_once: Option<u32>) -> usize {
-    if at_once.is_some_and(|value| value > 1) {
+pub(in crate::mod_compile_lowering) fn for_each_overhead(
+    at_once: Option<u32>,
+    body: &[crate::StepAst],
+) -> usize {
+    if uses_concurrent_lowering(at_once, body) {
         3
     } else {
         6
