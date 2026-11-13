@@ -4,7 +4,7 @@ use crate::JournalEvent as E;
 use crate::recovery::RecoveryResult;
 use std::collections::HashSet;
 use vb_core::replay::ReplayAction;
-use vb_core::replay::step::ReplayCollectStates;
+use vb_core::replay::step::{ReplayCollectStateSnapshot, ReplayCollectStates};
 use vb_core::{
     CompiledNodeKind as K, CompiledWorkflow, RunFrame, SlotIdx, SlotValue, StepIdx, Taint,
     ValueStore,
@@ -15,6 +15,7 @@ pub(super) struct Driver<'a> {
     pub(super) frame: RunFrame,
     pub(super) store: ValueStore,
     pub(super) collect: ReplayCollectStates,
+    pub(super) collect_snapshots: Vec<OwnedCollectReplaySnapshot>,
     pub(super) active: Option<(StepIdx, ReplayAction)>,
     pub(super) captures: HashSet<SlotIdx>,
     pub(super) ask: Option<(StepIdx, StepIdx, SlotIdx)>,
@@ -25,6 +26,21 @@ pub(super) struct Driver<'a> {
     pub(super) action: Option<ScheduledAction>,
     pub(super) waiting: Option<(StepIdx, u16)>,
     pub(super) mode: TraceReplayMode,
+}
+
+/// Transient replay evidence aligned to a single Collect slot-write event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OwnedCollectReplaySnapshot {
+    /// Durable journal sequence number.
+    pub seq: crate::EventSeq,
+    /// Run owning the event.
+    pub run: vb_core::RunId,
+    /// Collect step that emitted the event.
+    pub step: StepIdx,
+    /// Collector slot written by the event.
+    pub slot: SlotIdx,
+    /// State after this event, absent when CollectStart emitted an empty page.
+    pub state: Option<ReplayCollectStateSnapshot>,
 }
 
 pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<RunFrame> {
@@ -52,6 +68,15 @@ pub(crate) fn replay_with_inputs_and_store(
     plan: &CompiledWorkflow,
     input: &TraceReplayInput<'_>,
 ) -> RecoveryResult<(RunFrame, ValueStore)> {
+    replay_with_inputs_and_store_and_collect_snapshots(events, plan, input)
+        .map(|(frame, store, _snapshots)| (frame, store))
+}
+
+pub(crate) fn replay_with_inputs_and_store_and_collect_snapshots(
+    events: &[E],
+    plan: &CompiledWorkflow,
+    input: &TraceReplayInput<'_>,
+) -> RecoveryResult<(RunFrame, ValueStore, Vec<OwnedCollectReplaySnapshot>)> {
     let first = events
         .first()
         .ok_or_else(|| invalid(plan.entry(), "empty bound trace"))?;
@@ -82,6 +107,7 @@ pub(crate) fn replay_with_inputs_and_store(
         frame,
         store,
         collect: ReplayCollectStates::new(),
+        collect_snapshots: Vec::new(),
         active: None,
         captures: HashSet::new(),
         ask: None,
@@ -142,8 +168,13 @@ pub(crate) fn replay_with_inputs_and_store(
                 driver.start(*step)?;
             }
             E::SlotWrittenEvent {
-                slot, value, extra, ..
-            } => driver.capture(*slot, value.as_deref(), extra.as_deref())?,
+                run,
+                seq,
+                slot,
+                value,
+                extra,
+                ..
+            } => driver.capture(*run, *seq, *slot, value.as_deref(), extra.as_deref())?,
             E::StepSucceeded { step, output, .. } => driver.succeeded(*step, *output)?,
             E::StepFailed { step, .. } => driver.failed(*step)?,
             E::AskScheduledEvent { step, .. } => driver.scheduled_ask(*step)?,
@@ -233,5 +264,5 @@ pub(crate) fn replay_with_inputs_and_store(
     if driver.finished && !driver.terminal {
         return Err(invalid(driver.frame.pc(), "terminal receipt missing"));
     }
-    Ok((driver.frame, driver.store))
+    Ok((driver.frame, driver.store, driver.collect_snapshots))
 }

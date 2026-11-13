@@ -31,8 +31,12 @@ fn runtime(journal: Arc<FjallJournal>) -> Runtime {
 /// typed recovery, resume, and owned replay.
 pub(crate) fn run_cell(outer: &str, inner: &str) -> TestResult<Observed> {
     let source = nested_source(outer, inner)?;
+    run_cell_source(outer, inner, &source)
+}
+
+pub(crate) fn run_cell_source(outer: &str, inner: &str, source: &str) -> TestResult<Observed> {
     let prepared = prepare(
-        &source,
+        source,
         &[SlotValue::I64(3), SlotValue::I64(5)],
         &[Taint::Secret, Taint::DerivedFromSecret],
     )?;

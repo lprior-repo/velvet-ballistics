@@ -17,6 +17,7 @@ use vb_core::{
 use super::owned_for_each_summary::{pending_actions, summary};
 use crate::JournalEvent;
 use crate::recovery::complete_scalar::driver;
+use crate::recovery::complete_scalar::driver::OwnedCollectReplaySnapshot;
 use crate::recovery::complete_scalar::{TraceReplayInput, TraceReplayMode};
 use crate::recovery::types::{
     RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
@@ -34,11 +35,33 @@ pub struct OwnedForEachReplay {
     pub store: ValueStoreCheckpointV1,
 }
 
+/// Owned-arena replay with transient Collect-state receipts for Runtime binding.
+#[derive(Debug)]
+pub struct OwnedForEachReplayWithCollectSnapshots {
+    /// Existing deterministic replay product.
+    pub replay: OwnedForEachReplay,
+    /// Per-event Collect snapshots that must be checked against durable extras.
+    pub collect_snapshots: Vec<OwnedCollectReplaySnapshot>,
+}
+
 /// Returns true when `plan` is inside the deterministic owned-arena
 /// contract handled by [`replay_owned_for_each`].
 #[must_use]
 pub fn is_owned_for_each_contract(plan: &CompiledWorkflow) -> bool {
-    eligible(plan)
+    eligibility(plan) == Some(true)
+}
+
+/// Returns true for deterministic plans that need the retained owned input
+/// arena even though they contain no compound-owned control node.
+#[must_use]
+pub fn is_owned_input_replay_contract(
+    plan: &CompiledWorkflow,
+    initial_inputs: &[(SlotIdx, SlotValue, Taint)],
+    store_checkpoint: Option<&ValueStoreCheckpointV1>,
+) -> bool {
+    eligibility(plan) == Some(false)
+        && retained_handles_require_store(initial_inputs)
+        && store_checkpoint.is_some()
 }
 
 /// Replays a deterministic arena trace from the journal activation order.
@@ -54,7 +77,21 @@ pub fn replay_owned_for_each(
     initial_inputs: &[(SlotIdx, SlotValue, Taint)],
     store_checkpoint: Option<&ValueStoreCheckpointV1>,
 ) -> RecoveryResult<Option<OwnedForEachReplay>> {
-    if !is_owned_for_each_contract(plan)
+    replay_owned_for_each_with_collect_snapshots(events, plan, initial_inputs, store_checkpoint)
+        .map(|replay| replay.map(|evidence| evidence.replay))
+}
+
+/// Replays an owned-arena trace and returns transient Collect-state evidence.
+/// Callers that resume Collect must bind every receipt to its durable frame extra.
+pub fn replay_owned_for_each_with_collect_snapshots(
+    events: &[JournalEvent],
+    plan: &CompiledWorkflow,
+    initial_inputs: &[(SlotIdx, SlotValue, Taint)],
+    store_checkpoint: Option<&ValueStoreCheckpointV1>,
+) -> RecoveryResult<Option<OwnedForEachReplayWithCollectSnapshots>> {
+    let owned_controls = is_owned_for_each_contract(plan);
+    let retained_source = is_owned_input_replay_contract(plan, initial_inputs, store_checkpoint);
+    if !(owned_controls || retained_source)
         || events
             .iter()
             .any(super::owned_for_each_summary::unsupported_replay_event)
@@ -64,20 +101,24 @@ pub fn replay_owned_for_each(
     if store_checkpoint.is_none() && retained_handles_require_store(initial_inputs) {
         return Ok(None);
     }
-    let (frame, store) = driver::replay_with_inputs_and_store(
-        events,
-        plan,
-        &TraceReplayInput {
-            initial_inputs,
-            store_checkpoint,
-            mode: TraceReplayMode::OwnedArena,
-        },
-    )?;
+    let (frame, store, collect_snapshots) =
+        driver::replay_with_inputs_and_store_and_collect_snapshots(
+            events,
+            plan,
+            &TraceReplayInput {
+                initial_inputs,
+                store_checkpoint,
+                mode: TraceReplayMode::OwnedArena,
+            },
+        )?;
     let product = seed_from_frame(events, plan, &frame)?;
-    Ok(Some(OwnedForEachReplay {
-        product,
-        frame,
-        store: store.checkpoint_v1(),
+    Ok(Some(OwnedForEachReplayWithCollectSnapshots {
+        replay: OwnedForEachReplay {
+            product,
+            frame,
+            store: store.checkpoint_v1(),
+        },
+        collect_snapshots,
     }))
 }
 
@@ -90,15 +131,13 @@ fn retained_handles_require_store(initial_inputs: &[(SlotIdx, SlotValue, Taint)]
     })
 }
 
-fn eligible(plan: &CompiledWorkflow) -> bool {
+fn eligibility(plan: &CompiledWorkflow) -> Option<bool> {
     let mut saw_owned_control = false;
     for raw in 0..plan.node_count() {
         let step = StepIdx::new(raw);
-        let Some(node) = plan.node(step) else {
-            return false;
-        };
+        let node = plan.node(step)?;
         if node.routing.error.handler().is_some() || node.routing.error.error_slot().is_some() {
-            return false;
+            return None;
         }
         match node.kind {
             K::ForEachStart { .. }
@@ -132,10 +171,10 @@ fn eligible(plan: &CompiledWorkflow) -> bool {
             | K::ChooseSlot { .. }
             | K::Jump { .. }
             | K::Finish { .. } => {}
-            _ => return false,
+            _ => return None,
         }
     }
-    saw_owned_control
+    Some(saw_owned_control)
 }
 
 fn seed_from_frame(

@@ -15,6 +15,8 @@ mod capture;
 pub(crate) mod driver;
 mod steps;
 
+pub use driver::OwnedCollectReplaySnapshot;
+
 /// Which durable-trace contract the driver is validating.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TraceReplayMode {

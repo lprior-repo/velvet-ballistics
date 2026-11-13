@@ -220,6 +220,7 @@ include!("runtime/retry_validation.rs");
 include!("runtime/recovery_product.rs");
 
 include!("runtime/recovery_seed.rs");
+include!("runtime/recovery_collect_binding.rs");
 
 include!("runtime/tick.rs");
 
