@@ -34,9 +34,34 @@ impl Runtime {
         run: RunId,
     ) -> RuntimeResult<RecoveryPrefixEvidence> {
         let events = Self::load_recovery_events(journal, run)?;
-        let seed = Self::recover_frame_seed_from_events(&events)?;
-        let workflow_digest = Self::recovery_workflow_digest(&seed)?;
-        let next_seq = Self::next_recovery_sequence(&seed.summary())?;
+        let (workflow_digest, next_seq) = if events.is_empty() {
+            let seed = Self::recover_frame_seed_from_events(&events)?;
+            (
+                Self::recovery_workflow_digest(&seed)?,
+                Self::next_recovery_sequence(&seed.summary())?,
+            )
+        } else {
+            let workflow_digest = events
+                .iter()
+                .find_map(|event| match event {
+                    vb_storage::JournalEvent::RunAccepted { workflow, .. } => Some(*workflow),
+                    _ => None,
+                })
+                .ok_or(RuntimeError::RecoveryCannotResume {
+                    reason: String::from("workflow_digest_missing_from_recovery_summary"),
+                })?;
+            let last_seq = events
+                .last()
+                .ok_or(RuntimeError::RecoveryCannotResume {
+                    reason: String::from("recovery_events_missing"),
+                })?
+                .seq()
+                .get()
+                .checked_add(1)
+                .map(vb_storage::EventSeq::new)
+                .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+            (workflow_digest, last_seq)
+        };
         let admission = crate::recovery::hydrate_run_admission_from_events(&events).ok_or(
             RuntimeError::RecoveryCannotResume {
                 reason: String::from("admission_missing"),

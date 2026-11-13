@@ -43,12 +43,13 @@ pub fn is_owned_for_each_contract(plan: &CompiledWorkflow) -> bool {
     eligible(plan)
 }
 
-/// Replays an owned deterministic arena trace from the journal activation
-/// order. Supports the ForEach, Reduce, Together, and Repeat families.
+/// Replays a deterministic arena trace from the journal activation order.
+/// Supports the ForEach, Reduce, Together, and Repeat families.
 ///
 /// Returns `None` when the workflow is outside this helper's deterministic
-/// contract, or when no owned input checkpoint is available, leaving the
-/// existing recovery path unchanged.
+/// contract. A missing retained checkpoint is allowed when the driver can
+/// initialize source metadata deterministically; retained arena handles
+/// without their checkpoint stay on the existing fail-closed path.
 pub fn replay_owned_for_each(
     events: &[JournalEvent],
     plan: &CompiledWorkflow,
@@ -58,15 +59,15 @@ pub fn replay_owned_for_each(
     if !is_owned_for_each_contract(plan) || !has_step_start(events) {
         return Ok(None);
     }
-    let Some(store_checkpoint) = store_checkpoint else {
+    if store_checkpoint.is_none() && retained_handles_require_store(initial_inputs) {
         return Ok(None);
-    };
+    }
     let (frame, store) = driver::replay_with_inputs_and_store(
         events,
         plan,
         &TraceReplayInput {
             initial_inputs,
-            store_checkpoint: Some(store_checkpoint),
+            store_checkpoint,
             mode: TraceReplayMode::OwnedArena,
         },
     )?;
@@ -82,6 +83,15 @@ fn has_step_start(events: &[JournalEvent]) -> bool {
     events
         .iter()
         .any(|event| matches!(event, JournalEvent::StepStarted { .. }))
+}
+
+fn retained_handles_require_store(initial_inputs: &[(SlotIdx, SlotValue, Taint)]) -> bool {
+    initial_inputs.iter().any(|(_, value, _)| {
+        matches!(
+            value,
+            SlotValue::Symbol(_) | SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_)
+        )
+    })
 }
 
 fn eligible(plan: &CompiledWorkflow) -> bool {
