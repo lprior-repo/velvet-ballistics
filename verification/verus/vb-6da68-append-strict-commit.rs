@@ -14,7 +14,7 @@
 // Origin: proof-review of vb-6da68 REJECTED the prior Verus coverage
 // of the append_strict commit-failure mode. The only Verus artifact
 // reaching the `JournalWriteBatch::commit` surface
-// (`vb-vzcuf-PS-004.rs:339-352` — superseded artifact, file no longer in-tree — WEAK mirror of
+// (`vb-vzcuf-PS-004` — superseded artifact, file no longer in-tree, formerly lines 339-352 — WEAK mirror of
 // `JournalWriteBatch::commit`) ASSUMED the Fjall commit is infallible
 // for non-aborted batches:
 //
@@ -106,10 +106,13 @@
 //       production Rust under crates/** is immutable per task brief).
 //
 //   (2) error[E0433]: cannot find module or crate `fjall` in this scope
-//        --> crates/vb_storage/src/journal/append.rs:86:31
-//         86 |     self.database.persist(fjall::PersistMode::SyncAll)?;
+//        --> crates/vb_storage/src/journal/append.rs:90:31
+//         90 |     self.database.persist(fjall::PersistMode::SyncAll)?;
 //            |                               ^^^^^ use of unresolved
 //            |                                   module or unlinked crate
+//       (Line re-verified against live main: the persist call moved
+//       86 -> 90 when vb-o6qcf.3 added the cfg(test) hook above it;
+//       the quoted diagnostic is otherwise verbatim from the probe.)
 //       The `fjall::PersistMode` / `fjall::OwnedWriteBatch` / `fjall::Error`
 //       references in the production append_strict call graph require
 //       `extern crate fjall;` with a compiled `--extern fjall` rlib —
