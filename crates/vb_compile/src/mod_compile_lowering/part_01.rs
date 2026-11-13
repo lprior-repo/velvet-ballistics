@@ -172,7 +172,7 @@ pub(in crate::mod_compile_lowering) fn canonical_step_width(
             body,
             ..
         } => {
-            let overhead = super::part_14::for_each_overhead(*at_once);
+            let overhead = super::part_14::for_each_overhead(*at_once, body);
             super::part_14::iteration_body_width(body)?
                 .checked_add(
                     overhead

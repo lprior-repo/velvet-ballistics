@@ -4,8 +4,12 @@ pub(super) fn emitted_at_once(
     index: usize,
     raw: Option<u32>,
     max_fanout: u16,
+    body: &[crate::StepAst],
 ) -> Result<Option<u16>, CompileErrors> {
-    let Some(requested) = raw.filter(|value| *value > 1) else {
+    if !super::super::iteration_body::uses_concurrent_lowering(raw, body) {
+        return Ok(None);
+    }
+    let Some(requested) = raw else {
         return Ok(None);
     };
     let cap = u32::from(max_fanout);
