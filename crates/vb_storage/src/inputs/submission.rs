@@ -233,7 +233,6 @@ impl FjallJournal {
         submission: &RunSubmission,
         policy: RuntimePolicy,
     ) -> Result<(), JournalError> {
-        submission.validate_policy(policy)?;
         self.commit_run_submission_validated(submission, policy, None)
     }
 
@@ -248,8 +247,9 @@ impl FjallJournal {
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
         validate_submission_origin(submission)?;
-        if let Some(catalog) = catalog {
-            submission.validate_policy_with_executor_catalog(policy, catalog)?;
+        match catalog {
+            Some(catalog) => submission.validate_policy_with_executor_catalog(policy, catalog)?,
+            None => submission.validate_policy(policy)?,
         }
         if self.run_header(submission.header.run)?.is_some()
             || self
@@ -282,4 +282,3 @@ fn validate_submission_origin(submission: &RunSubmission) -> Result<(), JournalE
     }
     Ok(())
 }
-

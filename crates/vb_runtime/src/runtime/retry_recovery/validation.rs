@@ -240,32 +240,10 @@ pub(super) fn retry_action_boundary(
 }
 
 fn retry_tail_charge(event: &JournalEvent) -> RuntimeResult<u64> {
-    use crate::journal::RuntimeJournalEvent as Event;
-    let runtime = match event {
-        JournalEvent::StepStarted {
-            run, step, attempt, ..
-        } => Event::StepStarted {
-            run: *run,
-            step: *step,
-            attempt: *attempt,
-        },
-        JournalEvent::WaitResolvedEvent { run, step, .. } => Event::WaitResolved {
-            run: *run,
-            step: *step,
-        },
-        JournalEvent::ActionScheduledTicket {
-            ticket,
-            input,
-            output,
-            action_abi_digest,
-            ..
-        } => Event::ActionScheduledTicket {
-            ticket: *ticket,
-            input: *input,
-            output: *output,
-            action_abi_digest: *action_abi_digest,
-        },
-        _ => return Err(invalid("unsupported tail charge")),
-    };
-    crate::shard::Shard::journal_event_bytes(&runtime)
+    match event {
+        JournalEvent::StepStarted { .. }
+        | JournalEvent::WaitResolvedEvent { .. }
+        | JournalEvent::ActionScheduledTicket { .. } => crate::journal::storage_event_bytes(event),
+        _ => Err(invalid("unsupported tail charge")),
+    }
 }

@@ -41,6 +41,28 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
             .map_err(RuntimeError::from)
     }
 
+    fn append_admission_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        if self.profile == DurabilityProfile::Strict {
+            return Err(RuntimeError::UnsupportedAsyncStrictAck);
+        }
+        let mut storage_events = Vec::new();
+        storage_events
+            .try_reserve(events.len())
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::QueueFull))?;
+        for (offset, event) in events.iter().enumerate() {
+            let seq = StorageRuntimeJournal::sequence_at_offset(start_seq, offset)?;
+            storage_events.push(StorageRuntimeJournal::storage_event(event.clone(), seq)?);
+        }
+        self.queue
+            .enqueue_journaled_admission_batch(storage_events, inputs)
+            .map_err(RuntimeError::from)
+    }
+
     fn probe(&self) -> RuntimeResult<()> {
         if self.profile == DurabilityProfile::Strict {
             return Err(RuntimeError::UnsupportedAsyncStrictAck);

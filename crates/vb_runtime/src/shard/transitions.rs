@@ -102,7 +102,7 @@ impl Shard {
             result,
             attempt: state.run_attempt.get(),
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }
@@ -146,7 +146,7 @@ impl Shard {
             output,
             action_abi_digest,
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }
@@ -201,7 +201,7 @@ impl Shard {
                 PendingTimerKind::Ask => RuntimeJournalEvent::AskScheduled { run, step },
             };
             let projected =
-                Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+                self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
             if Self::journal_bytes_exceeds_budget(&state, projected) {
                 return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
             }
@@ -240,7 +240,7 @@ impl Shard {
             run,
             attempt: state.run_attempt.get(),
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }

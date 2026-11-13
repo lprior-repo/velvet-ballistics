@@ -76,7 +76,6 @@ impl Driver<'_> {
         }
     }
 
-
     fn apply_execution_event(&mut self, event: &E) -> RecoveryResult<()> {
         match event {
             E::StepStarted { step, .. } if self.accepted && self.admitted => {
@@ -181,7 +180,7 @@ impl Driver<'_> {
         Ok(())
     }
 
-    fn unsupported_event(&self, event: &E) -> RecoveryError {
+    pub(super) fn unsupported_event(&self, event: &E) -> RecoveryError {
         invalid(
             self.frame.pc(),
             format!(

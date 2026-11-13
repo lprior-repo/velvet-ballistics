@@ -208,7 +208,7 @@ fn admit_run_with_budget_rejects_strict_without_artifact() {
         max_for_each_iterations: 0,
         max_together_branches: 0,
         max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
+        max_run_time_seconds: 1,
         max_result_bytes: 0,
         max_total_slots_written: 0,
         max_timer_entries: 0,
@@ -268,6 +268,54 @@ fn admit_run_with_budget_rejects_strict_without_artifact() {
     );
 
     assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
+}
+
+#[test]
+fn zero_lifetime_budget_is_rejected_as_invalid_capacity() {
+    let mut requested = requested_budget_77_18(1, 0);
+    requested.max_run_time_seconds = 0;
+    let result = admit_run_with_budget_policy(
+        &AlwaysPresentArtifactStore,
+        RuntimePolicy::Relaxed,
+        test_digest(),
+        RunId::new(2),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested,
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+    );
+    assert_eq!(
+        result,
+        Err(AdmissionError::ResourceBudgetInvalidCapacity {
+            resource: "max_run_time_seconds",
+        })
+    );
+}
+
+#[test]
+fn positive_requested_lifetime_below_profile_default_is_admitted() {
+    let mut requested = requested_budget_77_18(1, 0);
+    requested.max_run_time_seconds = 1;
+    let mut policy = BoundednessPolicy::DEFAULT;
+    policy.absolute_max_run_time_seconds = 5;
+    let result = admit_run_with_budget_policy(
+        &AlwaysPresentArtifactStore,
+        RuntimePolicy::Relaxed,
+        test_digest(),
+        RunId::new(3),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested,
+            available: ample_capacity_77_18(),
+            policy,
+        },
+    );
+    assert_eq!(
+        result.map(|admission| admission.budget()),
+        Ok(Some(requested))
+    );
 }
 
 // ══ vb-h7rex: Policy pin constructor and serialization tests ═════════════

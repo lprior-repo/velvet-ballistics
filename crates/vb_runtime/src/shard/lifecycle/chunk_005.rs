@@ -115,7 +115,8 @@ impl Shard {
         let (journal_events, trace_events, mut state, ticket, step) = self
             .prepare_awaiting_action(run, state, ticket, evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+        if !self
+            .charge_drive_journal_bytes(&mut state, &journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?
         {
             return self.fail_run_on_journal_budget(run, state, trace_events);
@@ -165,7 +166,8 @@ impl Shard {
         let (journal_events, trace_events, mut state, timer, ask_boundary_seq) = self
             .prepare_awaiting_timer(run, state, kind, evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+        if !self
+            .charge_drive_journal_bytes(&mut state, &journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?
         {
             return self.fail_run_on_journal_budget(run, state, trace_events);
@@ -220,7 +222,8 @@ impl Shard {
             },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
-        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+        if !self
+            .charge_drive_journal_bytes(&mut state, &journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?
         {
             return self.fail_run_on_journal_budget(run, state, trace_events);
@@ -262,7 +265,8 @@ impl Shard {
             },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
-        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+        if !self
+            .charge_drive_journal_bytes(&mut state, &journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?
         {
             return self.fail_run_on_journal_budget(run, state, trace_events);

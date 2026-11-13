@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use vb_core::value::Taint;
 use vb_core::{CompiledWorkflow, RunId, RuntimePolicy, SlotValue, ValueStore};
@@ -16,6 +17,11 @@ use crate::support::{
     self, Durability, TestResult, compile, events, open_runtime, persist_artifact,
     tick_until_terminal,
 };
+
+fn current_time_millis() -> TestResult<u64> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    Ok(u64::try_from(millis)?)
+}
 
 #[test]
 fn for_each_executes_body_once_per_item_matrix() -> TestResult {
@@ -100,7 +106,7 @@ fn submit_owned_list(
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms: current_time_millis()?,
         },
     )?;
     open.journal

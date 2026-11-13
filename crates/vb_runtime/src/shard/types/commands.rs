@@ -18,6 +18,17 @@ pub enum ShardCommand {
         /// Capabilities granted to this run.
         caps: CapabilitySet,
     },
+    /// Submit a run with an explicit positive hard lifetime cap.
+    SubmitWithLifetimeCap {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Maximum lifetime admitted for this run.
+        max_run_time_seconds: std::num::NonZeroU64,
+    },
     /// Submit a run whose durable header was already persisted by the runtime shell.
     SubmitPrePersisted {
         /// Run identifier chosen by the caller.
@@ -26,6 +37,32 @@ pub enum ShardCommand {
         workflow: CompiledWorkflow,
         /// Capabilities granted to this run.
         caps: CapabilitySet,
+    },
+    /// Submit a tenant-scoped run for execution.
+    SubmitTenantScoped {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Tenant charged for this run's admitted cost.
+        tenant: vb_core::ids::TenantId,
+    },
+    /// Submit a tenant-scoped run with input slots and validated action contracts.
+    SubmitTenantWithInputsAndContracts {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Initial slot values written before deterministic execution starts.
+        inputs: Box<[(SlotIdx, SlotValue)]>,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Validated action contracts for Do execution.
+        action_contracts: Box<[ActionContract]>,
+        /// Tenant charged for this run's admitted cost.
+        tenant: vb_core::ids::TenantId,
     },
     /// Submit a new run with runtime input slots already mapped by the caller.
     SubmitWithInputs {
@@ -204,58 +241,6 @@ pub enum ShardCommand {
     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
     /// collect pagination, and boundary classification in a single value.
     Recover { command: Box<RecoverRunCommand> },
-}
-
-impl ShardCommand {
-    /// Returns the run this command belongs to, when the command has one.
-    ///
-    /// Ticket and answer variants carry the run inside their ticket rather
-    /// than as a direct field; `Shutdown` carries no run.
-    #[must_use]
-    pub fn run_id(&self) -> Option<RunId> {
-        if let Some(run) = self.gate_command_run_id() {
-            return Some(run);
-        }
-        match self {
-            Self::ActivateOwnedSubmission { run, .. }
-            | Self::Submit { run, .. }
-            | Self::SubmitPrePersisted { run, .. }
-            | Self::SubmitWithInputs { run, .. }
-            | Self::SubmitWithContracts { run, .. }
-            | Self::SubmitWithInputsAndContracts { run, .. }
-            | Self::Resume { run }
-            | Self::ActionCompletedLegacy { run, .. }
-            | Self::TimerFired { run, .. }
-            | Self::Cancel { run, .. }
-            | Self::Kill { run, .. }
-            | Self::Inspect { run, .. } => Some(*run),
-            Self::ActionCompleted { ticket, .. }
-            | Self::RegisteredActionCompleted { ticket, .. }
-            | Self::ActionFailed { ticket, .. }
-            | Self::RuntimeActionFailed { ticket, .. } => Some(ticket.run),
-            Self::AskAnswered { answer } => Some(answer.ticket.run),
-            Self::Recover { command } => Some(command.run),
-            Self::Shutdown
-            | Self::OpenGate { .. }
-            | Self::OpenBoundGate { .. }
-            | Self::SubmitGateDecision { .. }
-            | Self::EscalateGate { .. }
-            | Self::SubmitBoundGateDecision { .. }
-            | Self::EscalateBoundGate { .. } => None,
-        }
-    }
-
-    fn gate_command_run_id(&self) -> Option<RunId> {
-        match self {
-            Self::OpenGate { gate, .. } => Some(gate.run),
-            Self::OpenBoundGate { gate, .. } => Some(gate.gate.run),
-            Self::SubmitGateDecision { run, .. }
-            | Self::EscalateGate { run, .. }
-            | Self::SubmitBoundGateDecision { run, .. }
-            | Self::EscalateBoundGate { run, .. } => Some(*run),
-            _ => None,
-        }
-    }
 }
 
 /// Typed recovery command carrying full recovery context from journal replay.

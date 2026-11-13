@@ -236,6 +236,26 @@ mod tests {
     }
 
     #[test]
+    fn command_queue_retains_bound_from_any_pending_command_until_drain() {
+        let q = ShardCommandQueue::new(8).unwrap();
+        let run = vb_core::ids::RunId::new(9);
+        let cancel = || ShardCommand::Cancel { run, reason: None };
+        assert_eq!(q.enqueue_with_limit(cancel(), Some(1)), Ok(()));
+        assert_eq!(
+            q.enqueue(cancel()),
+            Err(RuntimeError::PerRunQueueDepthExceeded {
+                run,
+                pending: 1,
+                limit: 1,
+            })
+        );
+        assert_eq!(q.pending_for(run), 1);
+        assert_eq!(q.len(), 1);
+        assert_eq!(q.pop(), Some(cancel()));
+        assert_eq!(q.enqueue(cancel()), Ok(()));
+    }
+
+    #[test]
     fn command_queue_zero_limit_rejects_first_run_command() {
         let q = ShardCommandQueue::new(8).unwrap();
         let run = vb_core::ids::RunId::new(7);

@@ -18,6 +18,12 @@ pub struct Shard {
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
     pub(crate) counters: ShardCounters,
+    /// Runtime-wide admitted-cost ledger shared by every shard in a runtime.
+    pub(crate) quota: crate::quota::SharedQuotaLedger,
+    /// Queue reservation transferred atomically when its submit is handled.
+    pub(crate) pending_quota_reservation: Option<(RunId, PendingQuotaReservation)>,
+    /// Exact admitted cost charged per live run, for idempotent release.
+    pub(crate) charged_quotas: IndexMap<RunId, (Option<vb_core::ids::TenantId>, u64)>,
     pub(crate) step_budget_per_tick: u64,
     pub(crate) max_active_runs: usize,
     pub(crate) policy: vb_core::policy::RuntimePolicy,
@@ -29,6 +35,8 @@ pub struct Shard {
     pub(crate) completion_capture: crate::runtime::completion_observation::CompletionCapture,
     /// Fencing tokens for live action invocations, keyed by run.
     pub(crate) fencing_tokens: super::fencing::FencingTokens,
+    /// Last successful wall-clock expiry, observed by deterministic tests.
+    pub(crate) last_lifetime_expiry: Option<(RunId, u64)>,
 }
 
 /// Read-only shard health snapshot for operator status reporting.

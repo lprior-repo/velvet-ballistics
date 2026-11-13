@@ -45,6 +45,7 @@ impl RuntimeJournalEvent {
             | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
             Self::CompatibilityDecision { run, .. } | Self::TenantAdmission { run, .. } => *run,
+            Self::RunBudgetOrigin { run, .. } => *run,
             Self::RetryCheckpoint { run, .. } | Self::RetryTimerScheduled { run, .. } => *run,
         }
     }
@@ -57,6 +58,7 @@ impl RuntimeJournalEvent {
             Self::RunAdmission { .. } => "RunAdmission",
             Self::CompatibilityDecision { .. } => "CompatibilityDecision",
             Self::TenantAdmission { .. } => "TenantAdmission",
+            Self::RunBudgetOrigin { .. } => "RunBudgetOrigin",
             Self::RetryCheckpoint { .. } => "RetryCheckpoint",
             Self::RetryTimerScheduled { .. } => "RetryTimerScheduled",
             Self::RunFinished { .. } => "RunFinished",
@@ -138,12 +140,8 @@ pub trait RuntimeJournal: Send + Sync {
         })
     }
 
-    /// Appends a same-run lifecycle batch whose first per-run sequence is owned
-    /// by the shard.
-    ///
-    /// The default fails closed for multi-event batches so callers cannot get a
-    /// partial durable prefix from a journal implementation that has not opted
-    /// into atomic batch semantics.
+    /// Appends same-run batches at the shard-owned sequence; multi-event defaults fail closed to
+    /// avoid partial durable prefixes.
     fn append_sequenced_batch(
         &self,
         events: &[RuntimeJournalEvent],
@@ -158,6 +156,16 @@ pub trait RuntimeJournal: Send + Sync {
             });
         }
         self.append_sequenced(event.clone(), start_seq)
+    }
+
+    /// Atomically appends admission events with their retained scalar inputs.
+    fn append_admission_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+        _inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        self.append_sequenced_batch(events, start_seq)
     }
 
     /// Appends a policy decision with strict durable acknowledgement at the

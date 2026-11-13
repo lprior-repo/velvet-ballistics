@@ -2,7 +2,12 @@
 
 //! Owned-submission fixture and helpers for the Reduce journal recovery test.
 
-use std::{error::Error, num::NonZeroUsize, sync::Arc};
+use std::{
+    error::Error,
+    num::NonZeroUsize,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use vb_compile::compile_workflow;
 use vb_core::action::{ActionOutputReady, ActionTicket};
@@ -20,6 +25,11 @@ use vb_storage::{
 };
 
 pub(super) type TestResult<T = ()> = Result<T, Box<dyn Error>>;
+
+fn current_time_millis() -> TestResult<u64> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    Ok(u64::try_from(millis)?)
+}
 
 const SOURCE: &str = r#"version: velvet-ballistics/v1
 name: reduce_owned_journal_recovery
@@ -172,7 +182,7 @@ pub(super) fn shape() -> TestResult<Shape> {
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms: current_time_millis()?,
         },
     )?;
     {

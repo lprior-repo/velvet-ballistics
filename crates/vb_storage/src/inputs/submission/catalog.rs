@@ -51,7 +51,6 @@ impl RunSubmission {
         submission.validate_binding_with_executor_catalog(context.catalog)?;
         submission.validate_catalog_capabilities()?;
         Ok(submission)
-
     }
     fn validate_binding_with_executor_catalog(
         &self,
@@ -98,7 +97,6 @@ impl FjallJournal {
         policy: RuntimePolicy,
         catalog: &crate::executor::ExecutorCatalog,
     ) -> Result<(), JournalError> {
-        submission.validate_policy_with_executor_catalog(policy, catalog)?;
         self.commit_run_submission_validated(submission, policy, Some(catalog))
     }
 }

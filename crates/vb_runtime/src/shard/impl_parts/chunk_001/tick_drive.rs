@@ -87,131 +87,170 @@ impl Shard {
             return Ok(false);
         }
 
-        let Some(cmd) = self.command_queue.pop() else {
+        self.expire_overdue_run_lifetime()?;
+
+        let Some(queued) = self.command_queue.pop_queued() else {
             self.drive_one_ready_run()?;
             return Ok(true);
         };
-
-        match cmd {
-            ShardCommand::ActivateOwnedSubmission {
-                run,
-                expected_source_digest,
-            } => {
-                self.handle_owned_activation(run, expected_source_digest)?;
-            }
-            ShardCommand::Submit {
-                run,
-                workflow,
-                caps,
-            } => self.handle_submit(run, workflow, caps)?,
-            ShardCommand::SubmitPrePersisted {
-                run,
-                workflow,
-                caps,
-            } => self.handle_submit_pre_persisted(run, workflow, caps)?,
-            ShardCommand::SubmitWithInputs {
-                run,
-                workflow,
-                inputs,
-                caps,
-            } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
-            ShardCommand::SubmitWithContracts {
-                run,
-                workflow,
-                caps,
-                action_contracts,
-            } => self.handle_submit_with_contracts(run, workflow, caps, &action_contracts)?,
-            ShardCommand::SubmitWithInputsAndContracts {
-                run,
-                workflow,
-                inputs,
-                caps,
-                action_contracts,
-            } => self.handle_submit_with_inputs_and_contracts(
-                run,
-                workflow,
-                &inputs,
-                caps,
-                &action_contracts,
-            )?,
-            ShardCommand::Resume { run } => {
-                let resumed = self.handle_resume(run).map_err(RuntimeError::from)?;
-                if resumed.status == crate::shard::ResumeStatus::AlreadyRunning {
-                    self.drive_one_pending_run()?;
+        let pending_run = queued.command.run_id();
+        self.pending_quota_reservation = queued
+            .quota
+            .zip(pending_run)
+            .map(|(reservation, run)| (run, reservation));
+        let cmd = queued.command;
+        let submit_run = submission_run(&cmd);
+        let result = (|| -> RuntimeResult<bool> {
+            match cmd {
+                ShardCommand::ActivateOwnedSubmission {
+                    run,
+                    expected_source_digest,
+                } => {
+                    self.handle_owned_activation(run, expected_source_digest)?;
+                }
+                ShardCommand::Submit {
+                    run,
+                    workflow,
+                    caps,
+                } => self.handle_submit(run, workflow, caps)?,
+                ShardCommand::SubmitWithLifetimeCap {
+                    run,
+                    workflow,
+                    caps,
+                    max_run_time_seconds,
+                } => {
+                    self.handle_submit_with_lifetime_cap(run, workflow, caps, max_run_time_seconds)?
+                }
+                ShardCommand::SubmitTenantScoped {
+                    run,
+                    workflow,
+                    caps,
+                    tenant,
+                } => self.handle_submit_tenant_scoped(run, workflow, caps, tenant)?,
+                ShardCommand::SubmitTenantWithInputsAndContracts {
+                    run,
+                    workflow,
+                    inputs,
+                    caps,
+                    action_contracts,
+                    tenant,
+                } => self.handle_submit_tenant_with_inputs_contracts(
+                    run,
+                    workflow,
+                    &inputs,
+                    caps,
+                    &action_contracts,
+                    tenant,
+                )?,
+                ShardCommand::SubmitPrePersisted {
+                    run,
+                    workflow,
+                    caps,
+                } => self.handle_submit_pre_persisted(run, workflow, caps)?,
+                ShardCommand::SubmitWithInputs {
+                    run,
+                    workflow,
+                    inputs,
+                    caps,
+                } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
+                ShardCommand::SubmitWithContracts {
+                    run,
+                    workflow,
+                    caps,
+                    action_contracts,
+                } => self.handle_submit_with_contracts(run, workflow, caps, &action_contracts)?,
+                ShardCommand::SubmitWithInputsAndContracts {
+                    run,
+                    workflow,
+                    inputs,
+                    caps,
+                    action_contracts,
+                } => self.handle_submit_with_inputs_and_contracts(
+                    run,
+                    workflow,
+                    &inputs,
+                    caps,
+                    &action_contracts,
+                )?,
+                ShardCommand::Resume { run } => {
+                    let resumed = self.handle_resume(run).map_err(RuntimeError::from)?;
+                    if resumed.status == crate::shard::ResumeStatus::AlreadyRunning {
+                        self.drive_one_pending_run()?;
+                    }
+                }
+                ShardCommand::OpenGate {
+                    gate,
+                    opened_at_ms,
+                    requester,
+                } => {
+                    self.open_gate(gate, opened_at_ms, requester)?;
+                }
+                ShardCommand::SubmitGateDecision { run, input } => {
+                    self.submit_gate_decision(run, input)?;
+                }
+                ShardCommand::EscalateGate { run, gate, now_ms } => {
+                    self.escalate_timed_out_gate(run, gate, now_ms)?;
+                }
+                ShardCommand::OpenBoundGate {
+                    gate,
+                    opened_at_ms,
+                    requester,
+                } => {
+                    self.open_bound_gate(gate, opened_at_ms, requester)?;
+                }
+                ShardCommand::SubmitBoundGateDecision {
+                    run,
+                    input,
+                    operator_trust,
+                } => {
+                    self.submit_bound_gate_decision(run, input, operator_trust)?;
+                }
+                ShardCommand::EscalateBoundGate { run, gate, now_ms } => {
+                    self.escalate_timed_out_bound_gate(run, gate, now_ms)?;
+                }
+                ShardCommand::RegisteredActionCompleted {
+                    ticket,
+                    receipt,
+                    output,
+                } => {
+                    self.handle_registered_action_completion(ticket, receipt, output)?;
+                }
+                ShardCommand::ActionCompleted { ticket, output } => {
+                    self.handle_action_completion(ticket, output)?;
+                }
+                ShardCommand::ActionCompletedLegacy { run, step } => {
+                    self.handle_legacy_action_completion(run, step)?;
+                }
+                ShardCommand::ActionFailed { ticket, failure } => {
+                    self.handle_action_failure(ticket, failure)?;
+                }
+                ShardCommand::RuntimeActionFailed { ticket, failure } => {
+                    self.handle_action_failure(ticket, failure)
+                        .map_err(Self::runtime_action_failure_error)?;
+                }
+                ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
+                ShardCommand::TimerFired {
+                    run,
+                    generation,
+                    deadline,
+                    kind,
+                } => self.handle_timer(run, generation, deadline, kind)?,
+                ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
+                ShardCommand::Kill { run, reason } => self.handle_kill(run, reason)?,
+                ShardCommand::Inspect { run, correlation } => {
+                    self.handle_inspect(run, correlation);
+                }
+                ShardCommand::Recover { command } => {
+                    self.handle_recover(*command)?;
+                }
+                ShardCommand::Shutdown => {
+                    self.shutting_down = true;
+                    return Ok(false);
                 }
             }
-            ShardCommand::OpenGate {
-                gate,
-                opened_at_ms,
-                requester,
-            } => {
-                self.open_gate(gate, opened_at_ms, requester)?;
-            }
-            ShardCommand::SubmitGateDecision { run, input } => {
-                self.submit_gate_decision(run, input)?;
-            }
-            ShardCommand::EscalateGate { run, gate, now_ms } => {
-                self.escalate_timed_out_gate(run, gate, now_ms)?;
-            }
-            ShardCommand::OpenBoundGate {
-                gate,
-                opened_at_ms,
-                requester,
-            } => {
-                self.open_bound_gate(gate, opened_at_ms, requester)?;
-            }
-            ShardCommand::SubmitBoundGateDecision {
-                run,
-                input,
-                operator_trust,
-            } => {
-                self.submit_bound_gate_decision(run, input, operator_trust)?;
-            }
-            ShardCommand::EscalateBoundGate { run, gate, now_ms } => {
-                self.escalate_timed_out_bound_gate(run, gate, now_ms)?;
-            }
-            ShardCommand::RegisteredActionCompleted {
-                ticket,
-                receipt,
-                output,
-            } => {
-                self.handle_registered_action_completion(ticket, receipt, output)?;
-            }
-            ShardCommand::ActionCompleted { ticket, output } => {
-                self.handle_action_completion(ticket, output)?;
-            }
-            ShardCommand::ActionCompletedLegacy { run, step } => {
-                self.handle_legacy_action_completion(run, step)?;
-            }
-            ShardCommand::ActionFailed { ticket, failure } => {
-                self.handle_action_failure(ticket, failure)?;
-            }
-            ShardCommand::RuntimeActionFailed { ticket, failure } => {
-                self.handle_action_failure(ticket, failure)
-                    .map_err(Self::runtime_action_failure_error)?;
-            }
-            ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
-            ShardCommand::TimerFired {
-                run,
-                generation,
-                deadline,
-                kind,
-            } => self.handle_timer(run, generation, deadline, kind)?,
-            ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
-            ShardCommand::Kill { run, reason } => self.handle_kill(run, reason)?,
-            ShardCommand::Inspect { run, correlation } => {
-                self.handle_inspect(run, correlation);
-            }
-            ShardCommand::Recover { command } => {
-                self.handle_recover(*command)?;
-            }
-            ShardCommand::Shutdown => {
-                self.shutting_down = true;
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
+            Ok(true)
+        })();
+        self.finish_queued_quota(submit_run, result)
     }
 
     fn runtime_action_failure_error(error: RuntimeError) -> RuntimeError {

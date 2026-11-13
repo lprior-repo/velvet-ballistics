@@ -217,14 +217,20 @@ impl Driver<'_> {
     }
 
     fn validate_final_state(&self, mode: TraceReplayMode) -> RecoveryResult<()> {
-        if self.budgeted_admission && !self.origin_seen {
-            return Err(invalid(self.frame.pc(), "budget origin missing"));
-        }
+        self.validate_budget_origin()?;
         if self.active.is_some() && !self.pending_boundary() {
             return Err(invalid(self.frame.pc(), "incomplete step receipt"));
         }
         validate_parallel_state(&self.frame, mode)?;
         validate_terminal_receipt(&self.frame, self.finished, self.terminal)
+    }
+
+    fn validate_budget_origin(&self) -> RecoveryResult<()> {
+        if self.budgeted_admission && !self.origin_seen {
+            Err(invalid(self.frame.pc(), "budget origin missing"))
+        } else {
+            Ok(())
+        }
     }
 }
 

@@ -128,13 +128,18 @@ fn forged_public_command_must_revalidate_the_same_owned_authority() -> TestResul
     let case = Case::new(false, RuntimePolicy::Strict)?;
     let journal = case.open()?;
     let adapter = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut shard = vb_runtime::shard::Shard::new_with_journal(config(10, 8, 8), adapter);
-    shard.enqueue(ShardCommand::ActivateOwnedSubmission {
-        run: case.run,
-        expected_source_digest: WorkflowDigest::from_bytes([7; 32]),
-    })?;
-    assert!(matches!(shard.tick(), Err(RuntimeError::RunNotFound)));
+    let shard = vb_runtime::shard::Shard::new_with_journal(config(10, 8, 8), adapter);
+    let before = journal.events_for_run_full(case.run)?;
+    assert!(matches!(
+        shard.enqueue(ShardCommand::ActivateOwnedSubmission {
+            run: case.run,
+            expected_source_digest: WorkflowDigest::from_bytes([7; 32]),
+        }),
+        Err(RuntimeError::RunNotFound)
+    ));
+    assert_eq!(shard.command_queue_pending_for(case.run), 0);
     assert_eq!(shard.active_run_count(), 0);
+    assert_eq!(journal.events_for_run_full(case.run)?, before);
     assert_pristine(&case, &journal)?;
     Ok(())
 }

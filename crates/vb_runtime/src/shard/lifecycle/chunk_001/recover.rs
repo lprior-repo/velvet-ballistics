@@ -47,21 +47,13 @@ impl Shard {
         let open_gates = core::mem::take(&mut command.open_gates);
         let bound_open_gates = core::mem::take(&mut command.bound_open_gates);
         let restored_store = command.restored_store;
+        let recovered_origin = command.run_started_millis;
+        let recovered_action_attempts = command.recovered_action_attempts;
+        let recovered_journal_bytes_written = command.recovered_journal_bytes_written;
+        let recovered_tenant = command.recovered_tenant;
 
-        // Step 1: Load artifact by artifact_digest for verification
-        let artifact = self
-            .artifact_store
-            .load_accepted_artifact(artifact_digest)
-            .map_err(|e| match e {
-                crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
-                    RuntimeError::Recovery {
-                        error: format!("artifact not found during recovery: {digest:?}"),
-                    }
-                }
-                other => RuntimeError::Recovery {
-                    error: format!("artifact load failed: {other}"),
-                },
-            })?;
+        // Step 1: Load artifact by artifact_digest for verification.
+        let artifact = self.load_recovery_artifact(artifact_digest)?;
 
         // Step 2: Deserialize and compile workflow from artifact IR
         let workflow = crate::admission::verify_stored_artifact(
@@ -127,6 +119,20 @@ impl Shard {
         } else {
             None
         };
+        let lifetime_admission = match &admission {
+            crate::shard::types::RecoveredAdmissionKind::Historical(value) => Some(value.as_ref()),
+            crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => retry_checkpoint
+                .as_ref()
+                .and_then(|checkpoint| checkpoint.admission.as_ref())
+                .or(unverified_admission.as_ref()),
+        };
+        let checkpoint_origin = retry_checkpoint
+            .as_ref()
+            .and_then(|checkpoint| checkpoint.run_started_millis);
+        let validated_origin = crate::recovery::validate_recovered_lifetime_at_wall_clock(
+            lifetime_admission,
+            recovered_origin.or(checkpoint_origin),
+        )?;
 
         self.validate_secret_presence(&workflow)?;
         if retry_checkpoint.is_none() {
@@ -155,7 +161,7 @@ impl Shard {
             } else {
                 crate::shard::types::RegisteredExecutionMode::Live
             };
-        let state = if let Some(checkpoint) = retry_checkpoint {
+        let mut state = if let Some(checkpoint) = retry_checkpoint {
             let (mut state, _attempt, _retry_step, _prior_seq) = checkpoint
                 .restore(workflow, artifact_digest, &artifact.action_contracts)
                 .map_err(|error| RuntimeError::Recovery {
@@ -168,6 +174,7 @@ impl Shard {
             }
             state.registered_execution = registered_execution;
             self.restore_retry_boundary_frame(&mut state, boundary)?;
+            state.run_started_millis = validated_origin;
             self.prepare_run_slots(run)?;
             state
         } else {
@@ -197,23 +204,41 @@ impl Shard {
                     unverified_admission
                 }
             };
+            let (action_attempts, journal_bytes_written) =
+                crate::recovery::recover_admission_accounting(
+                    state_admission.as_ref(),
+                    recovered_action_attempts,
+                    recovered_journal_bytes_written,
+                    frame_step_count,
+                )?;
             crate::shard::types::RunState {
                 registered_execution,
                 frame,
                 run_attempt: core::num::NonZeroU16::MIN,
                 workflow,
                 store,
-                action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+                action_attempts,
                 admission: state_admission,
-                run_started_millis: None,
+                run_started_millis: validated_origin,
                 collect_states,
-                journal_bytes_written: 0,
+                journal_bytes_written,
                 action_contracts: artifact.action_contracts.clone(),
             }
         };
 
+        let rollback_frame = state.frame.clone();
+        if let Err(error) = self.restore_recovered_quota(run, &mut state, recovered_tenant) {
+            self.release_frame(state.frame);
+            return Err(error);
+        }
         self.terminal_runs_remove(run);
-        self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+        if let Err(error) =
+            self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)
+        {
+            self.release_admission_quota(run)?;
+            self.release_frame(rollback_frame);
+            return Err(error);
+        }
 
         // Step 7a: restore reconstructed open gates before boundary handling.
         if self.restore_recovered_gates(run, &open_gates, &bound_open_gates, boundary_kind)? {

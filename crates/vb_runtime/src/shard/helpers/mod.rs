@@ -88,7 +88,7 @@ pub fn make_run_state(
         store: ValueStore::new(),
         action_attempts: new_action_attempts(step_count),
         admission: None,
-        run_started_millis: None,
+        run_started_millis: wall_clock_millis_since_epoch(),
         collect_states: CollectStates::new(),
         journal_bytes_written: 0,
         action_contracts: Box::new([]),

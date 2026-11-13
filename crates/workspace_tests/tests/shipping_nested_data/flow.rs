@@ -48,6 +48,7 @@ pub(crate) fn run_cell_source(outer: &str, inner: &str, source: &str) -> TestRes
         source_digest,
         input_slot,
     } = prepared;
+    let budget = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)?;
     let leaf = leaf_step(&workflow)?;
     let directory = tempfile::tempdir()?;
     let (cut_frame, cut_store, cut_events, cut_completed) = {
@@ -156,6 +157,8 @@ pub(crate) fn run_cell_source(outer: &str, inner: &str, source: &str) -> TestRes
         full_replay_selected: full_replay.is_some(),
         cut_completed,
         leaf_terminal,
+        budget_gather_pages: budget.max_gather_pages,
+        budget_gather_items: budget.max_gather_items,
     })
 }
 

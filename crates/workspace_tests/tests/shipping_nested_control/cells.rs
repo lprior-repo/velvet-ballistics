@@ -34,6 +34,7 @@ pub(crate) fn qualify(cell: Cell) -> TestResult {
         .ok_or_else(|| format!("{label}: leaf count overflow"))?;
     let expected_tail = multiplicity(cell.outer);
     let cut = cut_at_leaf(cell)?;
+    assert_repeat_collect_budget(cell, &cut)?;
     let mut gaps: Vec<String> = Vec::new();
     if let Err(error) = replay_parity(&label, &cut) {
         gaps.push(error);
@@ -64,6 +65,24 @@ pub(crate) fn qualify(cell: Cell) -> TestResult {
     } else {
         Err(gaps.join("; "))
     }
+}
+
+fn assert_repeat_collect_budget(cell: Cell, cut: &Cut) -> TestResult {
+    if cell.outer != "repeat" || cell.inner != "collect" {
+        return Ok(());
+    }
+    let budget = cut.events.iter().find_map(|event| match event {
+        JournalEvent::RunAdmissionBudget { budget, .. } => Some(budget),
+        _ => None,
+    });
+    let budget = budget.ok_or_else(|| "repeat/collect admission budget missing".to_owned())?;
+    if (budget.max_gather_pages, budget.max_gather_items) != (4, 4) {
+        return Err(format!(
+            "repeat/collect gather budget {:?}/{:?} != 4/4",
+            budget.max_gather_pages, budget.max_gather_items
+        ));
+    }
+    Ok(())
 }
 
 fn replay_parity(label: &str, cut: &Cut) -> TestResult {

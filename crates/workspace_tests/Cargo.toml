@@ -282,6 +282,14 @@ path = "tests/e2e_yaml_sweep.rs"
 name = "ps007_bridge_binding_tests"
 path = "tests/ps007_bridge_binding_tests.rs"
 
+[[test]]
+name = "shipping_budget_origin_recovery"
+path = "tests/shipping_budget_origin_recovery.rs"
+
+[[test]]
+name = "shipping_nested_gather_budget"
+path = "tests/shipping_nested_gather_budget.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false

@@ -36,6 +36,14 @@ fn input_slot(workflow: &CompiledWorkflow) -> TestResult<SlotIdx> {
         .ok_or_else(|| "missing declared input slot".to_owned())
 }
 
+fn current_time_millis() -> TestResult<u64> {
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|error| error.to_string())?
+        .as_millis();
+    u64::try_from(millis).map_err(|error| error.to_string())
+}
+
 /// Real owned admission on a strict Fjall journal, driven to the first
 /// successful nested leaf execution (a nonterminal cut after inner progress).
 pub(crate) fn cut_at_leaf(cell: Cell) -> TestResult<Cut> {
@@ -68,7 +76,7 @@ pub(crate) fn cut_at_leaf(cell: Cell) -> TestResult<Cut> {
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: current_time_millis()?,
     };
     let submission = RunSubmission::owned(source_record, artifact, inputs, header)
         .map_err(|error| format!("owned submission: {error:?}"))?;

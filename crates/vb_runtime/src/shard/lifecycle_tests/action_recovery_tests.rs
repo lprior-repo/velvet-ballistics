@@ -67,8 +67,23 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
 -> Result<(), Box<dyn std::error::Error>> {
     let run_id = vb_core::ids::RunId::new(1);
 
-    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
-    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
+    let do_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        vb_core::workflow::CompiledNodeKind::Do {
+            action: vb_core::ids::ActionId::new(0),
+            input: vb_core::ids::SlotIdx::new(0),
+        },
+        Some(vb_core::ids::SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let finish_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::new(1),
+        },
+        None,
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
@@ -533,6 +548,16 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     valid_failed
         .frame
         .mark_failed(vb_core::ids::StepIdx::ZERO)?;
+    let valid_budget = vb_core::AggregateResourceBudget::from_workflow(&valid_failed.workflow)?;
+    let valid_admission = valid_failed
+        .admission
+        .take()
+        .ok_or("positive control admission")?
+        .with_attached_budget(valid_budget);
+    valid_failed.admission = Some(valid_admission);
+    valid_failed.run_started_millis = Some(
+        crate::shard::helpers::wall_clock_millis_since_epoch().ok_or("wall clock unavailable")?,
+    );
 
     let valid_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
         run_id,
@@ -585,8 +610,8 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
 
     // Admission restored exactly from the valid checkpoint.
     assert_eq!(
-        restored.admission, original.admission,
-        "positive control: admission must match original (Unverified, correct run/artifact/policy)"
+        restored.admission, valid_failed.admission,
+        "positive control: admission must match the valid budgeted checkpoint"
     );
 
     assert_eq!(
@@ -660,10 +685,7 @@ fn recovery_test_gate(run: vb_core::ids::RunId, id: u64) -> vb_core::manual_gate
     }
 }
 
-fn recovery_test_open_gate(
-    run: vb_core::ids::RunId,
-    id: u64,
-) -> crate::shard::types::OpenGate {
+fn recovery_test_open_gate(run: vb_core::ids::RunId, id: u64) -> crate::shard::types::OpenGate {
     crate::shard::types::OpenGate {
         gate: recovery_test_gate(run, id),
         opened_at_ms: 0,
@@ -709,7 +731,10 @@ impl RecoveryGateJournal {
 }
 
 impl crate::journal::RuntimeJournal for RecoveryGateJournal {
-    fn append(&self, _event: crate::journal::RuntimeJournalEvent) -> crate::error::RuntimeResult<()> {
+    fn append(
+        &self,
+        _event: crate::journal::RuntimeJournalEvent,
+    ) -> crate::error::RuntimeResult<()> {
         Ok(())
     }
 
@@ -762,8 +787,23 @@ fn recovery_gate_shard() -> Result<
     Box<dyn std::error::Error>,
 > {
     let run_id = vb_core::ids::RunId::new(1);
-    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
-    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
+    let do_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        vb_core::workflow::CompiledNodeKind::Do {
+            action: vb_core::ids::ActionId::new(0),
+            input: vb_core::ids::SlotIdx::new(0),
+        },
+        Some(vb_core::ids::SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let finish_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::new(1),
+        },
+        None,
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
@@ -797,11 +837,8 @@ fn recovery_gate_shard() -> Result<
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let journal = RecoveryGateJournal::shared();
-    let shard = crate::shard::Shard::new_with_journal_and_artifact_store(
-        config,
-        journal.clone(),
-        store,
-    );
+    let shard =
+        crate::shard::Shard::new_with_journal_and_artifact_store(config, journal.clone(), store);
     Ok((shard, journal, run_id, artifact_digest, workflow_digest))
 }
 
@@ -838,8 +875,7 @@ fn recovery_gate_command(
 #[test]
 fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (mut shard, journal, run_id, artifact_digest, workflow_digest) =
-        recovery_gate_shard()?;
+    let (mut shard, journal, run_id, artifact_digest, workflow_digest) = recovery_gate_shard()?;
     let gate = recovery_test_gate(run_id, 7);
     let command = recovery_gate_command(
         run_id,
@@ -903,10 +939,8 @@ fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
 }
 
 #[test]
-fn recover_rejects_open_gate_with_suspended_boundary()
--> Result<(), Box<dyn std::error::Error>> {
-    let (mut shard, _journal, run_id, artifact_digest, workflow_digest) =
-        recovery_gate_shard()?;
+fn recover_rejects_open_gate_with_suspended_boundary() -> Result<(), Box<dyn std::error::Error>> {
+    let (mut shard, _journal, run_id, artifact_digest, workflow_digest) = recovery_gate_shard()?;
     let ask = crate::recovery::RecoveredOpenAsk::new(
         vb_core::ids::StepIdx::ZERO,
         vb_storage::EventSeq::new(1),

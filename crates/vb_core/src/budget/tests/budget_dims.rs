@@ -453,6 +453,108 @@ fn shard_usage_snapshot_record_overflow_is_typed() {
 }
 
 #[test]
+fn tenant_release_returns_quota_exactly() {
+    let mut snapshot = ShardUsageSnapshot::default();
+    snapshot
+        .record_tenant_cost(TenantId::new(7), 5)
+        .expect("first record fits");
+    snapshot
+        .record_tenant_cost(TenantId::new(7), 6)
+        .expect("second record merges");
+    snapshot
+        .release_tenant_cost(TenantId::new(7), 4)
+        .expect("partial release fits");
+    assert_eq!(snapshot.tenant_cost_usage(TenantId::new(7)), Ok(7));
+    snapshot
+        .release_tenant_cost(TenantId::new(7), 7)
+        .expect("exact remaining release fits");
+    assert_eq!(snapshot.tenant_cost_usage(TenantId::new(7)), Ok(0));
+    assert!(
+        snapshot.tenant_entries().is_empty(),
+        "fully released tenant entry is removed"
+    );
+}
+
+#[test]
+fn tenant_release_rejects_over_release_without_mutation() {
+    let mut snapshot = ShardUsageSnapshot::default();
+    snapshot
+        .record_tenant_cost(TenantId::new(7), 5)
+        .expect("record fits");
+    assert_eq!(
+        snapshot.release_tenant_cost(TenantId::new(7), 6),
+        Err(AggregateBudgetError::Underflow {
+            resource: "tenant_quota_cost_units",
+        }),
+        "over-release is typed"
+    );
+    assert_eq!(
+        snapshot.tenant_cost_usage(TenantId::new(7)),
+        Ok(5),
+        "failed release does not consume part of the recorded total"
+    );
+    assert_eq!(
+        snapshot.release_tenant_cost(TenantId::new(8), 0),
+        Err(AggregateBudgetError::Underflow {
+            resource: "tenant_quota_cost_units",
+        }),
+        "releasing a tenant with no entry is a caller bug, not silent replenishment"
+    );
+}
+
+#[test]
+fn tenant_release_leaves_other_tenants_untouched() {
+    let mut snapshot = ShardUsageSnapshot::default();
+    snapshot
+        .record_tenant_cost(TenantId::new(7), 5)
+        .expect("tenant 7 records");
+    snapshot
+        .record_tenant_cost(TenantId::new(8), 9)
+        .expect("tenant 8 records");
+    snapshot
+        .release_tenant_cost(TenantId::new(7), 5)
+        .expect("tenant 7 releases");
+    assert_eq!(snapshot.tenant_cost_usage(TenantId::new(7)), Ok(0));
+    assert_eq!(snapshot.tenant_cost_usage(TenantId::new(8)), Ok(9));
+}
+
+#[test]
+fn tenant_release_restores_admission_capacity() {
+    let mut snapshot = ShardUsageSnapshot::default();
+    snapshot
+        .record_tenant_cost(TenantId::new(7), 10)
+        .expect("record fits");
+    assert_eq!(
+        check_tenant_quota(
+            snapshot
+                .tenant_cost_usage(TenantId::new(7))
+                .expect("summed usage"),
+            10,
+            10,
+        ),
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource: "tenant_quota_cost_units",
+            requested: 20,
+            available: 10,
+        })
+    );
+    snapshot
+        .release_tenant_cost(TenantId::new(7), 10)
+        .expect("terminal release");
+    assert_eq!(
+        check_tenant_quota(
+            snapshot
+                .tenant_cost_usage(TenantId::new(7))
+                .expect("summed usage"),
+            10,
+            10,
+        ),
+        Ok(()),
+        "released tenant quota admits the next run at the exact limit"
+    );
+}
+
+#[test]
 fn budget_dimensions_global_quota_checked_add_and_cap() {
     assert_eq!(
         check_global_quota(5, 6, 10),
@@ -466,6 +568,31 @@ fn budget_dimensions_global_quota_checked_add_and_cap() {
     assert_eq!(
         check_global_quota(u64::MAX, 1, u64::MAX),
         Err(AggregateBudgetError::Overflow {
+            resource: "global_quota_cost_units",
+        })
+    );
+}
+
+#[test]
+fn global_quota_release_restores_admission_capacity() {
+    assert_eq!(release_global_quota(15, 5), Ok(10));
+    assert_eq!(
+        check_global_quota(15, 6, 20),
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource: "global_quota_cost_units",
+            requested: 21,
+            available: 20,
+        })
+    );
+    let released = release_global_quota(15, 5).expect("terminal release fits");
+    assert_eq!(
+        check_global_quota(released, 10, 20),
+        Ok(()),
+        "released global quota admits the next run at the exact limit"
+    );
+    assert_eq!(
+        release_global_quota(5, 6),
+        Err(AggregateBudgetError::Underflow {
             resource: "global_quota_cost_units",
         })
     );

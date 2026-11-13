@@ -1,5 +1,5 @@
 use super::*;
-use crate::{JournalEvent, RunHeaderRecord, WorkflowSourceRecord};
+use crate::{EventSeq, JournalEvent, RunHeaderRecord, WorkflowSourceRecord};
 use vb_core::RuntimePolicy;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -97,6 +97,16 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
                     if decision.class == crate::compat::CompatibilityClass::Identical
                         && decision.boundary == crate::compat::CompatBoundary::IrVersion
             ));
+            assert!(matches!(
+                events.get(3),
+                Some(JournalEvent::RunBudgetOriginEvent {
+                    run,
+                    seq,
+                    started_millis
+                }) if *run == RunId::new(7)
+                    && *seq == EventSeq::new(3)
+                    && *started_millis == 123
+            ));
         }
         assert!(
             journal.has_workflow_index_entry(crate::keys::index_workflow_key(
@@ -112,6 +122,49 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
             )?)?
         );
     }
+    Ok(())
+}
+
+#[test]
+fn failed_runtime_admission_batch_publishes_neither_event_nor_inputs() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let journal = FjallJournal::open(directory.path(), None)?;
+    let workflow = super::tests::workflow()?;
+    let artifact =
+        crate::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
+    let run = RunId::new(91);
+    let inputs = RunInputsRecord::new(
+        run,
+        artifact.digest,
+        workflow.digest(),
+        &workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::I64(73))]),
+    )?;
+    let events = [JournalEvent::RunAccepted {
+        run,
+        seq: crate::EventSeq::new(0),
+        workflow: workflow.digest(),
+    }];
+
+    journal.fail_next_batch_commit_for_test();
+    assert!(matches!(
+        journal.append_runtime_admission_batch(
+            &events,
+            &inputs,
+            crate::types::DurabilityProfile::Strict,
+        ),
+        Err(JournalError::Fjall(_))
+    ));
+    assert!(journal.events_for_run(run)?.is_empty());
+    assert!(journal.run_inputs(run)?.is_none());
+
+    journal.append_runtime_admission_batch(
+        &events,
+        &inputs,
+        crate::types::DurabilityProfile::Strict,
+    )?;
+    assert_eq!(journal.events_for_run(run)?, events);
+    assert_eq!(journal.run_inputs(run)?, Some(inputs));
     Ok(())
 }
 

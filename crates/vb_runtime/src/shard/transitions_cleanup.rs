@@ -26,6 +26,7 @@ impl crate::shard::Shard {
         self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_completed();
+        self.release_state_quota(run)?;
         self.add_executed_step_delta(run, state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
         self.release_frame(state.frame);
@@ -47,6 +48,7 @@ impl crate::shard::Shard {
         self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
+        self.release_state_quota(run)?;
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.release_frame(state.frame);
         self.runtime_state_remove(run);
@@ -108,12 +110,12 @@ impl crate::shard::Shard {
         };
         let base = state.journal_bytes_written;
         let event =
-            match Self::retry_checkpoint_event(&mut checkpoint, run, next_attempt, retry_step) {
+            match self.retry_checkpoint_event(&mut checkpoint, run, next_attempt, retry_step) {
                 Ok(event) => event,
                 Err(_) => return Ok(()),
             };
         let projected = base
-            .checked_add(Self::journal_event_bytes(&event)?)
+            .checked_add(self.journal_event_bytes(&event)?)
             .ok_or(RuntimeError::EncodeFailed)?;
         self.append_journal_event(event)?;
         state.journal_bytes_written = projected;
@@ -121,6 +123,7 @@ impl crate::shard::Shard {
     }
 
     fn retry_checkpoint_event(
+        &self,
         checkpoint: &mut RunCheckpointV1,
         run: RunId,
         attempt: NonZeroU16,
@@ -146,7 +149,7 @@ impl crate::shard::Shard {
                 payload_digest,
                 payload,
             };
-            let event_bytes = Self::journal_event_bytes(&event)?;
+            let event_bytes = self.journal_event_bytes(&event)?;
             let next = base
                 .checked_add(event_bytes)
                 .ok_or(RuntimeError::EncodeFailed)?;
