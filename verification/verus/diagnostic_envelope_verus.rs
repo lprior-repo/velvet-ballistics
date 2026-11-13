@@ -42,11 +42,11 @@
 //   - Mirror `core_error_to_cli_exit_code(err)`
 //                            <- production
 //                               `From<vb_core::errors::CoreError>
-//                               for CliExitCode` at exit_code.rs:59-64
+//                               for CliExitCode` at exit_code.rs:91-96
 //   - Mirror `journal_error_to_cli_exit_code(err)`
 //                            <- production
 //                               `From<vb_storage::error::JournalError>
-//                               for CliExitCode` at exit_code.rs:66-71
+//                               for CliExitCode` at exit_code.rs:98-103
 //
 // Source: vb-diagnostic-envelope proof-obligations.planned.jsonl
 #[path = "extern_diagnostic_envelope_verus.rs"]
@@ -130,7 +130,7 @@ pub open spec fn spec_cli_exit_code_in_range_0_to_9(code: production::CliExitCod
 /// Spec predicate: two `CliExitCode` values have distinct
 /// discriminants iff they are distinct variants. Mirrors the
 /// production test `all_variants_are_distinct` at
-/// `crates/velvet_ballistics/src/exit_code.rs:145-162`.
+/// `crates/velvet_ballistics/src/exit_code.rs:186-203`.
 pub open spec fn spec_cli_exit_code_distinct(
     code1: production::CliExitCode,
     code2: production::CliExitCode,
@@ -184,7 +184,7 @@ pub assume_specification[ production::cli_exit_code_to_u8 ](code: production::Cl
 // `CliExitCode::RuntimeFailed` regardless of the input `CoreError`
 // variant. Mirrors the production body of
 // `From<vb_core::errors::CoreError> for CliExitCode` at
-// `crates/velvet_ballistics/src/exit_code.rs:60-63`.
+// `crates/velvet_ballistics/src/exit_code.rs:92-95`.
 pub assume_specification[ production::core_error_to_cli_exit_code ](
     err: production::production_exit_code::CoreError,
 ) -> (r: production::CliExitCode)
@@ -197,7 +197,7 @@ pub assume_specification[ production::core_error_to_cli_exit_code ](
 // returns `CliExitCode::StorageError` regardless of the input
 // `JournalError` variant. Mirrors the production body of
 // `From<vb_storage::error::JournalError> for CliExitCode` at
-// `crates/velvet_ballistics/src/exit_code.rs:67-70`.
+// `crates/velvet_ballistics/src/exit_code.rs:99-102`.
 pub assume_specification[ production::journal_error_to_cli_exit_code ](
     err: production::production_exit_code::JournalError,
 ) -> (r: production::CliExitCode)
@@ -287,7 +287,7 @@ pub proof fn lemma_cli_exit_code_in_range_0_to_9(code: production::CliExitCode)
 
 /// Lemma: the 10 production `CliExitCode` variants have pairwise
 /// distinct discriminants. Mirrors the production test
-/// `all_variants_are_distinct` at exit_code.rs:145-162.
+/// `all_variants_are_distinct` at exit_code.rs:186-203.
 pub proof fn lemma_cli_exit_codes_distinct()
     ensures
         spec_cli_exit_code_distinct(
@@ -372,7 +372,7 @@ pub proof fn lemma_cli_exit_codes_distinct()
 /// Lemma: the 10 production `CliExitCode` variants cover the full
 /// discriminant range 0..=9 with no gaps. Mirrors the production
 /// test `all_variants_are_public_range_0_to_9` at
-/// exit_code.rs:165-180.
+/// exit_code.rs:206-221.
 pub proof fn lemma_cli_exit_codes_cover_full_range()
     ensures
         spec_cli_exit_code_discriminant(production::CliExitCode::Success) == 0,

@@ -10,13 +10,13 @@
 //   1. A `#[path]` inclusion of the in-tree production-source mirror
 //      at `verification/verus/production_inner/_exit_code_production.rs`.
 //      That mirror is a VERBATIM copy of the production
-//      `crates/velvet_ballistics/src/exit_code.rs:1-71` with three substitutions
+//      `crates/velvet_ballistics/src/exit_code.rs:1-103` with three substitutions
 //      to compile under `verus --crate-type=lib` without
 //      `vb_core` / `vb_storage` extern crate registration (no
 //      installs allowed by the task brief):
 //
 //        - The two non-test `From<...> for CliExitCode` impls at
-//          exit_code.rs:59-64 and exit_code.rs:66-71 originally
+//          exit_code.rs:91-96 and exit_code.rs:98-103 originally
 //          reference absolute extern-crate paths
 //          `vb_core::errors::CoreError` and
 //          `vb_storage::error::JournalError`. Rust treats these as
@@ -29,7 +29,7 @@
 //          From impls are preserved byte-for-byte (the production
 //          bodies always return a fixed `CliExitCode` regardless of
 //          the input via `let _ = err;`).
-//        - The `#[cfg(test)] mod tests` block at exit_code.rs:73-181
+//        - The `#[cfg(test)] mod tests` block at exit_code.rs:105-222
 //          is REMOVED (see the mirror file header for rationale).
 //
 //   2. The production mirror module is marked `#[verifier::external]`
@@ -63,9 +63,9 @@
 //   - `From<CliExitCode> for ExitCode` (production impl)
 //                            <- crates/velvet_ballistics/src/exit_code.rs:36-40
 //   - `From<vb_core::errors::CoreError> for CliExitCode` (production)
-//                            <- crates/velvet_ballistics/src/exit_code.rs:59-64
+//                            <- crates/velvet_ballistics/src/exit_code.rs:91-96
 //   - `From<vb_storage::error::JournalError> for CliExitCode` (production)
-//                            <- crates/velvet_ballistics/src/exit_code.rs:66-71
+//                            <- crates/velvet_ballistics/src/exit_code.rs:98-103
 //
 // Spec-side projection into mathematical Set algebra:
 //   - `spec_cli_exit_code_discriminant(code)` -> u8
@@ -74,11 +74,11 @@
 //   - `spec_cli_exit_code_in_range_0_to_9(code)` -> bool
 //                            <- production test
 //                               `all_variants_are_public_range_0_to_9`
-//                               at exit_code.rs:165-180
+//                               at exit_code.rs:206-221
 //   - `spec_cli_exit_code_distinct(code1, code2)` -> bool
 //                            <- production test
 //                               `all_variants_are_distinct` at
-//                               exit_code.rs:145-162
+//                               exit_code.rs:186-203
 //
 // =============================================================================
 // TRUST BOUNDARY
@@ -106,7 +106,7 @@ verus! {
 // The mirror is marked `#[verifier::external]` so Verus treats the
 // production bodies as opaque; only structural resolution is
 // checked. Drift between the mirror and the production source at
-// `crates/velvet_ballistics/src/exit_code.rs:1-71` breaks the Verus build.
+// `crates/velvet_ballistics/src/exit_code.rs:1-103` breaks the Verus build.
 //
 // The mirror declares its own local `CoreError` and `JournalError`
 // enum stubs inline (instead of referencing the production
@@ -199,7 +199,7 @@ pub fn cli_exit_code_to_u8(code: CliExitCode) -> u8 {
 //
 // Mirror of the production
 // `From<vb_core::errors::CoreError> for CliExitCode` impl at
-// `crates/velvet_ballistics/src/exit_code.rs:59-64`. The production body always
+// `crates/velvet_ballistics/src/exit_code.rs:91-96`. The production body always
 // returns `CliExitCode::RuntimeFailed` regardless of the input
 // variant.
 //
@@ -220,7 +220,7 @@ pub fn core_error_to_cli_exit_code(err: production_exit_code::CoreError) -> CliE
 //
 // Mirror of the production
 // `From<vb_storage::error::JournalError> for CliExitCode` impl at
-// `crates/velvet_ballistics/src/exit_code.rs:66-71`. The production body always
+// `crates/velvet_ballistics/src/exit_code.rs:98-103`. The production body always
 // returns `CliExitCode::StorageError` regardless of the input
 // variant.
 //
