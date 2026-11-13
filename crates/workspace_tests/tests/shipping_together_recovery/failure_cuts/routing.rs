@@ -169,7 +169,17 @@ fn started_handler_ask_reopens_before_group_continuation() -> TestResult {
         }
     }
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
-    assert_eq!(scheduled_count(&case.events(&journal)?, action), 1);
+    let completed = case.events(&journal)?;
+    let join = together_join_step(&case.workflow)?;
+    assert!(completed.iter().any(
+        |event| matches!(event, JournalEvent::StepSucceeded { run, step, .. } if *run == RUN && *step == join)
+    ));
+    assert!(
+        completed
+            .iter()
+            .any(|event| matches!(event, JournalEvent::RunFinished { run, .. } if *run == RUN))
+    );
+    assert_eq!(scheduled_count(&completed, action), 1);
     Ok(())
 }
 
@@ -193,6 +203,17 @@ fn pending_ask(
         runtime.tick_all()?;
     }
     Err("handler Ask boundary missing".into())
+}
+
+fn together_join_step(workflow: &vb_core::CompiledWorkflow) -> TestResult<vb_core::StepIdx> {
+    workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .find_map(|node| {
+            matches!(node.kind, vb_core::CompiledNodeKind::TogetherJoin { .. }).then_some(node.id)
+        })
+        .ok_or_else(|| "TogetherJoin node missing".into())
 }
 
 fn assert_failure_cut(
