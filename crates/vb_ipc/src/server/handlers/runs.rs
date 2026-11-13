@@ -8,6 +8,7 @@ use vb_runtime::runtime::Runtime;
 
 use super::{MAX_SUBMIT_INPUT_LEN, decode_payload, ipc_error_response, sanitize_runtime_error};
 use crate::server::{IpcResponse, WorkflowResolutionError, WorkflowResolver};
+
 use crate::{IpcCommand, SubmitRunPayload};
 
 /// Handles submit-run commands after resolving the compiled workflow explicitly.
@@ -47,58 +48,101 @@ pub fn submit_resolved_workflow(
     runtime: &mut Runtime,
     resolver: Option<&mut dyn WorkflowResolver>,
 ) -> IpcResponse {
-    if submit.input.len() > MAX_SUBMIT_INPUT_LEN {
-        return IpcResponse::PayloadError {
-            diagnostic: crate::IpcError::PayloadDecodeFailed
-                .diagnostic_code()
-                .code(),
-            message: String::from("submit input exceeds maximum allowed size"),
-        };
+    if let Some(response) = submit_input_error(&submit) {
+        return response;
     }
     let Some(resolver) = resolver else {
         return IpcResponse::WorkflowResolutionRequired;
     };
-    let workflow = match resolver.resolve_workflow(submit.workflow) {
-        Ok(workflow) => workflow,
-        Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
-        Err(WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact) => {
-            return IpcResponse::WorkflowResolutionUnsupported;
-        }
-    };
-    if workflow.digest() != submit.workflow {
-        return IpcResponse::WorkflowDigestMismatch;
-    }
-    let inputs = match map_submit_inputs(&workflow, &submit.input) {
-        Ok(inputs) => inputs,
+    let resolved = match resolve_submission(&submit, resolver) {
+        Ok(resolved) => resolved,
         Err(response) => return response,
     };
-    let contracts = resolver.resolve_action_contracts(&workflow);
-    let grants = resolver.resolve_capability_grants(&workflow);
-    let result = match command {
-        IpcCommand::SubmitRun | IpcCommand::SubmitRunInline => {
-            resolver.prepare_runtime(runtime, &workflow);
-            if contracts.is_empty() {
-                runtime.submit_compiled_with_inputs(submit.run_id, workflow, inputs)
-            } else {
-                runtime.submit_direct_with_inputs_grants_and_contracts(
-                    submit.run_id,
-                    workflow,
-                    inputs,
-                    grants,
-                    contracts,
-                )
-            }
-        }
-        _ => return IpcResponse::CommandPayloadMismatch,
-    };
-    match result {
+    match dispatch_submission(command, &submit, runtime, resolver, resolved) {
         Ok(()) => IpcResponse::AcceptedRun {
             run_id: submit.run_id.get(),
         },
-        Err(e) => IpcResponse::RuntimeError {
-            message: sanitize_runtime_error(&e),
-        },
+        Err(response) => response,
     }
+}
+fn submit_input_error(submit: &SubmitRunPayload) -> Option<IpcResponse> {
+    if submit.input.len() <= MAX_SUBMIT_INPUT_LEN {
+        return None;
+    }
+    Some(IpcResponse::PayloadError {
+        diagnostic: crate::IpcError::PayloadDecodeFailed
+            .diagnostic_code()
+            .code(),
+        message: String::from("submit input exceeds maximum allowed size"),
+    })
+}
+
+struct ResolvedSubmission {
+    workflow: CompiledWorkflow,
+    inputs: Box<[(SlotIdx, SlotValue)]>,
+    contracts: Box<[vb_core::action::ActionContract]>,
+    grants: vb_core::CapabilitySet,
+}
+
+fn resolve_submission(
+    submit: &SubmitRunPayload,
+    resolver: &mut dyn WorkflowResolver,
+) -> Result<ResolvedSubmission, IpcResponse> {
+    let workflow = resolver
+        .resolve_workflow(submit.workflow)
+        .map_err(|error| match error {
+            WorkflowResolutionError::Required => IpcResponse::WorkflowResolutionRequired,
+            WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact => {
+                IpcResponse::WorkflowResolutionUnsupported
+            }
+        })?;
+    if workflow.digest() != submit.workflow {
+        return Err(IpcResponse::WorkflowDigestMismatch);
+    }
+    let inputs = map_submit_inputs(&workflow, &submit.input)?;
+    let contracts = resolver.resolve_action_contracts(&workflow);
+    let grants = resolver.resolve_capability_grants(&workflow);
+    Ok(ResolvedSubmission {
+        workflow,
+        inputs,
+        contracts,
+        grants,
+    })
+}
+
+fn dispatch_submission(
+    command: IpcCommand,
+    submit: &SubmitRunPayload,
+    runtime: &mut Runtime,
+    resolver: &mut dyn WorkflowResolver,
+    resolved: ResolvedSubmission,
+) -> Result<(), IpcResponse> {
+    if !matches!(command, IpcCommand::SubmitRun | IpcCommand::SubmitRunInline) {
+        return Err(IpcResponse::CommandPayloadMismatch);
+    }
+    resolver.prepare_runtime(runtime, &resolved.workflow);
+    submit_runtime(runtime, submit, resolved)
+}
+
+fn submit_runtime(
+    runtime: &mut Runtime,
+    submit: &SubmitRunPayload,
+    resolved: ResolvedSubmission,
+) -> Result<(), IpcResponse> {
+    let result = if resolved.contracts.is_empty() {
+        runtime.submit_compiled_with_inputs(submit.run_id, resolved.workflow, resolved.inputs)
+    } else {
+        runtime.submit_direct_with_inputs_grants_and_contracts(
+            submit.run_id,
+            resolved.workflow,
+            resolved.inputs,
+            resolved.grants,
+            resolved.contracts,
+        )
+    };
+    result.map_err(|error| IpcResponse::RuntimeError {
+        message: sanitize_runtime_error(&error),
+    })
 }
 
 fn map_submit_inputs(

@@ -5,10 +5,13 @@ use crate::support::TestResult;
 
 type ExpectedWrite = (SlotValue, Taint);
 
+const FIRST_RUN_ATTEMPT: u16 = 1;
+
 struct ExpectedEffect {
     name: &'static str,
     lowered_name: &'static str,
     expression: bool,
+    attempt: u16,
     writes: Vec<ExpectedWrite>,
 }
 
@@ -23,10 +26,17 @@ pub(super) fn assert_family_effects(
     for effect in effects {
         let step = step_id(workflow, family, &effect)?;
         let slot = output_slot(workflow, step)?;
-        let writes = writes_for_step(events, run, step, slot)?;
+        let writes = writes_for_step(events, run, step, slot, effect.attempt)?;
+        let attempts: Vec<u16> = writes.iter().map(|(_, attempt, ..)| *attempt).collect();
+        assert_eq!(
+            attempts,
+            vec![effect.attempt; effect.writes.len()],
+            "{family} {} write attempts",
+            effect.name
+        );
         let values: Vec<ExpectedWrite> = writes
             .iter()
-            .map(|(_, value, taint)| (*value, *taint))
+            .map(|(_, _, value, taint)| (*value, *taint))
             .collect();
         assert_eq!(values, effect.writes, "{family} {} writes", effect.name);
         assert_eq!(
@@ -64,6 +74,7 @@ fn expected_effects(family: &str) -> TestResult<Vec<ExpectedEffect>> {
         name,
         lowered_name,
         expression,
+        attempt: FIRST_RUN_ATTEMPT,
         writes,
     };
     match family {
@@ -162,12 +173,13 @@ fn writes_for_step(
     run: RunId,
     step: StepIdx,
     slot: SlotIdx,
-) -> TestResult<Vec<(u64, SlotValue, Taint)>> {
+    expected_attempt: u16,
+) -> TestResult<Vec<(u64, u16, SlotValue, Taint)>> {
     let mut active_attempt = None;
     let mut writes = Vec::new();
     for event in events {
-        track_step(event, run, step, &mut active_attempt)?;
-        if let Some(write) = slot_write(event, run, slot, active_attempt) {
+        track_step(event, run, step, expected_attempt, &mut active_attempt)?;
+        if let Some(write) = slot_write(event, run, slot, active_attempt, expected_attempt) {
             writes.push(write?);
         }
     }
@@ -181,6 +193,7 @@ fn track_step(
     event: &JournalEvent,
     run: RunId,
     step: StepIdx,
+    expected_attempt: u16,
     active_attempt: &mut Option<u16>,
 ) -> TestResult {
     match event {
@@ -190,6 +203,12 @@ fn track_step(
             attempt,
             ..
         } if *actual == run && *started == step => {
+            if *attempt != expected_attempt {
+                return Err(format!(
+                    "effect step {step:?} started with attempt {attempt}, expected {expected_attempt}"
+                )
+                .into());
+            }
             if active_attempt.replace(*attempt).is_some() {
                 return Err(format!("effect step {step:?} started before prior completion").into());
             }
@@ -199,8 +218,14 @@ fn track_step(
             step: completed,
             ..
         } if *actual == run && *completed == step => {
-            if active_attempt.take().is_none() {
+            let Some(attempt) = active_attempt.take() else {
                 return Err(format!("effect step {step:?} completed without start").into());
+            };
+            if attempt != expected_attempt {
+                return Err(format!(
+                    "effect step {step:?} completed attempt {attempt}, expected {expected_attempt}"
+                )
+                .into());
             }
         }
         JournalEvent::StepFailed {
@@ -220,7 +245,8 @@ fn slot_write(
     run: RunId,
     slot: SlotIdx,
     active_attempt: Option<u16>,
-) -> Option<TestResult<(u64, SlotValue, Taint)>> {
+    expected_attempt: u16,
+) -> Option<TestResult<(u64, u16, SlotValue, Taint)>> {
     match event {
         JournalEvent::SlotWrittenEvent {
             run: actual,
@@ -229,8 +255,21 @@ fn slot_write(
             attempt,
             value: Some(bytes),
             extra: Some(extra),
-        } if *actual == run && *written == slot && active_attempt == Some(*attempt) => {
-            Some(decode_write(slot, seq.get(), bytes, extra))
+        } if *actual == run && *written == slot && active_attempt.is_some() => {
+            let result = if *attempt != expected_attempt {
+                Err(format!(
+                    "effect slot {slot:?} written with attempt {attempt}, expected {expected_attempt}"
+                )
+                .into())
+            } else if active_attempt != Some(*attempt) {
+                Err(format!(
+                    "effect slot {slot:?} attempt {attempt} does not match active attempt {active_attempt:?}"
+                )
+                .into())
+            } else {
+                decode_write(slot, seq.get(), *attempt, bytes, extra)
+            };
+            Some(result)
         }
         _ => None,
     }
@@ -239,9 +278,10 @@ fn slot_write(
 fn decode_write(
     slot: SlotIdx,
     seq: u64,
+    attempt: u16,
     bytes: &[u8],
     extra: &[u8],
-) -> TestResult<(u64, SlotValue, Taint)> {
+) -> TestResult<(u64, u16, SlotValue, Taint)> {
     let value = postcard::from_bytes::<SlotValue>(bytes)?;
     let decoded = decode_slot_written_extra(extra)
         .map_err(|error| format!("effect slot {slot:?} extra: {error:?}"))?;
@@ -251,5 +291,5 @@ fn decode_write(
             return Err(format!("effect slot {slot:?} has legacy taint envelope").into());
         }
     };
-    Ok((seq, value, taint))
+    Ok((seq, attempt, value, taint))
 }
