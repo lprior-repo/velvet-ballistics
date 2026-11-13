@@ -815,6 +815,25 @@ tasks:
     options:
       runInCI: true
 
+  benchmark-regression-policy:
+    script: |
+      set -euo pipefail
+      python3 scripts/check-benchmark-regression-policy.py --budget contracts/perf-budget.yaml --evidence evidence/benchmark-evidence.jsonl
+    deps:
+      - 'bench-build'
+    inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'contracts/perf-budget.yaml'
+      - 'evidence/benchmark-evidence.jsonl'
+      - 'evidence/benchmark-logs/**/*'
+      - 'scripts/check-benchmark-regression-policy.py'
+      - '.moon/tasks/all.yml'
+    options:
+      cache: false
+      runInCI: true
+
   benchmark-proof:
     script: |
       set -euo pipefail
@@ -1039,6 +1058,7 @@ tasks:
       - 'coverage'
       - 'mutants-smoke'
       - 'bench-build'
+      - 'benchmark-regression-policy'
       - 'fuzz-smoke'
       - 'kani-baseline'
       - 'kani-baseline-heavy'
