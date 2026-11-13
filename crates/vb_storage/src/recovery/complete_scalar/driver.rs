@@ -1,10 +1,7 @@
 use super::action_wait::ScheduledAction;
 use super::{TraceReplayInput, TraceReplayMode, invalid};
+use crate::JournalEvent as E;
 use crate::recovery::RecoveryResult;
-use crate::{
-    JournalEvent as E,
-    slot_extra::{DecodedSlotWrittenExtra, decode_slot_written_extra},
-};
 use std::collections::HashSet;
 use vb_core::replay::ReplayAction;
 use vb_core::replay::step::ReplayCollectStates;
@@ -237,57 +234,4 @@ pub(crate) fn replay_with_inputs_and_store(
         return Err(invalid(driver.frame.pc(), "terminal receipt missing"));
     }
     Ok((driver.frame, driver.store))
-}
-
-impl Driver<'_> {
-    pub(super) fn capture(
-        &mut self,
-        slot: SlotIdx,
-        bytes: Option<&[u8]>,
-        extra: Option<&[u8]>,
-    ) -> RecoveryResult<()> {
-        let (step, action) = self
-            .active
-            .as_ref()
-            .ok_or_else(|| invalid(self.frame.pc(), "capture without active step"))?;
-        let step = *step;
-        if self.frame.step_state(step).ok() == Some(vb_core::StepState::Failed) {
-            return Err(invalid(step, "failed step cannot emit output capture"));
-        }
-        let value =
-            postcard::from_bytes(bytes.ok_or_else(|| invalid(step, "missing captured value"))?)
-                .map_err(|_| invalid(step, "invalid captured value"))?;
-        let DecodedSlotWrittenExtra::Envelope(envelope) = decode_slot_written_extra(
-            extra.ok_or_else(|| invalid(step, "missing captured taint"))?,
-        )
-        .map_err(|_| invalid(step, "invalid captured taint"))?
-        else {
-            return Err(invalid(step, "unbound legacy taint capture"));
-        };
-        if envelope.frame_extra.is_some() {
-            return Err(invalid(step, "unproven scalar frame component"));
-        }
-        if let Some((_, _, answer)) = self.ask {
-            if slot != answer || self.answer.is_some() || self.answered {
-                return Err(invalid(step, "unauthorized Ask capture"));
-            }
-            if let SlotValue::Symbol(id) = value
-                && self.store.symbol(id).is_err()
-            {
-                return Err(invalid(step, "Ask symbol outside replay source prefix"));
-            }
-            self.answer = Some((value, envelope.taint));
-        } else {
-            if !self.required(step, action)?.contains(&slot)
-                || self.frame.read_slot(slot).ok() != Some(&value)
-                || self.frame.read_taint(slot).ok() != Some(envelope.taint)
-            {
-                return Err(invalid(step, "capture differs from artifact replay"));
-            }
-        }
-        if !self.captures.insert(slot) {
-            return Err(invalid(step, "duplicate step capture"));
-        }
-        Ok(())
-    }
 }

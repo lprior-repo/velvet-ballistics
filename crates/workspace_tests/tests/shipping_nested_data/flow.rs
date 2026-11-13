@@ -3,13 +3,13 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use vb_core::{RunId, RuntimePolicy, SlotValue, StepState, Taint, ValueStore};
+use vb_core::{RuntimePolicy, SlotValue, StepState, Taint, ValueStore};
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::recovery::RuntimeRecoveryProduct;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
+use vb_storage::FjallJournal;
 use vb_storage::recovery::replay_owned_for_each;
-use vb_storage::{FjallJournal, JournalEvent};
 
 use crate::support::{
     Observed, Prepared, RUN, TestResult, leaf_step, nested_source, prepare, succeeded, terminal,
