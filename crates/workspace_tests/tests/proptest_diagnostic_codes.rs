@@ -8,7 +8,7 @@
 //!
 //! Wave-15 introduced thirty `pub const X_CODE: DiagnosticCode =
 //! DiagnosticCode::new(0xNNNN);` declarations on `RuntimeError` at
-//! `crates/vb_runtime/src/error/diagnostics.rs:10-41`, covering the
+//! `crates/vb_runtime/src/error/diagnostics.rs:11-48`, covering the
 //! `0x2001..=0x201E` runtime range. The contract that all diagnostic
 //! codes are **unique** (no two variants share a discriminant) and
 //! **stable** (discriminants do not change across builds) had no
@@ -17,9 +17,9 @@
 //!
 //! # Source type
 //!
-//! `DiagnosticCode` is defined at `crates/vb_core/src/diagnostic.rs:1763`
+//! `DiagnosticCode` is defined at `crates/vb_core/src/diagnostic.rs:903`
 //! as `pub struct DiagnosticCode(u16)` with the constructor
-//! `pub const fn new(code: u16) -> Self { Self(code) }` at line 1770.
+//! `pub const fn new(code: u16) -> Self { Self(code) }` at line 908.
 //! The packed numeric accessor is `pub const fn code(self) -> u16`
 //! at line 1776 (NOT `.get()`, which does not exist).
 //!
@@ -100,7 +100,7 @@ struct FrozenCode {
 ///
 /// Every row's `expected` matches the literal in
 /// `crates/vb_runtime/src/diagnostics_baseline.txt` (which itself is
-/// generated from `crates/vb_runtime/src/error/diagnostics.rs:10-41`).
+/// generated from `crates/vb_runtime/src/error/diagnostics.rs:11-48`).
 /// The `actual` field references the production constant by path, so
 /// changing the discriminant in the source code (or the frozen
 /// baseline file) trips the stability property test.
@@ -109,158 +109,158 @@ const RUNTIME_ERROR_CODES: &[FrozenCode] = &[
         name: "QUEUE_FULL_CODE",
         expected: 0x2001,
         actual: RuntimeError::QUEUE_FULL_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:10
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:11
     FrozenCode {
         name: "RUN_NOT_FOUND_CODE",
         expected: 0x2002,
         actual: RuntimeError::RUN_NOT_FOUND_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:11
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:12
     FrozenCode {
         name: "ACTIVE_RUN_CAPACITY_EXCEEDED_CODE",
         expected: 0x2003,
         actual: RuntimeError::ACTIVE_RUN_CAPACITY_EXCEEDED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:12
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:13
     FrozenCode {
         name: "RUN_ALREADY_EXISTS_CODE",
         expected: 0x2004,
         actual: RuntimeError::RUN_ALREADY_EXISTS_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:13
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:14
     FrozenCode {
         name: "UNSUPPORTED_OPERATION_CODE",
         expected: 0x2005,
         actual: RuntimeError::UNSUPPORTED_OPERATION_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:14
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:15
     FrozenCode {
         name: "SHUTDOWN_IN_PROGRESS_CODE",
         expected: 0x2006,
         actual: RuntimeError::SHUTDOWN_IN_PROGRESS_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:15
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:16
     FrozenCode {
         name: "JOURNAL_POISONED_CODE",
         expected: 0x2007,
         actual: RuntimeError::JOURNAL_POISONED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:16
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:17
     FrozenCode {
         name: "STORAGE_JOURNAL_APPEND_FAILED_CODE",
         expected: 0x2008,
         actual: RuntimeError::STORAGE_JOURNAL_APPEND_FAILED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:17
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:18
     FrozenCode {
         name: "JOURNAL_FULL_CODE",
         expected: 0x201E,
         actual: RuntimeError::JOURNAL_FULL_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:18
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:20
     FrozenCode {
         name: "ADMISSION_HEADER_PERSISTENCE_FAILED_CODE",
         expected: 0x2015,
         actual: RuntimeError::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:19-20
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:21-22
     FrozenCode {
         name: "UNSUPPORTED_ASYNC_STRICT_ACK_CODE",
         expected: 0x2009,
         actual: RuntimeError::UNSUPPORTED_ASYNC_STRICT_ACK_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:21
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:23
     FrozenCode {
         name: "FRAME_POOL_UNAVAILABLE_CODE",
         expected: 0x200A,
         actual: RuntimeError::FRAME_POOL_UNAVAILABLE_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:22
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:24
     FrozenCode {
         name: "INVALID_ACTION_COMPLETION_CODE",
         expected: 0x200B,
         actual: RuntimeError::INVALID_ACTION_COMPLETION_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:23
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:25
     FrozenCode {
         name: "INVALID_TIMER_FIRE_CODE",
         expected: 0x200C,
         actual: RuntimeError::INVALID_TIMER_FIRE_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:24
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:26
     FrozenCode {
         name: "UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE",
         expected: 0x200D,
         actual: RuntimeError::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:25-26
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:27-28
     FrozenCode {
         name: "INVALID_RECOVERY_HYDRATION_CODE",
         expected: 0x200E,
         actual: RuntimeError::INVALID_RECOVERY_HYDRATION_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:27
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:29
     FrozenCode {
         name: "COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE",
         expected: 0x200F,
         actual: RuntimeError::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:28
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:30
     FrozenCode {
         name: "ACTIVE_RUN_CAPACITY_ZERO_CODE",
         expected: 0x2010,
         actual: RuntimeError::ACTIVE_RUN_CAPACITY_ZERO_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:29
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:31
     FrozenCode {
         name: "ADMISSION_ARTIFACT_NOT_FOUND_CODE",
         expected: 0x2011,
         actual: RuntimeError::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:30
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:32
     FrozenCode {
         name: "ADMISSION_CAPABILITY_DENIED_CODE",
         expected: 0x2012,
         actual: RuntimeError::ADMISSION_CAPABILITY_DENIED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:31
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:33
     FrozenCode {
         name: "ADMISSION_ARTIFACT_INVALID_CODE",
         expected: 0x2014,
         actual: RuntimeError::ADMISSION_ARTIFACT_INVALID_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:32
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:39
     FrozenCode {
         name: "ENCODE_FAILED_CODE",
         expected: 0x2013,
         actual: RuntimeError::ENCODE_FAILED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:33
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:40
     FrozenCode {
         name: "SECRET_RESULT_NOT_ALLOWED_CODE",
         expected: 0x2016,
         actual: RuntimeError::SECRET_RESULT_NOT_ALLOWED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:34
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:41
     FrozenCode {
         name: "IPC_PAYLOAD_SIZE_EXCEEDED_CODE",
         expected: 0x2017,
         actual: RuntimeError::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:35
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:42
     FrozenCode {
         name: "ADMISSION_ARTIFACT_DIGEST_MISMATCH_CODE",
         expected: 0x2018,
         actual: RuntimeError::ADMISSION_ARTIFACT_DIGEST_MISMATCH_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:36
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:43
     FrozenCode {
         name: "ADMISSION_ARTIFACT_STALE_CODE",
         expected: 0x2019,
         actual: RuntimeError::ADMISSION_ARTIFACT_STALE_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:37
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:44
     FrozenCode {
         name: "ADMISSION_DIGEST_MISMATCH_CODE",
         expected: 0x201A,
         actual: RuntimeError::ADMISSION_DIGEST_MISMATCH_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:38
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:45
     FrozenCode {
         name: "ENGINE_DRIVE_FAILED_CODE",
         expected: 0x201B,
         actual: RuntimeError::ENGINE_DRIVE_FAILED_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:39
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:46
     FrozenCode {
         name: "SHARD_NOT_FOUND_CODE",
         expected: 0x201C,
         actual: RuntimeError::SHARD_NOT_FOUND_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:40
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:47
     FrozenCode {
         name: "MIGRATE_SELF_CODE",
         expected: 0x201D,
         actual: RuntimeError::MIGRATE_SELF_CODE,
-    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:41
+    }, // Source: crates/vb_runtime/src/error/diagnostics.rs:48
 ];
 
 /// Lightweight `(name, code)` projection used for the proptest sweep.
 ///
 /// `DiagnosticCode` is `Copy` (see
-/// `crates/vb_core/src/diagnostic.rs:1763`), so a slice of
+/// `crates/vb_core/src/diagnostic.rs:903`), so a slice of
 /// `(&'static str, DiagnosticCode)` is itself `Copy + Clone`, which
 /// satisfies `proptest::sample::select`'s `T: Clone` bound.
 const RUNTIME_ERROR_CODE_PAIRS: &[(&str, DiagnosticCode)] = &[
@@ -437,8 +437,8 @@ fn diagnostic_code_stability_against_frozen_baseline() {
 /// system-code range `0xFFFF_0000..=0xFFFF_FFFF`.
 ///
 /// `DiagnosticCode` is `pub struct DiagnosticCode(u16)` at
-/// `crates/vb_core/src/diagnostic.rs:1763-1765`, so the constructor
-/// `pub const fn new(code: u16) -> Self` at line 1770 makes the upper
+/// `crates/vb_core/src/diagnostic.rs:901-903`, so the constructor
+/// `pub const fn new(code: u16) -> Self` at line 908 makes the upper
 /// `0xFFFF_0000..=0xFFFF_FFFF` range structurally unreachable on
 /// `u16`. This test asserts the bound explicitly so widening the
 /// representation (e.g., to `u32`) trips the test immediately.
@@ -578,9 +578,9 @@ proptest! {
     /// `DiagnosticCode::new(u).code() == u` and the constructor
     /// produces `Eq`-consistent values.
     ///
-    /// Source: `crates/vb_core/src/diagnostic.rs:1770`
+    /// Source: `crates/vb_core/src/diagnostic.rs:908`
     /// `pub const fn new(code: u16) -> Self { Self(code) }` and
-    /// `crates/vb_core/src/diagnostic.rs:1776`
+    /// `crates/vb_core/src/diagnostic.rs:914`
     /// `pub const fn code(self) -> u16 { self.0 }`.
     #[test]
     fn diagnostic_code_constructor_round_trip(u in any::<u16>()) {
