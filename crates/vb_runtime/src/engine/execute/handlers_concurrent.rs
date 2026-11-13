@@ -22,6 +22,10 @@ use crate::engine::execute::execute_node_deferred;
 mod fixed;
 use crate::engine::types::{RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 use fixed::{append_group_value, finish_group_value, fixed_group};
+#[path = "handlers_concurrent/lanes.rs"]
+mod lanes;
+pub(super) use lanes::lane_end;
+use lanes::run_lane;
 
 enum LaneStep {
     Continue,
@@ -69,37 +73,6 @@ fn lane_execute(
     })
 }
 
-fn lane_finish(
-    ctx: &mut NodeDispatchContext<'_>,
-    step: DriveStep<'_>,
-    signal: &RuntimeSignal,
-) -> RuntimeEngineResult<LaneStep> {
-    let Some(evidence) = ctx.evidence.as_deref_mut() else {
-        return Err(invariant("concurrent lane evidence missing"));
-    };
-    let Some(drive_state) = ctx.drive_state.as_deref_mut() else {
-        return Err(invariant("concurrent lane drive state missing"));
-    };
-    let lane_step = match signal {
-        RuntimeSignal::Continue => match &step.node.kind {
-            CompiledNodeKind::ConcurrentLaneEnd { owner, result } => LaneStep::End(*owner, *result),
-            _ => LaneStep::Continue,
-        },
-        RuntimeSignal::StepBudgetExhausted => LaneStep::Exhausted,
-        _ => return Err(invariant("concurrent lane must be a pure synchronous body")),
-    };
-    finish_drive_step(
-        ctx.plan,
-        &mut *ctx.run,
-        evidence,
-        &*ctx.collect_states,
-        step,
-        signal,
-        drive_state,
-    )?;
-    Ok(lane_step)
-}
-
 fn lane_step(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<LaneStep> {
     let Some(step) = lane_begin(ctx)? else {
         return Ok(LaneStep::Exhausted);
@@ -118,107 +91,7 @@ fn lane_step(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<LaneStep>
             return Err(error);
         }
     };
-    lane_finish(ctx, step, &signal)
-}
-
-fn run_lane(
-    ctx: &mut NodeDispatchContext<'_>,
-    owner: StepIdx,
-    entry: StepIdx,
-    bound: usize,
-) -> RuntimeEngineResult<LaneOutcome> {
-    let drive_state = ctx
-        .drive_state
-        .as_deref_mut()
-        .ok_or_else(|| invariant("concurrent lane drive state missing"))?;
-    let previous = drive_state.enter_concurrent_lane(owner);
-    let result = (|| {
-        jump(ctx.run, entry)?;
-        for _ in 0..bound {
-            match lane_step(ctx)? {
-                LaneStep::Exhausted => return Ok(LaneOutcome::Exhausted),
-                LaneStep::Continue => {}
-                LaneStep::End(end_owner, result) => {
-                    if end_owner != owner {
-                        return Err(invariant("concurrent lane end owner mismatch"));
-                    }
-                    let Some(slot) = result else {
-                        return Ok(LaneOutcome::Value(None));
-                    };
-                    let value = *ctx.run.read_slot(slot).map_err(RuntimeEngineError::Core)?;
-                    let taint = ctx.run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
-                    return Ok(LaneOutcome::Value(Some((value, taint))));
-                }
-            }
-        }
-        Err(invariant("concurrent lane step bound exceeded"))
-    })();
-    let drive_state = ctx
-        .drive_state
-        .as_deref_mut()
-        .ok_or_else(|| invariant("concurrent lane drive state missing"))?;
-    drive_state.restore_concurrent_lane(previous);
-    result
-}
-
-fn lane_end(
-    ctx: &mut NodeDispatchContext<'_>,
-    owner: StepIdx,
-    result: Option<SlotIdx>,
-) -> RuntimeEngineResult<RuntimeSignal> {
-    let start = ctx
-        .plan
-        .node(owner)
-        .ok_or_else(|| invariant("lane end owner missing"))?;
-    if ctx
-        .drive_state
-        .as_deref()
-        .and_then(|state| state.active_concurrent_lane())
-        == Some(owner)
-    {
-        let join = match &start.kind {
-            CompiledNodeKind::TogetherConcurrentStart { join, .. }
-            | CompiledNodeKind::FirstSuccessStart { join, .. } => *join,
-            _ => return Err(invariant("active fixed lane owner changed kind")),
-        };
-        jump(ctx.run, join)?;
-        return Ok(RuntimeSignal::Continue);
-    }
-    let (join, first_success) = match &start.kind {
-        CompiledNodeKind::ForEachConcurrentStart { .. } => {
-            return super::handlers_concurrent_foreach::complete_lane(ctx, owner, result);
-        }
-        CompiledNodeKind::TogetherConcurrentStart { join, .. } => (*join, false),
-        CompiledNodeKind::FirstSuccessStart { join, .. } => (*join, true),
-        _ => return Err(invariant("lane end owner is not a concurrent start")),
-    };
-    let (value, taint) = match result {
-        Some(slot) => (
-            *ctx.run.read_slot(slot).map_err(RuntimeEngineError::Core)?,
-            ctx.run.read_taint(slot).map_err(RuntimeEngineError::Core)?,
-        ),
-        None => (SlotValue::Null, Taint::Clean),
-    };
-    if first_success {
-        finish_group_value(ctx, join, value, taint)?;
-        complete_resumed_first_success(ctx, owner)?;
-        return Ok(RuntimeSignal::Continue);
-    }
-    let output = group_output(ctx.plan, join)?;
-    let current = match *ctx
-        .run
-        .read_slot(output)
-        .map_err(RuntimeEngineError::Core)?
-    {
-        SlotValue::List(list) => list,
-        _ => return Err(invariant("concurrent group cursor is not a list")),
-    };
-    append_group_value(ctx, output, current, value, taint)?;
-    ctx.run
-        .mark_waiting(owner)
-        .map_err(RuntimeEngineError::Core)?;
-    jump(ctx.run, owner)?;
-    Ok(RuntimeSignal::Continue)
+    lanes::lane_finish(ctx, step, &signal)
 }
 
 fn complete_resumed_first_success(
@@ -265,16 +138,9 @@ pub(super) fn dispatch_concurrent(
     ctx: &mut NodeDispatchContext<'_>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match &ctx.node.kind {
-        CompiledNodeKind::ForEachConcurrentStart {
-            input,
-            item_slot,
-            limit,
-            at_once,
-            body,
-            join,
-        } => super::handlers_concurrent_foreach::start(
-            ctx, *input, *item_slot, *limit, *at_once, *body, *join,
-        ),
+        CompiledNodeKind::ForEachConcurrentStart { .. } => {
+            super::handlers_concurrent_foreach::start(ctx)
+        }
         CompiledNodeKind::TogetherConcurrentStart { branches, join } => {
             fixed_group(ctx, branches, *join, false)
         }

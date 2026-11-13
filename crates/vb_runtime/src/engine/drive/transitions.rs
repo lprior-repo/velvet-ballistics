@@ -241,8 +241,7 @@ pub(crate) fn finish_drive_step(
         evidence
             .push_step_succeeded(step.pc, step.node.output.slot())
             .map_err(RuntimeEngineError::Core)?;
-        owned_continuation_rearm(plan, run, &step)?;
-        concurrent_lane_rearm(plan, run, &step)?;
+        rearm_after_success(plan, run, &step)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
         // no StepSucceeded event, but slot evidence above is still valid
@@ -250,6 +249,15 @@ pub(crate) fn finish_drive_step(
         mark_step_after_signal(run, step.pc, signal)?;
     }
     Ok(())
+}
+
+fn rearm_after_success(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    step: &DriveStep<'_>,
+) -> RuntimeEngineResult<()> {
+    owned_continuation_rearm(plan, run, step)?;
+    concurrent_lane_rearm(plan, run, step)
 }
 
 /// Returns true when the signal represents a step that completed

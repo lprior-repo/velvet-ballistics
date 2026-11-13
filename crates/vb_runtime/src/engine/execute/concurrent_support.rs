@@ -31,25 +31,44 @@ pub(super) fn check_lane_bound(
     owner: StepIdx,
     capacity: usize,
 ) -> RuntimeEngineResult<()> {
+    let (join, maximum) = group_bounds(plan, owner)?;
+    check_capacity(capacity, maximum)?;
+    check_join_owner(plan, owner, join)?;
+    check_frame_bound(plan, capacity)?;
+    check_contract_fanout(plan, capacity)
+}
+
+fn group_bounds(plan: &CompiledWorkflow, owner: StepIdx) -> RuntimeEngineResult<(StepIdx, usize)> {
     let group = plan
         .node(owner)
         .ok_or_else(|| invariant("concurrent group owner is out of bounds"))?;
-    let (join, maximum) = match &group.kind {
+    match &group.kind {
         vb_core::CompiledNodeKind::ForEachConcurrentStart {
             at_once,
             limit,
             join,
             ..
-        } => (*join, usize::from(at_once.get()).min(limit.as_usize())),
+        } => Ok((*join, usize::from(at_once.get()).min(limit.as_usize()))),
         vb_core::CompiledNodeKind::TogetherConcurrentStart { branches, join }
         | vb_core::CompiledNodeKind::FirstSuccessStart { branches, join } => {
-            (*join, branches.len())
+            Ok((*join, branches.len()))
         }
-        _ => return Err(invariant("concurrent region owner is not a group start")),
-    };
+        _ => Err(invariant("concurrent region owner is not a group start")),
+    }
+}
+
+fn check_capacity(capacity: usize, maximum: usize) -> RuntimeEngineResult<()> {
     if capacity > maximum {
         return Err(invariant("concurrent lane capacity exceeds owning group"));
     }
+    Ok(())
+}
+
+fn check_join_owner(
+    plan: &CompiledWorkflow,
+    owner: StepIdx,
+    join: StepIdx,
+) -> RuntimeEngineResult<()> {
     if !matches!(
         plan.node(join).map(|node| &node.kind),
         Some(vb_core::CompiledNodeKind::ConcurrentGroupJoin { owner: join_owner })
@@ -57,6 +76,10 @@ pub(super) fn check_lane_bound(
     ) {
         return Err(invariant("concurrent group join owner mismatch"));
     }
+    Ok(())
+}
+
+fn check_frame_bound(plan: &CompiledWorkflow, capacity: usize) -> RuntimeEngineResult<()> {
     let requirements = plan
         .concurrent_requirements()
         .ok_or_else(|| invariant("concurrent plan missing checked requirements"))?;
@@ -69,6 +92,10 @@ pub(super) fn check_lane_bound(
     if requirements.groups() == 0 {
         return Err(invariant("concurrent requirements report zero groups"));
     }
+    Ok(())
+}
+
+fn check_contract_fanout(plan: &CompiledWorkflow, capacity: usize) -> RuntimeEngineResult<()> {
     let fanout = usize::from(plan.resource_contract().max_fanout);
     if capacity > fanout {
         return Err(invariant(
@@ -118,4 +145,5 @@ pub(crate) fn ordinary_lane_failure(
 }
 
 #[cfg(test)]
+#[path = "concurrent_support/ordinary_lane_failure_tests.rs"]
 mod ordinary_lane_failure_tests;
