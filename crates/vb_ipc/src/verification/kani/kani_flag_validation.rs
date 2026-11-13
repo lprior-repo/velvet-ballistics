@@ -19,7 +19,6 @@
 
 use crate::bounded::MaxPayloadBytes;
 use crate::commands::IpcCommand;
-use crate::constants::IPC_HEADER_LEN;
 use crate::frame_types::IpcFrameHeader;
 
 // ============================================================================

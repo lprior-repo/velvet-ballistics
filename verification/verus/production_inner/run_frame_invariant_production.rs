@@ -20,8 +20,8 @@
 //      spec-side proofs read fields via spec_from_run_frame, which
 //      requires field visibility.
 //   3. Box storage is modeled as a sequence in math mode. The mirror
-//      builds the same Pending/Empty sequences with explicit Vec loops;
-//      production uses vec! and repeat_with(...).take(...).collect().
+//      builds Pending/Empty arrays through the fallible pair builder inside
+//      the existing external constructor boundary, matching production.
 //   4. Bare-path `use crate::errors::*`, `use crate::ids::*`,
 //      `use crate::value::*` in production frame.rs:40-42 are not
 //      resolvable in a single-file Verus unit. The mirror inlines
@@ -40,8 +40,9 @@
 // Production `crates/vb_core/src/frame.rs:106-116`
 // Production `crates/vb_core/src/value/taint.rs:10-21`
 // Production `crates/vb_core/src/value/taint.rs:31-41`
-// Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33`
-// Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70`
+// Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:1-31`
+// Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:35-55`
+// Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:60-94`
 // Production `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:25-37`
 // Production `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:50-55`
 // Production `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-71`
@@ -182,8 +183,8 @@ pub enum SlotCell {
 }
 
 // ============================================================================
-// CoreError — minimal mirror of the two variants reachable from
-// `RunFrame::new` / `RunFrame::reinitialize` / `RunFrame::set_pc`.
+// CoreError — subset used by the mirrored frame operations.
+// AllocationFailed is reachable from `RunFrame::new`.
 // ============================================================================
 /// Error subset used by the mirror. SlotOutOfBounds is projected to the
 /// legacy InvalidCompiledWorkflow token at the write boundary.
@@ -198,6 +199,7 @@ pub enum CoreError {
     InvalidCompiledWorkflow { reason: &'static str },
     InvalidProgramCounter { step: StepIdx },
     SlotOutOfBounds { slot: SlotIdx },
+    AllocationFailed,
 }
 
 /// Production alias: `pub type CoreResult<T> = Result<T, CoreError>;`
@@ -254,17 +256,18 @@ pub struct RunFrame {
 // the companion spec attaches the existing assumed contracts.
 // ============================================================================
 /// Mirror of `RunFrame::new` at
-/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33`.
+/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:35-55`.
 ///
 /// Production contract:
 ///   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
 ///     when states_len == 0.
 ///   - Err(CoreError::InvalidProgramCounter { step: first_step })
 ///     when first_step.as_usize() >= states_len.
+///   - Err(CoreError::AllocationFailed) after valid dimensions if reservation
+///     fails or a nonzero-sized array has a different capacity.
 ///   - Ok(Self { run_id, pc: first_step, executed: 0, step_count,
 ///       slot_count, max_parallel_in_flight: u16::MAX,
-///       parallel_in_flight: 0, states: vec![StepState::Pending;
-///       states_len].into_boxed_slice(),
+///       parallel_in_flight: 0, states: Pending repeated states_len times,
 ///       cells: Empty repeated slot_count times })
 ///     otherwise.
 #[verifier::external]
@@ -282,15 +285,23 @@ pub fn run_frame_new(
         return Err(CoreError::InvalidProgramCounter { step: first_step });
     }
     let slots_len = usize::from(slot_count);
-    // Box<[T; N]>: build via Vec then into_boxed_slice.
-    let mut states = Vec::with_capacity(states_len);
-    for _ in 0..states_len {
-        states.push(StepState::Pending);
+    type FrameArrays = (Box<[StepState]>, Box<[SlotCell]>);
+    fn try_frame_array<T>(len: usize, make: impl FnMut() -> T) -> CoreResult<Box<[T]>> {
+        let mut values = Vec::new();
+        values.try_reserve_exact(len)
+            .map_err(|_error| CoreError::AllocationFailed)?;
+        if core::mem::size_of::<T>() != 0 && values.capacity() != len {
+            return Err(CoreError::AllocationFailed);
+        }
+        values.resize_with(len, make);
+        Ok(values.into_boxed_slice())
     }
-    let mut cells = Vec::with_capacity(slots_len);
-    for _ in 0..slots_len {
-        cells.push(SlotCell::Empty);
+    fn frame_arrays(states_len: usize, slots_len: usize) -> CoreResult<FrameArrays> {
+        let states = try_frame_array(states_len, || StepState::Pending)?;
+        let cells = try_frame_array(slots_len, || SlotCell::Empty)?;
+        Ok((states, cells))
     }
+    let (states, cells) = frame_arrays(states_len, slots_len)?;
     Ok(
         RunFrame {
             run_id,
@@ -300,14 +311,14 @@ pub fn run_frame_new(
             slot_count,
             max_parallel_in_flight: u16::MAX,
             parallel_in_flight: 0,
-            states: states.into_boxed_slice(),
-            cells: cells.into_boxed_slice(),
+            states,
+            cells,
         },
     )
 }
 
 /// Mirror of `RunFrame::reinitialize` at
-/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70`.
+/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:60-94`.
 ///
 /// Production contract:
 ///   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })

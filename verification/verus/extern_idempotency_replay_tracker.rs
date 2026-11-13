@@ -28,7 +28,7 @@
 // The proof retains its existing readable identifier/error projections and
 // relaxed private-field visibility; it does not verify the native tracker body.
 // The current tracker struct and implementation are copied from
-// `crates/vb_storage/src/recovery/types/replay.rs:45-268`, with retry-authority
+// `crates/vb_storage/src/recovery/types/replay.rs:25-248`, with retry-authority
 // methods from `crates/vb_storage/src/recovery/retry_authority.rs:5-69`.
 // RunId/SeqNo use their transparent u64 payloads; ticket conversion preserves
 // every field. Native vb_core/vb_storage dependencies are now linked explicitly,
@@ -41,14 +41,14 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `ActionReplayTracker`                          <- crates/vb_storage/src/recovery/types/replay.rs:45-51
-//   - `ActionReplayTracker::new`                     <- crates/vb_storage/src/recovery/types/replay.rs:79-87
-//   - `ActionReplayTracker::mark_completed`          <- crates/vb_storage/src/recovery/types/replay.rs:151-153
-//   - `ActionReplayTracker::mark_failed`             <- crates/vb_storage/src/recovery/types/replay.rs:240-242
-//   - `ActionReplayTracker::has_completed`           <- crates/vb_storage/src/recovery/types/replay.rs:246-248
-//   - `ActionReplayTracker::has_failed`              <- crates/vb_storage/src/recovery/types/replay.rs:252-254
-//   - `ActionReplayTracker::is_resolved`             <- crates/vb_storage/src/recovery/types/replay.rs:259-261
-//   - `ActionReplayTracker::default`                 <- crates/vb_storage/src/recovery/types/replay.rs:265-267
+//   - `ActionReplayTracker`                          <- crates/vb_storage/src/recovery/types/replay.rs:25-31
+//   - `ActionReplayTracker::new`                     <- crates/vb_storage/src/recovery/types/replay.rs:59-67
+//   - `ActionReplayTracker::mark_completed`          <- crates/vb_storage/src/recovery/types/replay.rs:131-133
+//   - `ActionReplayTracker::mark_failed`             <- crates/vb_storage/src/recovery/types/replay.rs:220-222
+//   - `ActionReplayTracker::has_completed`           <- crates/vb_storage/src/recovery/types/replay.rs:226-228
+//   - `ActionReplayTracker::has_failed`              <- crates/vb_storage/src/recovery/types/replay.rs:232-234
+//   - `ActionReplayTracker::is_resolved`             <- crates/vb_storage/src/recovery/types/replay.rs:239-241
+//   - `ActionReplayTracker::default`                 <- crates/vb_storage/src/recovery/types/replay.rs:245-247
 //   - Private `mark_scheduled_ticket_effect`, `require_scheduled_ticket`,
 //     `mark_completed_envelope_effect`, `mark_completed_envelope` are
 //     present in the included module but not bound by the spec; they

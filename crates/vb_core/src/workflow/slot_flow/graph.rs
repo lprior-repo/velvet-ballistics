@@ -10,13 +10,13 @@ pub(super) enum Route {
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct Edge {
-    pub(super) target: StepIdx,
+pub(in crate::workflow) struct Edge {
+    pub(in crate::workflow) target: StepIdx,
     pub(super) route: Route,
 }
 
 /// Execution edges, deliberately distinct from structural target inventory.
-pub(super) fn successors(node: &CompiledNode) -> FlowResult<Vec<Edge>> {
+pub(in crate::workflow) fn successors(node: &CompiledNode) -> FlowResult<Vec<Edge>> {
     let branches = match &node.kind {
         K::Choose { branches, .. } => branches.len(),
         K::ChooseSlot { branches, .. } => branches.len(),
@@ -28,6 +28,9 @@ pub(super) fn successors(node: &CompiledNode) -> FlowResult<Vec<Edge>> {
         .map_err(|_| capacity())?;
     let mut add = |target, route| result.push(Edge { target, route });
     match &node.kind {
+        crate::workflow::concurrent_bootstrap::kinds!() => {
+            return Err(crate::workflow::concurrent_bootstrap::flow_error(node.id));
+        }
         K::Finish { .. } => {}
         K::Jump { target } => add(*target, Route::Next),
         K::Choose {

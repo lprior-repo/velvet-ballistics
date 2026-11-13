@@ -6,10 +6,14 @@ use super::{
 };
 use crate::SlotIdx;
 
+use super::concurrent_cursor::{contexts, same_context};
+use super::concurrent_ownership::LaneOwner;
+
 pub(super) fn validate(
     parts: &WorkflowParts,
     regions: &[Option<CompiledLoopRegion>],
 ) -> Result<(), WorkflowError> {
+    let ctx = contexts(parts)?;
     for region in regions.iter().flatten() {
         let start =
             parts
@@ -24,20 +28,30 @@ pub(super) fn validate(
         let Some(slot) = start.output.slot() else {
             continue;
         };
-        for node in &parts.nodes {
-            if node.id < region.body() || node.id >= region.control() {
-                continue;
-            }
-            // Start and its paired Next finish successful writes with the
-            // cursor state; their temporary own-slot aliases are safe.
-            // Foreign failure writes remain reserved even on an exit route.
-            if node.routing.error.error_slot() == Some(slot) || writes_slot(parts, node, slot) {
-                return Err(WorkflowError::LoopCursorForeignWrite {
-                    owner: region.start(),
-                    writer: node.id,
-                    slot,
-                });
-            }
+        validate_cursor(parts, region, slot, ctx.as_deref())?;
+    }
+    Ok(())
+}
+
+fn validate_cursor(
+    parts: &WorkflowParts,
+    region: &CompiledLoopRegion,
+    slot: SlotIdx,
+    contexts: Option<&[LaneOwner]>,
+) -> Result<(), WorkflowError> {
+    for node in &parts.nodes {
+        if node.id < region.body() || node.id >= region.control() {
+            continue;
+        }
+        if !same_context(contexts, region.start(), node.id)? {
+            continue;
+        }
+        if node.routing.error.error_slot() == Some(slot) || writes_slot(parts, node, slot) {
+            return Err(WorkflowError::LoopCursorForeignWrite {
+                owner: region.start(),
+                writer: node.id,
+                slot,
+            });
         }
     }
     Ok(())
@@ -46,6 +60,11 @@ pub(super) fn validate(
 fn writes_slot(parts: &WorkflowParts, node: &CompiledNode, slot: SlotIdx) -> bool {
     let output = node.output.slot();
     match node.kind {
+        K::ForEachConcurrentStart { .. }
+        | K::TogetherConcurrentStart { .. }
+        | K::FirstSuccessStart { .. }
+        | K::ConcurrentLaneEnd { .. } => false,
+        K::ConcurrentGroupJoin { .. } => output == Some(slot),
         K::SetConst { .. }
         | K::EvalExpr { .. }
         | K::BuildObject { .. }

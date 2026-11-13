@@ -20,22 +20,20 @@ fi
 
 mkdir -p -- "$EVIDENCE_DIR"
 
-mapfile -t targets < <(python3 - "$REGISTRY" <<'PY'
-from pathlib import Path
-import re
-import sys
+mkdir -p -- "$ROOT/target/gate-tools/scratch"
+TMPDIR="$ROOT/target/gate-tools/scratch" \
+  rustup run nightly-2026-04-28 rustc --edition=2024 -D warnings \
+  crates/boundary_inventory/src/bin/verus-registry-targets.rs \
+  -o "$ROOT/target/gate-tools/verus-registry-targets"
 
-registry = Path(sys.argv[1])
-seen: set[str] = set()
-for line in registry.read_text(encoding="utf-8").splitlines():
-    match = re.match(r"^\s*verus:\s*['\"]?([^'\"#]+?)['\"]?\s*(?:#.*)?$", line)
-    if match:
-        target = match.group(1).strip()
-        if target and target not in seen:
-            seen.add(target)
-            print(target)
-PY
-)
+targets_file="$(mktemp "$ROOT/target/gate-tools/scratch/verus-targets.XXXXXXXX")"
+if "$ROOT/target/gate-tools/verus-registry-targets" "$REGISTRY" >"$targets_file"; then
+  mapfile -t targets <"$targets_file"
+else
+  status=$?
+  printf 'Verus target selection failed (exit %s): %s\n' "$status" "$REGISTRY" >&2
+  exit "$status"
+fi
 
 if [ "${#targets[@]}" -eq 0 ]; then
   printf 'No required.verus targets found in %s; refusing silent proof pass.\n' "$REGISTRY" >&2

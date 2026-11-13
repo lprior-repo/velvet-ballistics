@@ -32,10 +32,6 @@ use vb_core::{RunId, WorkflowDigest};
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 fn temp_socket_path(name: &str) -> PathBuf {
-    // Honor the supplied scratch directory when the full pathname fits Linux's
-    // 108-byte sun_path, including its terminating NUL. Deep TMPDIR paths keep
-    // the existing short /tmp fallback.
-    //
     // Per-test uniqueness is guaranteed by the process id (parallel cargo
     // test workers) and a static monotonic counter (successive invocations
     // within the same process). Each test owns cleanup of its socket path.
@@ -43,13 +39,8 @@ fn temp_socket_path(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let pid = std::process::id();
     let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let filename = format!("vb_ipc_impl_test_{name}_{pid}_{counter:04x}.sock");
-    let path = std::env::temp_dir().join(&filename);
-    if path.as_os_str().as_encoded_bytes().len() < 108 {
-        path
-    } else {
-        PathBuf::from("/tmp").join(filename)
-    }
+    let name = name.chars().take(8).collect::<String>();
+    std::env::temp_dir().join(format!("vb_impl_{name}_{pid}_{counter:04x}.sock"))
 }
 
 fn make_runtime() -> Runtime {
@@ -123,3 +114,14 @@ include!("impl_tests/tests_roundtrip.rs");
 include!("impl_tests/tests_handlers.rs");
 
 include!("impl_tests/tests_edges.rs");
+
+#[test]
+fn ipc_socket_path_uses_configured_temp_dir() {
+    let path = temp_socket_path("configured");
+    let base = std::env::temp_dir();
+    assert_eq!(path.parent(), Some(base.as_path()));
+    assert!(path.as_os_str().as_encoded_bytes().len() < 108);
+}
+
+#[path = "impl_tests/partial_write_exact/tests.rs"]
+mod partial_write_exact;
