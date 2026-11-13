@@ -5,3 +5,4 @@ include!("resource_depth_regressions/lifetime_owned_corruption.rs");
 include!("resource_depth_regressions/lifetime_owned_origin_validation.rs");
 include!("resource_depth_regressions/lifetime_origin_recovery.rs");
 include!("resource_depth_regressions/lifetime_origin_recovery/tests.rs");
+include!("resource_depth_regressions/active_cap_review.rs");
