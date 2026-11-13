@@ -8,6 +8,8 @@ use vb_storage::JournalEvent;
 #[path = "gate_authority/pending_ticket.rs"]
 mod pending_ticket;
 use pending_ticket::{PendingTicket, advance_pending_ticket};
+#[path = "gate_authority/decision.rs"]
+mod decision;
 
 type GateOpening<'a> = (&'a BoundManualGate, &'a ApproverId, u64);
 
@@ -28,7 +30,7 @@ pub(super) fn verify_durable_pair(
     if pending.is_none_or(|(pending, _)| pending != ticket) {
         return Err(ExecutorError::Unauthorized.into());
     }
-    verify_unique_decision(events, approval, requester, opened_at_ms)
+    verify_unique_decision(events, approval, (gate, requester, opened_at_ms))
 }
 
 fn unique_opening<'a>(
@@ -93,9 +95,9 @@ fn unique_decision<'a>(
 fn verify_unique_decision(
     events: &[JournalEvent],
     approval: &BoundApprovalReceipt,
-    requester: &ApproverId,
-    opened_at_ms: u64,
+    opening: GateOpening<'_>,
 ) -> Result<(), RegisteredExecutionError> {
+    let (_, requester, opened_at_ms) = opening;
     let record = unique_decision(events, approval)?;
     if !record.is_structurally_valid()
         || record.bound_receipt.as_ref() != Some(approval)
@@ -110,7 +112,7 @@ fn verify_unique_decision(
     {
         return Err(ExecutorError::Unauthorized.into());
     }
-    Ok(())
+    decision::verify_policy(record, opening)
 }
 
 pub(super) fn unique_durable_approval(

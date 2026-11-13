@@ -143,6 +143,25 @@ fn durable_policy_case(mismatch: &'static str) -> TestResult {
     ) {
         return Err(format!("expected exact Unauthorized for {mismatch}; got {result:?}; effect_count={}; value={:?}", adapter.effect_count()?, adapter.value(scope())?).into());
     }
+    let reconcile = runtime.reconcile_registered_action(
+        &mut adapter,
+        run,
+        u64::from(ticket.step.get()),
+        &register,
+        &bound,
+        &dispatch,
+    );
+    if !matches!(
+        reconcile,
+        Err(RegisteredExecutionError::Executor(
+            ExecutorError::Unauthorized
+        ))
+    ) {
+        return Err(format!(
+            "expected exact Unauthorized on reconciliation for {mismatch}; got {reconcile:?}"
+        )
+        .into());
+    }
     if adapter.effect_count()? != 0
         || adapter.value(scope())?.is_some()
         || runtime.lookup_pending_action_ticket(run, u64::from(ticket.step.get())) != Some(ticket)
