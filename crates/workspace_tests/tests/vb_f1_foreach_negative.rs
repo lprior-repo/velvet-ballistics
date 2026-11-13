@@ -396,3 +396,6 @@ fn execute_policy_bound(workflow: &vb_core::CompiledWorkflow) -> Result<(), Stri
     }
     Ok(())
 }
+
+#[path = "vb_f1_foreach_negative/review_nested.rs"]
+mod review_nested;
