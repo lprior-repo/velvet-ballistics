@@ -197,6 +197,37 @@ mod tests {
     }
 
     #[test]
+    fn registry_runtime_codes_2020_2028_are_registered() {
+        let expected: [(&str, u16); 8] = [
+            ("ROLLBACK_FAILED", 0x2020),
+            ("ADMISSION_ACTION_REGISTRY_MISMATCH", 0x2021),
+            ("ADMISSION_ACTION_ABI_DIGEST_MISMATCH", 0x2022),
+            ("RETRY_BLOCKED_ON_UNDRAINED_JOURNAL", 0x2023),
+            ("PER_RUN_QUEUE_DEPTH_EXCEEDED", 0x2024),
+            ("COMPAT_GATE_BLOCKED", 0x2025),
+            ("OPEN_GATE_CAPACITY_EXCEEDED", 0x2027),
+            ("OPEN_GATE_CAPACITY_ZERO", 0x2028),
+        ];
+        for (symbolic, numeric) in expected {
+            assert_eq!(symbolic_to_numeric(symbolic), Some(numeric));
+            assert_eq!(numeric_to_symbolic(numeric), Some(symbolic));
+            let entry = CODE_REGISTRY
+                .iter()
+                .find(|entry| entry.numeric == numeric)
+                .expect("registered runtime code must have a registry entry");
+            assert!(!entry.deprecated);
+            assert_eq!(entry.category, CodeCategory::Storage);
+            let code = DiagnosticCode::new(numeric);
+            assert_eq!(
+                code.symbolic_code().map(SymbolicCode::as_str),
+                Some(symbolic)
+            );
+            assert_eq!(code.category(), Some(CodeCategory::Storage));
+            assert_eq!(DiagnosticCode::from_str(&code.to_string()), Ok(code));
+        }
+    }
+
+    #[test]
     fn diagnostic_code_symbolic_lookup_known_code() {
         let dc = DiagnosticCode::new(0x0101);
         let sc = dc.symbolic_code();
