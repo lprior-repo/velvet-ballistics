@@ -74,13 +74,13 @@
 // - Encode: no direct test (wraps postcard::Error, no stable public constructor)
 //
 mod error_tests {
-    use crate::error::ArtifactInvalidSource;
-    use crate::types::EventSeq;
     use crate::JournalError;
     use crate::OwnedInputError;
+    use crate::error::ArtifactInvalidSource;
+    use crate::types::EventSeq;
     use std::path::PathBuf;
-    use vb_core::action::ActionRegistryError;
     use vb_core::WorkflowError;
+    use vb_core::action::ActionRegistryError;
     use vb_core::{DiagnosticCode, RunId};
     use vb_validate::ValidationError;
 
