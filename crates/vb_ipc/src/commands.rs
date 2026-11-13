@@ -32,6 +32,8 @@ pub enum IpcCommand {
     Health = 10,
     /// Request graceful shutdown.
     Shutdown = 11,
+    /// Submit a bound manual-gate operator decision.
+    SubmitBoundGateDecision = 18,
     /// Unknown command identifier (reserved for wire compatibility).
     UnknownCommand(u16) = 12,
 }
@@ -63,6 +65,7 @@ impl CommandFlags {
             | IpcCommand::FailAction
             | IpcCommand::Health
             | IpcCommand::Shutdown
+            | IpcCommand::SubmitBoundGateDecision
             | IpcCommand::UnknownCommand(_) => 0x0000,
         }
     }
@@ -114,6 +117,7 @@ impl IpcCommand {
             9 => Ok(Self::DrainTrace),
             10 => Ok(Self::Health),
             11 => Ok(Self::Shutdown),
+            18 => Ok(Self::SubmitBoundGateDecision),
             other => Ok(Self::UnknownCommand(other)),
         }
     }
@@ -133,6 +137,7 @@ impl IpcCommand {
             Self::DrainTrace => 9,
             Self::Health => 10,
             Self::Shutdown => 11,
+            Self::SubmitBoundGateDecision => 18,
             Self::UnknownCommand(id) => id,
         }
     }

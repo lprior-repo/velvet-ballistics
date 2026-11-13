@@ -10,6 +10,9 @@ pub struct Shard {
     pub(crate) pending_ask_authorities: IndexMap<RunId, PendingAskAuthority>,
     /// Operator-opened manual gates awaiting a decision, keyed by gate id.
     pub(crate) open_gates: IndexMap<GateId, OpenGate>,
+    /// Bound operator-opened gates, keyed by gate id. Kept separate so a
+    /// legacy gate can never be approved through the bound path.
+    pub(crate) bound_open_gates: IndexMap<GateId, BoundOpenGate>,
     /// Last frame executed count already reflected in shard counters by run.
     pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,

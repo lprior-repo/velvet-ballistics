@@ -126,7 +126,11 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
             crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
         )
         .map_err(|error| error.to_string())?
-        .ok_or("missing admission fixture")?;
+        .ok_or("missing admission fixture")?
+        .with_input_digest(vb_storage::RunInputBinding::Digest(
+            vb_storage::inputs::compute_input_digest(&[(SlotIdx::ZERO, SlotValue::I64(0))])
+                .map_err(|error| format!("input digest failed: {error:?}"))?,
+        ));
     let result = submit_pair_fixture(&mut shard, run);
     assert!(matches!(
         result,

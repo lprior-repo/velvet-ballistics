@@ -21,6 +21,10 @@ pub struct RecoverRunCommand {
     /// carry no gate evidence. Restored into the shard registry by
     /// `handle_recover`; a gated run is never driven until its gate is decided.
     pub(crate) open_gates: Vec<OpenGate>,
+    /// Bound manual gates reconstructed from record kinds 54/55. Restored
+    /// into the bound registry by `handle_recover`; a run with an undecided
+    /// bound gate is never driven.
+    pub(crate) bound_open_gates: Vec<crate::shard::types::BoundOpenGate>,
     /// Admission evidence carried by the recovery command. The Unverified
     /// variant represents missing historical evidence rather than a fabricated
     /// verified pin. Callers on the raw command path cannot gain verified
@@ -60,6 +64,7 @@ impl RecoverRunCommand {
             retry_checkpoint: None,
             boundary,
             open_gates: Vec::new(),
+            bound_open_gates: Vec::new(),
             admission: RecoveredAdmissionKind::Unverified {
                 run_id: run,
                 artifact_digest,
@@ -75,6 +80,16 @@ impl RecoverRunCommand {
     #[must_use]
     pub(crate) fn with_open_gates(mut self, open_gates: Vec<OpenGate>) -> Self {
         self.open_gates = open_gates;
+        self
+    }
+
+    /// Attaches reconstructed bound gates from journal replay.
+    #[must_use]
+    pub(crate) fn with_bound_open_gates(
+        mut self,
+        bound_open_gates: Vec<crate::shard::types::BoundOpenGate>,
+    ) -> Self {
+        self.bound_open_gates = bound_open_gates;
         self
     }
 
@@ -182,6 +197,7 @@ impl RecoverRunCommand {
             retry_checkpoint: Some(checkpoint),
             boundary: crate::recovery::RecoveredRunBoundary::none(),
             open_gates: Vec::new(),
+            bound_open_gates: Vec::new(),
             admission,
             restored_store: None,
         })

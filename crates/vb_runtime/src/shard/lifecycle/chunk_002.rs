@@ -178,6 +178,7 @@ impl Shard {
             self.append_cancel_terminal_events(run, reason, attempt)?;
             self.checked_out_run_insert(run)?;
             self.clear_pending_ask_authority(run);
+            self.retire_run_gates(run);
             let _removed_timer = self.pending_timer_remove(run);
             let Some(state) = self.run_state_remove(run) else {
                 self.checked_out_run_remove(run);
@@ -208,6 +209,7 @@ impl Shard {
             self.append_kill_terminal_events(run, attempt)?;
             self.checked_out_run_insert(run)?;
             self.clear_pending_ask_authority(run);
+            self.retire_run_gates(run);
             let _removed_timer = self.pending_timer_remove(run);
         }
         if let Some(state) = self.run_state_remove(run) {

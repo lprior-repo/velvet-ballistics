@@ -24,7 +24,13 @@ impl Shard {
             vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
         }
         let digest = workflow.digest();
-        let admission = self.build_admission_with_budget(run, &workflow, caps)?;
+        let input_digest = vb_storage::inputs::compute_input_digest(inputs)
+            .map_err(RuntimeError::from)?;
+        let admission = self
+            .build_admission_with_budget(run, &workflow, caps)?
+            .map(|admission| {
+                admission.with_input_digest(vb_storage::RunInputBinding::Digest(input_digest))
+            });
         execution_binding::validate(
             self.artifact_store.as_ref(),
             self.policy,

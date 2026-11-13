@@ -4,7 +4,9 @@ use crate::{
     AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
     RunHeaderRecord, WorkflowSourceRecord,
 };
-use vb_core::RuntimePolicy;
+use vb_core::{CapabilitySet, RuntimePolicy};
+mod catalog;
+pub use catalog::ExecutorCatalogSubmissionContext;
 
 /// Complete prepared admission. Private members prevent partial publication.
 pub struct RunSubmission {
@@ -12,6 +14,7 @@ pub struct RunSubmission {
     artifact: AcceptedArtifact,
     inputs: SubmissionInputs,
     header: RunHeaderRecord,
+    granted_capabilities: CapabilitySet,
 }
 
 impl RunSubmission {
@@ -27,6 +30,7 @@ impl RunSubmission {
             artifact,
             inputs: SubmissionInputs::Scalar(inputs),
             header,
+            granted_capabilities: CapabilitySet::empty(),
         };
         submission.validate_binding()?;
         Ok(submission)
@@ -44,6 +48,7 @@ impl RunSubmission {
             artifact,
             inputs: SubmissionInputs::Owned(inputs),
             header,
+            granted_capabilities: CapabilitySet::empty(),
         };
         submission.validate_binding()?;
         Ok(submission)
@@ -53,8 +58,15 @@ impl RunSubmission {
         self.validate_identities()?;
         crate::journal::verify_content_digest(&self.source.source, &self.source.digest.as_bytes())?;
         let workflow = crate::admission::verify_accepted_artifact(&self.artifact)?;
-        self.inputs.validate_workflow(&workflow)?;
-        if crate::admission::compute_policy_digest(&workflow)? != self.artifact.policy_digest {
+        self.validate_workflow_binding(&workflow)
+    }
+
+    fn validate_workflow_binding(
+        &self,
+        workflow: &vb_core::CompiledWorkflow,
+    ) -> Result<(), JournalError> {
+        self.inputs.validate_workflow(workflow)?;
+        if crate::admission::compute_policy_digest(workflow)? != self.artifact.policy_digest {
             return Err(JournalError::PayloadDigestMismatch);
         }
         Ok(())
@@ -84,14 +96,20 @@ impl RunSubmission {
     }
 
     fn validate_policy(&self, policy: RuntimePolicy) -> Result<(), JournalError> {
+        self.validate_policy_requirements(policy)?;
+        if !self.artifact.required_capabilities.is_empty() {
+            return Err(JournalError::CapabilityDenied);
+        }
+        crate::admission::verify_accepted_artifact_for_policy(&self.artifact, policy)?;
+        Ok(())
+    }
+
+    fn validate_policy_requirements(&self, policy: RuntimePolicy) -> Result<(), JournalError> {
         if !matches!(
             policy,
             RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict
         ) {
             return Err(JournalError::AdmissionRequired);
-        }
-        if !self.artifact.required_capabilities.is_empty() {
-            return Err(JournalError::CapabilityDenied);
         }
         if policy != RuntimePolicy::Relaxed {
             let decision = self.ir_compat_decision();
@@ -103,7 +121,6 @@ impl RunSubmission {
                 });
             }
         }
-        crate::admission::verify_accepted_artifact_for_policy(&self.artifact, policy)?;
         Ok(())
     }
 
@@ -171,7 +188,7 @@ impl RunSubmission {
             seq: EventSeq::new(1),
             artifact_digest: self.artifact.digest,
             policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
-            granted_capabilities: vb_core::CapabilitySet::empty(),
+            granted_capabilities: self.granted_capabilities.clone(),
             policy,
         }
     }
@@ -186,6 +203,14 @@ impl FjallJournal {
         policy: RuntimePolicy,
     ) -> Result<(), JournalError> {
         submission.validate_policy(policy)?;
+        self.commit_run_submission_validated(submission, policy)
+    }
+
+    fn commit_run_submission_validated(
+        &self,
+        submission: &RunSubmission,
+        policy: RuntimePolicy,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()

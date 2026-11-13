@@ -12,6 +12,8 @@ where
         RecordKind::PolicyDecision => deserialize_policy_decision(variant),
         RecordKind::GateDecision => deserialize_gate_decision(variant),
         RecordKind::GateOpened => deserialize_gate_opened(variant),
+        RecordKind::GateOpenedBound => deserialize_gate_opened_bound(variant),
+        RecordKind::GateDecisionBound => deserialize_gate_decision_bound(variant),
         // Retired: pre-migration grant records decode to an explicit
         // error instead of a resurrected variant. Tag 46 stays reserved
         // in RecordKind so old records fail loudly, never silently.
@@ -73,6 +75,58 @@ where
         gate,
         opened_at_ms,
         requester,
+    })
+}
+
+fn deserialize_gate_opened_bound<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let payload: (
+        vb_core::RunId,
+        crate::EventSeq,
+        vb_core::manual_gate::BoundManualGate,
+        u64,
+        vb_core::manual_gate::ApproverId,
+    ) = variant.newtype_variant()?;
+    let (run, seq, gate, opened_at_ms, requester) = payload;
+    if gate.gate.run != run {
+        return Err(de::Error::custom(format_args!(
+            "GateOpenedBoundEvent outer run {} must equal gate.run {}",
+            run.get(),
+            gate.gate.run.get()
+        )));
+    }
+    Ok(JournalEvent::GateOpenedBoundEvent {
+        run,
+        seq,
+        gate,
+        opened_at_ms,
+        requester,
+    })
+}
+
+fn deserialize_gate_decision_bound<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let payload: (
+        vb_core::RunId,
+        crate::EventSeq,
+        vb_core::manual_gate::BoundGateOutcomeRecord,
+    ) = variant.newtype_variant()?;
+    let (run, seq, record) = payload;
+    if record.record.run != run {
+        return Err(de::Error::custom(format_args!(
+            "GateDecisionBoundEvent outer run {} must equal record.run {}",
+            run.get(),
+            record.record.run.get()
+        )));
+    }
+    Ok(JournalEvent::GateDecisionBoundEvent {
+        run,
+        seq,
+        record: Box::new(record),
     })
 }
 

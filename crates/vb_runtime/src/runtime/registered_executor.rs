@@ -5,6 +5,11 @@ use vb_core::policy::DecisionRecord;
 use vb_core::{ActionTicket, GrantDispatchContext, RunId, ScopedDispatch, ScopedGrant};
 use vb_storage::executor::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
 
+#[path = "registered_executor/gate_approval.rs"]
+mod gate_approval;
+#[path = "registered_executor/gate_authority.rs"]
+mod gate_authority;
+
 /// Runtime authority failures and uncertain adapter outcomes remain distinct.
 #[derive(Debug, thiserror::Error)]
 pub enum RegisteredExecutionError {
@@ -88,6 +93,7 @@ impl Runtime {
             .scoped
             .verify_for_execute(presented.dispatch, presented.revoked_ids)
             .map_err(ExecutorError::Grant)?;
+        gate_approval::verify_live_dispatch(self, presented, context, ticket)?;
         self.require_narrowed_scope(presented.scoped, &context.artifact, ticket, grant)?;
         Ok(())
     }
@@ -104,6 +110,7 @@ impl Runtime {
         scoped
             .verify_for_reconcile(dispatch)
             .map_err(ExecutorError::Grant)?;
+        gate_approval::verify_reconcile(self, scoped, context, ticket)?;
         self.require_narrowed_scope(scoped, &context.artifact, ticket, grant)?;
         Ok(())
     }

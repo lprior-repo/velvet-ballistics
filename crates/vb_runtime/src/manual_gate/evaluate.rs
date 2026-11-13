@@ -9,20 +9,28 @@ fn reason_present(reason: &Option<String>) -> bool {
     reason.as_ref().is_some_and(|text| !text.trim().is_empty())
 }
 
-/// Evaluates an operator decision against a gate opened at
-/// `opened_at_ms`. Returns the durable outcome record, journaled by the
-/// caller. Approval decisions carry a digest-bound receipt; no other
-/// decision does.
+/// Evaluates an operator decision against a gate opened at `opened_at_ms`.
+///
+/// `requester` MUST be the durable requester from the `GateOpenedEvent`, not
+/// the caller-supplied `input.requester`: separation of duties is evaluated
+/// against the recorded requester so a submission cannot evade it by claiming
+/// a different one. Returns the durable outcome record, journaled by the
+/// caller. Approval decisions carry a digest-bound receipt; no other decision
+/// does.
 pub fn evaluate_decision(
     gate: &ManualGate,
     opened_at_ms: u64,
+    requester: &ApproverId,
     input: &GateDecisionInput,
 ) -> Result<GateOutcomeRecord, GateError> {
     if !input.approver.is_valid() {
         return Err(GateError::InvalidApprover);
     }
-    if !input.requester.is_valid() {
+    if !requester.is_valid() {
         return Err(GateError::InvalidRequester);
+    }
+    if input.requester != *requester {
+        return Err(GateError::RequesterMismatch);
     }
     if !input.approver_role.is_valid() {
         return Err(GateError::InvalidRole);
@@ -54,7 +62,7 @@ pub fn evaluate_decision(
         outcome: GateOutcome::from_decision(input.decision),
         approver: Some(input.approver.clone()),
         approver_role: Some(input.approver_role.clone()),
-        requester: input.requester.clone(),
+        requester: requester.clone(),
         reason: input.reason.clone(),
         evidence_shown: input.evidence_shown,
         evidence_bundle_digest: gate.evidence_bundle_digest,
@@ -77,7 +85,7 @@ pub fn evaluate_decision(
             if gate.evidence_display_required() && !input.evidence_shown {
                 return Err(GateError::EvidenceNotShown);
             }
-            check_separation(gate, input)?;
+            check_separation(gate, requester, input)?;
             let digest = compute_receipt_digest(
                 gate.id.get(),
                 gate.run,
@@ -120,10 +128,14 @@ pub fn evaluate_decision(
                 return Err(GateError::BreakGlassJustificationRequired);
             }
             // Role check waived: break-glass exists for operators outside
-            // the normal role. Separation of duties still applies at
-            // high risk, and the justification is journaled.
-            if matches!(gate.risk, RiskClass::High) && input.requester == input.approver {
+            // the normal role. High-risk separation and high-risk
+            // non-compensatable evidence display still apply, and the
+            // justification is journaled.
+            if matches!(gate.risk, RiskClass::High) && *requester == input.approver {
                 return Err(GateError::SeparationOfDutiesViolation);
+            }
+            if gate.evidence_display_required() && !input.evidence_shown {
+                return Err(GateError::EvidenceNotShown);
             }
             record.break_glass = true;
             record.break_glass_justification = input.break_glass_justification.clone();
@@ -165,8 +177,12 @@ fn check_role(gate: &ManualGate, input: &GateDecisionInput) -> Result<(), GateEr
     Ok(())
 }
 
-fn check_separation(gate: &ManualGate, input: &GateDecisionInput) -> Result<(), GateError> {
-    if gate.separation_applies() && input.requester == input.approver {
+fn check_separation(
+    gate: &ManualGate,
+    requester: &ApproverId,
+    input: &GateDecisionInput,
+) -> Result<(), GateError> {
+    if gate.separation_applies() && *requester == input.approver {
         return Err(GateError::SeparationOfDutiesViolation);
     }
     Ok(())

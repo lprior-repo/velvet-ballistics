@@ -40,6 +40,16 @@ use product::DurableFrameRecoveryProduct;
 pub fn hydrate_run_admission_from_events(
     events: &[vb_storage::JournalEvent],
 ) -> Option<crate::admission::RunAdmission> {
+    let input_digest = events
+        .iter()
+        .find_map(|event| match event {
+            vb_storage::JournalEvent::RunAdmission { input_digest, .. }
+            | vb_storage::JournalEvent::RunAdmissionBudget { input_digest, .. } => {
+                Some(*input_digest)
+            }
+            _ => None,
+        })
+        .unwrap_or(vb_storage::RunInputBinding::LegacyUnbound);
     vb_storage::recovery::replay::summary::recover_run_admission_from_events(events).map(
         |admission| {
             let base = match admission.budget {
@@ -58,6 +68,7 @@ pub fn hydrate_run_admission_from_events(
                 ),
             };
             base.with_policy_pin(admission.policy_pin)
+                .with_input_digest(input_digest)
         },
     )
 }

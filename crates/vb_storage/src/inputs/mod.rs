@@ -10,7 +10,7 @@ use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
 use crate::{FjallJournal, JournalError, RecordKind, codec::EnforceKindParity};
 pub use digest::{RunInputBinding, RunPolicyPin, compute_input_digest};
 pub use owned::{OwnedInputError, OwnedRunInputsRecordV1, RetainedRunInputs};
-pub use submission::RunSubmission;
+pub use submission::{ExecutorCatalogSubmissionContext, RunSubmission};
 use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
 
 /// Validate scalar admission values and fill defaults before any run effects.

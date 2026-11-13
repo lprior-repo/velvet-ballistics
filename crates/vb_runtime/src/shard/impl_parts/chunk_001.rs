@@ -24,6 +24,7 @@ impl Shard {
             journal_sequences: IndexMap::new(),
             pending_ask_authorities: IndexMap::new(),
             open_gates: IndexMap::new(),
+            bound_open_gates: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),

@@ -108,6 +108,11 @@ pub enum RecordKind {
     TenantAdmission = 49,
     /// Versioned action-failure checkpoint and retry deadline.
     RetryTimerScheduled = 51,
+    /// Bound manual gate opened with artifact/policy/input/attempt binding.
+    /// Appended after every assigned id; ids 52/53 stay unassigned.
+    GateOpenedBound = 54,
+    /// Bound manual gate decision carrying the additive bound receipt.
+    GateDecisionBound = 55,
 }
 
 impl RecordKind {
@@ -159,6 +164,8 @@ impl RecordKind {
             Self::GateOpened => 48,
             Self::TenantAdmission => 49,
             Self::RetryTimerScheduled => 51,
+            Self::GateOpenedBound => 54,
+            Self::GateDecisionBound => 55,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -212,6 +219,8 @@ impl RecordKind {
             48 => Some(Self::GateOpened),
             49 => Some(Self::TenantAdmission),
             51 => Some(Self::RetryTimerScheduled),
+            54 => Some(Self::GateOpenedBound),
+            55 => Some(Self::GateDecisionBound),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -259,6 +268,8 @@ impl RecordKind {
             | Self::GateOpened
             | Self::TenantAdmission
             | Self::RetryTimerScheduled
+            | Self::GateOpenedBound
+            | Self::GateDecisionBound
             | Self::RunContinuation => true,
             Self::WorkflowSource
             | Self::CompiledIr
@@ -268,25 +279,6 @@ impl RecordKind {
             | Self::Snapshot
             | Self::Blob
             | Self::IndexUpdate => false,
-        }
-    }
-
-    /// Returns true when this kind is valid for the supplied record-family magic.
-    #[must_use]
-    pub const fn belongs_to_magic(self, magic: u32) -> bool {
-        match magic {
-            crate::constants::MAGIC_WORKFLOW_SOURCE => matches!(self, Self::WorkflowSource),
-            crate::constants::MAGIC_COMPILED_ARTIFACT => matches!(self, Self::CompiledIr),
-            crate::constants::MAGIC_JOURNAL_EVENT => self.is_journal_event(),
-            crate::constants::MAGIC_SNAPSHOT => matches!(self, Self::Snapshot),
-            crate::constants::MAGIC_BLOB => matches!(self, Self::Blob),
-            crate::constants::MAGIC_INDEX_RECORD => {
-                matches!(
-                    self,
-                    Self::RunHeader | Self::RunInputs | Self::RunOwnedInputs | Self::IndexUpdate
-                )
-            }
-            _ => false,
         }
     }
 }

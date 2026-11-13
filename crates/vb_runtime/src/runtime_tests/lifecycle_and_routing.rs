@@ -75,7 +75,11 @@
                         CapabilitySet::empty(),
                         RuntimePolicy::Relaxed,
                     )
-                    .with_attached_budget(expected_budget),
+                    .with_attached_budget(expected_budget)
+                    .with_input_digest(vb_storage::RunInputBinding::Digest(
+                        vb_storage::inputs::compute_input_digest(&[])
+                            .map_err(|error| format!("empty input digest failed: {error:?}"))?,
+                    )),
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,

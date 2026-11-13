@@ -129,6 +129,7 @@ pub struct ResumableRecoveryProduct {
     boundary: RecoveredRunBoundary,
     retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     open_gates: Vec<crate::shard::types::OpenGate>,
+    bound_open_gates: Vec<crate::shard::types::BoundOpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     admission: crate::admission::RunAdmission,
@@ -152,6 +153,7 @@ impl ResumableRecoveryProduct {
             boundary: parts.boundary,
             retry_checkpoint: parts.retry_checkpoint,
             open_gates: parts.open_gates,
+            bound_open_gates: parts.bound_open_gates,
             admission: parts.admission,
             restored_store: parts.restored_store,
         }
@@ -184,6 +186,7 @@ impl ResumableRecoveryProduct {
             self.boundary,
         )
         .with_open_gates(self.open_gates)
+        .with_bound_open_gates(self.bound_open_gates)
         .with_validated_admission(self.admission)
         .with_restored_store(self.restored_store);
         match self.retry_checkpoint {
@@ -205,6 +208,7 @@ pub(crate) struct ResumableRecoveryParts {
     pub(crate) boundary: RecoveredRunBoundary,
     pub(crate) retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     pub(crate) open_gates: Vec<crate::shard::types::OpenGate>,
+    pub(crate) bound_open_gates: Vec<crate::shard::types::BoundOpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     pub(crate) admission: crate::admission::RunAdmission,

@@ -201,6 +201,32 @@ pub trait RuntimeJournal: Send + Sync {
         })
     }
 
+    /// Appends a bound gate decision with strict durable acknowledgement.
+    /// Default fails closed for journals without the additive port.
+    fn append_gate_decision_bound_strict(
+        &self,
+        _record: vb_core::manual_gate::BoundGateOutcomeRecord,
+        _seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "append_gate_decision_bound_strict",
+        })
+    }
+
+    /// Appends a bound gate opening with strict durable acknowledgement.
+    /// Default fails closed for journals without the additive port.
+    fn append_gate_opened_bound_strict(
+        &self,
+        _gate: vb_core::manual_gate::BoundManualGate,
+        _opened_at_ms: u64,
+        _requester: vb_core::manual_gate::ApproverId,
+        _seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "append_gate_opened_bound_strict",
+        })
+    }
+
     /// Probes journal health without side effects.
     /// Returns `JournalPoisoned` if the underlying storage is unavailable.
     fn probe(&self) -> RuntimeResult<()>;

@@ -143,6 +143,10 @@ name = "reference_models"
 path = "tests/reference_models.rs"
 
 [[test]]
+name = "vb_ifn5b_ipc_gate"
+path = "tests/vb_ifn5b_ipc_gate.rs"
+
+[[test]]
 name = "vb_eepg_bdd_tests"
 path = "tests/vb_eepg_bdd_tests.rs"
 
