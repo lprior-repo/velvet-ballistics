@@ -220,14 +220,19 @@ pub(super) fn loop_body_rearm(
     reset_completed(plan, run, body, control)
 }
 
+/// Activation validation that can accept a step whose `StepStarted` is already
+/// durable. `allow_running` is set only for a journal-authorized handler entry
+/// (see `transitions::resumes_journaled_handler`); every other structural check
+/// still applies.
 pub(super) fn validate_activation(
     plan: &CompiledWorkflow,
     node: &CompiledNode,
     run: &RunFrame,
+    allow_running: bool,
 ) -> RuntimeEngineResult<()> {
     // Verify current node's step state
     let state = run.step_state(node.id).map_err(RuntimeEngineError::Core)?;
-    if state == StepState::Running {
+    if state == StepState::Running && !allow_running {
         return Err(invalid("node already running"));
     }
 

@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
 
+mod action_failure_routing;
 mod admission;
 mod arena;
 mod boundary;
+mod event_wait;
 mod full_ask_schedule;
 mod full_wait_schedule;
 mod pending;
@@ -11,8 +13,8 @@ mod suspended;
 
 use arena::recovered_arena_handles_resolve;
 use suspended::{
-    recoverable_open_ask_boundary, recoverable_timed_ask_boundary,
-    recoverable_waiting_timer_boundary,
+    recoverable_open_ask_boundary, recoverable_open_wait_event_boundary,
+    recoverable_timed_ask_boundary, recoverable_waiting_timer_boundary,
 };
 
 use vb_core::CompiledWorkflow;
@@ -21,6 +23,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 
+pub(crate) use action_failure_routing::{handler_route_for_failure, restore_routed_action_failure};
 pub(crate) use admission::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     action_contract_abi_digest, validate_recovered_admission_evidence,
@@ -109,6 +112,9 @@ pub(crate) fn recovered_run_boundary_from_seed(
     }
     if let Some(ask) = recoverable_open_ask_boundary(seed, workflow, events) {
         return RecoveredRunBoundary::from_open_ask(ask);
+    }
+    if let Some(wait) = recoverable_open_wait_event_boundary(seed, workflow, events) {
+        return RecoveredRunBoundary::from_open_wait_event(wait);
     }
     if let Some(timer) = recoverable_waiting_timer_boundary(seed, workflow, events) {
         return RecoveredRunBoundary::from_waiting_timer(timer);
@@ -208,7 +214,9 @@ fn mark_step_recovery_boundary(
     state: &mut vb_storage::recovery::RecoveryCannotResumeState,
 ) {
     match recovered {
-        RecoveredStepState::Waiting if !boundary.is_waiting_timer_step(step) => {
+        RecoveredStepState::Waiting
+            if !boundary.is_waiting_timer_step(step) && !boundary.is_open_wait_event_step(step) =>
+        {
             state.pending_timers = true;
         }
         RecoveredStepState::Asking

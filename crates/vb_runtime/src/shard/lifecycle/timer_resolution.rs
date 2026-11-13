@@ -56,23 +56,30 @@ impl Shard {
 
     fn pending_timer_for_awaiting(
         &self,
-        run: RunId,
         state: &RunState,
         step: StepIdx,
         kind: PendingTimerKind,
-        register_timer: bool,
-    ) -> RuntimeResult<Option<PendingTimer>> {
-        if !register_timer {
-            return Ok(None);
-        }
-        let generation = self
-            .next_pending_timer_generation(run)
-            .ok_or(RuntimeError::InvalidTimerFire)?;
-        Ok(Some(PendingTimer {
+        generation: u64,
+    ) -> PendingTimer {
+        PendingTimer {
             step,
             kind,
             generation,
             deadline: awaiting_deadline(state, step),
-        }))
+        }
+    }
+
+    pub(super) fn scheduled_timer_generation(
+        &self,
+        run: RunId,
+        preceding_events: usize,
+    ) -> RuntimeResult<u64> {
+        let offset = u64::try_from(preceding_events)
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        self.journal_sequence_for(run)
+            .get()
+            .checked_add(offset)
+            .and_then(|sequence| sequence.checked_add(1))
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
     }
 }

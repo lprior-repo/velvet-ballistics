@@ -2,7 +2,7 @@ use super::driver::Driver;
 use super::{TraceReplayMode, invalid};
 use crate::recovery::RecoveryResult;
 use vb_core::replay::{ReplayAction, SuspensionKind};
-use vb_core::{CompiledNodeKind as K, SlotIdx, StepIdx, StepState};
+use vb_core::{CompiledNodeKind as K, Deadline, SlotIdx, StepIdx, StepState};
 
 impl Driver<'_> {
     pub(super) fn start(&mut self, step: StepIdx) -> RecoveryResult<()> {
@@ -30,6 +30,7 @@ impl Driver<'_> {
             )
             .map_err(|e| invalid(step, format!("artifact replay failed: {e:?}")))?,
         };
+        mark_untimed_wait(step, &node.kind, &action, &mut self.frame)?;
         let prefix = self
             .plan
             .source_metadata()
@@ -180,6 +181,32 @@ impl Driver<'_> {
         }
         Ok(())
     }
+}
+
+fn mark_untimed_wait(
+    step: StepIdx,
+    kind: &K,
+    action: &ReplayAction,
+    frame: &mut vb_core::RunFrame,
+) -> RecoveryResult<()> {
+    if matches!(
+        kind,
+        K::WaitEvent {
+            timeout_slot: Deadline::Unset,
+            ..
+        }
+    ) && matches!(
+        action,
+        ReplayAction::Suspended {
+            kind: SuspensionKind::WaitEvent,
+            ..
+        }
+    ) {
+        frame
+            .mark_waiting(step)
+            .map_err(|error| invalid(step, error.to_string()))?;
+    }
+    Ok(())
 }
 
 fn add_owned_required(

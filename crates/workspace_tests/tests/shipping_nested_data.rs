@@ -20,5 +20,7 @@ mod cells;
 mod collect_corruption;
 #[path = "shipping_nested_data/flow.rs"]
 mod flow;
+#[path = "shipping_nested_data/legacy_terminal.rs"]
+mod legacy_terminal;
 #[path = "shipping_nested_data/support.rs"]
 mod support;

@@ -58,6 +58,15 @@ pub(crate) fn prepare(
     values: &[SlotValue],
     taints: &[Taint],
 ) -> TestResult<Prepared> {
+    prepare_with_contracts(source, values, taints, &[])
+}
+
+pub(crate) fn prepare_with_contracts(
+    source: &str,
+    values: &[SlotValue],
+    taints: &[Taint],
+    contracts: &[vb_core::action::ActionContract],
+) -> TestResult<Prepared> {
     let workflow = vb_compile::compile_workflow(source.as_bytes())?;
     vb_core::validate_compiled_workflow(&workflow.to_parts())?;
     let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
@@ -80,8 +89,11 @@ pub(crate) fn prepare(
     let bundle = OwnedRootBundle::new(roots, store.checkpoint_v1(), &workflow)?;
     let input_store = bundle.checkpoint().clone();
     let roots = bundle.roots().to_vec().into_boxed_slice();
-    let artifact =
-        vb_storage::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        &workflow,
+        RuntimePolicy::Strict,
+        contracts,
+    )?;
     let source_record = WorkflowSourceRecord {
         digest: WorkflowDigest::from_bytes(blake3::hash(source.as_bytes()).into()),
         source: source.as_bytes().to_vec(),

@@ -21,12 +21,16 @@ impl Shard {
         self.current_tick
     }
 
-    /// Returns the next freshness generation for a run's pending timer.
+    /// Returns the next freshness generation for a run's pending timer counter.
     ///
     /// - `Some(n)` where `n > 0` is the next generation to use.
     /// - `None` if generation would overflow `u64`.
     ///
     /// If no timer exists for the run, returns `Some(1)`.
+    ///
+    /// This counter is diagnostic for non-journaled timer-wheel use. It is not
+    /// authority for journal-backed timers; those use the durable schedule
+    /// event sequence and the captured current entry.
     #[must_use]
     pub fn next_pending_timer_generation(&self, run: RunId) -> Option<u64> {
         match self.pending_timer_get(run) {

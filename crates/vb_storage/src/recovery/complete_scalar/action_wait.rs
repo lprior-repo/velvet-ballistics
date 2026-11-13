@@ -7,7 +7,7 @@ use crate::recovery::RecoveryResult;
 use crate::recovery::hydrate_support::verify_action_ticket_event;
 use vb_core::action::ActionTicket;
 use vb_core::replay::{ReplayAction, SuspensionKind};
-use vb_core::{CompiledNodeKind as K, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{CompiledNodeKind as K, Deadline, SlotIdx, StepIdx, StepState, WorkflowDigest};
 
 /// One scheduled action boundary awaiting its durable completion envelope.
 #[derive(Debug)]
@@ -20,9 +20,12 @@ pub(super) struct ScheduledAction {
 impl Driver<'_> {
     pub(super) fn pending_boundary(&self) -> bool {
         match self.active.as_ref() {
-            Some((_, ReplayAction::Suspended { kind, .. })) => match kind {
+            Some((step, ReplayAction::Suspended { kind, .. })) => match kind {
                 SuspensionKind::ActionPending => self.action.is_some(),
-                SuspensionKind::WaitUntil | SuspensionKind::WaitEvent => self.waiting.is_some(),
+                SuspensionKind::WaitUntil => self.waiting.is_some(),
+                SuspensionKind::WaitEvent => {
+                    self.waiting.is_some() || self.untimed_wait_is_waiting(*step)
+                }
                 SuspensionKind::AskPending => {
                     self.ask.is_some() && self.answer.is_none() && !self.answered
                 }
@@ -30,6 +33,16 @@ impl Driver<'_> {
             },
             _ => false,
         }
+    }
+
+    fn untimed_wait_is_waiting(&self, step: StepIdx) -> bool {
+        matches!(
+            self.plan.node(step).map(|node| &node.kind),
+            Some(K::WaitEvent {
+                timeout_slot: Deadline::Unset,
+                ..
+            })
+        ) && self.frame.step_state(step).ok() == Some(StepState::Waiting)
     }
 
     pub(super) fn scheduled_action(
@@ -68,10 +81,12 @@ impl Driver<'_> {
         else {
             return Err(invalid(ticket.step, "action schedule on non-Do node"));
         };
+        let expected_capacity = node.retry.map_or(1, |policy| policy.max_attempts);
         if ticket.action != *expected
             || input != *expected_input
             || node.output.slot() != Some(output)
             || ticket.attempt == 0
+            || ticket.capacity != expected_capacity
         {
             return Err(invalid(
                 ticket.step,

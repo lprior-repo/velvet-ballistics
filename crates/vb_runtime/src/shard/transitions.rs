@@ -181,6 +181,11 @@ impl Shard {
         } else {
             None
         };
+        let generation = if register_timer {
+            Some(self.scheduled_timer_generation(run, 0)?)
+        } else {
+            None
+        };
         if register_timer {
             self.reserve_pending_timer_slot(run)?;
         }
@@ -200,14 +205,7 @@ impl Shard {
             }
             state.journal_bytes_written = projected;
         }
-        if register_timer {
-            let generation = match self.next_pending_timer_generation(run) {
-                Some(generation) => generation,
-                None => {
-                    self.run_state_insert(run, state)?;
-                    return Err(RuntimeError::InvalidTimerFire);
-                }
-            };
+        if let Some(generation) = generation {
             self.pending_timer_insert(
                 run,
                 PendingTimer {

@@ -89,37 +89,70 @@ pub fn replay_owned_for_each_with_collect_snapshots(
     initial_inputs: &[(SlotIdx, SlotValue, Taint)],
     store_checkpoint: Option<&ValueStoreCheckpointV1>,
 ) -> RecoveryResult<Option<OwnedForEachReplayWithCollectSnapshots>> {
-    let owned_controls = is_owned_for_each_contract(plan);
-    let retained_source = is_owned_input_replay_contract(plan, initial_inputs, store_checkpoint);
-    if !(owned_controls || retained_source)
-        || events
-            .iter()
-            .any(super::owned_for_each_summary::unsupported_replay_event)
-    {
-        return Ok(None);
-    }
-    if store_checkpoint.is_none() && retained_handles_require_store(initial_inputs) {
+    if !can_replay_owned_trace(events, plan, initial_inputs, store_checkpoint) {
         return Ok(None);
     }
     let (frame, store, collect_snapshots) =
-        driver::replay_with_inputs_and_store_and_collect_snapshots(
-            events,
-            plan,
-            &TraceReplayInput {
-                initial_inputs,
-                store_checkpoint,
-                mode: TraceReplayMode::OwnedArena,
-            },
-        )?;
+        replay_owned_trace(events, plan, initial_inputs, store_checkpoint)?;
     let product = seed_from_frame(events, plan, &frame)?;
-    Ok(Some(OwnedForEachReplayWithCollectSnapshots {
+    Ok(Some(replay_evidence(
+        product,
+        frame,
+        store,
+        collect_snapshots,
+    )))
+}
+
+fn can_replay_owned_trace(
+    events: &[JournalEvent],
+    plan: &CompiledWorkflow,
+    initial_inputs: &[(SlotIdx, SlotValue, Taint)],
+    store_checkpoint: Option<&ValueStoreCheckpointV1>,
+) -> bool {
+    let controls = is_owned_for_each_contract(plan);
+    let source = is_owned_input_replay_contract(plan, initial_inputs, store_checkpoint);
+    (controls || source)
+        && !events
+            .iter()
+            .any(super::owned_for_each_summary::unsupported_replay_event)
+        && !(store_checkpoint.is_none() && retained_handles_require_store(initial_inputs))
+}
+
+fn replay_owned_trace(
+    events: &[JournalEvent],
+    plan: &CompiledWorkflow,
+    initial_inputs: &[(SlotIdx, SlotValue, Taint)],
+    store_checkpoint: Option<&ValueStoreCheckpointV1>,
+) -> RecoveryResult<(
+    RunFrame,
+    vb_core::ValueStore,
+    Vec<OwnedCollectReplaySnapshot>,
+)> {
+    driver::replay_with_inputs_and_store_and_collect_snapshots(
+        events,
+        plan,
+        &TraceReplayInput {
+            initial_inputs,
+            store_checkpoint,
+            mode: TraceReplayMode::OwnedArena,
+        },
+    )
+}
+
+fn replay_evidence(
+    product: RecoveryFrameSeedProduct,
+    frame: RunFrame,
+    store: vb_core::ValueStore,
+    collect_snapshots: Vec<OwnedCollectReplaySnapshot>,
+) -> OwnedForEachReplayWithCollectSnapshots {
+    OwnedForEachReplayWithCollectSnapshots {
         replay: OwnedForEachReplay {
             product,
             frame,
             store: store.checkpoint_v1(),
         },
         collect_snapshots,
-    }))
+    }
 }
 
 fn retained_handles_require_store(initial_inputs: &[(SlotIdx, SlotValue, Taint)]) -> bool {
@@ -132,49 +165,51 @@ fn retained_handles_require_store(initial_inputs: &[(SlotIdx, SlotValue, Taint)]
 }
 
 fn eligibility(plan: &CompiledWorkflow) -> Option<bool> {
-    let mut saw_owned_control = false;
-    for raw in 0..plan.node_count() {
-        let step = StepIdx::new(raw);
-        let node = plan.node(step)?;
-        if node.routing.error.handler().is_some() || node.routing.error.error_slot().is_some() {
-            return None;
-        }
-        match node.kind {
-            K::ForEachStart { .. }
-            | K::ForEachNext { .. }
-            | K::ForEachJoin { .. }
-            | K::ReduceStart { .. }
-            | K::ReduceNext { .. }
-            | K::ReduceFinish { .. }
-            | K::TogetherStart { .. }
-            | K::TogetherBranch { .. }
-            | K::TogetherJoin { .. }
-            | K::RepeatStart { .. }
-            | K::RepeatAttempt { .. }
-            | K::RepeatCheck { .. }
-            | K::RepeatFinish { .. }
-            | K::CollectStart { .. }
-            | K::CollectPage { .. }
-            | K::CollectNext { .. }
-            | K::CollectFinish { .. } => {
-                saw_owned_control = true;
-            }
-            K::Ask { .. } | K::AskResume { .. } => {}
-            K::Do { .. } | K::WaitUntil { .. } | K::WaitEvent { .. } => {}
-            K::Nop
-            | K::SetConst { .. }
-            | K::Copy { .. }
-            | K::EvalExpr { .. }
-            | K::BuildObject { .. }
-            | K::BuildList { .. }
-            | K::Choose { .. }
-            | K::ChooseSlot { .. }
-            | K::Jump { .. }
-            | K::Finish { .. } => {}
-            _ => return None,
-        }
+    (0..plan.node_count()).try_fold(false, |saw_control, raw| {
+        let node = plan.node(StepIdx::new(raw))?;
+        let valid_route =
+            node.routing.error.handler().is_none() && node.routing.error.error_slot().is_none();
+        valid_route.then_some(())?;
+        Some(saw_control || owned_node_kind(&node.kind)?)
+    })
+}
+
+fn owned_node_kind(kind: &K) -> Option<bool> {
+    match kind {
+        K::ForEachStart { .. }
+        | K::ForEachNext { .. }
+        | K::ForEachJoin { .. }
+        | K::ReduceStart { .. }
+        | K::ReduceNext { .. }
+        | K::ReduceFinish { .. }
+        | K::TogetherStart { .. }
+        | K::TogetherBranch { .. }
+        | K::TogetherJoin { .. }
+        | K::RepeatStart { .. }
+        | K::RepeatAttempt { .. }
+        | K::RepeatCheck { .. }
+        | K::RepeatFinish { .. }
+        | K::CollectStart { .. }
+        | K::CollectPage { .. }
+        | K::CollectNext { .. }
+        | K::CollectFinish { .. } => Some(true),
+        K::Ask { .. }
+        | K::AskResume { .. }
+        | K::Do { .. }
+        | K::WaitUntil { .. }
+        | K::WaitEvent { .. }
+        | K::Nop
+        | K::SetConst { .. }
+        | K::Copy { .. }
+        | K::EvalExpr { .. }
+        | K::BuildObject { .. }
+        | K::BuildList { .. }
+        | K::Choose { .. }
+        | K::ChooseSlot { .. }
+        | K::Jump { .. }
+        | K::Finish { .. } => Some(false),
+        _ => None,
     }
-    Some(saw_owned_control)
 }
 
 fn seed_from_frame(
@@ -183,49 +218,8 @@ fn seed_from_frame(
     frame: &RunFrame,
 ) -> RecoveryResult<RecoveryFrameSeedProduct> {
     let summary = summary(events);
-    let mut steps = Vec::new();
-    for raw in 0..plan.node_count() {
-        let step = StepIdx::new(raw);
-        let state = frame
-            .step_state(step)
-            .map_err(|error| RecoveryError::ReplayDivergence {
-                step,
-                detail: format!("for_each replay state: {error}"),
-            })?;
-        let recovered = match state {
-            StepState::Pending => continue,
-            StepState::Running => RecoveredStepState::Running,
-            StepState::Succeeded => RecoveredStepState::Succeeded,
-            StepState::Failed => RecoveredStepState::Failed,
-            StepState::Waiting => RecoveredStepState::Waiting,
-            StepState::Asking => RecoveredStepState::Asking,
-            StepState::Skipped | StepState::Cancelled => {
-                return Err(RecoveryError::ReplayDivergence {
-                    step,
-                    detail: String::from("unsupported for_each replay step state"),
-                });
-            }
-            _ => {
-                return Err(RecoveryError::ReplayDivergence {
-                    step,
-                    detail: String::from("unknown for_each replay step state"),
-                });
-            }
-        };
-        steps.push(RecoveredStepEntry {
-            step,
-            state: recovered,
-        });
-    }
-    let slots = frame
-        .initialized_slots()
-        .map_err(|error| RecoveryError::ReplayDivergence {
-            step: frame.pc(),
-            detail: format!("for_each replay slots: {error}"),
-        })?
-        .into_iter()
-        .map(|(slot, value, taint)| RecoveredSlotEntry { slot, value, taint })
-        .collect();
+    let steps = recovered_steps(plan, frame)?;
+    let slots = recovered_slots(frame)?;
     Ok(RecoveryFrameSeedProduct::from_seed(RecoveryFrameSeed {
         summary,
         first_step: plan.entry(),
@@ -237,4 +231,68 @@ fn seed_from_frame(
         pending_actions: pending_actions(events),
         unsupported: UnsupportedRecoveryState::SUPPORTED,
     }))
+}
+
+fn recovered_steps(
+    plan: &CompiledWorkflow,
+    frame: &RunFrame,
+) -> RecoveryResult<Vec<RecoveredStepEntry>> {
+    let recovered: RecoveryResult<Vec<Option<RecoveredStepEntry>>> = (0..plan.node_count())
+        .map(|raw| recovered_step(StepIdx::new(raw), frame))
+        .collect();
+    Ok(recovered?.into_iter().flatten().collect())
+}
+
+fn recovered_step(step: StepIdx, frame: &RunFrame) -> RecoveryResult<Option<RecoveredStepEntry>> {
+    let state = frame
+        .step_state(step)
+        .map_err(|error| RecoveryError::ReplayDivergence {
+            step,
+            detail: format!("for_each replay state: {error}"),
+        })?;
+    let recovered = match state {
+        StepState::Pending => return Ok(None),
+        StepState::Running => RecoveredStepState::Running,
+        StepState::Succeeded => RecoveredStepState::Succeeded,
+        StepState::Failed => RecoveredStepState::Failed,
+        StepState::Waiting => RecoveredStepState::Waiting,
+        StepState::Asking => RecoveredStepState::Asking,
+        StepState::Skipped | StepState::Cancelled => {
+            return Err(unsupported_step_state(step));
+        }
+        _ => return Err(unknown_step_state(step)),
+    };
+    Ok(Some(RecoveredStepEntry {
+        step,
+        state: recovered,
+    }))
+}
+
+fn unsupported_step_state(step: StepIdx) -> RecoveryError {
+    RecoveryError::ReplayDivergence {
+        step,
+        detail: String::from("unsupported for_each replay step state"),
+    }
+}
+
+fn unknown_step_state(step: StepIdx) -> RecoveryError {
+    RecoveryError::ReplayDivergence {
+        step,
+        detail: String::from("unknown for_each replay step state"),
+    }
+}
+
+fn recovered_slots(frame: &RunFrame) -> RecoveryResult<Vec<RecoveredSlotEntry>> {
+    frame
+        .initialized_slots()
+        .map_err(|error| RecoveryError::ReplayDivergence {
+            step: frame.pc(),
+            detail: format!("for_each replay slots: {error}"),
+        })
+        .map(|slots| {
+            slots
+                .into_iter()
+                .map(|(slot, value, taint)| RecoveredSlotEntry { slot, value, taint })
+                .collect()
+        })
 }

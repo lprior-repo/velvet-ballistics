@@ -26,6 +26,7 @@ include!("lifecycle/chunk_001/submit.rs");
 include!("lifecycle/chunk_001/admission.rs");
 include!("lifecycle/chunk_001/resume.rs");
 include!("lifecycle/chunk_001/recover.rs");
+include!("lifecycle/chunk_001/open_wait_restore.rs");
 include!("lifecycle/chunk_001/resume_helpers.rs");
 include!("lifecycle/chunk_001/completion.rs");
 include!("lifecycle/chunk_001/ticket.rs");
