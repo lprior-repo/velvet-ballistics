@@ -51,10 +51,29 @@ fn for_each_scales_each_nested_collection_once_per_iteration() -> TestResult {
 #[test]
 fn standalone_collection_and_empty_gather_path_keep_exact_caps() -> TestResult {
     assert_gather_budget(budget(&collect("single")?)?, 2, 2);
-    assert_gather_budget(
-        budget("")?,
-        0,
-        0,
+    assert_gather_budget(budget("")?, 0, 0);
+    Ok(())
+}
+
+#[test]
+fn nested_gather_overflow_fails_with_typed_budget_error() -> TestResult {
+    let max_items = u32::MAX;
+    let yaml = format!(
+        "version: velvet-ballistics/v1\nname: nested_gather_overflow\nwhen: {{manual: {{}}}}\ninputs: {{items: {{is: list, of: number, max: {max_items}}}}}\nsteps:\n  - id: outer_loop\n    repeat:\n      max_attempts: 2\n      steps:\n        - id: gather\n          collect:\n            variable: page_item\n            source: '$input.items'\n            pages: 1\n            items: {max_items}\n            steps:\n              - id: leaf\n                set: {{output: leaf, value: '$page_item'}}\n  - id: done\n    finish: {{result: '$step.outer_loop'}}\n"
     );
+    let errors = match vb_compile::compile_workflow(yaml.as_bytes()) {
+        Ok(_) => return Err("overflowing nested gather compiled".into()),
+        Err(errors) => errors,
+    };
+    if errors.0.len() != 1
+        || !matches!(
+            errors.0.first(),
+            Some(vb_compile::CompileError::Workflow(
+                vb_core::WorkflowError::StepCountOverflow { actual }
+            )) if *actual > u64::from(u32::MAX)
+        )
+    {
+        return Err(format!("unexpected budget refusal: {errors:?}").into());
+    }
     Ok(())
 }

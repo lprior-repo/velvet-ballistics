@@ -249,6 +249,7 @@ fn duplicate_submit_cannot_raise_pending_run_queue_cap() -> Result<(), String> {
     runtime
         .submit_direct_with_tenant(run, limited, CapabilitySet::empty(), tenant)
         .map_err(|error| error.to_string())?;
+    let before = runtime.pending_boundary_snapshot(8).command_queue_depth();
     assert_eq!(
         runtime.submit_direct_with_tenant(run, workflow, CapabilitySet::empty(), tenant),
         Err(RuntimeError::PerRunQueueDepthExceeded {
@@ -257,5 +258,7 @@ fn duplicate_submit_cannot_raise_pending_run_queue_cap() -> Result<(), String> {
             limit: 1
         }),
     );
+    assert_eq!(runtime.pending_boundary_snapshot(8).command_queue_depth(), before);
+    assert_eq!(before, 1);
     Ok(())
 }
