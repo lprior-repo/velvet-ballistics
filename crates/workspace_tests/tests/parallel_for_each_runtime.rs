@@ -8,13 +8,10 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
-use vb_runtime::engine::{
-    EvidenceCollector, RetryPolicy, RuntimeSignal, drive_deterministic_full,
-};
+use vb_runtime::engine::{EvidenceCollector, RetryPolicy, RuntimeSignal, drive_deterministic_full};
 use vb_runtime::primitives::collect::CollectStates;
 
-const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: parallel_runtime\nwhen: {manual: {}}\n";
+const HEADER: &str = "version: velvet-ballistics/v1\nname: parallel_runtime\nwhen: {manual: {}}\n";
 
 fn source(at_once: &str) -> String {
     format!(
@@ -32,8 +29,13 @@ fn drive_signal(
     steps: u64,
 ) -> Result<RuntimeSignal, String> {
     let slot_count = plan.slot_count();
-    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), plan.node_count(), slot_count)
-        .map_err(|error| format!("{error}"))?;
+    let mut run = RunFrame::new(
+        RunId::new(1),
+        StepIdx::new(0),
+        plan.node_count(),
+        slot_count,
+    )
+    .map_err(|error| format!("{error}"))?;
     let mut store = ValueStore::new();
     let mut budget = StepBudget::new(steps);
     let mut evidence = EvidenceCollector::new();
@@ -80,19 +82,20 @@ fn parallel_for_each_exhausts_the_drive_step_budget() -> Result<(), String> {
 
 fn drive(plan: &CompiledWorkflow, items: &[i64]) -> Result<Vec<i64>, String> {
     let slot_count = plan.slot_count();
-    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), plan.node_count(), slot_count)
-        .map_err(|error| format!("{error}"))?;
+    let mut run = RunFrame::new(
+        RunId::new(1),
+        StepIdx::new(0),
+        plan.node_count(),
+        slot_count,
+    )
+    .map_err(|error| format!("{error}"))?;
     let mut store = ValueStore::new();
     let mut budget = StepBudget::new(10_000);
     let mut evidence = EvidenceCollector::new();
     let mut collect_states = CollectStates::new();
     let granted = vb_core::capability::CapabilitySet::empty();
 
-    let input = plan
-        .input_slots()
-        .first()
-        .ok_or("missing input slot")?
-        .slot;
+    let input = plan.input_slots().first().ok_or("missing input slot")?.slot;
     let values: Vec<SlotValue> = items.iter().map(|value| SlotValue::I64(*value)).collect();
     let list = store
         .insert_list(values.into_boxed_slice())
@@ -116,9 +119,7 @@ fn drive(plan: &CompiledWorkflow, items: &[i64]) -> Result<Vec<i64>, String> {
     let RuntimeSignal::Finished(SlotValue::List(results)) = signal else {
         return Err(format!("unexpected signal: {signal:?}"));
     };
-    let values = store
-        .list(results)
-        .map_err(|error| format!("{error}"))?;
+    let values = store.list(results).map_err(|error| format!("{error}"))?;
     values
         .iter()
         .map(|value| match value {
@@ -183,7 +184,9 @@ fn replay(plan: &CompiledWorkflow, items: &[i64]) -> Result<Vec<i64>, String> {
     let mut states = ReplayCollectStates::new();
     let mut pc = StepIdx::new(0);
     for _ in 0..10_000 {
-        let node = plan.node(pc).ok_or_else(|| format!("missing node {pc:?}"))?;
+        let node = plan
+            .node(pc)
+            .ok_or_else(|| format!("missing node {pc:?}"))?;
         match replay_step_with_collect(node, &mut run, &mut store, plan, &mut states)
             .map_err(|error| format!("{error:?}"))?
         {
@@ -196,7 +199,9 @@ fn replay(plan: &CompiledWorkflow, items: &[i64]) -> Result<Vec<i64>, String> {
                 let vb_core::CompiledNodeKind::Finish { result } = finish.kind else {
                     return Err("finish kind".into());
                 };
-                let SlotValue::List(id) = *run.read_slot(result).map_err(|error| format!("{error}"))? else {
+                let SlotValue::List(id) =
+                    *run.read_slot(result).map_err(|error| format!("{error}"))?
+                else {
                     return Err("finish result is not a list".into());
                 };
                 return store
@@ -325,12 +330,56 @@ fn two_lane_nodes(first_success: bool) -> Vec<vb_core::workflow::CompiledNode> {
     };
     vec![
         n(0, start, None, None),
-        n(1, K::SetConst { value: vb_core::ConstIdx::new(0) }, Some(1), Some(2)),
-        n(2, K::ConcurrentLaneEnd { owner: StepIdx::new(0), result: Some(SlotIdx::new(1)) }, None, Some(5)),
-        n(3, K::SetConst { value: vb_core::ConstIdx::new(1) }, Some(1), Some(4)),
-        n(4, K::ConcurrentLaneEnd { owner: StepIdx::new(0), result: Some(SlotIdx::new(1)) }, None, Some(5)),
-        n(5, K::ConcurrentGroupJoin { owner: StepIdx::new(0) }, Some(2), Some(6)),
-        n(6, K::Finish { result: SlotIdx::new(2) }, None, None),
+        n(
+            1,
+            K::SetConst {
+                value: vb_core::ConstIdx::new(0),
+            },
+            Some(1),
+            Some(2),
+        ),
+        n(
+            2,
+            K::ConcurrentLaneEnd {
+                owner: StepIdx::new(0),
+                result: Some(SlotIdx::new(1)),
+            },
+            None,
+            Some(5),
+        ),
+        n(
+            3,
+            K::SetConst {
+                value: vb_core::ConstIdx::new(1),
+            },
+            Some(1),
+            Some(4),
+        ),
+        n(
+            4,
+            K::ConcurrentLaneEnd {
+                owner: StepIdx::new(0),
+                result: Some(SlotIdx::new(1)),
+            },
+            None,
+            Some(5),
+        ),
+        n(
+            5,
+            K::ConcurrentGroupJoin {
+                owner: StepIdx::new(0),
+            },
+            Some(2),
+            Some(6),
+        ),
+        n(
+            6,
+            K::Finish {
+                result: SlotIdx::new(2),
+            },
+            None,
+            None,
+        ),
     ]
 }
 
@@ -370,7 +419,7 @@ fn first_success_returns_first_lane_value() -> Result<(), String> {
 mod budget_resume;
 #[path = "parallel_for_each_runtime/first_success_expression.rs"]
 mod first_success_expression;
-#[path = "parallel_for_each_runtime/owned_reopen.rs"]
-mod owned_reopen;
 #[path = "parallel_for_each_runtime/fixed_group_resume.rs"]
 mod fixed_group_resume;
+#[path = "parallel_for_each_runtime/owned_reopen.rs"]
+mod owned_reopen;

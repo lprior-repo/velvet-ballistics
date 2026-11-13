@@ -11,8 +11,13 @@ fn budgets_one_two_and_four_resume_each_lane_once_and_match_replay() -> Result<(
 
 fn assert_budget_resume(budget_size: u64) -> Result<(), String> {
     let plan = compile("2")?;
-    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), plan.node_count(), plan.slot_count())
-        .map_err(|error| format!("{error}"))?;
+    let mut run = RunFrame::new(
+        RunId::new(1),
+        StepIdx::new(0),
+        plan.node_count(),
+        plan.slot_count(),
+    )
+    .map_err(|error| format!("{error}"))?;
     let mut store = ValueStore::new();
     let mut evidence = EvidenceCollector::new();
     let mut collect_states = CollectStates::new();
@@ -51,21 +56,21 @@ fn assert_budget_resume(budget_size: u64) -> Result<(), String> {
             )
             .map_err(|error| format!("{error}"))?;
             if let RuntimeSignal::Finished(SlotValue::List(id)) = signal {
-                finished = Some(
-                    store
-                        .list(id)
-                        .map_err(|error| format!("{error}"))?
-                        .to_vec(),
-                );
+                finished = Some(store.list(id).map_err(|error| format!("{error}"))?.to_vec());
                 break;
             }
             if signal != RuntimeSignal::StepBudgetExhausted {
-                return Err(format!("unexpected budget-{budget_size} signal: {signal:?}"));
+                return Err(format!(
+                    "unexpected budget-{budget_size} signal: {signal:?}"
+                ));
             }
         }
         finished.ok_or("small-budget drives did not finish")?
     };
-    assert_eq!(runtime_result, vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]);
+    assert_eq!(
+        runtime_result,
+        vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
+    );
     assert_eq!(replay(&plan, &[10, 20, 30])?, vec![10, 20, 30]);
 
     let events = evidence.drain();
@@ -125,7 +130,9 @@ fn for_each_steps(plan: &CompiledWorkflow) -> Result<(StepIdx, StepIdx, StepIdx,
 fn count_started(events: &[EvidenceEvent], step: StepIdx) -> usize {
     events
         .iter()
-        .filter(|event| matches!(event, EvidenceEvent::StepStarted { step: found } if *found == step))
+        .filter(
+            |event| matches!(event, EvidenceEvent::StepStarted { step: found } if *found == step),
+        )
         .count()
 }
 
