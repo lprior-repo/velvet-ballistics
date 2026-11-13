@@ -2,6 +2,7 @@ use super::{
     ActionContract, CheckpointStepState, CollectStates, CompiledWorkflow, RunCheckpointV1,
     RunCheckpointV1Error, RunFrame, ValueStore, WorkflowDigest, validate_admission,
 };
+use vb_core::workflow::source_metadata::secrets::validate_runtime_roots;
 
 impl RunCheckpointV1 {
     pub(crate) fn validate_structure_against(
@@ -14,7 +15,7 @@ impl RunCheckpointV1 {
         self.validate_dimensions(workflow)?;
         self.validate_retry_state()?;
         self.validate_contracts(accepted_action_contracts)?;
-        self.validate_nested()
+        self.validate_nested(workflow)
     }
 
     fn validate_identity(
@@ -76,12 +77,17 @@ impl RunCheckpointV1 {
         Ok(())
     }
 
-    fn validate_nested(&self) -> Result<(), RunCheckpointV1Error> {
-        RunFrame::from_checkpoint_v1(self.frame.clone())
+    fn validate_nested(&self, workflow: &CompiledWorkflow) -> Result<(), RunCheckpointV1Error> {
+        let frame = RunFrame::from_checkpoint_v1(self.frame.clone())
             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
         ValueStore::from_checkpoint_v1(self.value_store.clone())
             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
         CollectStates::from_checkpoint_v1(self.collect_states.clone())
+            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+        let roots = frame
+            .initialized_slots()
+            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+        validate_runtime_roots(workflow, &roots)
             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
         Ok(())
     }
