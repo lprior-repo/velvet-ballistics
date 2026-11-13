@@ -104,20 +104,7 @@ fn assert_failure(content: &str, expected_reasons: &[&str]) {
     );
 }
 
-fn assert_exit2(path: &str, expected_stderr_prefix: &str) {
-    let result = run_checker(&[path]);
-    assert_eq!(result.status.code(), Some(2), "expected exit 2");
-    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
-    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
-    assert_eq!(stdout, "", "expected empty stdout on error");
-    assert!(
-        stderr.starts_with(expected_stderr_prefix),
-        "stderr prefix mismatch.\nexpected prefix: {:?}\ngot: {:?}",
-        expected_stderr_prefix,
-        stderr
-    );
-    assert!(stderr.ends_with('\n'), "stderr must end with newline");
-}
+
 
 // === Arity validation ===
 
@@ -125,10 +112,10 @@ fn assert_exit2(path: &str, expected_stderr_prefix: &str) {
 fn missing_argument_prints_usage_exit2() {
     let result = run_checker(&[]);
     assert_eq!(result.status.code(), Some(2));
-    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
     let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
+    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
     assert_eq!(stdout, "");
-    assert!(stderr.contains("usage"));
+    assert!(stderr.starts_with("usage:"));
     assert!(stderr.ends_with('\n'));
 }
 
@@ -137,8 +124,11 @@ fn too_many_arguments_prints_usage_exit2() {
     let doc = TestDoc::new("clean");
     let result = run_checker(&[doc.path_str(), "extra"]);
     assert_eq!(result.status.code(), Some(2));
+    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
     let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
-    assert!(stderr.contains("usage"));
+    assert_eq!(stdout, "");
+    assert!(stderr.starts_with("usage:"));
+    assert!(stderr.ends_with('\n'));
 }
 
 // === File validation ===
@@ -148,15 +138,26 @@ fn wrong_filename_fails_exit2() {
     let dir = Builder::new().prefix("vb-taint-test-").tempdir().expect("temp dir");
     let path = dir.path().join("wrong-name.md");
     fs::write(&path, "clean doc").expect("write");
-    assert_exit2(path.to_str().expect("path"), "error: expected velvet-ballistics-MASTER.md");
+    let path_str = path.to_str().expect("path");
+    let expected = format!("error: expected velvet-ballistics-MASTER.md, got {}\n", path_str);
+    let result = run_checker(&[path_str]);
+    assert_eq!(result.status.code(), Some(2));
+    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
+    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
+    assert_eq!(stdout, "");
+    assert_eq!(stderr, expected);
 }
 
 #[test]
 fn nonexistent_file_fails_exit2() {
-    assert_exit2(
-        "/tmp/vb-taint-nonexistent/velvet-ballistics-MASTER.md",
-        "error: document not found",
-    );
+    let path = "/tmp/vb-taint-nonexistent/velvet-ballistics-MASTER.md";
+    let expected = format!("error: document not found: {}\n", path);
+    let result = run_checker(&[path]);
+    assert_eq!(result.status.code(), Some(2));
+    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
+    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
+    assert_eq!(stdout, "");
+    assert_eq!(stderr, expected);
 }
 
 #[test]
@@ -167,16 +168,32 @@ fn directory_named_master_fails_exit2() {
         .expect("temp dir");
     let master_dir = dir.path().join("velvet-ballistics-MASTER.md");
     fs::create_dir(&master_dir).expect("create dir");
-    assert_exit2(
-        master_dir.to_str().expect("path"),
-        "error: document not found",
-    );
+    let path_str = master_dir.to_str().expect("path");
+    let expected = format!("error: document not found: {}\n", path_str);
+    let result = run_checker(&[path_str]);
+    assert_eq!(result.status.code(), Some(2));
+    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
+    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
+    assert_eq!(stdout, "");
+    assert_eq!(stderr, expected);
 }
 
 #[test]
 fn non_utf8_file_fails_exit2() {
     let doc = TestDoc::new_non_utf8();
-    assert_exit2(doc.path_str(), "error: invalid utf-8");
+    let path_str = doc.path_str();
+    // OS/decode detail varies; assert exact category and dynamic path, nonempty detail
+    let result = run_checker(&[path_str]);
+    assert_eq!(result.status.code(), Some(2));
+    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
+    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
+    assert_eq!(stdout, "");
+    assert!(stderr.starts_with(&format!("error: invalid utf-8 in {}", path_str)));
+    let detail = stderr
+        .strip_prefix(&format!("error: invalid utf-8 in {}", path_str))
+        .expect("prefix match");
+    assert!(!detail.is_empty(), "decode detail must be nonempty");
+    assert!(stderr.ends_with('\n'));
 }
 
 // === Positive controls: clean documents pass ===
@@ -753,6 +770,65 @@ fn realistic_document_with_stale_wording() {
     );
 }
 
+// === Critical regression: all nodes on one line with correct per-node ordering ===
+// Original Python iterates nodes in order (EvalExpr, BuildObject, BuildList) and
+// for each node checks all phrases THEN the writer contradiction before moving
+// to the next node. This means a line containing all three node names produces
+// findings in the order: EvalExpr's phrase findings, EvalExpr's write_slot finding,
+// BuildObject's phrase findings, BuildObject's write_slot finding, etc.
+// This distinguishes correct per-node interleaving from a buggy grouping of all
+// phrase findings first, then all writer findings.
+
+#[test]
+fn all_nodes_on_one_line_per_node_ordering() {
+    assert_failure(
+        "EvalExpr Always Clean write_slot not write_slot_with_taint BuildObject Always Clean write_slot not write_slot_with_taint BuildList Always Clean write_slot not write_slot_with_taint.\nFinished(SlotValue, Taint) is emitted.",
+        &[
+            "line 1: EvalExpr stale taint wording: Always Clean",
+            "line 1: EvalExpr stale taint wording: write_slot",
+            "line 1: BuildObject stale taint wording: Always Clean",
+            "line 1: BuildObject stale taint wording: write_slot",
+            "line 1: BuildList stale taint wording: Always Clean",
+            "line 1: BuildList stale taint wording: write_slot",
+        ],
+    );
+}
+
+#[test]
+fn all_nodes_on_one_line_healthy_baseline() {
+    assert_success("EvalExpr joins operand taints. BuildObject joins field taints. BuildList joins item taints.\nFinished(SlotValue, Taint) is emitted.");
+}
+
+// === Non-UTF8 OS argument (Unix) ===
+
+#[test]
+fn non_utf8_os_argument_no_panic_exit2() {
+    // Pass a filename that cannot be converted to UTF-8. Must not panic; must
+    // exit 2 with operational error. Use OsString/args_os to bypass UTF-8 checks.
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+
+    let bytes: Vec<u8> = vec![
+        116, 101, 115, 116, 47, // "test/"
+        255, 255, 255, 255, // invalid UTF-8 bytes
+        46, 109, 100, // ".md"
+    ];
+    let arg = OsString::from_vec(bytes);
+
+    let mut cmd = Command::new(BINARY);
+    cmd.arg(arg);
+    let result = cmd.output().expect("run checker");
+    assert_eq!(result.status.code(), Some(2), "non-UTF8 argument must exit 2");
+    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
+    assert_eq!(stdout, "");
+    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
+    assert!(
+        stderr.starts_with("error:"),
+        "stderr must start with error: prefix, got: {:?}",
+        stderr
+    );
+}
+
 // === All literal rules coverage ===
 
 #[test]
@@ -792,6 +868,20 @@ fn all_build_list_phrases_detected() {
             "line 1: BuildList stale taint wording: no join of item taints",
         ],
     );
+}
+
+// === Output write failure ===
+
+#[test]
+fn stdout_write_failure_to_dev_full_exit2() {
+    // /dev/full always returns ENOSPC on write; writing PASS output must fail
+    let doc = TestDoc::new("Finished(SlotValue, Taint) is emitted.");
+    let mut cmd = Command::new(BINARY);
+    cmd.arg(doc.path_str());
+    let dev_full = fs::File::open("/dev/full").expect("open /dev/full");
+    cmd.stdout(dev_full);
+    let result = cmd.output().expect("run checker");
+    assert_eq!(result.status.code(), Some(2), "write failure must exit 2");
 }
 
 // === Multiple vocabulary conflicts ===
