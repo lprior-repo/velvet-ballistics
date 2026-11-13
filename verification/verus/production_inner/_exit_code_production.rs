@@ -6,13 +6,13 @@
 // ============================================================================
 //
 // This file is a VERBATIM copy of the relevant production surface from
-//   crates/velvet_ballistics/src/exit_code.rs:1-71
+//   crates/velvet_ballistics/src/exit_code.rs:1-103
 // with three SUBSTITUTIONS required to compile under
 // `verus --crate-type=lib` without `vb_core` / `vb_storage` extern
 // crate registration (no installs allowed by the task brief):
 //
 //   - The two non-test `From<...> for CliExitCode` impls at
-//     exit_code.rs:59-64 and exit_code.rs:66-71 reference the extern
+//     exit_code.rs:91-96 and exit_code.rs:98-103 reference the extern
 //     crate paths `vb_core::errors::CoreError` and
 //     `vb_storage::error::JournalError`. These paths are treated by
 //     Rust as extern-crate-name references and CANNOT be satisfied
@@ -25,7 +25,7 @@
 //     type stubs declared inline in this file. The semantic bodies
 //     of the From impls are preserved byte-for-byte.
 //
-//   - The `#[cfg(test)] mod tests` block at exit_code.rs:73-181 is
+//   - The `#[cfg(test)] mod tests` block at exit_code.rs:105-222 is
 //     REMOVED because it references `vb_core::StepIdx::ZERO` and
 //     `vb_storage::error::JournalError::KeyCapacity` which would
 //     require the extern crates to be registered. Even though
@@ -40,7 +40,7 @@
 // verbatim from production.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/velvet_ballistics/src/exit_code.rs:1-71` whenever production changes.
+// `crates/velvet_ballistics/src/exit_code.rs:1-103` whenever production changes.
 // The mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 // Drift that changes the `CliExitCode` discriminant set or the
@@ -87,15 +87,15 @@ pub struct StepIdx;
 // Production `crates/vb_core/src/errors.rs:167` declares a 24-variant
 // `CoreError` enum. The mirror declares a single-variant stub
 // because the production `exit_code.rs` `From<CoreError> impl at
-// exit_code.rs:60-63` ignores the input via `let _ = err;` (it
+// exit_code.rs:92-95` ignores the input via `let _ = err;` (it
 // always returns `CliExitCode::RuntimeFailed` regardless of the
 // CoreError variant). Only the `InvalidProgramCounter` variant is
 // mirrored as a unit variant (no fields) to avoid pulling in the
-// `StepIdx` field type — production test code at exit_code.rs:124-127
+// `StepIdx` field type — production test code at exit_code.rs:173-174
 // references this variant name.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoreError {
-    /// Production variant referenced by `exit_code.rs:124-127`
+    /// Production variant referenced by `exit_code.rs:173-174`
     /// test code (cfg'd out under `verus --crate-type=lib`).
     InvalidProgramCounter,
 }
@@ -107,14 +107,14 @@ pub enum CoreError {
 // Production `crates/vb_storage/src/error/mod.rs:21` declares an
 // 18-variant `JournalError` enum. The mirror declares a single-
 // variant stub because the production `exit_code.rs`
-// `From<JournalError> impl at exit_code.rs:67-70` ignores the input
+// `From<JournalError> impl at exit_code.rs:99-102` ignores the input
 // via `let _ = err;` (it always returns `CliExitCode::StorageError`
 // regardless of the JournalError variant). Only the `KeyCapacity`
 // variant is mirrored to keep the surface honest — production test
-// code at exit_code.rs:132-133 references this variant.
+// code at exit_code.rs:181 references this variant.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JournalError {
-    /// Production variant referenced by `exit_code.rs:132-133`
+    /// Production variant referenced by `exit_code.rs:181`
     /// test code (cfg'd out under `verus --crate-type=lib`).
     KeyCapacity,
 }
@@ -200,11 +200,49 @@ impl From<CliExitCode> for u8 {
 }
 
 // ---------------------------------------------------------------------------
-// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:59-64` —
+// Production `crates/velvet_ballistics/src/exit_code.rs:59-90` —
+//   `impl CliExitCode` (`ALL` + `description`)
+// ---------------------------------------------------------------------------
+//
+// Production lines 59-90. Retained verbatim.
+impl CliExitCode {
+    /// Every defined exit code in discriminant order.
+    pub(crate) const ALL: [CliExitCode; 10] = [
+        CliExitCode::Success,
+        CliExitCode::RuntimeFailed,
+        CliExitCode::ValidationFailed,
+        CliExitCode::CompileFailed,
+        CliExitCode::VerificationFailed,
+        CliExitCode::StorageError,
+        CliExitCode::IpcError,
+        CliExitCode::ActionPolicyError,
+        CliExitCode::ReplayDivergence,
+        CliExitCode::LifecycleError,
+    ];
+
+    /// Short human label for this code, as surfaced in agent-context output.
+    pub(crate) fn description(self) -> &'static str {
+        match self {
+            CliExitCode::Success => "success",
+            CliExitCode::RuntimeFailed => "runtime failed",
+            CliExitCode::ValidationFailed => "validation failed",
+            CliExitCode::CompileFailed => "compile failed",
+            CliExitCode::VerificationFailed => "verification failed",
+            CliExitCode::StorageError => "storage error",
+            CliExitCode::IpcError => "ipc error",
+            CliExitCode::ActionPolicyError => "action policy error",
+            CliExitCode::ReplayDivergence => "replay divergence",
+            CliExitCode::LifecycleError => "lifecycle error",
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:91-96` —
 //   `impl From<vb_core::errors::CoreError> for CliExitCode`
 // ---------------------------------------------------------------------------
 //
-// Production lines 59-64 declare
+// Production lines 91-96 declare
 //   impl From<vb_core::errors::CoreError> for CliExitCode {
 //       fn from(err: vb_core::errors::CoreError) -> Self {
 //           let _ = err;
@@ -228,11 +266,11 @@ impl From<CoreError> for CliExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:66-71` —
+// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:98-103` —
 //   `impl From<vb_storage::error::JournalError> for CliExitCode`
 // ---------------------------------------------------------------------------
 //
-// Production lines 66-71 declare
+// Production lines 98-103 declare
 //   impl From<vb_storage::error::JournalError> for CliExitCode {
 //       fn from(err: vb_storage::error::JournalError) -> Self {
 //           let _ = err;
@@ -252,11 +290,11 @@ impl From<JournalError> for CliExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// REMOVED: Production `crates/velvet_ballistics/src/exit_code.rs:73-181` —
+// REMOVED: Production `crates/velvet_ballistics/src/exit_code.rs:105-222` —
 //   `#[cfg(test)] mod tests`
 // ---------------------------------------------------------------------------
 //
-// Production lines 73-181 declare a `#[cfg(test)] mod tests` block
-// with 6 tests. REMOVED (see file header for rationale). The
-// semantic content of all 6 tests is captured by the spec proofs in
+// Production lines 105-222 declare a `#[cfg(test)] mod tests` block
+// with 7 tests. REMOVED (see file header for rationale). The
+// semantic content of all 7 tests is captured by the spec proofs in
 // the companion spec file `diagnostic_envelope_verus.rs`.
