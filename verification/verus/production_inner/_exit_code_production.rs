@@ -6,13 +6,13 @@
 // ============================================================================
 //
 // This file is a VERBATIM copy of the relevant production surface from
-//   crates/velvet_ballistics/src/exit_code.rs:1-68
+//   crates/velvet_ballistics/src/exit_code.rs:1-71
 // with three SUBSTITUTIONS required to compile under
 // `verus --crate-type=lib` without `vb_core` / `vb_storage` extern
 // crate registration (no installs allowed by the task brief):
 //
 //   - The two non-test `From<...> for CliExitCode` impls at
-//     exit_code.rs:56-61 and exit_code.rs:63-68 reference the extern
+//     exit_code.rs:59-64 and exit_code.rs:66-71 reference the extern
 //     crate paths `vb_core::errors::CoreError` and
 //     `vb_storage::error::JournalError`. These paths are treated by
 //     Rust as extern-crate-name references and CANNOT be satisfied
@@ -25,7 +25,7 @@
 //     type stubs declared inline in this file. The semantic bodies
 //     of the From impls are preserved byte-for-byte.
 //
-//   - The `#[cfg(test)] mod tests` block at exit_code.rs:70-171 is
+//   - The `#[cfg(test)] mod tests` block at exit_code.rs:73-181 is
 //     REMOVED because it references `vb_core::StepIdx::ZERO` and
 //     `vb_storage::error::JournalError::KeyCapacity` which would
 //     require the extern crates to be registered. Even though
@@ -40,7 +40,7 @@
 // verbatim from production.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/velvet_ballistics/src/exit_code.rs:1-68` whenever production changes.
+// `crates/velvet_ballistics/src/exit_code.rs:1-71` whenever production changes.
 // The mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 // Drift that changes the `CliExitCode` discriminant set or the
@@ -87,7 +87,7 @@ pub struct StepIdx;
 // Production `crates/vb_core/src/errors.rs:167` declares a 24-variant
 // `CoreError` enum. The mirror declares a single-variant stub
 // because the production `exit_code.rs` `From<CoreError> impl at
-// exit_code.rs:57-60` ignores the input via `let _ = err;` (it
+// exit_code.rs:60-63` ignores the input via `let _ = err;` (it
 // always returns `CliExitCode::RuntimeFailed` regardless of the
 // CoreError variant). Only the `InvalidProgramCounter` variant is
 // mirrored as a unit variant (no fields) to avoid pulling in the
@@ -107,7 +107,7 @@ pub enum CoreError {
 // Production `crates/vb_storage/src/error/mod.rs:21` declares an
 // 18-variant `JournalError` enum. The mirror declares a single-
 // variant stub because the production `exit_code.rs`
-// `From<JournalError> impl at exit_code.rs:64-67` ignores the input
+// `From<JournalError> impl at exit_code.rs:67-70` ignores the input
 // via `let _ = err;` (it always returns `CliExitCode::StorageError`
 // regardless of the JournalError variant). Only the `KeyCapacity`
 // variant is mirrored to keep the surface honest — production test

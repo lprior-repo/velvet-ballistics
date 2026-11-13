@@ -1,22 +1,26 @@
 // SPDX-License-Identifier: MIT
 //
 // Verus proof obligations for diagnostic envelope construction soundness.
-// Source contract: public CLI exit codes are exactly bounded by 0..=8.
+// Source contract: public CLI exit codes are exactly bounded by 0..=9.
 // Coverage: INV-001 (exit-code range), INV-005 (schema version).
 //
 // =============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // =============================================================================
 //
 // This file is bound to `crates/velvet_ballistics/src/exit_code.rs` through the
 // companion extern surface
 // `verification/verus/extern_diagnostic_envelope_verus.rs`, which
-// contains a direct `#[path]` inclusion of the production
-// `exit_code.rs` source file (`#[path =
-// "../../crates/velvet_ballistics/src/exit_code.rs"]`). The `#[path]`
-// inclusion is structural binding: any drift in production variant
-// names, repr(u8) discriminant tags, or `From<...>` impl signatures
-// breaks Rust resolution at compile time.
+// `#[path]`-includes the production-inner mirror
+// `verification/verus/production_inner/_exit_code_production.rs` — a
+// verbatim copy of the production `exit_code.rs` non-test surface
+// with documented substitutions. This is a WEAK binding, not STRONG:
+// no `#[path]` reaches production source directly, and the drift gate
+// (`scripts/check-production-inner-drift.sh`) guards the mirror, not
+// the re-declared enum in the companion extern file. Any drift in
+// production variant names, repr(u8) discriminant tags, or
+// `From<...>` impl signatures breaks the mirror against production
+// and is reported by that gate.
 //
 // To satisfy the production file's `vb_core::errors::CoreError` and
 // `vb_storage::error::JournalError` absolute crate-name references,
@@ -25,24 +29,24 @@
 //
 // The `assume_specification` bridges inside `verus!` attach
 // production contracts to the spec-side mirror exec methods
-// declared inside the companion extern file. The mirror struct
+// declared inside the companion extern file. The re-declared enum
 // variant names and discriminant tags match production exactly, so
 // the spec reasoning about production semantics is preserved.
 //
 // BINDING LEDGER:
-//   - Mirror `CliExitCode` enum (9 variants)
-//                            <- crates/velvet_ballistics/src/exit_code.rs:9-32
+//   - Mirror `CliExitCode` enum (10 variants)
+//                            <- crates/velvet_ballistics/src/exit_code.rs:12-34
 //   - Mirror `cli_exit_code_to_u8(code)`
 //                            <- production `From<CliExitCode> for u8`
-//                               at crates/velvet_ballistics/src/exit_code.rs:40-54
+//                               at crates/velvet_ballistics/src/exit_code.rs:42-57
 //   - Mirror `core_error_to_cli_exit_code(err)`
 //                            <- production
 //                               `From<vb_core::errors::CoreError>
-//                               for CliExitCode` at exit_code.rs:56-61
+//                               for CliExitCode` at exit_code.rs:59-64
 //   - Mirror `journal_error_to_cli_exit_code(err)`
 //                            <- production
 //                               `From<vb_storage::error::JournalError>
-//                               for CliExitCode` at exit_code.rs:63-68
+//                               for CliExitCode` at exit_code.rs:66-71
 //
 // Source: vb-diagnostic-envelope proof-obligations.planned.jsonl
 #[path = "extern_diagnostic_envelope_verus.rs"]
@@ -85,7 +89,7 @@ pub struct ExJournalError(pub production::production_exit_code::JournalError);
 //
 // `spec_cli_exit_code_discriminant` returns the spec-side projection
 // of the production `From<CliExitCode> for u8` impl at
-// `crates/velvet_ballistics/src/exit_code.rs:42-53`. The integer encoding
+// `crates/velvet_ballistics/src/exit_code.rs:42-57`. The integer encoding
 // matches the production repr(u8) tags:
 //
 //   Success            -> 0
@@ -97,6 +101,7 @@ pub struct ExJournalError(pub production::production_exit_code::JournalError);
 //   IpcError           -> 6
 //   ActionPolicyError  -> 7
 //   ReplayDivergence   -> 8
+//   LifecycleError     -> 9
 //
 // The match is exhaustive because `production::CliExitCode` is a
 // closed enum declared inside `verus!` in the companion extern file.
@@ -111,20 +116,21 @@ pub open spec fn spec_cli_exit_code_discriminant(code: production::CliExitCode) 
         production::CliExitCode::IpcError => 6,
         production::CliExitCode::ActionPolicyError => 7,
         production::CliExitCode::ReplayDivergence => 8,
+        production::CliExitCode::LifecycleError => 9,
     }
 }
 
 /// Spec invariant: every `CliExitCode` discriminant is in the public
-/// range 0..=8 (INV-001).
-pub open spec fn spec_cli_exit_code_in_range_0_to_8(code: production::CliExitCode) -> bool {
+/// range 0..=9 (INV-001).
+pub open spec fn spec_cli_exit_code_in_range_0_to_9(code: production::CliExitCode) -> bool {
     let discriminant = spec_cli_exit_code_discriminant(code) as int;
-    0 <= discriminant <= 8
+    0 <= discriminant <= 9
 }
 
 /// Spec predicate: two `CliExitCode` values have distinct
 /// discriminants iff they are distinct variants. Mirrors the
 /// production test `all_variants_are_distinct` at
-/// `crates/velvet_ballistics/src/exit_code.rs:136-153`.
+/// `crates/velvet_ballistics/src/exit_code.rs:145-162`.
 pub open spec fn spec_cli_exit_code_distinct(
     code1: production::CliExitCode,
     code2: production::CliExitCode,
@@ -166,38 +172,38 @@ pub open spec fn spec_schema_version_valid(version: int) -> bool {
 // Bridge contract 1: `cli_exit_code_to_u8(code)` returns the
 // production repr(u8) tag for the input variant. Mirrors the
 // production body of `From<CliExitCode> for u8` at
-// `crates/velvet_ballistics/src/exit_code.rs:42-53`.
+// `crates/velvet_ballistics/src/exit_code.rs:42-57`.
 pub assume_specification[ production::cli_exit_code_to_u8 ](code: production::CliExitCode) -> (r:
     u8)
     ensures
         r == spec_cli_exit_code_discriminant(code),
-        spec_cli_exit_code_in_range_0_to_8(code),
+        spec_cli_exit_code_in_range_0_to_9(code),
 ;
 
 // Bridge contract 2: `core_error_to_cli_exit_code(err)` always returns
 // `CliExitCode::RuntimeFailed` regardless of the input `CoreError`
 // variant. Mirrors the production body of
 // `From<vb_core::errors::CoreError> for CliExitCode` at
-// `crates/velvet_ballistics/src/exit_code.rs:57-60`.
+// `crates/velvet_ballistics/src/exit_code.rs:60-63`.
 pub assume_specification[ production::core_error_to_cli_exit_code ](
     err: production::production_exit_code::CoreError,
 ) -> (r: production::CliExitCode)
     ensures
         r == production::CliExitCode::RuntimeFailed,
-        spec_cli_exit_code_in_range_0_to_8(r),
+        spec_cli_exit_code_in_range_0_to_9(r),
 ;
 
 // Bridge contract 3: `journal_error_to_cli_exit_code(err)` always
 // returns `CliExitCode::StorageError` regardless of the input
 // `JournalError` variant. Mirrors the production body of
 // `From<vb_storage::error::JournalError> for CliExitCode` at
-// `crates/velvet_ballistics/src/exit_code.rs:64-67`.
+// `crates/velvet_ballistics/src/exit_code.rs:67-70`.
 pub assume_specification[ production::journal_error_to_cli_exit_code ](
     err: production::production_exit_code::JournalError,
 ) -> (r: production::CliExitCode)
     ensures
         r == production::CliExitCode::StorageError,
-        spec_cli_exit_code_in_range_0_to_8(r),
+        spec_cli_exit_code_in_range_0_to_9(r),
 ;
 
 // =============================================================================
@@ -216,11 +222,11 @@ pub assume_specification[ production::journal_error_to_cli_exit_code ](
 pub exec fn exec_proof_u8_from_cli_exit_code_in_range(code: production::CliExitCode) -> (r: u8)
     ensures
         r == spec_cli_exit_code_discriminant(code),
-        spec_cli_exit_code_in_range_0_to_8(code),
+        spec_cli_exit_code_in_range_0_to_9(code),
 {
     let r = production::cli_exit_code_to_u8(code);
     assert(r == spec_cli_exit_code_discriminant(code));
-    assert(spec_cli_exit_code_in_range_0_to_8(code));
+    assert(spec_cli_exit_code_in_range_0_to_9(code));
     r
 }
 
@@ -232,11 +238,11 @@ pub exec fn exec_proof_core_error_maps_to_runtime_failed(
 ) -> (r: production::CliExitCode)
     ensures
         r == production::CliExitCode::RuntimeFailed,
-        spec_cli_exit_code_in_range_0_to_8(r),
+        spec_cli_exit_code_in_range_0_to_9(r),
 {
     let r = production::core_error_to_cli_exit_code(err);
     assert(r == production::CliExitCode::RuntimeFailed);
-    assert(spec_cli_exit_code_in_range_0_to_8(r));
+    assert(spec_cli_exit_code_in_range_0_to_9(r));
     r
 }
 
@@ -248,11 +254,11 @@ pub exec fn exec_proof_journal_error_maps_to_storage_error(
 ) -> (r: production::CliExitCode)
     ensures
         r == production::CliExitCode::StorageError,
-        spec_cli_exit_code_in_range_0_to_8(r),
+        spec_cli_exit_code_in_range_0_to_9(r),
 {
     let r = production::journal_error_to_cli_exit_code(err);
     assert(r == production::CliExitCode::StorageError);
-    assert(spec_cli_exit_code_in_range_0_to_8(r));
+    assert(spec_cli_exit_code_in_range_0_to_9(r));
     r
 }
 
@@ -266,22 +272,22 @@ pub exec fn exec_proof_journal_error_maps_to_storage_error(
 // wrappers above discharge the bridge contracts, and the lemmas use
 // the bridge contracts' postconditions as their premises.
 /// Lemma: every `CliExitCode` discriminant is in the public range
-/// 0..=8 (INV-001). Discharged by case analysis on
+/// 0..=9 (INV-001). Discharged by case analysis on
 /// `spec_cli_exit_code_discriminant`.
-pub proof fn lemma_cli_exit_code_in_range_0_to_8(code: production::CliExitCode)
+pub proof fn lemma_cli_exit_code_in_range_0_to_9(code: production::CliExitCode)
     ensures
-        spec_cli_exit_code_in_range_0_to_8(code),
+        spec_cli_exit_code_in_range_0_to_9(code),
 {
     // The match expression in spec_cli_exit_code_discriminant covers
-    // all 9 production variants and returns an integer in [0, 8].
-    // Therefore the discriminant of any CliExitCode is in [0, 8].
-    assert(0 <= spec_cli_exit_code_discriminant(code) as int <= 8);
-    assert(spec_cli_exit_code_in_range_0_to_8(code));
+    // all 10 production variants and returns an integer in [0, 9].
+    // Therefore the discriminant of any CliExitCode is in [0, 9].
+    assert(0 <= spec_cli_exit_code_discriminant(code) as int <= 9);
+    assert(spec_cli_exit_code_in_range_0_to_9(code));
 }
 
-/// Lemma: the 9 production `CliExitCode` variants have pairwise
+/// Lemma: the 10 production `CliExitCode` variants have pairwise
 /// distinct discriminants. Mirrors the production test
-/// `all_variants_are_distinct` at exit_code.rs:136-153.
+/// `all_variants_are_distinct` at exit_code.rs:145-162.
 pub proof fn lemma_cli_exit_codes_distinct()
     ensures
         spec_cli_exit_code_distinct(
@@ -316,8 +322,12 @@ pub proof fn lemma_cli_exit_codes_distinct()
             production::CliExitCode::ActionPolicyError,
             production::CliExitCode::ReplayDivergence,
         ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::ReplayDivergence,
+            production::CliExitCode::LifecycleError,
+        ),
 {
-    // All 9 variants map to distinct integers 0..=8 by the match
+    // All 10 variants map to distinct integers 0..=9 by the match
     // expression in spec_cli_exit_code_discriminant. The bridge
     // contract on cli_exit_code_to_u8 (above) confirms the spec
     // mapping equals the production repr(u8) tags.
@@ -353,12 +363,16 @@ pub proof fn lemma_cli_exit_codes_distinct()
         production::CliExitCode::ActionPolicyError,
         production::CliExitCode::ReplayDivergence,
     ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::ReplayDivergence,
+        production::CliExitCode::LifecycleError,
+    ));
 }
 
-/// Lemma: the 9 production `CliExitCode` variants cover the full
-/// discriminant range 0..=8 with no gaps. Mirrors the production
-/// test `all_variants_are_public_range_0_to_8` at
-/// exit_code.rs:155-170.
+/// Lemma: the 10 production `CliExitCode` variants cover the full
+/// discriminant range 0..=9 with no gaps. Mirrors the production
+/// test `all_variants_are_public_range_0_to_9` at
+/// exit_code.rs:165-180.
 pub proof fn lemma_cli_exit_codes_cover_full_range()
     ensures
         spec_cli_exit_code_discriminant(production::CliExitCode::Success) == 0,
@@ -370,6 +384,7 @@ pub proof fn lemma_cli_exit_codes_cover_full_range()
         spec_cli_exit_code_discriminant(production::CliExitCode::IpcError) == 6,
         spec_cli_exit_code_discriminant(production::CliExitCode::ActionPolicyError) == 7,
         spec_cli_exit_code_discriminant(production::CliExitCode::ReplayDivergence) == 8,
+        spec_cli_exit_code_discriminant(production::CliExitCode::LifecycleError) == 9,
 {
     // The match expression in spec_cli_exit_code_discriminant is
     // exhaustive and each arm returns the corresponding integer.
@@ -384,6 +399,7 @@ pub proof fn lemma_cli_exit_codes_cover_full_range()
     assert(spec_cli_exit_code_discriminant(production::CliExitCode::IpcError) == 6);
     assert(spec_cli_exit_code_discriminant(production::CliExitCode::ActionPolicyError) == 7);
     assert(spec_cli_exit_code_discriminant(production::CliExitCode::ReplayDivergence) == 8);
+    assert(spec_cli_exit_code_discriminant(production::CliExitCode::LifecycleError) == 9);
 }
 
 // =============================================================================
@@ -413,13 +429,13 @@ pub proof fn lemma_current_schema_version_valid()
 // =============================================================================
 /// Composed lemma: every `CliExitCode` value satisfies the bounded
 /// discriminant invariant. This is the unified INV-001 discharge
-/// witness, delegating to `lemma_cli_exit_code_in_range_0_to_8`.
+/// witness, delegating to `lemma_cli_exit_code_in_range_0_to_9`.
 pub proof fn lemma_cli_exit_code_invariants(code: production::CliExitCode)
     ensures
-        spec_cli_exit_code_in_range_0_to_8(code),
+        spec_cli_exit_code_in_range_0_to_9(code),
 {
-    // Lemma 1: discriminant is in [0, 8] by case analysis.
-    lemma_cli_exit_code_in_range_0_to_8(code);
+    // Lemma 1: discriminant is in [0, 9] by case analysis.
+    lemma_cli_exit_code_in_range_0_to_9(code);
 }
 
 fn main() {
