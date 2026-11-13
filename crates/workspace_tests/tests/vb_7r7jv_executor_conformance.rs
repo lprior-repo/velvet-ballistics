@@ -1,9 +1,18 @@
 #![forbid(unsafe_code)]
 mod artifact_evidence_support;
+#[path = "vb_7r7jv_executor_conformance/conformance_helpers.rs"]
+mod conformance_helpers;
 use artifact_evidence_support::*;
-use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+use conformance_helpers::{first_pack, ticket};
+use vb_core::action::{Idempotency, RetrySafety, SideEffect};
+use vb_core::action_pack::{
+    ActionPack, CapabilityScopeSpec, ExecutorVersionDigest, ManifestDigest, ReceiptSchemaDigest,
+    RecoveryClass,
+};
+use vb_core::artifact::ArtifactEvidence;
 use vb_core::{
     ActionContract, ActionId, ActionTicket, Capability, RunId, RuntimePolicy, SeqNo, StepIdx,
+    WorkflowDigest,
 };
 use vb_storage::executor::{ExecutorCatalog, ExecutorError, FjallRegister};
 
@@ -20,21 +29,13 @@ fn external_contract() -> Result<ActionContract, Box<dyn std::error::Error>> {
         Box::new([Capability::new("velvet.register.write".into(), contract.id)]);
     Ok(contract)
 }
-fn ticket(seq: u64) -> ActionTicket {
-    let run = RunId::new(100);
-    let seq = SeqNo::new(seq);
-    let action = ActionId::new(0);
-    ActionTicket {
-        run,
-        step: StepIdx::new(1),
-        seq,
-        action,
-        run_attempt: 1,
-        attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
-        capacity: 2,
-        fencing_token: 0,
-    }
+fn pure_contract() -> Result<ActionContract, Box<dyn std::error::Error>> {
+    let mut contract = contract()?;
+    contract.idempotency = Idempotency::DeterministicPure;
+    contract.side_effect = SideEffect::None;
+    contract.retry_safety = RetrySafety::Safe;
+    contract.required_capabilities = Box::new([]);
+    Ok(contract)
 }
 
 #[test]
@@ -199,5 +200,81 @@ fn stored_pack_reopens_with_fresh_executed_catalog_and_exact_classification() ->
         return Err("missing packs".into());
     };
     assert_eq!(packed.packs.as_ref(), &[pack]);
+    Ok(())
+}
+
+#[test]
+fn strict_pure_action_succeeds_without_external_claims() -> TestResult {
+    let workflow = action_workflow()?;
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        &workflow,
+        RuntimePolicy::Strict,
+        &[pure_contract()?],
+    )?;
+    assert_eq!(
+        vb_storage::admission::verify_accepted_artifact(&artifact)?,
+        workflow
+    );
+    assert!(matches!(
+        artifact.verification.evidence,
+        ArtifactEvidence::Verified(_)
+    ));
+    assert_eq!(artifact.required_capabilities.len(), 0);
+    Ok(())
+}
+
+#[test]
+fn mismatched_executor_version_schema_manifest_and_timeout_reject() -> TestResult {
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let contract = external_contract()?;
+    let workflow = action_workflow()?;
+    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+    let artifact =
+        catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract], &[pack])?;
+    let mutators: [fn(&mut ActionPack); 4] = [
+        |pack| {
+            pack.executor_version =
+                ExecutorVersionDigest::from_digest(WorkflowDigest::from_bytes([0x11; 32]));
+        },
+        |pack| {
+            pack.receipt_schema =
+                ReceiptSchemaDigest::from_digest(WorkflowDigest::from_bytes([0x22; 32]));
+        },
+        |pack| {
+            pack.manifest = ManifestDigest::from_digest(WorkflowDigest::from_bytes([0x33; 32]));
+        },
+        |pack| pack.timeout.timeout_ms = 0,
+    ];
+    for mutate in mutators {
+        let mut forged = artifact.clone();
+        mutate(first_pack(&mut forged)?);
+        rebind(&mut forged)?;
+        assert!(matches!(
+            catalog.verify_artifact(&forged, RuntimePolicy::Strict),
+            Err(ExecutorError::PackMismatch)
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn packed_artifact_with_noncurrent_evidence_schema_rejects() -> TestResult {
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let contract = external_contract()?;
+    let workflow = action_workflow()?;
+    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+    let mut forged =
+        catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract], &[pack])?;
+    let ArtifactEvidence::Packed(evidence) = &mut forged.verification.evidence else {
+        return Err("missing packs".into());
+    };
+    evidence.base.schema_version = 2;
+    rebind(&mut forged)?;
+    assert!(matches!(
+        catalog.verify_artifact(&forged, RuntimePolicy::Strict),
+        Err(ExecutorError::Artifact(
+            vb_storage::JournalError::UnsupportedSchemaVersion { version: 2 }
+        ))
+    ));
     Ok(())
 }

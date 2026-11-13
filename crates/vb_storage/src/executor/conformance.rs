@@ -1,8 +1,45 @@
 use super::receipt::hash;
 use super::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use std::cell::Cell;
 use vb_core::action_pack::{ActionPackDigest, CapabilityScopeSpec, ConformanceReportDigest};
 use vb_core::{ActionId, ActionTicket, RunId, SeqNo, StepIdx, WorkflowDigest};
+
+#[derive(Clone, Copy)]
+enum ProbeKind {
+    ChangedScope,
+    ChangedPack,
+}
+
+#[cfg(test)]
+const CHANGED_SCOPE_PROBE: u8 = 1;
+#[cfg(test)]
+const CHANGED_PACK_PROBE: u8 = 2;
+
+#[cfg(test)]
+thread_local! {
+    static OBSERVED_PROBES: Cell<u8> = Cell::new(0);
+}
+
+#[cfg(test)]
+pub(super) fn reset_probe_observations() {
+    OBSERVED_PROBES.with(|cell| cell.set(0));
+}
+
+#[cfg(test)]
+pub(super) fn probe_observations() -> u8 {
+    OBSERVED_PROBES.with(Cell::get)
+}
+
+#[cfg(test)]
+fn note_probe(kind: ProbeKind) {
+    let bit = match kind {
+        ProbeKind::ChangedScope => CHANGED_SCOPE_PROBE,
+        ProbeKind::ChangedPack => CHANGED_PACK_PROBE,
+    };
+    OBSERVED_PROBES.with(|cell| cell.set(cell.get() | bit));
+}
 
 /// Actual bounded adapter observations. Deserialization provides audit data only.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,13 +150,30 @@ fn execute_initial(
         },
         ..grant.clone()
     };
-    require_conflict(adapter.execute(&changed_scope, grant.ticket, 42))?;
+    probe_conflict(
+        adapter.execute(&changed_scope, grant.ticket, 42),
+        ProbeKind::ChangedScope,
+    )?;
     let changed_pack = RegisterGrant {
         pack: ActionPackDigest::from_digest(WorkflowDigest::from_bytes([2; 32])),
         ..grant.clone()
     };
-    require_conflict(adapter.execute(&changed_pack, grant.ticket, 42))?;
+    probe_conflict(
+        adapter.execute(&changed_pack, grant.ticket, 42),
+        ProbeKind::ChangedPack,
+    )?;
     Ok((first, duplicate, adapter.effect_count()?))
+}
+
+fn probe_conflict(
+    result: Result<RegisterReceipt, ExecutorError>,
+    probe: ProbeKind,
+) -> Result<(), ExecutorError> {
+    require_conflict(result)?;
+    #[cfg(test)]
+    note_probe(probe);
+    let _ = probe;
+    Ok(())
 }
 
 fn require_conflict(result: Result<RegisterReceipt, ExecutorError>) -> Result<(), ExecutorError> {
