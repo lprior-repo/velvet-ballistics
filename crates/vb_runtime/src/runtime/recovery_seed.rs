@@ -1,4 +1,48 @@
 impl Runtime {
+    /// Reconstructs the typed recovery seed plus any replayed frame/store
+    /// evidence for a loaded workflow.
+    ///
+    /// Owned deterministic ForEach traces replay from the retained input
+    /// checkpoint (the same arena the live run started from), so later
+    /// `List` handles reconstruct exactly. Every other workflow keeps the
+    /// existing generic seed and scalar replay path unchanged.
+    fn recover_seed_evidence(
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+        retained_inputs: &crate::recovery::RecoveredRetainedInputs,
+    ) -> RuntimeResult<RecoveredSeedEvidence> {
+        if vb_storage::recovery::is_owned_for_each_contract(workflow) {
+            let input_store = retained_inputs.store_checkpoint();
+            if let Some(replay) = vb_storage::recovery::replay_owned_for_each(
+                events,
+                workflow,
+                retained_inputs.initial_inputs(),
+                input_store.as_ref(),
+            )
+            .map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })? {
+                return Ok(RecoveredSeedEvidence {
+                    seed: replay.product,
+                    complete_frame: Some(replay.frame),
+                    recovered_store: Some(replay.store),
+                });
+            }
+        }
+        let seed = Self::recover_seed_for_loaded_workflow(events, workflow)?;
+        let complete_frame =
+            vb_storage::recovery::complete_scalar::replay_complete_scalar(events, workflow)
+                .map_err(|error| RuntimeError::Recovery {
+                    error: error.to_string(),
+                })?
+                .map(|replayed| replayed.into_frame());
+        Ok(RecoveredSeedEvidence {
+            seed,
+            complete_frame,
+            recovered_store: None,
+        })
+    }
+
     /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
     /// for a workflow-aware replay path.
     ///
@@ -50,6 +94,7 @@ impl Runtime {
         boundary: crate::recovery::RecoveredRunBoundary,
         retained_inputs: crate::recovery::RecoveredRetainedInputs,
         complete_frame: Option<vb_core::RunFrame>,
+        recovered_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let context = RecoveredSeedProductContext {
             run,
@@ -57,6 +102,7 @@ impl Runtime {
             seed,
             boundary,
             complete_frame,
+            recovered_store,
         };
         Self::product_from_recovered_context(context, &retained_inputs)
     }
@@ -65,11 +111,20 @@ impl Runtime {
         context: RecoveredSeedProductContext,
         retained_inputs: &crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let replay_store = context
+            .recovered_store
+            .clone()
+            .map(vb_core::value_store::ValueStore::from_checkpoint_v1)
+            .transpose()
+            .map_err(|error| RuntimeError::Recovery {
+                error: format!("recovered value store invalid: {error}"),
+            })?;
+        let store = replay_store.as_ref().or_else(|| retained_inputs.store());
         let cannot_resume = crate::recovery::classify_full_recovery_resume(
             context.seed.seed(),
             context.boundary,
             retained_inputs.initial_inputs(),
-            retained_inputs.store(),
+            store,
         );
         if !cannot_resume.is_resumable() {
             return Ok(crate::recovery::RuntimeRecoveryProduct::cannot_resume(
@@ -88,12 +143,13 @@ impl Runtime {
                 ),
             );
         }
-        Self::resumable_product_from_recovered_context(context, retained_inputs)
+        Self::resumable_product_from_recovered_context(context, retained_inputs, store)
     }
 
     fn resumable_product_from_recovered_context(
         context: RecoveredSeedProductContext,
         retained_inputs: &crate::recovery::RecoveredRetainedInputs,
+        store: Option<&vb_core::value_store::ValueStore>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let initial_inputs = retained_inputs.initial_inputs().to_vec();
         let frame = match context.complete_frame {
@@ -102,7 +158,7 @@ impl Runtime {
                 context.seed.seed(),
                 context.boundary,
                 initial_inputs,
-                retained_inputs.store(),
+                store,
             )?,
         };
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
@@ -122,7 +178,10 @@ impl Runtime {
                     retry_checkpoint: None,
                     open_gates,
                     admission: context.prefix.admission.clone(),
-                    restored_store: retained_inputs.store_checkpoint(),
+                    restored_store: context
+                        .recovered_store
+                        .clone()
+                        .or_else(|| retained_inputs.store_checkpoint()),
                 },
             ),
         ))

@@ -1,4 +1,5 @@
-use super::{driver::Driver, invalid};
+use super::driver::Driver;
+use super::{TraceReplayMode, invalid};
 use crate::recovery::RecoveryResult;
 use vb_core::replay::{ReplayAction, SuspensionKind};
 use vb_core::{CompiledNodeKind as K, SlotIdx, StepIdx, StepState};
@@ -33,7 +34,9 @@ impl Driver<'_> {
             .plan
             .source_metadata()
             .map_or(0, |metadata| metadata.symbols_count());
-        if self.store.total_arena_count() != u64::from(prefix) {
+        if self.mode == TraceReplayMode::Scalar
+            && self.store.total_arena_count() != u64::from(prefix)
+        {
             return Err(invalid(
                 step,
                 "runtime arena allocation outside scalar replay scope",
@@ -42,7 +45,9 @@ impl Driver<'_> {
         if matches!(
             action,
             ReplayAction::Suspended {
-                kind: SuspensionKind::AskPending,
+                kind: SuspensionKind::AskPending
+                    | SuspensionKind::WaitUntil
+                    | SuspensionKind::WaitEvent,
                 ..
             }
         ) {
@@ -56,17 +61,17 @@ impl Driver<'_> {
         Ok(())
     }
 
-    pub(super) fn required(&self, step: StepIdx) -> RecoveryResult<Vec<SlotIdx>> {
+    pub(super) fn required(
+        &self,
+        step: StepIdx,
+        action: &ReplayAction,
+    ) -> RecoveryResult<Vec<SlotIdx>> {
         let node = self
             .plan
             .node(step)
             .ok_or_else(|| invalid(step, "writer node missing"))?;
         let mut slots: Vec<_> = node.output.slot().into_iter().collect();
-        if let K::RepeatCheck { attempt_slot, .. } = node.kind
-            && !slots.contains(&attempt_slot)
-        {
-            slots.push(attempt_slot);
-        }
+        add_owned_required(&node.kind, node.output.slot(), action, &mut slots);
         Ok(slots)
     }
 
@@ -102,7 +107,7 @@ impl Driver<'_> {
         } else {
             if !matches!(action, ReplayAction::Continue(_) | ReplayAction::Finished)
                 || self
-                    .required(step)?
+                    .required(*active, action)?
                     .iter()
                     .any(|slot| !self.captures.contains(slot))
             {
@@ -175,6 +180,74 @@ impl Driver<'_> {
         }
         Ok(())
     }
+}
+
+fn add_owned_required(
+    kind: &K,
+    output: Option<SlotIdx>,
+    action: &ReplayAction,
+    slots: &mut Vec<SlotIdx>,
+) {
+    match kind {
+        K::ForEachNext {
+            iterator_slot,
+            done,
+            ..
+        } => add_next_required(*iterator_slot, *done, action, slots),
+        K::ReduceStart {
+            input,
+            accumulator,
+            done,
+            ..
+        } => add_reduce_start_required(*input, *accumulator, output, *done, action, slots),
+        K::ReduceNext {
+            iterator_slot,
+            done,
+            ..
+        } => add_next_required(*iterator_slot, *done, action, slots),
+        K::RepeatCheck { attempt_slot, .. } if !slots.contains(attempt_slot) => {
+            slots.push(*attempt_slot);
+        }
+        _ => {}
+    }
+}
+
+fn add_next_required(
+    iterator_slot: SlotIdx,
+    done: StepIdx,
+    action: &ReplayAction,
+    slots: &mut Vec<SlotIdx>,
+) {
+    if continued_to(action, done) {
+        slots.clear();
+    } else {
+        slots.push(iterator_slot);
+    }
+}
+
+fn add_reduce_start_required(
+    input: SlotIdx,
+    accumulator: SlotIdx,
+    output: Option<SlotIdx>,
+    done: StepIdx,
+    action: &ReplayAction,
+    slots: &mut Vec<SlotIdx>,
+) {
+    slots.clear();
+    slots.push(accumulator);
+    if continued_to(action, done) {
+        return;
+    }
+    slots.push(input);
+    if let Some(output) = output
+        && !slots.contains(&output)
+    {
+        slots.push(output);
+    }
+}
+
+fn continued_to(action: &ReplayAction, target: StepIdx) -> bool {
+    matches!(action, ReplayAction::Continue(next) if *next == target)
 }
 
 fn ask_failure_action(

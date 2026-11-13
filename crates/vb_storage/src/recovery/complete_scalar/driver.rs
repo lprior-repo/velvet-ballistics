@@ -1,12 +1,13 @@
-use super::invalid;
+use super::action_wait::ScheduledAction;
+use super::{TraceReplayInput, TraceReplayMode, invalid};
 use crate::recovery::RecoveryResult;
 use crate::{
     JournalEvent as E,
     slot_extra::{DecodedSlotWrittenExtra, decode_slot_written_extra},
 };
 use std::collections::HashSet;
+use vb_core::replay::ReplayAction;
 use vb_core::replay::step::ReplayCollectStates;
-use vb_core::replay::{ReplayAction, SuspensionKind};
 use vb_core::{
     CompiledNodeKind as K, CompiledWorkflow, RunFrame, SlotIdx, SlotValue, StepIdx, Taint,
     ValueStore,
@@ -24,21 +25,64 @@ pub(super) struct Driver<'a> {
     pub(super) answered: bool,
     pub(super) finished: bool,
     terminal: bool,
+    pub(super) action: Option<ScheduledAction>,
+    pub(super) waiting: Option<(StepIdx, u16)>,
+    pub(super) mode: TraceReplayMode,
 }
 
 pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<RunFrame> {
+    replay_with_inputs(
+        events,
+        plan,
+        &TraceReplayInput {
+            initial_inputs: &[],
+            store_checkpoint: None,
+            mode: TraceReplayMode::Scalar,
+        },
+    )
+}
+
+pub(crate) fn replay_with_inputs(
+    events: &[E],
+    plan: &CompiledWorkflow,
+    input: &TraceReplayInput<'_>,
+) -> RecoveryResult<RunFrame> {
+    replay_with_inputs_and_store(events, plan, input).map(|(frame, _store)| frame)
+}
+
+pub(crate) fn replay_with_inputs_and_store(
+    events: &[E],
+    plan: &CompiledWorkflow,
+    input: &TraceReplayInput<'_>,
+) -> RecoveryResult<(RunFrame, ValueStore)> {
     let first = events
         .first()
         .ok_or_else(|| invalid(plan.entry(), "empty bound trace"))?;
-    let mut store = ValueStore::with_max_slots(plan.resource_contract().max_slots);
-    if let Some(metadata) = plan.source_metadata() {
-        vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)
+    let store = match input.store_checkpoint {
+        Some(checkpoint) => {
+            ValueStore::from_checkpoint_v1(checkpoint.clone()).map_err(|error| {
+                invalid(plan.entry(), format!("invalid owned value store: {error}"))
+            })?
+        }
+        None => {
+            let mut store = ValueStore::with_max_slots(plan.resource_contract().max_slots);
+            if let Some(metadata) = plan.source_metadata() {
+                vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)
+                    .map_err(|e| invalid(plan.entry(), e.to_string()))?;
+            }
+            store
+        }
+    };
+    let mut frame = vb_core::new_run_frame(first.run_id(), plan)
+        .map_err(|e| invalid(plan.entry(), e.to_string()))?;
+    for (slot, value, taint) in input.initial_inputs {
+        frame
+            .write_slot_with_taint(*slot, *value, *taint)
             .map_err(|e| invalid(plan.entry(), e.to_string()))?;
     }
     let mut driver = Driver {
         plan,
-        frame: vb_core::new_run_frame(first.run_id(), plan)
-            .map_err(|e| invalid(plan.entry(), e.to_string()))?,
+        frame,
         store,
         collect: ReplayCollectStates::new(),
         active: None,
@@ -48,6 +92,9 @@ pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<Ru
         answered: false,
         finished: false,
         terminal: false,
+        action: None,
+        waiting: None,
+        mode: input.mode,
     };
     let mut previous = None;
     let mut accepted = false;
@@ -57,7 +104,7 @@ pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<Ru
     let budget =
         vb_core::WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)
             .map_err(|e| invalid(plan.entry(), e.to_string()))?;
-    if budget.max_parallel_in_flight != 0 {
+    if input.mode == TraceReplayMode::Scalar && budget.max_parallel_in_flight != 0 {
         return Err(invalid(
             plan.entry(),
             "parallel trace is outside scalar replay",
@@ -89,6 +136,9 @@ pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<Ru
             E::CompatibilityDecisionEvent { .. }
             | E::TenantAdmissionEvent { .. }
             | E::PolicyDecisionEvent { .. }
+            | E::GateOpenedEvent { .. }
+            | E::GateDecisionEvent { .. }
+            | E::RetryCheckpoint { .. }
                 if accepted => {}
             E::StepStarted { step, .. } if accepted && admitted => {
                 started = true;
@@ -99,8 +149,44 @@ pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<Ru
             } => driver.capture(*slot, value.as_deref(), extra.as_deref())?,
             E::StepSucceeded { step, output, .. } => driver.succeeded(*step, *output)?,
             E::StepFailed { step, .. } => driver.failed(*step)?,
-            E::AskScheduledEvent { step, .. } => driver.scheduled(*step)?,
-            E::AskAnsweredEvent { step, .. } => driver.answered(*step)?,
+            E::AskScheduledEvent { step, .. } => driver.scheduled_ask(*step)?,
+            E::AskAnsweredEvent { step, .. } => driver.answered_ask(*step)?,
+            E::AskTimedOutEvent { step, .. } => driver.timed_out_ask(*step)?,
+            E::ActionFailedEvent { step, .. } => driver.action_failed(*step)?,
+            E::RunFailedEvent { .. } if driver.active.is_none() => driver.terminal = true,
+            E::ActionScheduledTicket {
+                ticket,
+                input,
+                output,
+                action_abi_digest,
+                ..
+            } => driver.scheduled_action(*ticket, *input, *output, *action_abi_digest)?,
+            E::ActionCompletedEnvelope {
+                ticket,
+                outcome,
+                output,
+                value,
+                taint,
+                value_digest,
+                encoded_len,
+                action_abi_digest,
+                ..
+            } => driver.completed_action(super::action_complete::ActionCompletion {
+                ticket: *ticket,
+                outcome: *outcome,
+                output: *output,
+                value,
+                taint: *taint,
+                value_digest,
+                encoded_len: *encoded_len,
+                abi_digest: *action_abi_digest,
+            })?,
+            E::WaitScheduledEvent { step, attempt, .. } => {
+                driver.wait_scheduled(*step, *attempt)?;
+            }
+            E::WaitResolvedEvent { step, attempt, .. } => {
+                driver.wait_resolved(*step, *attempt)?;
+            }
             E::RunFinished { result, .. }
                 if driver.finished && !driver.terminal && driver.active.is_none() =>
             {
@@ -138,12 +224,10 @@ pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<Ru
             ));
         }
     }
-    if driver.active.is_some()
-        && !(driver.ask.is_some() && driver.answer.is_none() && !driver.answered)
-    {
+    if driver.active.is_some() && !driver.pending_boundary() {
         return Err(invalid(driver.frame.pc(), "incomplete step receipt"));
     }
-    if driver.frame.parallel_in_flight() != 0 {
+    if input.mode == TraceReplayMode::Scalar && driver.frame.parallel_in_flight() != 0 {
         return Err(invalid(
             driver.frame.pc(),
             "unknown scalar parallel reservations",
@@ -152,7 +236,7 @@ pub(super) fn replay(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<Ru
     if driver.finished && !driver.terminal {
         return Err(invalid(driver.frame.pc(), "terminal receipt missing"));
     }
-    Ok(driver.frame)
+    Ok((driver.frame, driver.store))
 }
 
 impl Driver<'_> {
@@ -162,11 +246,11 @@ impl Driver<'_> {
         bytes: Option<&[u8]>,
         extra: Option<&[u8]>,
     ) -> RecoveryResult<()> {
-        let step = self
+        let (step, action) = self
             .active
             .as_ref()
-            .ok_or_else(|| invalid(self.frame.pc(), "capture without active step"))?
-            .0;
+            .ok_or_else(|| invalid(self.frame.pc(), "capture without active step"))?;
+        let step = *step;
         if self.frame.step_state(step).ok() == Some(vb_core::StepState::Failed) {
             return Err(invalid(step, "failed step cannot emit output capture"));
         }
@@ -194,7 +278,7 @@ impl Driver<'_> {
             }
             self.answer = Some((value, envelope.taint));
         } else {
-            if !self.required(step)?.contains(&slot)
+            if !self.required(step, action)?.contains(&slot)
                 || self.frame.read_slot(slot).ok() != Some(&value)
                 || self.frame.read_taint(slot).ok() != Some(envelope.taint)
             {
@@ -204,54 +288,6 @@ impl Driver<'_> {
         if !self.captures.insert(slot) {
             return Err(invalid(step, "duplicate step capture"));
         }
-        Ok(())
-    }
-
-    pub(super) fn scheduled(&mut self, step: StepIdx) -> RecoveryResult<()> {
-        if !matches!(self.active.as_ref(), Some((active, ReplayAction::Suspended { step: suspended, kind: SuspensionKind::AskPending })) if *active == step && *suspended == step)
-            || self.ask.is_some()
-        {
-            return Err(invalid(step, "Ask schedule without suspension"));
-        }
-        let ask = self
-            .plan
-            .node(step)
-            .ok_or_else(|| invalid(step, "Ask node missing"))?;
-        let resume = ask
-            .routing
-            .next
-            .step()
-            .ok_or_else(|| invalid(step, "Ask resume missing"))?;
-        let Some(K::AskResume { answer }) = self.plan.node(resume).map(|node| &node.kind) else {
-            return Err(invalid(step, "Ask resume authority missing"));
-        };
-        self.frame
-            .mark_asking(step)
-            .map_err(|e| invalid(step, e.to_string()))?;
-        self.ask = Some((step, resume, *answer));
-        Ok(())
-    }
-
-    pub(super) fn answered(&mut self, step: StepIdx) -> RecoveryResult<()> {
-        let (ask, resume, slot) = self
-            .ask
-            .ok_or_else(|| invalid(step, "Ask answer without schedule"))?;
-        let (value, taint) = self
-            .answer
-            .take()
-            .ok_or_else(|| invalid(step, "Ask answer payload missing"))?;
-        if ask != step || self.answered {
-            return Err(invalid(step, "Ask answer authority mismatch"));
-        }
-        self.frame
-            .write_slot_with_taint(slot, value, taint)
-            .map_err(|e| invalid(step, e.to_string()))?;
-        self.frame
-            .mark_running(step)
-            .and_then(|()| self.frame.mark_succeeded(step))
-            .and_then(|()| self.frame.set_pc(resume))
-            .map_err(|e| invalid(step, e.to_string()))?;
-        self.answered = true;
         Ok(())
     }
 }
