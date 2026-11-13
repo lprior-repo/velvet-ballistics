@@ -9,7 +9,8 @@ use vb_storage::JournalEvent;
 
 use super::support::{
     RUN, TestResult, action_step, ask_step, contract, drain_until_completed, finish_result_slot,
-    live_routed_failure_prefix, open, pending_ask, routed_failure_source, scratch_store, submit,
+    live_routed_failure_prefix, open, pending_ask, recorded_slot_writes, routed_failure_source,
+    scratch_store, submit,
 };
 
 /// Given a live run whose action failure routed to its `on_error` ask handler,
@@ -113,6 +114,12 @@ fn recovered_started_handler_resumes_without_reissuing_the_action() -> TestResul
     let workflow = vb_compile::compile_workflow(routed_failure_source().as_bytes())?;
     let work = action_step(&workflow)?;
     let ask = ask_step(&workflow)?;
+    let answer_slot = workflow
+        .node(ask)
+        .ok_or("handler Ask node")?
+        .output
+        .slot()
+        .ok_or("handler Ask answer slot")?;
     let handler = workflow
         .node(work)
         .ok_or("work step node")?
@@ -209,8 +216,39 @@ fn recovered_started_handler_resumes_without_reissuing_the_action() -> TestResul
     ))?;
     drain_until_completed(&mut runtime)?;
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
-    let finished = journal
-        .events_for_run_full(RUN)?
+    let events = journal.events_for_run_full(RUN)?;
+    let answered_seq = events
+        .iter()
+        .find_map(|event| match event {
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq,
+                step,
+                attempt,
+            } if *run == RUN && *step == ask && *attempt == 1 => Some(*seq),
+            _ => None,
+        })
+        .ok_or("durable handler AskAnswered event missing")?;
+    let answer_writes = recorded_slot_writes(&events, answer_slot)?;
+    assert_eq!(
+        answer_writes.len(),
+        2,
+        "handler answer slot must preserve both durable writes"
+    );
+    assert!(answer_writes.iter().all(|(_, value, taint, attempt)| {
+        *value == SlotValue::I64(99) && *taint == Taint::Clean && *attempt == 1
+    }));
+    assert_eq!(
+        answer_writes.first().map(|(seq, _, _, _)| seq.get()),
+        Some(
+            answered_seq
+                .get()
+                .checked_sub(1)
+                .ok_or("answer seq underflow")?
+        ),
+        "the answer value write immediately precedes AskAnswered"
+    );
+    let finished = events
         .iter()
         .find_map(|event| match event {
             JournalEvent::RunFinished { result, .. } => Some(*result),
@@ -218,5 +256,15 @@ fn recovered_started_handler_resumes_without_reissuing_the_action() -> TestResul
         })
         .ok_or("resumed handler must finish the run")?;
     assert_eq!(finished, finish_result_slot(&workflow)?);
+    assert!(events.iter().any(|event| matches!(
+        event,
+        JournalEvent::RunFinished { run, result, attempt, .. }
+            if *run == RUN && *result == finished && *attempt == 1
+    )));
+    let result_writes = recorded_slot_writes(&events, finished)?;
+    assert_eq!(result_writes.len(), 1);
+    assert!(result_writes.iter().all(|(_, value, taint, attempt)| {
+        *value == SlotValue::I64(42) && *taint == Taint::Clean && *attempt == 1
+    }));
     Ok(())
 }

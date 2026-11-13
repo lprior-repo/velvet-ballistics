@@ -13,10 +13,11 @@ use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
 use vb_core::policy::RuntimePolicy;
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::{SlotValue, Taint};
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskTicket, ShardConfig};
-use vb_storage::{FjallJournal, JournalEvent};
+use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -202,4 +203,44 @@ pub(crate) fn scratch_store(
         journal.append_strict(event)?;
     }
     Ok((directory, journal, runtime))
+}
+
+fn decode_recorded_slot_write(
+    value: &Option<Vec<u8>>,
+    extra: &Option<Vec<u8>>,
+) -> TestResult<(SlotValue, Taint)> {
+    let value = postcard::from_bytes::<SlotValue>(value.as_deref().ok_or("slot value missing")?)?;
+    let extra =
+        vb_storage::decode_slot_written_extra(extra.as_deref().ok_or("slot extra missing")?)
+            .map_err(|error| format!("{error:?}"))?;
+    match extra {
+        vb_storage::DecodedSlotWrittenExtra::Envelope(envelope) => Ok((value, envelope.taint)),
+        vb_storage::DecodedSlotWrittenExtra::LegacyFrameExtra(_) => {
+            Err("slot write has no versioned taint envelope".into())
+        }
+    }
+}
+
+pub(crate) fn recorded_slot_writes(
+    events: &[JournalEvent],
+    slot: SlotIdx,
+) -> TestResult<Vec<(EventSeq, SlotValue, Taint, u16)>> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq,
+                slot: written,
+                value,
+                extra,
+                attempt,
+            } if *run == RUN && *written == slot => Some((*seq, value, extra, *attempt)),
+            _ => None,
+        })
+        .map(|(seq, value, extra, attempt)| {
+            let (value, taint) = decode_recorded_slot_write(value, extra)?;
+            Ok((seq, value, taint, attempt))
+        })
+        .collect()
 }

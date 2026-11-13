@@ -2,13 +2,13 @@
 
 use vb_core::action::ActionFailureCode;
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ErrorRouting, WorkflowError};
-use vb_core::{SlotValue, StepState};
+use vb_core::{SlotValue, StepState, Taint};
 use vb_runtime::recovery::RuntimeRecoveryProduct;
 use vb_storage::JournalEvent;
 
 use super::support::{
-    RUN, TestResult, action_step, ask_source, ask_step, content_digest, contract, open,
-    pending_ask, routed_failure_source, scratch_store, submit,
+    RUN, TestResult, action_step, ask_source, ask_step, content_digest, contract,
+    live_routed_failure_prefix, open, pending_ask, routed_failure_source, scratch_store, submit,
 };
 
 /// Given the checked-IR constructor, When an error handler points backward
@@ -149,6 +149,11 @@ fn recovered_legacy_error_slot_carries_the_failed_step() -> TestResult {
         SlotValue::I64(i64::from(work.get())),
         "recovered error slot must name the failed step"
     );
+    assert_eq!(
+        recovered.frame.read_taint(slot)?,
+        Taint::Clean,
+        "recovered legacy error slot taint must remain Clean"
+    );
     assert_eq!(recovered.frame.step_state(work)?, StepState::Failed);
     Ok(())
 }
@@ -159,17 +164,15 @@ fn recovered_legacy_error_slot_carries_the_failed_step() -> TestResult {
 #[test]
 fn workflow_less_seed_never_authorizes_resume() -> TestResult {
     let workflow = vb_compile::compile_workflow(routed_failure_source().as_bytes())?;
-    let work = action_step(&workflow)?;
     let ask = ask_step(&workflow)?;
-    let store = tempfile::tempdir()?;
-    let (journal, mut runtime) = open(store.path())?;
-    submit(&journal, &mut runtime, &workflow, &[contract()?])?;
-    let ticket = runtime
-        .lookup_pending_action_ticket(RUN, u64::from(work.get()))
-        .ok_or("scheduled action ticket")?;
-    runtime.fail_action(ticket, ActionFailureCode::InvalidInput.into())?;
-    pending_ask(&mut runtime, ask)?;
-    let failed_events = journal.events_for_run_full(RUN)?;
+    let (failed_events, _) = live_routed_failure_prefix(&workflow, ask)?;
+    assert!(
+        matches!(
+            failed_events.last(),
+            Some(JournalEvent::ActionFailedEvent { run, .. }) if *run == RUN
+        ),
+        "workflow-less failure prefix must end at this run's ActionFailed event"
+    );
     let suspended = vb_compile::compile_workflow(ask_source().as_bytes())?;
     let suspended_ask = ask_step(&suspended)?;
     let store = tempfile::tempdir()?;
@@ -177,19 +180,29 @@ fn workflow_less_seed_never_authorizes_resume() -> TestResult {
     submit(&journal, &mut runtime, &suspended, &[])?;
     pending_ask(&mut runtime, suspended_ask)?;
     let suspended_events = journal.events_for_run_full(RUN)?;
-    for (label, events) in [
-        ("suspended ask", suspended_events),
-        ("failed action routed to a handler", failed_events),
-    ] {
-        let product = vb_storage::recovery::recover_runtime_frame_seed_from_events(&events)?;
-        assert!(!product.is_resumable(), "{label}: must not be resumable");
-        assert!(
-            !product
-                .cannot_resume_state()
-                .unsupported_reason()
-                .is_empty(),
-            "{label}: workflow-less replay must keep a typed cannot-resume witness"
-        );
-    }
+    let suspended_product =
+        vb_storage::recovery::recover_runtime_frame_seed_from_events(&suspended_events)?;
+    assert!(
+        !suspended_product.is_resumable(),
+        "suspended ask must not resume"
+    );
+    assert!(
+        !suspended_product
+            .cannot_resume_state()
+            .unsupported_reason()
+            .is_empty(),
+        "suspended ask must keep a typed cannot-resume witness"
+    );
+    let failed_product =
+        vb_storage::recovery::recover_runtime_frame_seed_from_events(&failed_events)?;
+    assert!(
+        !failed_product.is_resumable(),
+        "failed prefix must not resume"
+    );
+    assert_eq!(
+        failed_product.cannot_resume_state().unsupported_reason(),
+        "workflow_missing",
+        "the exact ActionFailed prefix must identify the missing workflow"
+    );
     Ok(())
 }
