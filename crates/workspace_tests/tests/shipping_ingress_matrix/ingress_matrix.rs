@@ -19,6 +19,12 @@ use super::support::{
     tick_until_terminal,
 };
 
+#[path = "ingress_matrix/ask_route.rs"]
+mod ask_route;
+#[path = "ingress_matrix/primitive_routes.rs"]
+mod primitive_routes;
+#[path = "ingress_matrix/timer_route.rs"]
+mod timer_route;
 #[path = "ingress_matrix/wait_recovery.rs"]
 mod wait_recovery;
 
