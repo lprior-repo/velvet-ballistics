@@ -12,6 +12,9 @@ mod support;
 #[path = "shipping_suspension_recovery/routing.rs"]
 mod routing;
 
+#[path = "shipping_suspension_recovery/handlers.rs"]
+mod handlers;
+
 #[path = "shipping_suspension_recovery/ask.rs"]
 mod ask;
 

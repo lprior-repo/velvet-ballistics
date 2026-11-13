@@ -3,7 +3,7 @@
 //! Drive-loop state transitions: begin/finish step and signal classification.
 
 use vb_core::engine::{EngineError, StepBudget};
-use vb_core::frame::RunFrame;
+use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
@@ -37,12 +37,51 @@ pub(super) fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    super::loop_rearm::validate_activation(plan, node, run)?;
-    evidence
-        .push_step_started(pc)
-        .map_err(RuntimeEngineError::Core)?;
-    run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    let resumed = resumes_journaled_handler(plan, node, run)?;
+    super::loop_rearm::validate_activation(plan, node, run, resumed)?;
+    if !resumed {
+        evidence
+            .push_step_started(pc)
+            .map_err(RuntimeEngineError::Core)?;
+        run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    }
     Ok(Some(DriveStep { pc, node }))
+}
+
+/// Reports whether `node` is a compiled error-handler target whose
+/// `StepStarted` is already durable.
+///
+/// A failure routed to an authored handler journals `ActionFailed` and then
+/// `StepStarted(handler)` before executing the handler. A crash in that window
+/// leaves the handler step `Running` with no handler effect, so recovery
+/// resumes it in place: re-emitting `StepStarted` would duplicate durable
+/// evidence, and no action ticket or completion exists for it. The node must
+/// still be the compiled handler of a step that is already `Failed`, so an
+/// unrelated `Running` node is never activated by this exemption.
+fn resumes_journaled_handler(
+    plan: &CompiledWorkflow,
+    node: &CompiledNode,
+    run: &RunFrame,
+) -> RuntimeEngineResult<bool> {
+    if run.step_state(node.id).map_err(RuntimeEngineError::Core)? != StepState::Running {
+        return Ok(false);
+    }
+    for raw in 0..plan.node_count() {
+        let Some(candidate) = plan.node(StepIdx::new(raw)) else {
+            continue;
+        };
+        if candidate.routing.error.handler() != Some(node.id) {
+            continue;
+        }
+        if run
+            .step_state(candidate.id)
+            .map_err(RuntimeEngineError::Core)?
+            == StepState::Failed
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Extracts the body step index from an owning-loop control node, or
