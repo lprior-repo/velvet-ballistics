@@ -8,13 +8,52 @@
 //!   - Every CoreError variant's diagnostic_code() has a CODE_REGISTRY entry.
 //!   - Every CoreError variant's symbolic_code() is registered and roundtrips.
 
+use vb_core::action::{
+    ActionFailure, ActionFailureCode, ActionFailureReport, ActionResumeRejection,
+    ActionResumeReport, ActionTicket, RetryPolicy, compute_action_idempotency_key,
+};
 use vb_core::diagnostic::{CODE_REGISTRY, HasSymbolicCode, SymbolicCode};
 use vb_core::errors::CoreError;
 use vb_core::ids::{
-    BlobId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
+    ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SeqNo, SlotIdx, StepIdx, SymbolId,
 };
+use vb_core::{InvariantKind, Taint};
 
-/// Build every CoreError variant (40 total) with plausible field values.
+fn failure_report() -> ActionFailureReport {
+    ActionFailureReport::new(
+        StepIdx::new(3),
+        ActionId::new(7),
+        ActionFailure {
+            code: ActionFailureCode::Timeout,
+            retry_policy: RetryPolicy::Retryable,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        },
+    )
+}
+
+fn resume_report(rejection: ActionResumeRejection) -> ActionResumeReport {
+    let run = RunId::new(11);
+    let seq = SeqNo::new(2);
+    let action = ActionId::new(7);
+    ActionResumeReport::new(
+        rejection,
+        ActionTicket {
+            run,
+            step: StepIdx::new(3),
+            seq,
+            action,
+            run_attempt: 1,
+            attempt: 1,
+            idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
+            capacity: 1,
+            fencing_token: 0,
+        },
+    )
+}
+
+/// Build every CoreError variant (53 total) with plausible field values.
 fn all_core_error_variants() -> Vec<CoreError> {
     vec![
         CoreError::InvalidProgramCounter {
@@ -86,6 +125,9 @@ fn all_core_error_variants() -> Vec<CoreError> {
         },
         CoreError::IterationLimitExceeded { resource: "cpu" },
         CoreError::RepeatExhausted { max: 3 },
+        CoreError::InvalidRepeatState {
+            reason: InvariantKind::InvalidStateTransition,
+        },
         CoreError::CollectPageLimitExceeded,
         CoreError::CollectItemLimitExceeded,
         CoreError::CollectTimeLimitExceeded,
@@ -98,6 +140,12 @@ fn all_core_error_variants() -> Vec<CoreError> {
                 vb_core::ids::ActionId::new(2),
             ),
             granted: vb_core::capability::CapabilitySet::empty(),
+        },
+        CoreError::ActionFailed {
+            report: failure_report(),
+        },
+        CoreError::ActionResumeRejected {
+            report: resume_report(ActionResumeRejection::ActionMismatch),
         },
         CoreError::BudgetExceeded {
             budget: "cpu",
@@ -119,6 +167,13 @@ fn all_core_error_variants() -> Vec<CoreError> {
         },
         CoreError::CollectEvidenceCapacityExceeded {
             run_id: RunId::new(1),
+            slot: SlotIdx::new(3),
+            capacity: 10,
+            len: 11,
+            required: "extra slots",
+        },
+        CoreError::EvidenceCapacityExceeded {
+            step: StepIdx::new(2),
             slot: SlotIdx::new(3),
             capacity: 10,
             len: 11,
@@ -163,6 +218,7 @@ fn all_core_error_variants() -> Vec<CoreError> {
             timestamp: chrono::Utc::now(),
             bead_id: Some(RunId::new(1)),
         },
+        CoreError::InvalidSpan { start: 5, end: 3 },
     ]
 }
 
@@ -213,10 +269,10 @@ fn every_core_error_variant_symbolic_code_is_registered() {
 }
 
 #[test]
-fn all_40_core_error_variants_enumerated() {
+fn all_core_error_variants_enumerated() {
     let count = all_core_error_variants().len();
-    assert!(
-        count >= 40,
-        "Expected at least 40 CoreError variants, found {count}"
+    assert_eq!(
+        count, 53,
+        "Expected all 53 CoreError variants enumerated, found {count}"
     );
 }

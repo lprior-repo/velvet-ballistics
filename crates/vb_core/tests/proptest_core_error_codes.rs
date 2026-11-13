@@ -1,5 +1,6 @@
 //! Property test: Every CoreError::diagnostic_code() returns the correct
-//! documented constant for its variant (all 40 variants).
+//! documented constant for its variant (51 variants; ActionFailed and
+//! ActionResumeRejected are pinned in errors/action_lifecycle_tests.rs).
 //!
 //! PO-002 / PS-002: Error code stability — diagnostic_code correct for all CoreError variants.
 //!
@@ -7,7 +8,8 @@
 //! INVALID_PROGRAM_COUNTER_CODE = 0x1001).
 
 use vb_core::DiagnosticCode;
-use vb_core::errors::CoreError;
+use vb_core::diagnostic::HasSymbolicCode;
+use vb_core::errors::{CoreError, InvariantKind};
 use vb_core::ids::{
     BlobId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
 };
@@ -587,5 +589,70 @@ fn replay_corruption_returns_correct_code() {
         err.diagnostic_code(),
         DiagnosticCode::new(0x1506),
         "REPLAY_CORRUPTION_CODE = 0x1506"
+    );
+}
+
+#[test]
+fn invalid_span_returns_correct_code() {
+    let err = CoreError::InvalidSpan { start: 5, end: 3 };
+    assert_eq!(
+        err.diagnostic_code(),
+        DiagnosticCode::new(0x130E),
+        "INVALID_SPAN_CODE = 0x130E"
+    );
+    assert_eq!(err.symbolic_code().as_str(), "INVALID_SPAN");
+}
+
+#[test]
+fn invalid_repeat_state_returns_correct_code() {
+    let err = CoreError::InvalidRepeatState {
+        reason: InvariantKind::InvalidStateTransition,
+    };
+    assert_eq!(
+        err.diagnostic_code(),
+        DiagnosticCode::new(0x140F),
+        "INVALID_REPEAT_STATE_CODE = 0x140F"
+    );
+    assert_eq!(err.symbolic_code().as_str(), "INVALID_REPEAT_STATE");
+}
+
+#[test]
+fn evidence_capacity_exceeded_returns_correct_code() {
+    let err = CoreError::EvidenceCapacityExceeded {
+        step: StepIdx::new(2),
+        slot: SlotIdx::new(3),
+        capacity: 10,
+        len: 11,
+        required: "extra slots",
+    };
+    assert_eq!(
+        err.diagnostic_code(),
+        DiagnosticCode::new(0x140E),
+        "EVIDENCE_CAPACITY_EXCEEDED_CODE = 0x140E"
+    );
+    assert_eq!(err.symbolic_code().as_str(), "EVIDENCE_CAPACITY_EXCEEDED");
+}
+
+#[test]
+fn invalid_repeat_state_and_evidence_capacity_exceeded_have_distinct_codes() {
+    let repeat = CoreError::InvalidRepeatState {
+        reason: InvariantKind::InvalidStateTransition,
+    };
+    let evidence = CoreError::EvidenceCapacityExceeded {
+        step: StepIdx::new(2),
+        slot: SlotIdx::new(3),
+        capacity: 10,
+        len: 11,
+        required: "extra slots",
+    };
+    assert_ne!(
+        repeat.diagnostic_code(),
+        evidence.diagnostic_code(),
+        "InvalidRepeatState and EvidenceCapacityExceeded must not share a diagnostic code"
+    );
+    assert_ne!(
+        repeat.symbolic_code().as_str(),
+        evidence.symbolic_code().as_str(),
+        "InvalidRepeatState and EvidenceCapacityExceeded must not share a symbolic code"
     );
 }
