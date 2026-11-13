@@ -166,14 +166,20 @@ pub(in crate::mod_compile_lowering) fn canonical_step_width(
         | crate::StepPrimitive::Finish { .. }
         | crate::StepPrimitive::Wait { .. } => Ok(1),
         crate::StepPrimitive::Ask { .. } => Ok(2),
-        crate::StepPrimitive::ForEach { input, body, .. } => {
+        crate::StepPrimitive::ForEach {
+            input,
+            at_once,
+            body,
+            ..
+        } => {
+            let overhead = super::part_14::for_each_overhead(*at_once);
             super::part_14::iteration_body_width(body)?
                 .checked_add(
-                    6usize
+                    overhead
                         .checked_add(super::list_input::source_width(input))
-                        .ok_or(CompileError::StepIndexOutOfRange { value: 6 })?,
+                        .ok_or(CompileError::StepIndexOutOfRange { value: overhead })?,
                 )
-                .ok_or(CompileError::StepIndexOutOfRange { value: 6 })
+                .ok_or(CompileError::StepIndexOutOfRange { value: overhead })
         }
         crate::StepPrimitive::Collect { body, .. } => body_width(body, 3),
         crate::StepPrimitive::Repeat { body, .. } => body_width(body, 4),

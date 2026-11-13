@@ -4,9 +4,39 @@
 #[cfg(test)]
 pub(crate) use crate::errors::CoreError;
 
+#[path = "concurrent/error.rs"]
+mod concurrent_analysis_error;
+#[path = "concurrent/analyze.rs"]
+mod concurrent_analyze;
+#[path = "concurrent/backedges.rs"]
+mod concurrent_backedges;
+pub(crate) mod concurrent_bootstrap;
+#[path = "concurrent/cursor.rs"]
+mod concurrent_cursor;
+#[path = "concurrent/lane_end.rs"]
+mod concurrent_lane_end;
+#[path = "concurrent/lane_walk.rs"]
+mod concurrent_lane_walk;
+#[path = "concurrent/ownership.rs"]
+mod concurrent_ownership;
+#[path = "concurrent/pair.rs"]
+mod concurrent_pair;
+#[path = "concurrent/regions.rs"]
+mod concurrent_regions;
+#[path = "concurrent/start_entries.rs"]
+mod concurrent_start_entries;
+#[path = "concurrent/targets.rs"]
+mod concurrent_targets;
+pub use concurrent_analysis_error::ConcurrentAnalysisError;
 mod compiled;
-pub use compiled::CompiledWorkflow;
+#[path = "concurrent/group_frame_bound.rs"]
+mod concurrent_group_frame_bound;
+#[path = "concurrent/peaks.rs"]
+mod concurrent_peaks;
+mod ir_profile;
 pub(crate) use compiled::resolved_error_slot;
+pub use compiled::{CompiledWorkflow, ConcurrentRequirements};
+pub use ir_profile::WorkflowIrProfile;
 
 mod cursor_ownership;
 mod input_constraints;
@@ -38,7 +68,7 @@ pub use input_slot::{
 mod lifecycle;
 pub use lifecycle::{LifecycleCommand, LifecycleState, RunState, check_lifecycle_transition};
 
-mod loop_regions;
+pub(crate) mod loop_regions;
 pub use loop_regions::{CompiledLoopRegion, LoopRegionSlot};
 
 mod node;

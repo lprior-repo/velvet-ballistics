@@ -36,7 +36,12 @@ pub(super) fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<St
             ..
         } => push_loop_successors(*body, *done, stack),
         CompiledNodeKind::RepeatCheck { done, .. } => push_repeat_check_successors(*done, stack),
-        CompiledNodeKind::TogetherStart { branches, join } => {
+        CompiledNodeKind::ForEachConcurrentStart { body, join, .. } => {
+            push_loop_successors(*body, *join, stack);
+        }
+        CompiledNodeKind::TogetherStart { branches, join }
+        | CompiledNodeKind::TogetherConcurrentStart { branches, join }
+        | CompiledNodeKind::FirstSuccessStart { branches, join } => {
             push_together_start_successors(branches, *join, stack)
         }
         CompiledNodeKind::TogetherBranch { entry, join, .. } => {

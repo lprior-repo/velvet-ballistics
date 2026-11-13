@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-
 use super::validate_refs::{
     validate_branch_route, validate_const, validate_expr, validate_optional_slot,
     validate_optional_step, validate_slot, validate_step,
@@ -8,7 +7,7 @@ use super::{
     BranchContinuation, CompiledNodeKind, ContractResource, ExprBranch, SlotBranch, WorkflowError,
     WorkflowParts,
 };
-use crate::ids::{ConstIdx, MaxAttempts, SlotIdx, StepIdx};
+use crate::ids::{BranchCount, ConstIdx, FanoutLimit, MaxAttempts, SlotIdx, StepIdx};
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
 
 pub(super) fn validate_node_kind(
@@ -16,6 +15,27 @@ pub(super) fn validate_node_kind(
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     match kind {
+        CompiledNodeKind::ForEachConcurrentStart {
+            input,
+            item_slot,
+            limit,
+            at_once,
+            body,
+            join,
+        } => validate_concurrent_foreach(
+            *input, *item_slot, *limit, *at_once, *body, *join, parts,
+        ),
+        CompiledNodeKind::TogetherConcurrentStart { branches, join }
+        | CompiledNodeKind::FirstSuccessStart { branches, join } => {
+            validate_together(branches, *join, parts)
+        }
+        CompiledNodeKind::ConcurrentLaneEnd { owner, result } => {
+            validate_step(*owner, parts.nodes.len())?;
+            validate_optional_slot(*result, parts.slot_count)
+        }
+        CompiledNodeKind::ConcurrentGroupJoin { owner } => {
+            validate_step(*owner, parts.nodes.len())
+        }
         CompiledNodeKind::Nop => Ok(()),
         CompiledNodeKind::SetConst { value } => validate_const(*value, parts.constants.len()),
         CompiledNodeKind::Copy { source } => validate_slot(*source, parts.slot_count),
@@ -175,6 +195,27 @@ fn validate_build_object(
         validate_slot(*slot, parts.slot_count)?;
     }
     Ok(())
+}
+
+fn validate_concurrent_foreach(
+    input: SlotIdx,
+    item_slot: SlotIdx,
+    limit: FanoutLimit,
+    at_once: BranchCount,
+    body: StepIdx,
+    join: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    super::resource_limits::validate_reduce_limit(limit.get())?;
+    validate_slot(input, parts.slot_count)?;
+    validate_slot(item_slot, parts.slot_count)?;
+    validate_nonzero_u16(at_once.get(), ContractResource::BranchCount)?;
+    if u32::from(at_once.get()) > u32::from(parts.resource_contract.max_fanout) {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: ContractResource::Fanout,
+        });
+    }
+    validate_two_steps(body, join, parts)
 }
 
 fn validate_for_each_start(

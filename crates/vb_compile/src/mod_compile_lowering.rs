@@ -102,3 +102,28 @@ pub(crate) use part_13::*;
 pub(crate) use part_14::*;
 #[allow(unused_imports)]
 pub(crate) use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+
+/// Builds the checked workflow under the execution profile its node set requires.
+///
+/// The profile is chosen once at the compiler boundary: any concurrent node
+/// selects `ConcurrentV3`, everything else keeps the legacy serial profile.
+pub(crate) fn checked_workflow(
+    parts: vb_core::WorkflowParts,
+) -> Result<vb_core::CompiledWorkflow, vb_core::WorkflowError> {
+    use vb_core::CompiledNodeKind as K;
+    let concurrent = parts.nodes.iter().any(|node| {
+        matches!(
+            node.kind,
+            K::ForEachConcurrentStart { .. }
+                | K::TogetherConcurrentStart { .. }
+                | K::FirstSuccessStart { .. }
+                | K::ConcurrentLaneEnd { .. }
+                | K::ConcurrentGroupJoin { .. }
+        )
+    });
+    if concurrent {
+        vb_core::CompiledWorkflow::try_from_concurrent_parts(parts)
+    } else {
+        vb_core::CompiledWorkflow::try_from_parts(parts)
+    }
+}
