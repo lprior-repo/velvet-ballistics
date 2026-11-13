@@ -125,9 +125,8 @@ pub(crate) fn reduce_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     let state_id = expect_list(*run.read_slot(iterator_slot)?)?;
     let iter_taint = run.read_taint(iterator_slot)?;
     let state_items = store.list(state_id)?;
-    if state_items.is_empty() {
-        return jump_to(run, done);
-    }
+    // The compact cursor state is always a 2-element list; an empty list is a
+    // corrupted handle, not exhaustion. decode_iterator_state owns that refusal.
     let (source_id, cursor) = decode_iterator_state(state_items)?;
     let source = store.list(source_id)?;
     if cursor >= source.len() {
