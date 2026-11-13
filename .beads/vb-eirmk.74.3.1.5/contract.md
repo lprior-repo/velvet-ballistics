@@ -1,0 +1,3 @@
+# Self-test failure stream
+
+Preserve healthy SELF_TEST_PASS on stdout exit0. A real self-test assertion failure must send SELF_TEST_FAIL to stderr exit1, with existing labelled expected/actual details preserved. Original static Python uses stderr for failure, current Rust caller incorrectly prints both markers to stdout. Every output write remains checked. Verification controls deliberately invert one valid-case expected status, capture stdout and stderr separately, require wrong old stream before repair and correct new stream after repair, then restore exact source hashes and rebuild healthy. No new public fault flag, dependency, schema, proof or full-v1 acceptance claim.

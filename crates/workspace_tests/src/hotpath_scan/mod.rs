@@ -2,6 +2,7 @@ mod allow;
 mod scan;
 mod walk;
 
+use crate::source_text::legacy_whitespace;
 use std::fmt;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -148,8 +149,4 @@ fn normalized_lines(text: &str) -> String {
         ],
         "\n",
     )
-}
-
-fn legacy_whitespace(ch: char) -> bool {
-    ch.is_whitespace() || matches!(ch, '\u{1c}' | '\u{1d}' | '\u{1e}' | '\u{1f}')
 }
