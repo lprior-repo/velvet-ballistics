@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-
 use super::validate_refs::{
     validate_branch_route, validate_const, validate_expr, validate_optional_slot,
     validate_optional_step, validate_slot, validate_step,
@@ -16,6 +15,7 @@ pub(super) fn validate_node_kind(
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     match kind {
+        super::concurrent_bootstrap::kinds!() => super::kind_refs::validate(kind, parts),
         CompiledNodeKind::Nop => Ok(()),
         CompiledNodeKind::SetConst { value } => validate_const(*value, parts.constants.len()),
         CompiledNodeKind::Copy { source } => validate_slot(*source, parts.slot_count),

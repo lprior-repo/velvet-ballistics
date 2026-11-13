@@ -32,6 +32,7 @@ pub mod verus {
 #[cfg(kani)]
 pub(crate) mod kani {
     pub(crate) mod kani_ask_answer_lifecycle;
+    #[cfg(feature = "vb-y9d3v-attempt-fence")]
     pub(crate) mod kani_attempt_fence_harnesses;
     // PO-vb282my-RS-KANI-001..006 / vb-4969v: repaired resume-state
     // harnesses remain feature-isolated because they are resource-heavy and

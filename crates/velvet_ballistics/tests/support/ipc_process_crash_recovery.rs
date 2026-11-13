@@ -61,7 +61,7 @@ pub(crate) struct CrashFixture {
 
 impl CrashFixture {
     pub(crate) fn new() -> TestResult<Self> {
-        let mut root = tempfile::Builder::new().prefix("vb-pcr-").tempdir()?;
+        let root = tempfile::Builder::new().prefix("vb-pcr-").tempdir()?;
         // start_server permits socket leaves of at most 20 bytes, plus NUL.
         if root
             .path()
@@ -71,9 +71,7 @@ impl CrashFixture {
             .len()
             >= 108
         {
-            root = tempfile::Builder::new()
-                .prefix("vb-pcr-")
-                .tempdir_in("/tmp")?;
+            return Err(Refusal::Limit("configured scratch path exceeds Unix socket limit").into());
         }
         let deadline = Instant::now()
             .checked_add(Duration::from_secs(30))

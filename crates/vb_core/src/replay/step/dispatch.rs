@@ -43,6 +43,9 @@ pub fn replay_step_with_collect(
     collect_states: &mut ReplayCollectStates,
 ) -> Result<ReplayAction, ReplayError> {
     match &node.kind {
+        crate::workflow::concurrent_bootstrap::kinds!() => {
+            Err(crate::workflow::concurrent_bootstrap::replay_error())
+        }
         CompiledNodeKind::Nop => replay_nop(node, run),
         CompiledNodeKind::SetConst { value } => replay_set_const(plan, run, node, *value),
         CompiledNodeKind::Copy { source } => replay_copy(run, node, *source),

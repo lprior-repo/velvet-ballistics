@@ -52,11 +52,11 @@ fn compiles_not_negation() -> crate::ExprResult<()> {
     let expected_ops = vec![
         ExprOp::LoadConst(ConstIdx::new(0)),
         ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Sub,
+        ExprOp::Mul,
         ExprOp::Not,
     ];
     assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
-    assert_eq!(constants, vec![ConstValue::I64(0), ConstValue::I64(1)]);
+    assert_eq!(constants, vec![ConstValue::I64(-1), ConstValue::I64(1)]);
     assert_eq!(program.max_stack, 2);
     Ok(())
 }

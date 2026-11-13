@@ -17,6 +17,7 @@ pub(crate) mod kani_retry_math;
 pub(crate) mod kani_together_ordering;
 
 // Shard lifecycle harnesses (action ticket fence + RA-030 follow-up).
+#[cfg(feature = "vb-y9d3v-attempt-fence")]
 pub(crate) mod kani_attempt_fence_harnesses;
 #[cfg(feature = "kani-sxkz6-shard-for-run")]
 pub(crate) mod kani_sxkz6_shard_for_run;

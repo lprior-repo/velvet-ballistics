@@ -33,10 +33,10 @@ fn lowers_unary_not_and_numeric_negation() -> Result<(), String> {
     let expected_ops = vec![
         ExprOp::LoadConst(ConstIdx::new(0)),
         ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Sub,
+        ExprOp::Mul,
         ExprOp::Not,
     ];
-    let expected_constants = vec![ConstValue::I64(0), ConstValue::I64(1)];
+    let expected_constants = vec![ConstValue::I64(-1), ConstValue::I64(1)];
     if ops != expected_ops {
         return Err(format!(
             "ops mismatch: expected {expected_ops:?}, got {ops:?}"
@@ -350,14 +350,14 @@ fn deeply_nested_arithmetic_produces_valid_bytecode() -> Result<(), String> {
 
 #[test]
 fn nested_negation_produces_correct_bytecode() -> Result<(), String> {
-    // --5 should produce: LoadConst(0), LoadConst(0), LoadConst(5), Sub, Sub
+    // --5 should produce: LoadConst(-1), LoadConst(-1), LoadConst(5), Mul, Mul
     let (ops, _constants, _max_stack) = lower("--5")?;
     adv_ensure(ops.len() == 5, "nested negation should produce 5 ops")?;
-    // Check last two ops are Sub
+    // Check last two ops are Mul
     let fourth = ops.get(3).ok_or("missing 4th op")?;
     let fifth = ops.get(4).ok_or("missing 5th op")?;
-    adv_ensure(matches!(fourth, ExprOp::Sub), "4th op should be Sub")?;
-    adv_ensure(matches!(fifth, ExprOp::Sub), "5th op should be Sub")?;
+    adv_ensure(matches!(fourth, ExprOp::Mul), "4th op should be Mul")?;
+    adv_ensure(matches!(fifth, ExprOp::Mul), "5th op should be Mul")?;
     Ok(())
 }
 
@@ -446,12 +446,12 @@ fn near_min_integer_constant_lowers_correctly() -> Result<(), String> {
     // through the negation path correctly.
     let (ops, constants, _max_stack) = lower("-9999999999")?;
     adv_ensure(
-        constants == vec![ConstValue::I64(0), ConstValue::I64(9999999999)],
-        "large negative should produce 0 and absolute value constants",
+        constants == vec![ConstValue::I64(-1), ConstValue::I64(9999999999)],
+        "large negative should produce -1 and absolute value constants",
     )?;
     adv_ensure(ops.len() == 3, "negation should produce 3 ops")?;
     let last = ops.last().ok_or("missing last op")?;
-    adv_ensure(matches!(last, ExprOp::Sub), "should end with Sub")?;
+    adv_ensure(matches!(last, ExprOp::Mul), "should end with Mul")?;
     Ok(())
 }
 
@@ -459,12 +459,12 @@ fn near_min_integer_constant_lowers_correctly() -> Result<(), String> {
 fn negative_one_integer_constant_lowers_correctly() -> Result<(), String> {
     let (ops, constants, _max_stack) = lower("-1")?;
     adv_ensure(
-        constants == vec![ConstValue::I64(0), ConstValue::I64(1)],
-        "negation of 1 should produce 0 and 1 constants",
+        constants == vec![ConstValue::I64(-1), ConstValue::I64(1)],
+        "negation of 1 should produce -1 and 1 constants",
     )?;
     adv_ensure(ops.len() == 3, "negation should produce 3 ops")?;
     let last = ops.last().ok_or("missing last op")?;
-    adv_ensure(matches!(last, ExprOp::Sub), "negation should end with Sub")?;
+    adv_ensure(matches!(last, ExprOp::Mul), "negation should end with Mul")?;
     Ok(())
 }
 
@@ -633,4 +633,3 @@ fn deeply_nested_mixed_arithmetic_and_negation() -> Result<(), String> {
 }
 
 // 7. BinaryOp edge cases (division, multiplication, subtraction)
-

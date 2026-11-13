@@ -88,7 +88,7 @@ impl CompiledLoopRegion {
 mod edges;
 mod nested_entries;
 mod pairing;
-mod shapes;
+pub(crate) mod shapes;
 
 /// Builds a control-indexed cache without changing serialized workflow parts.
 /// All scans are bounded by the already validated node/branch tables. Scratch

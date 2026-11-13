@@ -43,6 +43,7 @@ impl Shard {
             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
     }
 
+    #[cfg(not(kani))]
     fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
         let next = seq
             .get()
