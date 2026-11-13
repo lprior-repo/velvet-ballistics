@@ -16,6 +16,7 @@
 
 use crate::action_pack::CapabilityScopeSpec;
 use crate::capability::Capability;
+pub use crate::capability_grant_authority::ScopedGrantAuthority;
 use crate::manual_gate::{ApproverId, BoundApprovalReceipt, GateDigest};
 use crate::{ActionTicket, WorkflowDigest};
 use serde::{Deserialize, Serialize};
@@ -167,6 +168,10 @@ pub struct ScopedGrant {
     pub approval_receipt: GateDigest,
     /// Opted-in profile signature; recorded only in this wedge.
     pub signature: Option<GrantSignature>,
+    /// Issuance authority is process-local and omitted from the wire payload.
+    /// Deserialized grants default to untrusted and cannot authorize dispatch.
+    #[serde(skip)]
+    authority: ScopedGrantAuthority,
 }
 
 /// Single constructor bundle for issuance (never N primitive arguments).

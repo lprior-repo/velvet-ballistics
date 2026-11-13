@@ -127,29 +127,52 @@ impl ExecutorCatalog {
         register: &RegisterGrant,
         params: vb_core::ScopedGrantParams,
     ) -> Result<vb_core::ScopedGrant, ExecutorError> {
-        if register.artifact_digest() != artifact.digest {
-            return Err(ExecutorError::Unauthorized);
-        }
-        if params.scope != register.scope {
-            return Err(ExecutorError::Unauthorized);
-        }
-        let pack = self.pack_for(artifact, register.ticket.action)?;
-        if pack.scope != params.scope {
-            return Err(ExecutorError::Unauthorized);
-        }
-        let contract = artifact
-            .action_contracts
-            .iter()
-            .find(|contract| contract.id == register.ticket.action)
-            .ok_or(ExecutorError::PackMismatch)?;
-        if contract.required_capabilities.as_ref() != [params.capability.clone()] {
-            return Err(ExecutorError::Unauthorized);
-        }
+        self.validate_scoped_grant_request(artifact, register, &params)?;
         Ok(vb_core::ScopedGrant::issue(
             params,
             artifact.digest,
             register.ticket,
         )?)
+    }
+
+    /// Trusted host issuance binding one grant to a concrete durable gate receipt.
+    pub fn issue_scoped_grant_for_bound_gate(
+        &self,
+        artifact: &crate::AcceptedArtifact,
+        register: &RegisterGrant,
+        params: vb_core::ScopedGrantParams,
+        approval: &vb_core::manual_gate::BoundApprovalReceipt,
+    ) -> Result<vb_core::ScopedGrant, ExecutorError> {
+        self.validate_scoped_grant_request(artifact, register, &params)?;
+        Ok(vb_core::ScopedGrant::issue_for_bound_gate(
+            params,
+            artifact.digest,
+            register.ticket,
+            approval,
+        )?)
+    }
+
+    fn validate_scoped_grant_request(
+        &self,
+        artifact: &crate::AcceptedArtifact,
+        register: &RegisterGrant,
+        params: &vb_core::ScopedGrantParams,
+    ) -> Result<(), ExecutorError> {
+        if register.artifact_digest() != artifact.digest || params.scope != register.scope {
+            return Err(ExecutorError::Unauthorized);
+        }
+        let pack = self.pack_for(artifact, register.ticket.action)?;
+        let contract = artifact
+            .action_contracts
+            .iter()
+            .find(|contract| contract.id == register.ticket.action)
+            .ok_or(ExecutorError::PackMismatch)?;
+        if pack.scope != params.scope
+            || contract.required_capabilities.as_ref() != [params.capability.clone()]
+        {
+            return Err(ExecutorError::Unauthorized);
+        }
+        Ok(())
     }
 
     /// Declared pack scope for one action; the only scope dispatch may pass on.

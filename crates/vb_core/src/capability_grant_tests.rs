@@ -284,7 +284,12 @@ fn reconcile_ignores_expiry_and_revocation() {
 #[test]
 fn grant_postcard_roundtrip_is_stable() {
     let grant = grant();
+    assert_eq!(grant.clone().authority(), grant.authority());
     let bytes = postcard::to_allocvec(&grant).unwrap();
     let decoded: ScopedGrant = postcard::from_bytes(&bytes).unwrap();
-    assert_eq!(decoded, grant);
+    assert_eq!(postcard::to_allocvec(&decoded).unwrap(), bytes);
+    assert_eq!(decoded.authority(), super::ScopedGrantAuthority::Untrusted);
+    assert_eq!(decoded.id, grant.id);
+    assert_eq!(decoded.ticket, grant.ticket);
+    assert_eq!(decoded.scope, grant.scope);
 }
