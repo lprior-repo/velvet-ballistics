@@ -110,6 +110,126 @@ fn runtime_error_diagnostic_codes_are_unique() {
 }
 
 #[test]
+fn previously_unregistered_runtime_codes_map_to_specific_symbolic_codes() {
+    assert_eq!(
+        RuntimeError::PerRunQueueDepthExceeded {
+            run: vb_core::ids::RunId::new(1),
+            pending: 3,
+            limit: 2,
+        }
+        .symbolic_code()
+        .as_str(),
+        "PER_RUN_QUEUE_DEPTH_EXCEEDED"
+    );
+    assert_eq!(
+        RuntimeError::PerRunQueueDepthExceeded {
+            run: vb_core::ids::RunId::new(1),
+            pending: 3,
+            limit: 2,
+        }
+        .diagnostic_code(),
+        DiagnosticCode::new(0x2024)
+    );
+    assert_eq!(
+        RuntimeError::AdmissionActionRegistryMismatch {
+            digest: vb_core::ids::WorkflowDigest::from_bytes([0xEE; 32]),
+            expected_count: 3,
+            submitted_count: 2,
+        }
+        .symbolic_code()
+        .as_str(),
+        "ADMISSION_ACTION_REGISTRY_MISMATCH"
+    );
+    assert_eq!(
+        RuntimeError::AdmissionActionRegistryMismatch {
+            digest: vb_core::ids::WorkflowDigest::from_bytes([0xEE; 32]),
+            expected_count: 3,
+            submitted_count: 2,
+        }
+        .diagnostic_code(),
+        DiagnosticCode::new(0x2021)
+    );
+    assert_eq!(
+        RuntimeError::AdmissionActionAbiDigestMismatch {
+            action: vb_core::ids::ActionId::new(1),
+            expected: vb_core::ids::WorkflowDigest::from_bytes([0xAA; 32]),
+            submitted: vb_core::ids::WorkflowDigest::from_bytes([0xBB; 32]),
+        }
+        .symbolic_code()
+        .as_str(),
+        "ADMISSION_ACTION_ABI_DIGEST_MISMATCH"
+    );
+    assert_eq!(
+        RuntimeError::AdmissionActionAbiDigestMismatch {
+            action: vb_core::ids::ActionId::new(1),
+            expected: vb_core::ids::WorkflowDigest::from_bytes([0xAA; 32]),
+            submitted: vb_core::ids::WorkflowDigest::from_bytes([0xBB; 32]),
+        }
+        .diagnostic_code(),
+        DiagnosticCode::new(0x2022)
+    );
+    assert_eq!(
+        RuntimeError::RetryBlockedOnUndrainedJournal {
+            run: vb_core::ids::RunId::new(7),
+        }
+        .symbolic_code()
+        .as_str(),
+        "RETRY_BLOCKED_ON_UNDRAINED_JOURNAL"
+    );
+    assert_eq!(
+        RuntimeError::RetryBlockedOnUndrainedJournal {
+            run: vb_core::ids::RunId::new(7),
+        }
+        .diagnostic_code(),
+        DiagnosticCode::new(0x2023)
+    );
+    assert_eq!(
+        RuntimeError::CompatGateBlocked {
+            run: vb_core::ids::RunId::new(1),
+            source: vb_storage::compat::CompatError::ReplayOnlyLiveEffect {
+                boundary: vb_storage::compat::CompatBoundary::IrVersion,
+            },
+        }
+        .symbolic_code()
+        .as_str(),
+        "COMPAT_GATE_BLOCKED"
+    );
+    assert_eq!(
+        RuntimeError::CompatGateBlocked {
+            run: vb_core::ids::RunId::new(1),
+            source: vb_storage::compat::CompatError::ReplayOnlyLiveEffect {
+                boundary: vb_storage::compat::CompatBoundary::IrVersion,
+            },
+        }
+        .diagnostic_code(),
+        DiagnosticCode::new(0x2025)
+    );
+    assert_eq!(
+        RuntimeError::OpenGateCapacityExceeded { capacity: 2 }
+            .symbolic_code()
+            .as_str(),
+        "OPEN_GATE_CAPACITY_EXCEEDED"
+    );
+    assert_eq!(
+        RuntimeError::OpenGateCapacityZero.symbolic_code().as_str(),
+        "OPEN_GATE_CAPACITY_ZERO"
+    );
+    let rollback = RuntimeError::RollbackFailed {
+        operation: "test",
+        primary: Box::new(RuntimeError::RunNotFound),
+        rollback: Box::new(RuntimeError::RunNotFound),
+    };
+    assert_eq!(rollback.diagnostic_code(), DiagnosticCode::new(0x2020));
+    assert_eq!(
+        DiagnosticCode::new(0x2020)
+            .symbolic_code()
+            .map(vb_core::SymbolicCode::as_str),
+        Some("ROLLBACK_FAILED")
+    );
+    assert_eq!(rollback.symbolic_code().as_str(), "RUN_NOT_FOUND");
+}
+
+#[test]
 fn runtime_error_diagnostic_code_catalog() {
     assert_eq!(
         RuntimeError::QueueFull.diagnostic_code(),

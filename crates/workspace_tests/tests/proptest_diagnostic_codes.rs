@@ -17,9 +17,9 @@
 //!
 //! # Source type
 //!
-//! `DiagnosticCode` is defined at `crates/vb_core/src/diagnostic.rs:903`
+//! `DiagnosticCode` is defined at `crates/vb_core/src/diagnostic.rs:927`
 //! as `pub struct DiagnosticCode(u16)` with the constructor
-//! `pub const fn new(code: u16) -> Self { Self(code) }` at line 908.
+//! `pub const fn new(code: u16) -> Self { Self(code) }` at line 932.
 //! The packed numeric accessor is `pub const fn code(self) -> u16`
 //! at line 1776 (NOT `.get()`, which does not exist).
 //!
@@ -260,7 +260,7 @@ const RUNTIME_ERROR_CODES: &[FrozenCode] = &[
 /// Lightweight `(name, code)` projection used for the proptest sweep.
 ///
 /// `DiagnosticCode` is `Copy` (see
-/// `crates/vb_core/src/diagnostic.rs:903`), so a slice of
+/// `crates/vb_core/src/diagnostic.rs:927`), so a slice of
 /// `(&'static str, DiagnosticCode)` is itself `Copy + Clone`, which
 /// satisfies `proptest::sample::select`'s `T: Clone` bound.
 const RUNTIME_ERROR_CODE_PAIRS: &[(&str, DiagnosticCode)] = &[
@@ -437,8 +437,8 @@ fn diagnostic_code_stability_against_frozen_baseline() {
 /// system-code range `0xFFFF_0000..=0xFFFF_FFFF`.
 ///
 /// `DiagnosticCode` is `pub struct DiagnosticCode(u16)` at
-/// `crates/vb_core/src/diagnostic.rs:901-903`, so the constructor
-/// `pub const fn new(code: u16) -> Self` at line 908 makes the upper
+/// `crates/vb_core/src/diagnostic.rs:925-927`, so the constructor
+/// `pub const fn new(code: u16) -> Self` at line 932 makes the upper
 /// `0xFFFF_0000..=0xFFFF_FFFF` range structurally unreachable on
 /// `u16`. This test asserts the bound explicitly so widening the
 /// representation (e.g., to `u32`) trips the test immediately.
@@ -521,8 +521,8 @@ fn diagnostic_code_range_and_pairwise_uniqueness() {
 /// wave-15 runtime codes and pre-existing registry codes.
 ///
 /// The registry is `pub const` at
-/// `crates/vb_core/src/diagnostic.rs:118`. Its bijection invariant is
-/// documented at lines 108-117. A linear scan over the slice is
+/// `crates/vb_core/src/diagnostic.rs:132`. Its bijection invariant is
+/// documented at lines 122-131. A linear scan over the slice is
 /// `O(registry_len)` per wave-15 row; this test does not allocate.
 #[test]
 fn diagnostic_code_registry_cross_check() {
@@ -578,9 +578,9 @@ proptest! {
     /// `DiagnosticCode::new(u).code() == u` and the constructor
     /// produces `Eq`-consistent values.
     ///
-    /// Source: `crates/vb_core/src/diagnostic.rs:908`
+    /// Source: `crates/vb_core/src/diagnostic.rs:932`
     /// `pub const fn new(code: u16) -> Self { Self(code) }` and
-    /// `crates/vb_core/src/diagnostic.rs:914`
+    /// `crates/vb_core/src/diagnostic.rs:938`
     /// `pub const fn code(self) -> u16 { self.0 }`.
     #[test]
     fn diagnostic_code_constructor_round_trip(u in any::<u16>()) {

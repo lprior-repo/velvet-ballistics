@@ -9,7 +9,7 @@
 #
 # If a value here changes intentionally, update BOTH this file AND
 # the RUNTIME_ERROR_CODES const in the proptest file, AND verify the
-# CODE_REGISTRY entry at crates/vb_core/src/diagnostic.rs:118 still
+# CODE_REGISTRY entry at crates/vb_core/src/diagnostic.rs:132 still
 # maps to the same symbolic name.
 #
 QUEUE_FULL_CODE=0x2001
