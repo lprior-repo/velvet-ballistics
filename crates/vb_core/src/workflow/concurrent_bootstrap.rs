@@ -1,4 +1,3 @@
-
 pub(crate) fn flow_error(step: crate::ids::StepIdx) -> crate::workflow::SlotFlowError {
     crate::workflow::SlotFlowError {
         step,

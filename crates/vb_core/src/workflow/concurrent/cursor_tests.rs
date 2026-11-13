@@ -1,6 +1,6 @@
-use proptest::prelude::*;
 use super::*;
 use crate::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
+use proptest::prelude::*;
 
 fn n(raw: u16, kind: K, out: Option<u16>, next: Option<u16>) -> CompiledNode {
     node(

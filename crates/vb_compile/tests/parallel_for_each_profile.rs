@@ -5,8 +5,7 @@ use vb_compile::{CompileError, CompileErrors, compile_workflow};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowIrProfile};
 use vb_core::{SlotIdx, StepIdx};
 
-const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: parallel_for_each\nwhen: {manual: {}}\n";
+const HEADER: &str = "version: velvet-ballistics/v1\nname: parallel_for_each\nwhen: {manual: {}}\n";
 
 fn source(at_once: Option<&str>) -> String {
     let at_once = at_once.map_or_else(String::new, |value| format!("      at_once: {value}\n"));
@@ -144,8 +143,10 @@ fn nested_parallel_for_each_lowers_at_its_own_position() -> Result<(), String> {
     let workflow = compile(&nested_source("3")).map_err(|errors| format!("{errors:?}"))?;
 
     assert_eq!(workflow.ir_profile(), WorkflowIrProfile::ConcurrentV3);
-    let serial = find(&workflow, |kind| matches!(kind, CompiledNodeKind::ForEachStart { .. }))
-        .ok_or("missing serial outer")?;
+    let serial = find(&workflow, |kind| {
+        matches!(kind, CompiledNodeKind::ForEachStart { .. })
+    })
+    .ok_or("missing serial outer")?;
     let concurrent = find(&workflow, |kind| {
         matches!(kind, CompiledNodeKind::ForEachConcurrentStart { .. })
     })

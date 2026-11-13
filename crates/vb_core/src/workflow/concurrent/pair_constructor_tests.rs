@@ -84,8 +84,8 @@ fn concurrent_ctor_accepts_minimal_pair() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[test]
-fn concurrent_ctor_rejects_nested_together_at_any_depth(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn concurrent_ctor_rejects_nested_together_at_any_depth() -> Result<(), Box<dyn std::error::Error>>
+{
     let mut parts = build_parts();
     parts.slot_count = 2;
     parts.nodes = Box::new([
@@ -163,8 +163,8 @@ fn concurrent_ctor_rejects_nested_together_at_any_depth(
 }
 
 #[test]
-fn concurrent_ctor_rejects_suspending_lane_nodes_with_typed_error(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn concurrent_ctor_rejects_suspending_lane_nodes_with_typed_error()
+-> Result<(), Box<dyn std::error::Error>> {
     let cases = [
         K::Do {
             action: crate::ids::ActionId::new(0),

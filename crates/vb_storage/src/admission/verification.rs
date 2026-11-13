@@ -95,9 +95,7 @@ pub fn verify_accepted_artifact(
     };
     let workflow = match profile {
         WorkflowIrProfile::LegacyV2 => CompiledWorkflow::try_from_parts(parts),
-        WorkflowIrProfile::ConcurrentV3 => {
-            CompiledWorkflow::try_from_concurrent_parts(parts)
-        }
+        WorkflowIrProfile::ConcurrentV3 => CompiledWorkflow::try_from_concurrent_parts(parts),
     }
     .map_err(JournalError::WorkflowReconstruction)?;
     let expected = prepare_compiled_artifact(

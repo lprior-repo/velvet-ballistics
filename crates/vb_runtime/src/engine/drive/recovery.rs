@@ -35,7 +35,6 @@ pub(crate) struct DriveState {
     active_concurrent_lane: Option<vb_core::ids::StepIdx>,
 }
 
-
 impl DriveState {
     /// Creates a fresh drive state with no recorded gaps.
     #[must_use]
@@ -54,10 +53,7 @@ impl DriveState {
         self.active_concurrent_lane.replace(owner)
     }
 
-    pub(crate) fn restore_concurrent_lane(
-        &mut self,
-        previous: Option<vb_core::ids::StepIdx>,
-    ) {
+    pub(crate) fn restore_concurrent_lane(&mut self, previous: Option<vb_core::ids::StepIdx>) {
         self.active_concurrent_lane = previous;
     }
 

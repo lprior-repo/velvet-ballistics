@@ -160,7 +160,9 @@ fn together_group_constructs_with_cached_frame_and_group_peaks() {
         CompiledWorkflow::try_from_concurrent_parts(parts(together_nodes(), 3)).expect("valid");
 
     assert_eq!(workflow.ir_profile(), WorkflowIrProfile::ConcurrentV3);
-    let requirements = workflow.concurrent_requirements().expect("concurrent cache");
+    let requirements = workflow
+        .concurrent_requirements()
+        .expect("concurrent cache");
     assert_eq!(requirements.frames(), 3);
     assert_eq!(requirements.groups(), 1);
 }
@@ -170,7 +172,9 @@ fn zero_work_foreach_constructs_with_root_frame_and_group() {
     let workflow =
         CompiledWorkflow::try_from_concurrent_parts(zero_work_foreach_parts()).expect("valid");
 
-    let requirements = workflow.concurrent_requirements().expect("concurrent cache");
+    let requirements = workflow
+        .concurrent_requirements()
+        .expect("concurrent cache");
     assert_eq!(requirements.frames(), 1);
     assert_eq!(requirements.groups(), 1);
 }
@@ -375,7 +379,9 @@ fn nested_concurrent_group_multiplies_frame_and_group_peaks() {
     let workflow = CompiledWorkflow::try_from_concurrent_parts(nested_together_in_foreach_parts())
         .expect("nested group valid");
 
-    let requirements = workflow.concurrent_requirements().expect("concurrent cache");
+    let requirements = workflow
+        .concurrent_requirements()
+        .expect("concurrent cache");
     assert_eq!(requirements.frames(), 7);
     assert_eq!(requirements.groups(), 3);
 }
@@ -385,7 +391,9 @@ fn legacy_loop_inside_lane_keeps_one_lane_frame() {
     let workflow = CompiledWorkflow::try_from_concurrent_parts(legacy_foreach_in_lane_parts())
         .expect("legacy loop in lane valid");
 
-    let requirements = workflow.concurrent_requirements().expect("concurrent cache");
+    let requirements = workflow
+        .concurrent_requirements()
+        .expect("concurrent cache");
     assert_eq!(requirements.frames(), 3);
     assert_eq!(requirements.groups(), 1);
 }
@@ -431,10 +439,7 @@ fn serial_workflow_stays_legacy_and_has_no_concurrent_cache() {
 #[test]
 fn lane_end_with_foreign_owner_is_rejected() {
     let mut nodes = together_nodes();
-    nodes
-        .get_mut(2)
-        .expect("lane end")
-        .kind = K::ConcurrentLaneEnd {
+    nodes.get_mut(2).expect("lane end").kind = K::ConcurrentLaneEnd {
         owner: StepIdx::new(5),
         result: None,
     };
@@ -450,10 +455,7 @@ fn lane_end_with_foreign_owner_is_rejected() {
 #[test]
 fn join_owner_mismatch_is_rejected() {
     let mut nodes = together_nodes();
-    nodes
-        .get_mut(5)
-        .expect("join")
-        .kind = K::ConcurrentGroupJoin {
+    nodes.get_mut(5).expect("join").kind = K::ConcurrentGroupJoin {
         owner: StepIdx::new(1),
     };
 
@@ -468,10 +470,7 @@ fn join_owner_mismatch_is_rejected() {
 #[test]
 fn branch_entry_at_or_after_join_is_rejected() {
     let mut nodes = together_nodes();
-    nodes
-        .get_mut(0)
-        .expect("start")
-        .kind = K::TogetherConcurrentStart {
+    nodes.get_mut(0).expect("start").kind = K::TogetherConcurrentStart {
         branches: Box::new([StepIdx::new(1), StepIdx::new(5)]),
         join: StepIdx::new(5),
     };
@@ -489,10 +488,7 @@ fn branch_entry_at_or_after_join_is_rejected() {
 #[test]
 fn zero_at_once_is_rejected() {
     let mut nodes = zero_work_foreach_nodes();
-    nodes
-        .get_mut(0)
-        .expect("start")
-        .kind = K::ForEachConcurrentStart {
+    nodes.get_mut(0).expect("start").kind = K::ForEachConcurrentStart {
         input: SlotIdx::new(0),
         item_slot: SlotIdx::new(1),
         limit: FanoutLimit::new(0),

@@ -44,7 +44,9 @@ pub(super) fn check_for_each_capacity(
         || requirements.groups() == 0
         || capacity > usize::from(plan.resource_contract().max_fanout)
     {
-        return Err(invariant("concurrent replay capacity exceeds checked bounds"));
+        return Err(invariant(
+            "concurrent replay capacity exceeds checked bounds",
+        ));
     }
     Ok(())
 }

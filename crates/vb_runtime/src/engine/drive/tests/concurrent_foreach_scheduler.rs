@@ -22,7 +22,9 @@ fn unchecked_plan(join_owner: StepIdx) -> CompiledWorkflow {
         ),
         node(
             StepIdx::new(1),
-            CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+            CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
             Some(SlotIdx::new(1)),
             Some(StepIdx::new(2)),
         ),
@@ -54,9 +56,15 @@ fn unchecked_plan(join_owner: StepIdx) -> CompiledWorkflow {
 #[test]
 fn succeeded_pc_requires_exact_concurrent_foreach_body_owner() {
     let valid = unchecked_plan(StepIdx::ZERO);
-    assert_eq!(concurrent_foreach_body_owner(&valid, StepIdx::new(1)), Some(StepIdx::ZERO));
+    assert_eq!(
+        concurrent_foreach_body_owner(&valid, StepIdx::new(1)),
+        Some(StepIdx::ZERO)
+    );
     assert_eq!(concurrent_foreach_body_owner(&valid, StepIdx::new(2)), None);
 
     let wrong_owner = unchecked_plan(StepIdx::new(1));
-    assert_eq!(concurrent_foreach_body_owner(&wrong_owner, StepIdx::new(1)), None);
+    assert_eq!(
+        concurrent_foreach_body_owner(&wrong_owner, StepIdx::new(1)),
+        None
+    );
 }

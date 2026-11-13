@@ -142,7 +142,9 @@ fn validate_node_slots(
         CompiledNodeKind::RetryCheck { policy_slot, .. } => {
             check_slot(*policy_slot, node_index, slot_count)?;
         }
-        CompiledNodeKind::ForEachConcurrentStart { input, item_slot, .. } => {
+        CompiledNodeKind::ForEachConcurrentStart {
+            input, item_slot, ..
+        } => {
             check_slot(*input, node_index, slot_count)?;
             check_slot(*item_slot, node_index, slot_count)?;
         }

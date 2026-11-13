@@ -27,12 +27,14 @@ fn mode_cap(kind: &K, owner: StepIdx) -> Result<(ConcurrentMode, u16), WorkflowE
             ConcurrentMode::ForEachOrdered,
             foreach_capacity(limit.get(), at_once.get())?,
         )),
-        K::TogetherConcurrentStart { branches, .. } => {
-            Ok((ConcurrentMode::TogetherOrdered, fixed_capacity(branches.len())?))
-        }
-        K::FirstSuccessStart { branches, .. } => {
-            Ok((ConcurrentMode::FirstSuccess, fixed_capacity(branches.len())?))
-        }
+        K::TogetherConcurrentStart { branches, .. } => Ok((
+            ConcurrentMode::TogetherOrdered,
+            fixed_capacity(branches.len())?,
+        )),
+        K::FirstSuccessStart { branches, .. } => Ok((
+            ConcurrentMode::FirstSuccess,
+            fixed_capacity(branches.len())?,
+        )),
         _ => Err(WorkflowError::LoopRegionUnpaired { control: owner }),
     }
 }

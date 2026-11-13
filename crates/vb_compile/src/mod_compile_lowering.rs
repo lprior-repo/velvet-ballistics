@@ -56,11 +56,11 @@ mod proptest_step_offset;
 // vb-8eocj.9.1: rebound from dead part_03 caller API to the lexical
 // N-step bounded_collect production lowering.
 #[cfg(test)]
-#[path = "mod_compile_lowering/canonical_collect_scoped_tests.rs"]
-mod canonical_collect_scoped_tests;
-#[cfg(test)]
 #[path = "mod_compile_lowering/canonical_choose_scoped_tests.rs"]
 mod canonical_choose_scoped_tests;
+#[cfg(test)]
+#[path = "mod_compile_lowering/canonical_collect_scoped_tests.rs"]
+mod canonical_collect_scoped_tests;
 #[cfg(test)]
 #[path = "mod_compile_lowering/canonical_for_each_scoped_tests.rs"]
 mod canonical_for_each_scoped_tests;
