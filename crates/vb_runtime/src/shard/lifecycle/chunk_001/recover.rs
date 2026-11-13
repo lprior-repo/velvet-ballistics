@@ -276,7 +276,7 @@ impl Shard {
                 // the run suspended. Recovery MUST NOT drive the wait node:
                 // re-driving would emit a duplicate WaitScheduledEvent.
                 if let Some(timer) = boundary.waiting_timer() {
-                    self.restore_recovered_timer(run, timer.step(), PendingTimerKind::Wait)?;
+                    self.restore_recovered_timer_boundary(run, timer, PendingTimerKind::Wait)?;
                     self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
                     return Ok(());
                 }
@@ -287,7 +287,7 @@ impl Shard {
                 // ask ticket lookup refuses (ask_timer_matches) and the
                 // answer path cannot validate the ticket.
                 if let Some(ask) = boundary.timed_ask() {
-                    self.restore_recovered_timer(run, ask.step(), PendingTimerKind::Ask)?;
+                    self.restore_recovered_timer_boundary(run, ask, PendingTimerKind::Ask)?;
                     self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
                     self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
                     return Ok(());

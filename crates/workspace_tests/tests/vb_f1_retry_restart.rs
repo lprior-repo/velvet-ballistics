@@ -58,11 +58,10 @@ fn fjall_retry_delay_survives_waiting_and_action_restarts_then_finishes_once() -
             .generation
             .checked_add(1)
             .ok_or("generation overflow")?;
-        runtime.timer_entry_fired(forged)?;
-        assert!(matches!(
-            runtime.tick_all(),
+        assert_eq!(
+            runtime.timer_entry_fired(forged),
             Err(RuntimeError::InvalidTimerFire)
-        ));
+        );
         assert_eq!(runtime.capture_timer_entry(RUN)?, entry);
         assert_eq!(journal.events_for_run_full(RUN)?, prefix);
         wait_for_action(&mut runtime, &timer)?;

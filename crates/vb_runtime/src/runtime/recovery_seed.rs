@@ -1,3 +1,6 @@
+#[path = "recovery_seed/owned.rs"]
+mod owned;
+
 impl Runtime {
     /// Reconstructs the typed recovery seed plus any replayed frame/store
     /// evidence for a loaded workflow.
@@ -10,43 +13,14 @@ impl Runtime {
         workflow: &CompiledWorkflow,
         retained_inputs: &crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<RecoveredSeedEvidence> {
-        let input_store = retained_inputs.store_checkpoint();
-        if (vb_storage::recovery::is_owned_for_each_contract(workflow)
-            || vb_storage::recovery::is_owned_input_replay_contract(
-                workflow,
-                retained_inputs.initial_inputs(),
-                input_store.as_ref(),
-            ))
-            && let Some(evidence) =
-                vb_storage::recovery::replay_owned_for_each_with_collect_snapshots(
-                    events,
-                    workflow,
-                    retained_inputs.initial_inputs(),
-                    input_store.as_ref(),
-                )
-                .map_err(|error| RuntimeError::Recovery {
-                    error: error.to_string(),
-                })?
+        if let Some(evidence) =
+            Self::recover_owned_seed_evidence(events, workflow, retained_inputs)?
         {
-            Self::validate_replayed_collect_snapshots(
-                events,
-                workflow,
-                &evidence.collect_snapshots,
-            )?;
-            let replay = evidence.replay;
-            return Ok(RecoveredSeedEvidence {
-                seed: replay.product,
-                complete_frame: Some(replay.frame),
-                recovered_store: Some(replay.store),
-            });
+            return Ok(evidence);
         }
-        let seed = Self::recover_seed_for_loaded_workflow(events, workflow)?;
-        let complete_frame =
-            vb_storage::recovery::complete_scalar::replay_complete_scalar(events, workflow)
-                .map_err(|error| RuntimeError::Recovery {
-                    error: error.to_string(),
-                })?
-                .map(|replayed| replayed.into_frame());
+        let (seed, repaired_failure_route) =
+            Self::recover_seed_for_loaded_workflow(events, workflow)?;
+        let complete_frame = Self::complete_scalar_frame(events, workflow, repaired_failure_route)?;
         Ok(RecoveredSeedEvidence {
             seed,
             complete_frame,
@@ -54,21 +28,50 @@ impl Runtime {
         })
     }
 
-    /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
-    /// for a workflow-aware replay path.
-    ///
-    /// **FINDING-002 typestate closure.** Uses the typed entry point
-    /// `recover_runtime_frame_seed_from_events_with_workflow` so the
-    /// storage-classified cannot-resume/resumable product is the source
-    /// of truth; the runtime never sees the raw DTO.
-    fn recover_seed_for_loaded_workflow(
+    fn complete_scalar_frame(
         events: &[vb_storage::JournalEvent],
         workflow: &CompiledWorkflow,
-    ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
-        vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(events, workflow)
+        repaired_failure_route: bool,
+    ) -> RuntimeResult<Option<vb_core::RunFrame>> {
+        if repaired_failure_route {
+            return Ok(None);
+        }
+        vb_storage::recovery::complete_scalar::replay_complete_scalar(events, workflow)
+            .map(|replayed| replayed.map(|complete| complete.into_frame()))
             .map_err(|error| RuntimeError::Recovery {
                 error: error.to_string(),
             })
+    }
+
+    /// Reconstructs the workflow-aware seed and repairs only a partial handler route.
+    fn recover_seed_for_loaded_workflow(
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+    ) -> RuntimeResult<(vb_storage::recovery::RecoveryFrameSeedProduct, bool)> {
+        let product = vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(
+            events, workflow,
+        )
+        .map_err(|error| RuntimeError::Recovery {
+            error: error.to_string(),
+        })?;
+        let (seed, repaired) = Self::repair_routed_action_failure(product, events, workflow)?;
+        Ok((seed, repaired))
+    }
+
+    fn repair_routed_action_failure(
+        product: vb_storage::recovery::RecoveryFrameSeedProduct,
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+    ) -> RuntimeResult<(vb_storage::recovery::RecoveryFrameSeedProduct, bool)> {
+        let mut seed = product.seed().clone();
+        let repaired = crate::recovery::restore_routed_action_failure(&mut seed, events, workflow)
+            .map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })?;
+        Ok((
+            vb_storage::recovery::RecoveryFrameSeedProduct::from_seed(seed),
+            repaired,
+        ))
     }
 
     /// Builds the recovered live-run boundary from the typed seed product.

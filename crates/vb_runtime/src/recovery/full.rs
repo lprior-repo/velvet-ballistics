@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod action_failure_routing;
 mod admission;
 mod arena;
 mod boundary;
@@ -21,6 +22,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 
+pub(crate) use action_failure_routing::{handler_route_for_failure, restore_routed_action_failure};
 pub(crate) use admission::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     action_contract_abi_digest, validate_recovered_admission_evidence,

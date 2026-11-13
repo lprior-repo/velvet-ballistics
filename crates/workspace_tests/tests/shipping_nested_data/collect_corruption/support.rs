@@ -14,6 +14,8 @@ pub(super) enum Corruption {
     Cursor,
     PageSize,
     ItemCount,
+    CurrentPage,
+    Limit,
     Source,
     Taint,
     MissingFrameExtra,
@@ -93,6 +95,16 @@ pub(super) fn mutate_first_collect_capture(
                     .item_count
                     .checked_add(1)
                     .ok_or("item count overflow")?
+            }
+            Corruption::CurrentPage => {
+                state.current_page = vb_core::ListId::new(if state.current_page.get() == 77 {
+                    78
+                } else {
+                    77
+                });
+            }
+            Corruption::Limit => {
+                state.limit = state.limit.checked_add(1).ok_or("limit overflow")?;
             }
             Corruption::Source => {
                 state.source = vb_core::ListId::new(if state.source.get() == 77 { 78 } else { 77 });
@@ -195,6 +207,42 @@ pub(super) fn has_collect_start_capture(
         }
         _ => false,
     })
+}
+
+pub(super) fn has_none_collect_start_extra(
+    events: &[JournalEvent],
+    workflow: &vb_core::CompiledWorkflow,
+) -> TestResult<bool> {
+    let mut active_step = None;
+    for event in events {
+        match event {
+            JournalEvent::StepStarted { step, .. } => active_step = Some(*step),
+            JournalEvent::SlotWrittenEvent { slot, extra, .. } => {
+                let Some(step) = active_step else { continue };
+                let Some(node) = workflow.node(step) else {
+                    continue;
+                };
+                let vb_core::CompiledNodeKind::CollectStart { source, .. } = node.kind else {
+                    continue;
+                };
+                if node.output.slot().unwrap_or(source) == *slot {
+                    let bytes = extra.as_deref().ok_or("CollectStart missing envelope")?;
+                    let DecodedSlotWrittenExtra::Envelope(envelope) =
+                        vb_storage::decode_slot_written_extra(bytes)
+                            .map_err(|error| format!("extra decode: {error:?}"))?
+                    else {
+                        return Err("CollectStart uses legacy extra".into());
+                    };
+                    return Ok(envelope.frame_extra.is_none());
+                }
+            }
+            JournalEvent::StepSucceeded { .. } | JournalEvent::StepFailed { .. } => {
+                active_step = None;
+            }
+            _ => {}
+        }
+    }
+    Ok(false)
 }
 
 fn event_extra_mut(event: &mut JournalEvent) -> TestResult<&mut Option<Vec<u8>>> {

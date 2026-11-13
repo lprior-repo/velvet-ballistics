@@ -13,6 +13,15 @@ impl Runtime {
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
         self.shard_for(run)?
             .validate_secret_presence(&recovered.workflow)?;
+        if crate::recovery::run_is_currently_terminal(&prefix.events)
+            && let Ok(hydration) = vb_storage::recovery::summarize_recovery_events(&prefix.events)
+        {
+            return Ok(
+                crate::recovery::RuntimeRecoveryProduct::cannot_resume_terminal(
+                    hydration.summary(),
+                ),
+            );
+        }
         let retained_inputs = crate::recovery::load_retained_inputs_for_recovery(
             &prefix.events,
             fjall_journal.as_ref(),
@@ -159,15 +168,6 @@ impl Runtime {
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         if let Some(product) = self.retry_timer_recovery_product(run, &prefix, &recovered)? {
             return Ok(product);
-        }
-        if crate::recovery::run_is_currently_terminal(&prefix.events)
-            && let Ok(hydration) = vb_storage::recovery::summarize_recovery_events(&prefix.events)
-        {
-            return Ok(
-                crate::recovery::RuntimeRecoveryProduct::cannot_resume_terminal(
-                    hydration.summary(),
-                ),
-            );
         }
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
