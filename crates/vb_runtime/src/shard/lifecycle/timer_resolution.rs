@@ -74,6 +74,11 @@ impl Shard {
         run: RunId,
         preceding_events: usize,
     ) -> RuntimeResult<u64> {
+        if self.journal.storage_journal().is_none() {
+            return self
+                .next_pending_timer_generation(run)
+                .ok_or(RuntimeError::InvalidTimerFire);
+        }
         let offset = u64::try_from(preceding_events)
             .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
         self.journal_sequence_for(run)

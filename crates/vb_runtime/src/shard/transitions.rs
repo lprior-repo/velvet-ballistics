@@ -175,14 +175,20 @@ impl Shard {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
-        let ask_boundary_seq = if kind == PendingTimerKind::Ask {
-            self.reserve_pending_ask_authority_slot(run)?;
-            Some(self.journal_sequence_for(run))
+        let generation = if register_timer {
+            match self.scheduled_timer_generation(run, 0) {
+                Ok(generation) => Some(generation),
+                Err(error) => {
+                    self.run_state_insert(run, state)?;
+                    return Err(error);
+                }
+            }
         } else {
             None
         };
-        let generation = if register_timer {
-            Some(self.scheduled_timer_generation(run, 0)?)
+        let ask_boundary_seq = if kind == PendingTimerKind::Ask {
+            self.reserve_pending_ask_authority_slot(run)?;
+            Some(self.journal_sequence_for(run))
         } else {
             None
         };
