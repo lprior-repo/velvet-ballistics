@@ -7,6 +7,9 @@
 #[path = "vb_7x0ol_probe_registered_executor/policy_dispatch.rs"]
 mod policy_dispatch;
 
+#[path = "vb_7x0ol_probe_registered_executor/runtime_parity.rs"]
+mod runtime_parity;
+
 #[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
 mod scoped_grant_fixture;
 
