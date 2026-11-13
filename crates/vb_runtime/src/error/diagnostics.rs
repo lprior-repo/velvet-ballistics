@@ -46,7 +46,7 @@ impl RuntimeError {
     pub const ENGINE_DRIVE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x201B);
     pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
     pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
-    pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
+    pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x2029);
     pub const RETRY_BLOCKED_ON_UNDRAINED_JOURNAL_CODE: DiagnosticCode = DiagnosticCode::new(0x2023);
     pub const PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2024);
     pub const COMPAT_GATE_BLOCKED_CODE: DiagnosticCode = DiagnosticCode::new(0x2025);

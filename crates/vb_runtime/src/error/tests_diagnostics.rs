@@ -1,5 +1,6 @@
 use super::RuntimeError;
 use std::error::Error;
+use std::str::FromStr;
 use std::sync::Arc;
 use vb_core::DiagnosticCode;
 
@@ -166,5 +167,59 @@ fn runtime_error_diagnostic_code_catalog() {
     assert_eq!(
         RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
         DiagnosticCode::new(0x200E)
+    );
+}
+
+#[test]
+fn post_wave15_runtime_diagnostic_codes_are_unique_and_pinned() {
+    let codes = [
+        RuntimeError::ADMISSION_CAPABILITY_COUNT_MISMATCH_CODE,
+        RuntimeError::ROLLBACK_FAILED_CODE,
+        RuntimeError::ADMISSION_ACTION_REGISTRY_MISMATCH_CODE,
+        RuntimeError::ADMISSION_ACTION_ABI_DIGEST_MISMATCH_CODE,
+        RuntimeError::RETRY_BLOCKED_ON_UNDRAINED_JOURNAL_CODE,
+        RuntimeError::PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE,
+        RuntimeError::COMPAT_GATE_BLOCKED_CODE,
+        RuntimeError::SECRET_UNAVAILABLE_CODE,
+        RuntimeError::INTROSPECTION_EPOCH_EXHAUSTED_CODE,
+    ];
+    let expected: [u16; 9] = [
+        0x201F, 0x2020, 0x2021, 0x2022, 0x2023, 0x2024, 0x2025, 0x2026, 0x2029,
+    ];
+    for (code, expected) in codes.iter().zip(expected.iter()) {
+        assert_eq!(code.code(), *expected);
+    }
+    for (i, left) in codes.iter().enumerate() {
+        for right in codes.iter().skip(i + 1) {
+            assert_ne!(left.code(), right.code());
+        }
+    }
+}
+
+#[test]
+fn deduped_201f_variants_map_to_distinct_registered_codes() {
+    let mismatch = RuntimeError::AdmissionCapabilityCountMismatch {
+        required_count: 3,
+        granted_count: 4,
+    };
+    let exhausted = RuntimeError::IntrospectionEpochExhausted;
+    assert_eq!(mismatch.diagnostic_code(), DiagnosticCode::new(0x201F));
+    assert_eq!(exhausted.diagnostic_code(), DiagnosticCode::new(0x2029));
+    assert_ne!(mismatch.diagnostic_code(), exhausted.diagnostic_code());
+    assert_eq!(
+        mismatch.symbolic_code().as_str(),
+        "ADMISSION_CAPABILITY_COUNT_MISMATCH"
+    );
+    assert_eq!(
+        exhausted.symbolic_code().as_str(),
+        "INTROSPECTION_EPOCH_EXHAUSTED"
+    );
+    assert_eq!(
+        DiagnosticCode::from_str("E201F"),
+        Ok(DiagnosticCode::new(0x201F))
+    );
+    assert_eq!(
+        DiagnosticCode::from_str("E2029"),
+        Ok(DiagnosticCode::new(0x2029))
     );
 }
