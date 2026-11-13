@@ -193,24 +193,29 @@ fn reserve_tenant_cost(
         .tenant_usage
         .tenant_cost_usage(tenant)
         .map_err(map_budget_error)?;
+    checked_tenant_reservation(recorded, ledger.tenant_limit, cost)?;
+    ledger
+        .tenant_usage
+        .record_tenant_cost(tenant, cost)
+        .map_err(map_budget_error)
+}
+
+fn checked_tenant_reservation(recorded: u64, limit: u64, cost: u64) -> RuntimeResult<()> {
     let next = recorded
         .checked_add(cost)
         .ok_or(RuntimeError::ResourceQuotaExceeded {
             resource: "tenant_quota_cost_units",
             requested: u64::MAX,
-            available: ledger.tenant_limit,
+            available: limit,
         })?;
-    if next > ledger.tenant_limit {
+    if next > limit {
         return Err(RuntimeError::ResourceQuotaExceeded {
             resource: "tenant_quota_cost_units",
             requested: next,
-            available: ledger.tenant_limit,
+            available: limit,
         });
     }
-    ledger
-        .tenant_usage
-        .record_tenant_cost(tenant, cost)
-        .map_err(map_budget_error)
+    Ok(())
 }
 
 fn map_budget_error(error: AggregateBudgetError) -> RuntimeError {

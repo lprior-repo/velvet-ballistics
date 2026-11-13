@@ -9,28 +9,37 @@ impl ShardCommandQueue {
         let run = cmd.run_id();
         let submit_run = pending_submit_run(&cmd);
         let submit_depth = submit_depth(&cmd);
-        let mut pending = Self::lock_or_recover(&self.pending);
-        let mut admitted = Self::lock_or_recover(&self.admitted_depth);
-        let mut submissions = Self::lock_or_recover(&self.pending_submissions);
-        let quota = pending_quota(submit_run, &submissions, quota_candidate);
-        let mut indexes = PendingQueueIndexes {
-            pending: &mut pending,
-            admitted: &mut admitted,
-            submissions: &mut submissions,
-        };
-        let next = indexes.next_pending(run, limit, submit_depth)?;
-        let next_submission = indexes.next_submission(submit_run)?;
+        let mut indexes = self.lock_indexes();
+        let quota = pending_quota(submit_run, &indexes.submissions, quota_candidate);
+        let update = indexes.plan(run, limit, submit_depth, submit_run)?;
         reserve_queued_quota(quota, quota_ledger)?;
+        self.push_reserved(
+            PendingQueuePush {
+                command: cmd,
+                quota,
+                ledger: quota_ledger,
+            },
+            &mut indexes,
+            update,
+        )
+    }
+
+    fn push_reserved(
+        &self,
+        push: PendingQueuePush<'_>,
+        indexes: &mut PendingQueueIndexes<'_>,
+        update: PendingIndexUpdate,
+    ) -> RuntimeResult<()> {
         match self.inner.push(QueuedShardCommand {
-            command: cmd,
-            quota,
+            command: push.command,
+            quota: push.quota,
         }) {
             Ok(()) => {
-                indexes.update(next, submit_depth, next_submission);
+                indexes.update(update);
                 Ok(())
             }
             Err(_) => {
-                self.rollback_reservation(crate::RuntimeError::QueueFull, quota, quota_ledger)
+                self.rollback_reservation(crate::RuntimeError::QueueFull, push.quota, push.ledger)
             }
         }
     }
@@ -59,6 +68,14 @@ impl ShardCommandQueue {
                 error,
                 rollback,
             )),
+        }
+    }
+
+    fn lock_indexes(&self) -> PendingQueueIndexes<'_> {
+        PendingQueueIndexes {
+            pending: Self::lock_or_recover(&self.pending),
+            admitted: Self::lock_or_recover(&self.admitted_depth),
+            submissions: Self::lock_or_recover(&self.pending_submissions),
         }
     }
 }
@@ -93,12 +110,38 @@ fn pending_quota(
 }
 
 struct PendingQueueIndexes<'a> {
-    pending: &'a mut indexmap::IndexMap<RunId, u32>,
-    admitted: &'a mut indexmap::IndexMap<RunId, u32>,
-    submissions: &'a mut indexmap::IndexMap<RunId, u32>,
+    pending: std::sync::MutexGuard<'a, indexmap::IndexMap<RunId, u32>>,
+    admitted: std::sync::MutexGuard<'a, indexmap::IndexMap<RunId, u32>>,
+    submissions: std::sync::MutexGuard<'a, indexmap::IndexMap<RunId, u32>>,
+}
+
+struct PendingQueuePush<'a> {
+    command: ShardCommand,
+    quota: Option<PendingQuotaReservation>,
+    ledger: Option<&'a crate::quota::SharedQuotaLedger>,
+}
+
+struct PendingIndexUpdate {
+    pending: Option<(RunId, u32)>,
+    submit_depth: Option<(RunId, u32)>,
+    submission: Option<(RunId, u32)>,
 }
 
 impl PendingQueueIndexes<'_> {
+    fn plan(
+        &self,
+        run: Option<RunId>,
+        limit: Option<u32>,
+        submit_depth: Option<(RunId, u32)>,
+        submit_run: Option<RunId>,
+    ) -> RuntimeResult<PendingIndexUpdate> {
+        Ok(PendingIndexUpdate {
+            pending: self.next_pending(run, limit, submit_depth)?,
+            submit_depth,
+            submission: self.next_submission(submit_run)?,
+        })
+    }
+
     fn next_pending(
         &self,
         run: Option<RunId>,
@@ -136,20 +179,15 @@ impl PendingQueueIndexes<'_> {
             })
     }
 
-    fn update(
-        &mut self,
-        pending: Option<(RunId, u32)>,
-        submit_depth: Option<(RunId, u32)>,
-        submission: Option<(RunId, u32)>,
-    ) {
-        if let Some((run, count)) = pending {
+    fn update(&mut self, update: PendingIndexUpdate) {
+        if let Some((run, count)) = update.pending {
             let _previous = self.pending.insert(run, count);
         }
-        if let Some((run, depth)) = submit_depth {
+        if let Some((run, depth)) = update.submit_depth {
             let recorded = self.admitted.entry(run).or_insert(depth);
             *recorded = (*recorded).min(depth);
         }
-        if let Some((run, count)) = submission {
+        if let Some((run, count)) = update.submission {
             let _previous = self.submissions.insert(run, count);
         }
     }
