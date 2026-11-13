@@ -7,8 +7,8 @@ use crate::frame::RunFrame;
 use crate::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotBranch, WorkflowParts,
-    node,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    InputSlotKind, ResourceContract, SlotBranch, WorkflowParts, node,
 };
 
 pub(super) struct ReplayShape {
@@ -21,6 +21,8 @@ pub(super) struct ReplayShape {
     run_id: RunId,
     taint_a: Taint,
     taint_b: Taint,
+    input_values: [bool; 8],
+    input_taints: [Taint; 8],
 }
 
 impl kani::Arbitrary for ReplayShape {
@@ -40,6 +42,8 @@ impl kani::Arbitrary for ReplayShape {
             run_id: RunId::new(kani::any()),
             taint_a: kani::any(),
             taint_b: kani::any(),
+            input_values: kani::any(),
+            input_taints: kani::any(),
         }
     }
 }
@@ -121,18 +125,31 @@ fn generated_fixed<const N: usize>(
     Box::new(array)
 }
 
+fn generated_name() -> Box<str> {
+    if kani::any::<bool>() {
+        "kani_plan".into()
+    } else {
+        "replay_shape".into()
+    }
+}
+
+fn inputs(shape: &ReplayShape) -> Box<[CompiledInputSlot]> {
+    (0..shape.slots)
+        .map(|id| CompiledInputSlot {
+            slot: SlotIdx::new(id),
+            kind: InputSlotKind::Bool,
+            constraint: CompiledInputConstraint::required(),
+        })
+        .collect()
+}
+
 fn parts_for<const N: usize>(
     shape: &ReplayShape,
     branches: &[SlotBranch],
     fallback: Option<StepIdx>,
 ) -> WorkflowParts {
     WorkflowParts {
-        name: if kani::any() {
-            "kani_plan"
-        } else {
-            "replay_shape"
-        }
-        .into(),
+        name: generated_name(),
         digest: WorkflowDigest::from_bytes(kani::any()),
         semantic_source_identity: kani::any(),
         nodes: generated_fixed::<N>(shape, branches, fallback),
@@ -144,7 +161,8 @@ fn parts_for<const N: usize>(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-        input_slots: Box::new([]),
+        input_slots: inputs(shape),
+        source_metadata: None,
     }
 }
 
@@ -173,8 +191,25 @@ pub(super) fn plan(
     }
 }
 
+fn initialize_inputs(shape: &ReplayShape, frame: &mut RunFrame) -> Result<(), CoreError> {
+    (0..shape.slots).try_for_each(|slot| {
+        let value = shape
+            .input_values
+            .get(usize::from(slot))
+            .copied()
+            .ok_or_else(setup_error)?;
+        let taint = shape
+            .input_taints
+            .get(usize::from(slot))
+            .copied()
+            .ok_or_else(setup_error)?;
+        frame.write_slot_with_taint(SlotIdx::new(slot), SlotValue::Bool(value), taint)
+    })
+}
+
 pub(super) fn frame(shape: &ReplayShape, a: bool, b: bool) -> Result<RunFrame, CoreError> {
     let mut frame = RunFrame::new(shape.run_id, StepIdx::new(0), shape.steps, shape.slots)?;
+    initialize_inputs(shape, &mut frame)?;
     frame.write_slot_with_taint(shape.condition_a, SlotValue::Bool(a), shape.taint_a)?;
     frame.write_slot_with_taint(shape.condition_b, SlotValue::Bool(b), shape.taint_b)?;
     Ok(frame)
@@ -208,6 +243,7 @@ pub(super) fn cover_shape(shape: &ReplayShape) {
         "original second condition",
     );
 }
+
 fn generated_next(
     shape: &ReplayShape,
     branches: &[SlotBranch],
