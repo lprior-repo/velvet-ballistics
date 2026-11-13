@@ -1,0 +1,1 @@
+/home/lewis/src/isoloated/velvet-ballistics-v1-rust-closure-5090-20261112/crates/workspace_tests/.evidence/vb-jpq7.48/scratch/closure-evidence-tests/517661/non-integer-exit

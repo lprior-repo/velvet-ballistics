@@ -1,0 +1,17 @@
+#!/bin/sh
+echo "$PWD" > "${BD_CWD_CAPTURE}"
+for arg in "$@"; do
+printf '%s\n' "$arg" >> "${BD_ARGS_CAPTURE}"
+done
+case "$1" in
+list)
+if [ "${BD_RESPONSE}" != "" ]; then
+/usr/bin/cat "${BD_RESPONSE}"
+else
+echo '[]'
+fi
+;;
+*)
+exit 1
+;;
+esac

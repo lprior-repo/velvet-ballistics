@@ -1920,6 +1920,7 @@ dependencies = [
  "proptest",
  "rand",
  "reference",
+ "regex",
  "rtrb",
  "saphyr",
  "serde",

@@ -34,6 +34,7 @@ Never place production code, tests, or benchmarks at the repository root.
 
 - The main checkout at `/home/lewis/src/velvet-ballistics` is a **coordination checkout only**. Do not implement features, run broad verification, or leave dirty code in this main checkout.
 - All implementation, repair, review-fix, proof-writing, test-writing, and broad verification work MUST happen in an isolated Git worktree **and JJ workspace** under `~/src/isoloated/` unless the user explicitly names another non-main workspace path.
+- **NEVER use `/tmp`, `/var/tmp`, or any other temporary location for repository work.** Workspaces, source, task prompts, logs, evidence, builds, and scratch data must stay in the assigned persistent isolated workspace. Configure tools' temporary and scratch directories there too.
 - Before creating, using, rebasing, landing, or cleaning an isolated workspace, load the `jj`/`jujutsu` skill and follow its workspace-isolation workflow. Do not improvise Git-only multi-agent workflows.
 - Every agent MUST use a unique worktree/JJ workspace path, for example `~/src/isoloated/velvet-ballistics-<bead-id>-<agent-role>`. Never share a worktree or JJ workspace between concurrent agents.
 - Before editing, committing, pushing, or running broad verification, verify both:
