@@ -7,11 +7,11 @@ mod fixtures;
 use cut::*;
 use fixtures::*;
 
-#[path = "cases/positive.rs"]
-mod positive;
 #[path = "cases/actions.rs"]
 mod actions;
-#[path = "cases/waits.rs"]
-mod waits;
 #[path = "cases/negative.rs"]
 mod negative;
+#[path = "cases/positive.rs"]
+mod positive;
+#[path = "cases/waits.rs"]
+mod waits;

@@ -177,7 +177,10 @@ fn pending_ticket_run_attempt_matches_latest_step_start_after_cold_reopen() -> T
     let rejected_journal = Arc::new(FjallJournal::open(rejected_directory.path(), None)?);
     let rejected_before = rejected_journal.events_for_run_full(RUN)?;
     let rejected_runtime = runtime(Arc::clone(&rejected_journal));
-    assert!(rejected_runtime.inspect_run_state(RUN).is_err());
+    assert!(matches!(
+        rejected_runtime.inspect_run_state(RUN),
+        Err(vb_runtime::RuntimeError::RunNotFound)
+    ));
     let result = rejected_runtime.recover_product(RUN);
     assert!(
         matches!(
@@ -188,7 +191,10 @@ fn pending_ticket_run_attempt_matches_latest_step_start_after_cold_reopen() -> T
         "mismatched StepStarted/ticket authority must be rejected: {result:?}"
     );
     assert_eq!(rejected_journal.events_for_run_full(RUN)?, rejected_before);
-    assert!(rejected_runtime.inspect_run_state(RUN).is_err());
+    assert!(matches!(
+        rejected_runtime.inspect_run_state(RUN),
+        Err(vb_runtime::RuntimeError::RunNotFound)
+    ));
     Ok(())
 }
 
@@ -236,17 +242,23 @@ fn pending_ticket_capacity_must_match_compiled_no_retry_policy() -> TestResult {
     let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
     let before = journal.events_for_run_full(RUN)?;
     let runtime = runtime(Arc::clone(&journal));
-    assert!(runtime.inspect_run_state(RUN).is_err());
+    assert!(matches!(
+        runtime.inspect_run_state(RUN),
+        Err(vb_runtime::RuntimeError::RunNotFound)
+    ));
     let result = runtime.recover_product(RUN);
     assert!(
         matches!(
             result,
-            Err(vb_runtime::RuntimeError::RecoveryCannotResume { ref reason })
-                if reason == "pending_action_capacity_mismatch"
+            Err(vb_runtime::RuntimeError::Recovery { ref error })
+                if error == "replay divergence at step StepIdx(3): action ticket differs from compiled Do"
         ),
         "capacity beyond compiled retry policy must be rejected: {result:?}"
     );
     assert_eq!(journal.events_for_run_full(RUN)?, before);
-    assert!(runtime.inspect_run_state(RUN).is_err());
+    assert!(matches!(
+        runtime.inspect_run_state(RUN),
+        Err(vb_runtime::RuntimeError::RunNotFound)
+    ));
     Ok(())
 }

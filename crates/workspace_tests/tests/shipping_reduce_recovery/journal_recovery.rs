@@ -108,7 +108,7 @@ fn source_reduce_owned_default_survives_fjall_reopen_and_action_resume() -> Test
     match decode_slot_written_extra(encoded_extra).map_err(|error| format!("{error:?}"))? {
         DecodedSlotWrittenExtra::Envelope(envelope) => {
             assert_eq!(envelope.taint, Taint::Secret);
-            assert!(envelope.frame_extra.is_none());
+            assert_eq!(envelope.frame_extra, None);
         }
         DecodedSlotWrittenExtra::LegacyFrameExtra(_) => {
             return Err("completed Reduce result uses legacy extra bytes".into());

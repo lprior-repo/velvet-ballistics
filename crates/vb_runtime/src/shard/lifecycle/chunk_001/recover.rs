@@ -233,71 +233,8 @@ impl Shard {
             return Ok(());
         }
 
-        // Step 7: Handle boundary for suspended operations
-        match boundary.kind() {
-            crate::recovery::RecoveredRunBoundaryKind::RetryTimer => {
-                let timer = recovered_timer.ok_or(RuntimeError::InvalidTimerFire)?;
-                self.pending_timer_insert(run, timer)?;
-                self.apply(run, RuntimeEvent::AwaitTimer)?;
-                return Ok(());
-            }
-            crate::recovery::RecoveredRunBoundaryKind::None => {}
-            crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
-                // Re-inject the durable pending-action ticket and leave the run
-                // suspended at the pending action. Recovery MUST NOT re-drive the
-                // Do node: the action is already durably scheduled
-                // (ActionScheduledTicket) and its input slot may not be re-readable
-                // (legacy unbound admission does not retain inputs). Re-driving would
-                // emit a duplicate StepStarted and, for legacy runs, fail closed on
-                // the un-rehydrated input slot. The recovered run resumes only on the
-                // external action completion/failure signal.
-                if let Some(t) = boundary.pending_action_ticket().map(|t| t.ticket()) {
-                    // Restore the per-step attempt counter so a later completion or
-                    // failure can validate the recovered ticket's attempt
-                    // (validate_ticket_attempt requires action_attempts[step] to
-                    // equal the scheduled ticket's attempt).
-                    if let Some(state) = self.run_state_get_mut(run) {
-                        crate::shard::helpers::record_scheduled_attempt(state, t);
-                    }
-                    self.reinject_pending_action(run, t)?;
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
-                    return Ok(());
-                }
-            }
-            crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
-                if let Some(ask) = boundary.open_ask() {
-                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
-                    return Ok(());
-                }
-            }
-            crate::recovery::RecoveredRunBoundaryKind::OpenWaitEvent => {
-                if self.restore_open_wait_event(run, boundary)? {
-                    return Ok(());
-                }
-            }
-            crate::recovery::RecoveredRunBoundaryKind::WaitingTimer => {
-                // Re-arms the durable wait schedule as a live timer and leaves
-                // the run suspended. Recovery MUST NOT drive the wait node:
-                // re-driving would emit a duplicate WaitScheduledEvent.
-                if let Some(timer) = boundary.waiting_timer() {
-                    self.restore_recovered_timer_boundary(run, timer, PendingTimerKind::Wait)?;
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
-                    return Ok(());
-                }
-            }
-            crate::recovery::RecoveredRunBoundaryKind::TimedAsk => {
-                // Restores both the ask authority and the timer the timeout
-                // slot armed. The timer is required: without it the pending
-                // ask ticket lookup refuses (ask_timer_matches) and the
-                // answer path cannot validate the ticket.
-                if let Some(ask) = boundary.timed_ask() {
-                    self.restore_recovered_timer_boundary(run, ask, PendingTimerKind::Ask)?;
-                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
-                    return Ok(());
-                }
-            }
+        if self.restore_suspended_boundary(run, boundary, recovered_timer)? {
+            return Ok(());
         }
 
         self.drive_recovered_run(run)

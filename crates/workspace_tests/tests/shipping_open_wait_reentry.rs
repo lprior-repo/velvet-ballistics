@@ -274,7 +274,7 @@ fn repeat_reentry_open_wait_survives_fjall_cold_recovery() -> TestResult {
         RuntimePolicy::Strict,
         Durability::Strict,
     )?;
-    assert!(cold.runtime.list_active_runs(64, None).is_empty());
+    assert_eq!(cold.runtime.list_active_runs(64, None), Vec::new());
     assert_eq!(
         cold.runtime
             .lookup_pending_action_ticket(run, u64::from(wait_step.get())),
@@ -287,7 +287,7 @@ fn repeat_reentry_open_wait_survives_fjall_cold_recovery() -> TestResult {
         ),
         other => return Err(format!("corrupt slot taint result: {other:?}").into()),
     }
-    assert!(cold.runtime.list_active_runs(64, None).is_empty());
+    assert_eq!(cold.runtime.list_active_runs(64, None), Vec::new());
     assert_eq!(
         cold.runtime
             .lookup_pending_action_ticket(run, u64::from(wait_step.get())),

@@ -7,11 +7,11 @@
 
 #![forbid(unsafe_code)]
 
-#[path = "vb_f2_nested_matrix/source.rs"]
-mod source;
-#[path = "shipping_nested_control/support.rs"]
-mod support;
 #[path = "shipping_nested_control/cells.rs"]
 mod cells;
 #[path = "shipping_nested_control/matrix.rs"]
 mod matrix;
+#[path = "vb_f2_nested_matrix/source.rs"]
+mod source;
+#[path = "shipping_nested_control/support.rs"]
+mod support;

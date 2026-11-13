@@ -28,7 +28,9 @@ pub(super) fn runtime(journal: Arc<FjallJournal>, step_budget_per_tick: u64) -> 
 }
 
 pub(super) fn multi_source(result: &str) -> String {
-    format!("version: velvet-ballistics/v1\nname: shipping_foreach_recovery\nwhen: {{manual: {{}}}}\ninputs: {{items: {{is: list, of: any, max: 4}}}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 2\n      steps:\n        - id: projected\n          set: {{output: projected, value: '$entry'}}\n  - id: check\n    set: {{output: check, value: '{result}'}}\n  - id: done\n    finish: {{result: '$check'}}\n")
+    format!(
+        "version: velvet-ballistics/v1\nname: shipping_foreach_recovery\nwhen: {{manual: {{}}}}\ninputs: {{items: {{is: list, of: any, max: 4}}}}\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: $input.items\n      at_once: 2\n      steps:\n        - id: projected\n          set: {{output: projected, value: '$entry'}}\n  - id: check\n    set: {{output: check, value: '{result}'}}\n  - id: done\n    finish: {{result: '$check'}}\n"
+    )
 }
 
 pub(super) fn nested_source() -> String {
@@ -74,16 +76,28 @@ pub(super) fn wait_source() -> String {
 pub(super) fn action_contracts() -> TestResult<Box<[ActionContract]>> {
     let name = ActionName::new("shipping-action")?;
     Ok(Box::from([ActionContract {
-        id: ActionId::new(0), name, input_slot_count: 1, output_slot_count: 1,
-        max_input_bytes: 1024, max_output_bytes: 1024, timeout_ms: 5000,
-        idempotency: Idempotency::DeterministicPure, side_effect: SideEffect::None,
-        retry_safety: RetrySafety::Safe, required_capabilities: Box::new([]),
+        id: ActionId::new(0),
+        name,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
     }]))
 }
 
 pub(super) fn action_output(output: SlotIdx, value: SlotValue) -> TestResult<ActionOutputReady> {
     let encoded = postcard::to_allocvec(&value)?;
-    Ok(ActionOutputReady { output_slot: output, value, taint: Taint::Clean, encoded_len: u32::try_from(encoded.len())? })
+    Ok(ActionOutputReady {
+        output_slot: output,
+        value,
+        taint: Taint::Clean,
+        encoded_len: u32::try_from(encoded.len())?,
+    })
 }
 
 pub(super) fn body_step(source: &str) -> TestResult<StepIdx> {

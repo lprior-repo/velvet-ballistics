@@ -4,6 +4,9 @@ use crate::recovery::RecoveryResult;
 use vb_core::replay::{ReplayAction, SuspensionKind};
 use vb_core::{CompiledNodeKind as K, Deadline, SlotIdx, StepIdx, StepState};
 
+#[path = "steps/owned_required.rs"]
+mod owned_required;
+
 impl Driver<'_> {
     pub(super) fn start(&mut self, step: StepIdx) -> RecoveryResult<()> {
         if self.active.is_some() || self.frame.pc() != step || self.finished {
@@ -72,7 +75,7 @@ impl Driver<'_> {
             .node(step)
             .ok_or_else(|| invalid(step, "writer node missing"))?;
         let mut slots: Vec<_> = node.output.slot().into_iter().collect();
-        add_owned_required(&node.kind, node.output.slot(), action, &mut slots);
+        owned_required::add_owned_required(&node.kind, node.output.slot(), action, &mut slots);
         Ok(slots)
     }
 
@@ -207,83 +210,6 @@ fn mark_untimed_wait(
             .map_err(|error| invalid(step, error.to_string()))?;
     }
     Ok(())
-}
-
-fn add_owned_required(
-    kind: &K,
-    output: Option<SlotIdx>,
-    action: &ReplayAction,
-    slots: &mut Vec<SlotIdx>,
-) {
-    match kind {
-        K::ForEachNext {
-            iterator_slot,
-            done,
-            ..
-        } => add_next_required(*iterator_slot, *done, action, slots),
-        K::ReduceStart {
-            input,
-            accumulator,
-            done,
-            ..
-        } => add_reduce_start_required(*input, *accumulator, output, *done, action, slots),
-        K::ReduceNext {
-            iterator_slot,
-            done,
-            ..
-        } => add_next_required(*iterator_slot, *done, action, slots),
-        K::RepeatCheck { attempt_slot, .. } if !slots.contains(attempt_slot) => {
-            slots.push(*attempt_slot);
-        }
-        K::CollectStart { source, .. } => {
-            let collector = output.unwrap_or(*source);
-            if !slots.contains(&collector) {
-                slots.push(collector);
-            }
-        }
-        K::CollectNext { collector_slot, .. } if !slots.contains(collector_slot) => {
-            slots.push(*collector_slot);
-        }
-        _ => {}
-    }
-}
-
-fn add_next_required(
-    iterator_slot: SlotIdx,
-    done: StepIdx,
-    action: &ReplayAction,
-    slots: &mut Vec<SlotIdx>,
-) {
-    if continued_to(action, done) {
-        slots.clear();
-    } else {
-        slots.push(iterator_slot);
-    }
-}
-
-fn add_reduce_start_required(
-    input: SlotIdx,
-    accumulator: SlotIdx,
-    output: Option<SlotIdx>,
-    done: StepIdx,
-    action: &ReplayAction,
-    slots: &mut Vec<SlotIdx>,
-) {
-    slots.clear();
-    slots.push(accumulator);
-    if continued_to(action, done) {
-        return;
-    }
-    slots.push(input);
-    if let Some(output) = output
-        && !slots.contains(&output)
-    {
-        slots.push(output);
-    }
-}
-
-fn continued_to(action: &ReplayAction, target: StepIdx) -> bool {
-    matches!(action, ReplayAction::Continue(next) if *next == target)
 }
 
 fn ask_failure_action(
