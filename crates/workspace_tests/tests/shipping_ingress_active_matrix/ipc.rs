@@ -1,43 +1,18 @@
-use std::io::{Read, Write};
-use std::path::{Component, PathBuf};
-use std::time::Duration;
-
-use vb_core::{
-    CompiledNodeKind, CompiledWorkflow, RunId, RuntimePolicy, SlotValue, StepIdx, StepState,
-};
-use vb_ipc::server::{IpcResponse, IpcServer, WorkflowResolutionError, WorkflowResolver};
-use vb_ipc::{
-    IPC_HEADER_LEN, IpcCommand, IpcFrameHeader, IpcPayload, MaxPayloadBytes, SubmitRunPayload,
-};
+#[path = "ipc_transport.rs"]
+mod transport;
 
 use super::harness::Scratch;
 use super::support::{self, Durability, TestResult};
-
-struct Resolver(CompiledWorkflow);
-
-impl WorkflowResolver for Resolver {
-    fn resolve_action_contracts(
-        &mut self,
-        _: &CompiledWorkflow,
-    ) -> Box<[vb_core::action::ActionContract]> {
-        Box::new([])
-    }
-
-    fn resolve_capability_grants(&mut self, _: &CompiledWorkflow) -> vb_core::CapabilitySet {
-        vb_core::CapabilitySet::empty()
-    }
-
-    fn resolve_workflow(
-        &mut self,
-        digest: vb_core::WorkflowDigest,
-    ) -> Result<CompiledWorkflow, WorkflowResolutionError> {
-        if digest == self.0.digest() {
-            Ok(self.0.clone())
-        } else {
-            Err(WorkflowResolutionError::NotFound)
-        }
-    }
-}
+use std::io::Write;
+use std::time::Duration;
+use transport::{
+    Resolver, SocketCleanup, assert_exhausted_cursor_rejected, config, for_each_has_remaining,
+    read_response, relative_socket_path,
+};
+use vb_core::{CompiledNodeKind, RunId, RuntimePolicy, SlotValue, StepIdx, StepState, Taint};
+use vb_ipc::server::{IpcResponse, IpcServer};
+use vb_ipc::{IpcCommand, IpcPayload, SubmitRunPayload};
+use vb_storage::slot_extra::{DecodedSlotWrittenExtra, decode_slot_written_extra};
 
 #[test]
 fn binary_submit_nested_foreach_repeat_cut_recovers_at_host_boundary() -> TestResult {
@@ -50,16 +25,22 @@ fn binary_submit_nested_foreach_repeat_cut_recovers_at_host_boundary() -> TestRe
         .position(|node| matches!(node.kind, CompiledNodeKind::ForEachStart { .. }))
         .ok_or("compiled workflow has no ForEachStart")?;
     let outer = StepIdx::new(u16::try_from(outer_index)?);
-    let repeat = workflow
+    let repeat_index = workflow
         .to_parts()
         .nodes
         .iter()
-        .find_map(|node| match node.kind {
-            CompiledNodeKind::RepeatStart { body, .. } => Some(body),
-            _ => None,
-        })
-        .ok_or("compiled workflow has no nested RepeatStart body")?;
-    let leaf = repeat;
+        .position(|node| matches!(node.kind, CompiledNodeKind::RepeatStart { .. }))
+        .ok_or("compiled workflow has no nested RepeatStart")?;
+    let repeat_owner = StepIdx::new(u16::try_from(repeat_index)?);
+    let repeat_node = workflow
+        .node(repeat_owner)
+        .ok_or("compiled RepeatStart owner is missing")?;
+    let (leaf, max_attempts) = match &repeat_node.kind {
+        CompiledNodeKind::RepeatStart {
+            body, max_attempts, ..
+        } => (*body, *max_attempts),
+        other => return Err(format!("nested owner is not RepeatStart: {other:?}").into()),
+    };
     let finish = super::harness::step(&workflow, "done")?;
     let run = RunId::new(0xA201);
     let scratch = Scratch::new("ipc_nested")?;
@@ -96,6 +77,7 @@ fn binary_submit_nested_foreach_repeat_cut_recovers_at_host_boundary() -> TestRe
         Some(IpcResponse::AcceptedRun { run_id: run.get() })
     );
 
+    let mut live_checkpoints = None;
     let mut cut_found = false;
     for tick in 0..128 {
         open.runtime.tick_all()?;
@@ -109,6 +91,7 @@ fn binary_submit_nested_foreach_repeat_cut_recovers_at_host_boundary() -> TestRe
             && state.frame.step_state(leaf)? == StepState::Succeeded
             && state.frame.step_state(finish)? == StepState::Pending
         {
+            live_checkpoints = Some((state.frame.checkpoint_v1(), state.store.checkpoint_v1()));
             cut_found = true;
             break;
         }
@@ -117,20 +100,120 @@ fn binary_submit_nested_foreach_repeat_cut_recovers_at_host_boundary() -> TestRe
         cut_found,
         "binary ingress never exposed the requested nested active cut"
     );
+    let (live_frame, live_store) = live_checkpoints.ok_or("missing IPC live checkpoints")?;
+    let outer_node = workflow.node(outer).ok_or("missing outer ForEach")?;
+    if !matches!(outer_node.kind, CompiledNodeKind::ForEachStart { .. }) {
+        return Err("outer node is not ForEachStart".into());
+    }
+    let cursor_slot = outer_node
+        .output
+        .slot()
+        .ok_or("ForEach cursor slot missing")?;
+    let cursor_value = live_frame
+        .slots
+        .get(usize::from(cursor_slot.get()))
+        .copied()
+        .flatten()
+        .ok_or("ForEach cursor slot is uninitialized")?;
+    let SlotValue::List(cursor_id) = cursor_value else {
+        return Err(format!("ForEach cursor is not a list: {cursor_value:?}").into());
+    };
+    let cursor = live_store
+        .lists
+        .get(usize::try_from(cursor_id.get())?)
+        .ok_or("ForEach cursor list missing")?;
+    let source_index = match cursor.first() {
+        Some(SlotValue::I64(index)) => usize::try_from(*index)?,
+        other => return Err(format!("invalid source identity in cursor: {other:?}").into()),
+    };
+    let source = live_store
+        .lists
+        .get(source_index)
+        .ok_or("ForEach source list missing")?;
+    assert_eq!(
+        source.as_ref(),
+        [SlotValue::I64(2), SlotValue::I64(4), SlotValue::I64(6)]
+    );
+    let position = match cursor.get(1) {
+        Some(SlotValue::I64(position)) => usize::try_from(*position)?,
+        other => return Err(format!("invalid ForEach cursor: {other:?}").into()),
+    };
+    assert!(
+        for_each_has_remaining(position, source.len()),
+        "ForEach cursor has no remaining items"
+    );
+    assert_exhausted_cursor_rejected(cursor, source.len())?;
+    let repeat_state_slot = repeat_node
+        .output
+        .slot()
+        .ok_or("Repeat owner state slot missing")?;
+    let repeat_state = live_frame
+        .slots
+        .get(usize::from(repeat_state_slot.get()))
+        .copied()
+        .flatten()
+        .ok_or("Repeat state slot is uninitialized")?;
+    let SlotValue::I64(packed) = repeat_state else {
+        return Err(format!("Repeat state is not packed I64: {repeat_state:?}").into());
+    };
+    let packed = u64::try_from(packed)?;
+    assert_eq!(u32::try_from(packed >> 32)?, u32::from(max_attempts.get()));
+    let current_attempt = u16::try_from(packed & u64::from(u16::MAX))?;
+    assert!(current_attempt < max_attempts.get());
+    let oracle_dir = Scratch::new("ipc_oracle")?;
+    let mut oracle =
+        support::open_runtime_with_config(oracle_dir.path(), config(), Durability::Strict)?;
+    support::persist_artifact(&oracle.journal, &workflow, RuntimePolicy::Strict, &[])?;
+    oracle.runtime.submit_compiled(run, workflow.clone())?;
+    let mut oracle_cut = None;
+    for _ in 0..128 {
+        oracle.runtime.tick_all()?;
+        let state = oracle.runtime.inspect_run_state(run)?;
+        if state.frame.step_state(outer)? == StepState::Succeeded
+            && state.frame.step_state(leaf)? == StepState::Succeeded
+            && state.frame.step_state(finish)? == StepState::Pending
+        {
+            oracle_cut = Some((state.frame.checkpoint_v1(), state.store.checkpoint_v1()));
+            break;
+        }
+    }
+    let (oracle_frame, oracle_store) = oracle_cut.ok_or("direct oracle missed IPC cut")?;
+    assert_eq!(
+        oracle_frame, live_frame,
+        "direct oracle frame differs at IPC cut"
+    );
+    assert_eq!(
+        oracle_store, live_store,
+        "direct oracle store differs at IPC cut"
+    );
+    oracle.runtime.tick_all()?;
+    let oracle_state = oracle.runtime.inspect_run_state(run)?;
+    let expected_frame = oracle_state.frame.checkpoint_v1();
+    let expected_store = oracle_state.store.checkpoint_v1();
+    support::tick_until_terminal(&mut oracle.runtime, run, 512)?;
+    let oracle_events = support::events(&oracle.journal, run)?;
+    drop(oracle);
     let prefix = support::events(&open.journal, run)?;
     let before = open.runtime.recover_product(run)?;
     drop(client);
     drop(server);
     drop(open);
-
     // IPC exposes submit/inspect/events/action commands, not recovery; cold host recovery is the public boundary.
     let mut reopened =
         support::open_runtime_with_config(&journal_dir, config(), Durability::Strict)?;
     assert_eq!(reopened.runtime.recover_product(run)?, before);
     assert_eq!(support::events(&reopened.journal, run)?, prefix);
     reopened.runtime.recover_and_resume(run)?;
+    reopened.runtime.tick_all()?;
+    let recovered = reopened.runtime.inspect_run_state(run)?;
+    assert_eq!(recovered.frame.checkpoint_v1(), expected_frame);
+    assert_eq!(recovered.store.checkpoint_v1(), expected_store);
     support::tick_until_terminal(&mut reopened.runtime, run, 512)?;
     let events = support::events(&reopened.journal, run)?;
+    assert_eq!(
+        events, oracle_events,
+        "binary IPC recovery diverged from uninterrupted execution events"
+    );
     assert_eq!(
         events.get(..prefix.len()),
         Some(prefix.as_slice()),
@@ -143,19 +226,65 @@ fn binary_submit_nested_foreach_repeat_cut_recovers_at_host_boundary() -> TestRe
         .node(leaf)
         .and_then(|node| node.output.slot())
         .ok_or("missing leaf output slot")?;
-    let values: Vec<SlotValue> = events
-        .iter()
-        .filter_map(|event| match event {
-            vb_storage::JournalEvent::SlotWrittenEvent {
-                run: event_run,
-                slot,
-                value,
+    let mut writes = Vec::new();
+    for (index, event) in events.iter().enumerate() {
+        let vb_storage::JournalEvent::SlotWrittenEvent {
+            run: event_run,
+            seq,
+            slot,
+            value,
+            extra,
+            attempt,
+        } = event
+        else {
+            continue;
+        };
+        if *event_run != run || *slot != leaf_slot {
+            continue;
+        }
+        let value = postcard::from_bytes::<SlotValue>(
+            value.as_deref().ok_or("leaf write has no value payload")?,
+        )?;
+        let extra =
+            decode_slot_written_extra(extra.as_deref().ok_or("leaf write has no taint envelope")?)
+                .map_err(|error| format!("leaf write extra invalid: {error:?}"))?;
+        let DecodedSlotWrittenExtra::Envelope(envelope) = extra else {
+            return Err("leaf write contains legacy frame extra".into());
+        };
+        let previous = index
+            .checked_sub(1)
+            .ok_or("leaf write has no preceding event")?;
+        assert!(matches!(
+            events.get(previous),
+            Some(vb_storage::JournalEvent::StepStarted {
+                run: started_run,
+                step,
+                attempt: 1,
                 ..
-            } if *event_run == run && *slot == leaf_slot => value.as_deref(),
-            _ => None,
-        })
-        .map(postcard::from_bytes)
-        .collect::<Result<_, _>>()?;
+            }) if *started_run == run && *step == leaf
+        ));
+        let next = index
+            .checked_add(1)
+            .ok_or("leaf write event index overflow")?;
+        assert!(matches!(
+            events.get(next),
+            Some(vb_storage::JournalEvent::StepSucceeded {
+                run: finished_run,
+                step,
+                output,
+                ..
+            }) if *finished_run == run && *step == leaf && *output == leaf_slot
+        ));
+        writes.push((*seq, value, envelope.taint, *attempt));
+    }
+    assert_eq!(writes.len(), 6, "expected exactly six leaf executions");
+    assert!(writes.windows(2).all(|pair| pair[0].0 < pair[1].0));
+    assert!(
+        writes
+            .iter()
+            .all(|(_, _, taint, attempt)| *taint == Taint::Clean && *attempt == 1)
+    );
+    let values: Vec<SlotValue> = writes.into_iter().map(|(_, value, _, _)| value).collect();
     assert_eq!(
         values,
         vec![
@@ -168,86 +297,4 @@ fn binary_submit_nested_foreach_repeat_cut_recovers_at_host_boundary() -> TestRe
         ]
     );
     Ok(())
-}
-
-fn config() -> vb_runtime::shard::ShardConfig {
-    vb_runtime::shard::ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 1,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Strict,
-    }
-}
-
-fn relative_socket_path(label: &str) -> TestResult<PathBuf> {
-    let target = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.evidence/omp/scratch");
-    std::fs::create_dir_all(&target)?;
-    let current = std::env::current_dir()?;
-    let current_parts: Vec<Component<'_>> = current.components().collect();
-    let target_parts: Vec<Component<'_>> = target.components().collect();
-    let common = current_parts
-        .iter()
-        .zip(&target_parts)
-        .take_while(|(left, right)| left == right)
-        .count();
-    let mut relative = PathBuf::new();
-    for _ in common..current_parts.len() {
-        relative.push("..");
-    }
-    for component in target_parts.iter().skip(common) {
-        relative.push(component.as_os_str());
-    }
-    relative.push(format!("active_ipc_{}_{}.sock", std::process::id(), label));
-    Ok(relative)
-}
-
-struct SocketCleanup(PathBuf);
-impl Drop for SocketCleanup {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
-    }
-}
-
-fn read_response(
-    server: &mut IpcServer,
-    runtime: &mut vb_runtime::runtime::Runtime,
-    resolver: &mut Resolver,
-    client: &mut std::os::unix::net::UnixStream,
-) -> TestResult<(IpcFrameHeader, Option<IpcResponse>)> {
-    let mut header_bytes = [0; IPC_HEADER_LEN];
-    let mut polls = 0;
-    loop {
-        match client.read_exact(&mut header_bytes) {
-            Ok(()) => break,
-            Err(error)
-                if matches!(
-                    error.kind(),
-                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
-                ) =>
-            {
-                if polls >= 64 {
-                    return Err("IPC response exceeded bounded poll budget".into());
-                }
-                polls += 1;
-                server.poll_once_with_resolver(
-                    runtime,
-                    Some(Duration::from_millis(10)),
-                    Some(resolver),
-                )?;
-            }
-            Err(error) => return Err(Box::new(error)),
-        }
-    }
-    let header = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT)?;
-    let mut payload = vec![0; usize::try_from(header.payload_len)?];
-    if !payload.is_empty() {
-        client.read_exact(&mut payload)?;
-    }
-    let response = if payload.is_empty() {
-        None
-    } else {
-        Some(postcard::from_bytes(&payload)?)
-    };
-    Ok((header, response))
 }

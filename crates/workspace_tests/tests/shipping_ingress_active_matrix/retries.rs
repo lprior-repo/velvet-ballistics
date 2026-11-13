@@ -115,7 +115,26 @@ fn retry_timer_cold_recovery_preserves_identity_and_refuses_stale_ticket() -> Te
     reopened.runtime.tick_all()?;
     let second = wait_for_attempt(&mut reopened.runtime, RUN, do_step, 2)?;
     assert_ne!(second.attempt, first.attempt);
+    assert_eq!(second.attempt, 2);
+    assert_eq!(second.run, first.run);
+    assert_eq!(second.step, first.step);
+    assert_eq!(second.action, first.action);
+    assert_eq!(second.run_attempt, first.run_attempt);
+    assert_eq!(second.idempotency_key, first.idempotency_key);
+    assert_eq!(second.capacity, first.capacity);
+    assert_eq!(second.fencing_token, first.fencing_token);
+    assert_eq!(second.seq, first.seq);
     let before_stale = support::events(&reopened.journal, RUN)?;
+    let before_stale_frame = reopened
+        .runtime
+        .inspect_run_state(RUN)?
+        .frame
+        .checkpoint_v1();
+    let before_stale_store = reopened
+        .runtime
+        .inspect_run_state(RUN)?
+        .store
+        .checkpoint_v1();
     let output_slot = workflow
         .node(do_step)
         .and_then(|node| node.output.slot())
@@ -134,6 +153,22 @@ fn retry_timer_cold_recovery_preserves_identity_and_refuses_stale_ticket() -> Te
         support::events(&reopened.journal, RUN)?,
         before_stale,
         "stale attempt mutated durable history"
+    );
+    assert_eq!(
+        reopened
+            .runtime
+            .inspect_run_state(RUN)?
+            .frame
+            .checkpoint_v1(),
+        before_stale_frame
+    );
+    assert_eq!(
+        reopened
+            .runtime
+            .inspect_run_state(RUN)?
+            .store
+            .checkpoint_v1(),
+        before_stale_store
     );
     assert_eq!(
         reopened

@@ -1,86 +1,36 @@
-use vb_core::frame::{CheckpointStepState, RunFrameCheckpointV1};
-use vb_core::value_store::ValueStoreCheckpointV1;
-use vb_core::{RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, StepState, Taint};
-use vb_runtime::runtime::Runtime;
-use vb_storage::JournalEvent;
+#[path = "controls/cases.rs"]
+mod cases;
+#[path = "controls/counterfactual.rs"]
+mod counterfactual;
+#[path = "controls/helpers.rs"]
+mod helpers;
+#[path = "controls/write_checks.rs"]
+mod write_checks;
 
 use super::harness::{Scratch, step};
 use super::support::{self, Durability, TestResult};
+use cases::{ControlCase, cases};
+use counterfactual::assert_completed_control_rejected;
+use helpers::{assert_remaining_control_work, config, cut_inside_control, written_values};
+use vb_core::frame::CheckpointStepState;
+use vb_core::{RunId, RuntimePolicy, SlotValue, StepIdx, Taint};
+use vb_storage::JournalEvent;
+use write_checks::{assert_body_write_provenance, assert_collect_pages, capture_slot_write_stores};
 
-const HEADER: &str = "version: velvet-ballistics/v1\nname: ingress_active_control\nwhen: {manual: {}}\nvars: {items: [1, 2, 3]}\n";
+struct RestoreCollectClock;
 
-struct ControlCase {
-    name: &'static str,
-    body: &'static str,
-    source: String,
-    outputs: Vec<(&'static str, Vec<SlotValue>)>,
-}
-
-fn cases() -> Vec<ControlCase> {
-    vec![
-        ControlCase {
-            name: "outer",
-            body: "body",
-            source: format!(
-                "{HEADER}steps:\n  - id: seed\n    set: {{output: seed, value: '42'}}\n  - id: outer\n    for_each:\n      variable: entry\n      input: '$vars.items'\n      at_once: 1\n      steps:\n        - id: body\n          set: {{output: seen, value: '$entry'}}\n  - id: done\n    finish: {{result: '$step.seed'}}\n"
-            ),
-            outputs: vec![(
-                "body",
-                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
-            )],
-        },
-        ControlCase {
-            name: "outer",
-            body: "body",
-            source: format!(
-                "{HEADER}steps:\n  - id: seed\n    set: {{output: seed, value: '42'}}\n  - id: outer\n    reduce:\n      variable: total\n      input: '$vars.items'\n      initial: '0'\n      steps:\n        - id: body\n          set: {{output: running, value: '$total + 1'}}\n  - id: done\n    finish: {{result: '$step.seed'}}\n"
-            ),
-            outputs: vec![(
-                "body",
-                vec![
-                    SlotValue::I64(0),
-                    SlotValue::I64(1),
-                    SlotValue::I64(2),
-                    SlotValue::I64(3),
-                    SlotValue::I64(3),
-                ],
-            )],
-        },
-        ControlCase {
-            name: "outer",
-            body: "left_value",
-            source: format!(
-                "{HEADER}steps:\n  - id: seed\n    set: {{output: seed, value: '42'}}\n  - id: outer\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_value\n              set: {{output: left, value: '7'}}\n        - label: right\n          steps:\n            - id: right_value\n              set: {{output: right, value: '9'}}\n  - id: done\n    finish: {{result: '$step.seed'}}\n"
-            ),
-            outputs: vec![
-                ("left_value", vec![SlotValue::I64(7)]),
-                ("right_value", vec![SlotValue::I64(9)]),
-            ],
-        },
-        ControlCase {
-            name: "outer",
-            body: "body",
-            source: format!(
-                "{HEADER}steps:\n  - id: seed\n    set: {{output: seed, value: '42'}}\n  - id: outer\n    repeat:\n      max_attempts: 2\n      steps:\n        - id: body\n          set: {{output: tick, value: '7'}}\n  - id: done\n    finish: {{result: '$step.seed'}}\n"
-            ),
-            outputs: vec![("body", vec![SlotValue::I64(7), SlotValue::I64(7)])],
-        },
-        ControlCase {
-            name: "outer",
-            body: "body",
-            source: format!(
-                "{HEADER}steps:\n  - id: seed\n    set: {{output: seed, value: '42'}}\n  - id: outer\n    collect:\n      variable: batch\n      source: '$vars.items'\n      pages: 2\n      items: 2\n      steps:\n        - id: body\n          set: {{output: copied, value: '$batch'}}\n  - id: total\n    set: {{output: total, value: 'sum($step.outer)'}}\n  - id: done\n    finish: {{result: '$step.total'}}\n"
-            ),
-            outputs: vec![(
-                "body",
-                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
-            )],
-        },
-    ]
+impl Drop for RestoreCollectClock {
+    fn drop(&mut self) {
+        vb_runtime::primitives::collect::restore_real_time_source_for_test();
+    }
 }
 
 #[test]
 fn direct_api_active_control_cut_cold_recovery_preserves_literal_execution() -> TestResult {
+    vb_runtime::primitives::collect::install_deterministic_time_source_for_test(
+        vb_core::time::DeterministicTimeSource::new(1_700_000_000_000),
+    );
+    let _restore_clock = RestoreCollectClock;
     for (case_index, case) in cases().into_iter().enumerate() {
         exercise_case(case_index, case)?;
     }
@@ -158,7 +108,40 @@ fn exercise_case(case_index: usize, case: ControlCase) -> TestResult {
         Some(&CheckpointStepState::Pending)
     );
     assert!(!live_store.lists.is_empty());
+    assert_remaining_control_work(&workflow, outer, &live_frame, &live_store)?;
+    assert_completed_control_rejected(&workflow, outer, &live_frame, &live_store)?;
     let product_before = live.runtime.recover_product(run)?;
+    let oracle_dir = Scratch::new("oracle")?;
+    let mut oracle =
+        support::open_runtime_with_config(oracle_dir.path(), config(), Durability::Strict)?;
+    support::persist_artifact(&oracle.journal, &workflow, RuntimePolicy::Strict, &[])?;
+    oracle.runtime.submit_compiled(run, workflow.clone())?;
+    let (oracle_frame, oracle_store, oracle_prefix) = cut_inside_control(
+        &mut oracle.runtime,
+        &oracle.journal,
+        run,
+        outer,
+        body,
+        finish,
+    )?;
+    assert_eq!(
+        oracle_frame, live_frame,
+        "independent live frame differed at cut"
+    );
+    assert_eq!(
+        oracle_store, live_store,
+        "independent live store differed at cut"
+    );
+    assert_eq!(
+        oracle_prefix, prefix,
+        "independent live event prefix differed at cut"
+    );
+    oracle.runtime.tick_all()?;
+    let oracle_state = oracle.runtime.inspect_run_state(run)?;
+    let expected_frame = oracle_state.frame.checkpoint_v1();
+    let expected_store = oracle_state.store.checkpoint_v1();
+    let expected_events = support::events(&oracle.journal, run)?;
+    drop(oracle);
     drop(live);
 
     let mut reopened =
@@ -174,33 +157,62 @@ fn exercise_case(case_index: usize, case: ControlCase) -> TestResult {
         prefix,
         "cold open mutated durable history before resume"
     );
-    if case.source.contains("collect:") {
-        assert!(checkpoint_has_list(
-            &live_store,
-            &[SlotValue::I64(1), SlotValue::I64(2)]
-        ));
-    }
     reopened.runtime.recover_and_resume(run)?;
-    if case.source.contains("collect:") {
-        let mut saw_last_page = false;
+    reopened.runtime.tick_all()?;
+    let recovered = reopened.runtime.inspect_run_state(run)?;
+    assert_eq!(
+        recovered.frame.checkpoint_v1(),
+        expected_frame,
+        "recovered frame diverged from uninterrupted live execution for {}",
+        case.name
+    );
+    assert_eq!(
+        recovered.store.checkpoint_v1(),
+        expected_store,
+        "recovered store diverged from uninterrupted live execution for {}",
+        case.name
+    );
+    assert_eq!(
+        support::events(&reopened.journal, run)?,
+        expected_events,
+        "recovered event sequence diverged from uninterrupted execution for {}",
+        case.name
+    );
+    let collect_slot = if case.source.contains("collect:") {
+        let output = *output_steps.first().ok_or("Collect has no body producer")?;
+        Some(
+            workflow
+                .node(output)
+                .and_then(|node| node.output.slot())
+                .ok_or("Collect body has no output slot")?,
+        )
+    } else {
+        None
+    };
+    let mut collect_observations = Vec::new();
+    if let Some(slot) = collect_slot {
+        capture_slot_write_stores(&prefix, run, slot, &live_store, &mut collect_observations);
         for _ in 0..512 {
             reopened.runtime.tick_all()?;
             let state = reopened.runtime.inspect_run_state(run)?;
-            if checkpoint_has_list(&state.store.checkpoint_v1(), &[SlotValue::I64(3)]) {
-                saw_last_page = true;
+            let checkpoint = state.store.checkpoint_v1();
+            let events = support::events(&reopened.journal, run)?;
+            capture_slot_write_stores(&events, run, slot, &checkpoint, &mut collect_observations);
+            if collect_observations.len() == 2 {
                 break;
             }
         }
-        assert!(
-            saw_last_page,
-            "recovered Collect omitted its final [3] page"
+        assert_eq!(
+            collect_observations.len(),
+            2,
+            "Collect did not capture one store checkpoint per body write"
         );
     }
     support::tick_until_terminal(&mut reopened.runtime, run, 512)?;
     let actual = support::events(&reopened.journal, run)?;
     support::assert_ordering(&actual, run)?;
     let result = support::terminal(&actual, run)?;
-    let expected_result = if case.name == "outer" && case.source.contains("collect:") {
+    let expected_result = if case.source.contains("collect:") {
         SlotValue::I64(6)
     } else {
         SlotValue::I64(42)
@@ -225,17 +237,28 @@ fn exercise_case(case_index: usize, case: ControlCase) -> TestResult {
             .node(output_step)
             .and_then(|node| node.output.slot())
             .ok_or_else(|| format!("step {name} has no output slot"))?;
-        let values = written_values(&actual, run, slot)?;
+        let writes = written_values(&actual, run, slot)?;
+        let producers = match &node.kind {
+            vb_core::CompiledNodeKind::ReduceStart { done, .. } => {
+                vec![outer, body, body, body, *done]
+            }
+            _ => vec![output_step; writes.len()],
+        };
+        assert_body_write_provenance(&workflow, &actual, &producers, run, slot, &writes)?;
         if case.source.contains("collect:") {
-            assert_eq!(values.len(), 2, "Collect should write one batch per page");
-            assert!(
-                values
-                    .iter()
-                    .all(|value| matches!(value, SlotValue::List(_))),
-                "Collect body must write page lists: {values:?}"
-            );
+            assert_collect_pages(&collect_observations, &writes)?;
         } else {
+            let values = writes
+                .iter()
+                .map(|(_, value, _, _)| *value)
+                .collect::<Vec<_>>();
             assert_eq!(values, *expected, "ordered writes for step {name}");
+            assert!(
+                writes
+                    .iter()
+                    .all(|(_, _, taint, attempt)| *taint == Taint::Clean && *attempt == 1),
+                "body writes must carry literal Clean taint and attempt 1: {writes:?}"
+            );
         }
         let successes = actual.iter().filter(|event| matches!(event, JournalEvent::StepSucceeded { run: event_run, step, .. } if *event_run == run && *step == output_step)).count();
         let expected_successes = if case.source.contains("reduce:") {
@@ -262,78 +285,4 @@ fn exercise_case(case_index: usize, case: ControlCase) -> TestResult {
     );
     assert!(!prefix.iter().any(|event| matches!(event, JournalEvent::RunFinished { run: event_run, .. } if *event_run == run)), "run finished before the in-flight cut");
     Ok(())
-}
-
-fn config() -> vb_runtime::shard::ShardConfig {
-    vb_runtime::shard::ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 1,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Strict,
-    }
-}
-
-fn cut_inside_control(
-    runtime: &mut Runtime,
-    journal: &vb_storage::FjallJournal,
-    run: RunId,
-    outer: StepIdx,
-    body: StepIdx,
-    finish: StepIdx,
-) -> TestResult<(
-    RunFrameCheckpointV1,
-    ValueStoreCheckpointV1,
-    Vec<JournalEvent>,
-)> {
-    let mut observations = Vec::new();
-    for tick in 0..512 {
-        runtime.tick_all()?;
-        let state = runtime.inspect_run_state(run).map_err(|error| {
-            format!(
-                "active cut lost run {run:?} at tick {tick}; target steps outer={outer:?} body={body:?} finish={finish:?}; frame states: {observations:?}; error: {error:?}"
-            )
-        })?;
-        observations.push(state.frame.checkpoint_v1().states);
-        if state.frame.step_state(body)? == StepState::Succeeded
-            && state.frame.step_state(finish)? == StepState::Pending
-        {
-            return Ok((
-                state.frame.checkpoint_v1(),
-                state.store.checkpoint_v1(),
-                support::events(journal, run)?,
-            ));
-        }
-    }
-    Err(format!("run {run:?} did not reach an active control cut").into())
-}
-
-fn checkpoint_has_list(checkpoint: &ValueStoreCheckpointV1, expected: &[SlotValue]) -> bool {
-    checkpoint
-        .lists
-        .iter()
-        .any(|values| values.as_ref() == expected)
-}
-
-fn written_values(
-    events: &[JournalEvent],
-    run: RunId,
-    slot: SlotIdx,
-) -> TestResult<Vec<SlotValue>> {
-    events
-        .iter()
-        .filter_map(|event| match event {
-            JournalEvent::SlotWrittenEvent {
-                run: event_run,
-                slot: event_slot,
-                value,
-                ..
-            } if *event_run == run && *event_slot == slot => Some(value.as_deref()),
-            _ => None,
-        })
-        .map(|bytes| {
-            let encoded = bytes.ok_or("slot write omitted its serialized value")?;
-            Ok(postcard::from_bytes::<SlotValue>(encoded)?)
-        })
-        .collect()
 }
