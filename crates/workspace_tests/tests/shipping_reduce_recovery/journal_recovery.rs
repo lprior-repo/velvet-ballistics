@@ -14,7 +14,7 @@ use support::{
 };
 use vb_core::{RunId, SlotValue, Taint};
 use vb_runtime::RuntimeError;
-use vb_storage::{FjallJournal, JournalEvent};
+use vb_storage::{DecodedSlotWrittenExtra, FjallJournal, JournalEvent, decode_slot_written_extra};
 
 #[test]
 fn source_reduce_owned_default_survives_fjall_reopen_and_action_resume() -> TestResult {
@@ -74,23 +74,46 @@ fn source_reduce_owned_default_survives_fjall_reopen_and_action_resume() -> Test
     runtime.recover_and_resume(RunId::new(RUN))?;
     runtime.tick_all()?;
     complete(&mut runtime, &shape, second, 30)?;
-    tick_to_boundary(&mut runtime, &shape)?;
-    let counters = runtime.counters_snapshot();
-    assert_eq!((counters.runs_completed, counters.runs_failed), (1, 0));
-    let final_state = runtime.inspect_run_state(RunId::new(RUN))?;
-    assert_eq!(
-        *final_state.frame.read_slot(shape.accumulator)?,
-        SlotValue::I64(30)
-    );
-    assert_eq!(
-        final_state.frame.read_taint(shape.accumulator)?,
-        Taint::Secret
-    );
     assert_eq!(
         list_items(&runtime, &shape)?,
         [SlotValue::I64(3), SlotValue::I64(5)]
     );
+    tick_to_boundary(&mut runtime, &shape)?;
+    let counters = runtime.counters_snapshot();
+    assert_eq!((counters.runs_completed, counters.runs_failed), (1, 0));
+    assert!(matches!(
+        runtime.inspect_run_state(RunId::new(RUN)),
+        Err(RuntimeError::RunNotFound)
+    ));
     let events = journal.events_for_run_full(RunId::new(RUN))?;
+    let workflow = vb_compile::compile_workflow(&shape.source.source)?;
+    let result_slot = crate::support::finish_result(&workflow)?;
+    let (encoded_value, encoded_extra) = events
+        .iter()
+        .rev()
+        .find_map(|event| match event {
+            JournalEvent::SlotWrittenEvent {
+                slot,
+                value: Some(value),
+                extra: Some(extra),
+                ..
+            } if *slot == result_slot => Some((value, extra)),
+            _ => None,
+        })
+        .ok_or("completed Reduce result capture absent")?;
+    assert_eq!(
+        postcard::from_bytes::<SlotValue>(encoded_value)?,
+        SlotValue::I64(30)
+    );
+    match decode_slot_written_extra(encoded_extra).map_err(|error| format!("{error:?}"))? {
+        DecodedSlotWrittenExtra::Envelope(envelope) => {
+            assert_eq!(envelope.taint, Taint::Secret);
+            assert!(envelope.frame_extra.is_none());
+        }
+        DecodedSlotWrittenExtra::LegacyFrameExtra(_) => {
+            return Err("completed Reduce result uses legacy extra bytes".into());
+        }
+    }
     assert_eq!(
         events
             .iter()
@@ -105,9 +128,5 @@ fn source_reduce_owned_default_survives_fjall_reopen_and_action_resume() -> Test
             .count(),
         0
     );
-    assert!(matches!(
-        runtime.inspect_run_state(RunId::new(RUN)),
-        Err(RuntimeError::RunNotFound)
-    ));
     Ok(())
 }

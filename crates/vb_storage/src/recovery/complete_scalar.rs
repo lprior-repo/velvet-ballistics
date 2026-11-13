@@ -11,6 +11,7 @@ use vb_core::{
 
 mod action_complete;
 mod action_wait;
+mod capture;
 pub(crate) mod driver;
 mod steps;
 
@@ -19,7 +20,7 @@ mod steps;
 pub(crate) enum TraceReplayMode {
     /// Scalar-only trace; no runtime arena allocation is permitted.
     Scalar,
-    /// Deterministic owned-arena trace (ForEach/Reduce/Together/Repeat);
+    /// Deterministic owned-arena trace (ForEach/Reduce/Together/Repeat/Collect);
     /// the supplied value-store checkpoint is the exact arena the live run
     /// started from.
     OwnedArena,

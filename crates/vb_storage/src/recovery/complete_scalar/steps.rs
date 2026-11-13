@@ -208,6 +208,15 @@ fn add_owned_required(
         K::RepeatCheck { attempt_slot, .. } if !slots.contains(attempt_slot) => {
             slots.push(*attempt_slot);
         }
+        K::CollectStart { source, .. } => {
+            let collector = output.unwrap_or(*source);
+            if !slots.contains(&collector) {
+                slots.push(collector);
+            }
+        }
+        K::CollectNext { collector_slot, .. } if !slots.contains(collector_slot) => {
+            slots.push(*collector_slot);
+        }
         _ => {}
     }
 }

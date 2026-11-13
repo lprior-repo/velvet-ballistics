@@ -4,7 +4,7 @@
 //! The generic recovery path replays a workflow from an empty frame/store and
 //! therefore cannot reconstruct post-admission `List`/`Object` handles
 //! (ForEach cursor and accumulator, Reduce accumulator, Together branch
-//! results, Repeat materialization). This module consumes the exact journal
+//! results, Repeat materialization, Collect pagination). This module consumes the exact journal
 //! activation order starting from the owned input checkpoint, so the replay
 //! value store matches the live one handle-for-handle.
 
@@ -42,7 +42,7 @@ pub fn is_owned_for_each_contract(plan: &CompiledWorkflow) -> bool {
 }
 
 /// Replays a deterministic arena trace from the journal activation order.
-/// Supports the ForEach, Reduce, Together, and Repeat families.
+/// Supports the ForEach, Reduce, Together, Repeat, and Collect families.
 ///
 /// Returns `None` when the workflow is outside this helper's deterministic
 /// contract. A missing retained checkpoint is allowed when the driver can
@@ -113,7 +113,11 @@ fn eligible(plan: &CompiledWorkflow) -> bool {
             | K::RepeatStart { .. }
             | K::RepeatAttempt { .. }
             | K::RepeatCheck { .. }
-            | K::RepeatFinish { .. } => {
+            | K::RepeatFinish { .. }
+            | K::CollectStart { .. }
+            | K::CollectPage { .. }
+            | K::CollectNext { .. }
+            | K::CollectFinish { .. } => {
                 saw_owned_control = true;
             }
             K::Ask { .. } | K::AskResume { .. } => {}

@@ -29,6 +29,7 @@ fn inner_multiplicity(family: &str) -> usize {
 fn expected_terminal(outer: &str) -> (Option<SlotValue>, Option<Vec<SlotValue>>) {
     match outer {
         "reduce" => (Some(SlotValue::I64(3)), None),
+        "collect" => (None, Some(vec![SlotValue::I64(3), SlotValue::I64(5)])),
         _ => (None, Some(vec![SlotValue::I64(3), SlotValue::I64(3)])),
     }
 }
@@ -101,7 +102,7 @@ fn supported_owned_cells_recover_with_exact_evidence() -> TestResult {
 }
 
 #[test]
-fn collect_involving_owned_cells_report_shared_generic_gap() -> TestResult {
+fn collect_involving_owned_cells_recover_with_exact_evidence() -> TestResult {
     let mut results = Vec::new();
     let mut failures = Vec::new();
     let mut checked = 0usize;
@@ -112,14 +113,58 @@ fn collect_involving_owned_cells_report_shared_generic_gap() -> TestResult {
             }
             checked = checked.checked_add(1).ok_or("cell count overflow")?;
             match run_cell(outer, inner) {
-                Ok(observed) => results.push(format!(
-                    "GREEN {outer}/{inner}: replay cut={} full={} terminal={:?}/{:?} leaf={}",
-                    observed.cut_replay_selected,
-                    observed.full_replay_selected,
-                    observed.terminal_value,
-                    observed.terminal_taint,
-                    observed.leaf_successes
-                )),
+                Ok(observed) => {
+                    let expected_leaf = outer_multiplicity(outer)
+                        .checked_mul(inner_multiplicity(inner))
+                        .ok_or("multiplicity overflow")?;
+                    if observed.leaf_successes != expected_leaf {
+                        failures.push(format!(
+                            "{outer}/{inner}: leaf successes {} != {expected_leaf}",
+                            observed.leaf_successes
+                        ));
+                    }
+                    if observed.cut_completed != 0 {
+                        failures.push(format!("{outer}/{inner}: cut was terminal"));
+                    }
+                    if !observed.cut_replay_selected || !observed.full_replay_selected {
+                        failures.push(format!("{outer}/{inner}: owned replay not selected"));
+                    }
+                    if observed.terminal_taint != vb_core::Taint::Secret {
+                        failures.push(format!(
+                            "{outer}/{inner}: terminal taint {:?} != Secret",
+                            observed.terminal_taint
+                        ));
+                    }
+                    let (expected_value, expected_items) = expected_terminal(outer);
+                    match (&expected_value, &observed.terminal_value) {
+                        (Some(SlotValue::I64(expected)), SlotValue::I64(actual))
+                            if expected == actual => {}
+                        (None, SlotValue::List(_)) => {}
+                        (expected, actual) => failures.push(format!(
+                            "{outer}/{inner}: terminal {actual:?} != {expected:?}"
+                        )),
+                    }
+                    if observed.terminal_items != expected_items {
+                        failures.push(format!(
+                            "{outer}/{inner}: materialized {:?} != {expected_items:?}",
+                            observed.terminal_items
+                        ));
+                    }
+                    if observed.leaf_terminal != Some((SlotValue::I64(9), vb_core::Taint::Clean)) {
+                        failures.push(format!(
+                            "{outer}/{inner}: leaf terminal {:?}",
+                            observed.leaf_terminal
+                        ));
+                    }
+                    results.push(format!(
+                        "GREEN {outer}/{inner}: replay cut={} full={} terminal={:?}/{:?} leaf={}",
+                        observed.cut_replay_selected,
+                        observed.full_replay_selected,
+                        observed.terminal_value,
+                        observed.terminal_taint,
+                        observed.leaf_successes
+                    ));
+                }
                 Err(error) => {
                     let detail = format!("RED {outer}/{inner}: {error:?} / {error}");
                     results.push(detail.clone());
@@ -134,7 +179,7 @@ fn collect_involving_owned_cells_report_shared_generic_gap() -> TestResult {
     }
     assert!(
         failures.is_empty(),
-        "shared generic owned recovery gap (reproduced, needs generic driver fix):\n{}",
+        "Collect owned replay qualification failed:\n{}",
         failures.join("\n")
     );
     Ok(())
