@@ -17,6 +17,7 @@ use crate::support::{
     Durability, TestResult, assert_ordering, compile, events, open_runtime, persist_artifact,
     terminal, tick_until_terminal,
 };
+use vb_storage::JournalEvent::{SlotWrittenEvent, StepStarted};
 
 #[path = "primitive_routes/effects.rs"]
 mod effects;
@@ -168,7 +169,40 @@ fn assert_family_effects(
             .count();
         assert_eq!(actual_count, *expected_count, "{} {name}", case.name);
     }
-    effects::assert_family_effects(events, run, workflow, case.name)
+    effects::assert_family_effects(events, run, workflow, case.name)?;
+    if case.name == "choose" {
+        assert_attempt_two_rejected(events, run, workflow)?;
+    }
+    Ok(())
+}
+fn shift_attempts(events: &mut [vb_storage::JournalEvent]) {
+    for event in events {
+        match event {
+            StepStarted { attempt, .. } | SlotWrittenEvent { attempt, .. } => *attempt = 2,
+            _ => {}
+        }
+    }
+}
+
+fn assert_attempt_two_rejected(
+    events: &[vb_storage::JournalEvent],
+    run: RunId,
+    workflow: &CompiledWorkflow,
+) -> TestResult {
+    let step = (0..workflow.node_count())
+        .map(vb_core::StepIdx::new)
+        .find(|step| workflow.step_name(*step) == Some("took_a"))
+        .ok_or("choose effect step missing")?;
+    let mut shifted = events.to_vec();
+    shift_attempts(&mut shifted);
+    let error = effects::assert_family_effects(&shifted, run, workflow, "choose")
+        .err()
+        .ok_or("attempt-2 trace was accepted")?;
+    assert_eq!(
+        error.to_string(),
+        format!("effect step {step:?} started with attempt 2, expected 1")
+    );
+    Ok(())
 }
 
 #[test]
