@@ -30,6 +30,10 @@ use crate::bounded::{BoundedPayload, MaxPayloadBytes, QueueCapacity};
 use crate::error::IpcError;
 use crate::ingress::{IngressFrame, MemoryIngress};
 
+#[path = "ingress_frame_strategy.rs"]
+mod ingress_frame_strategy;
+use ingress_frame_strategy::arb_ingress_frame;
+
 // ─── Test helpers ──────────────────────────────────────────────────────────────
 
 /// Creates a minimal valid `IngressFrame` for testing.
