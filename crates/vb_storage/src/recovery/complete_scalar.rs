@@ -4,10 +4,32 @@ use super::{
     RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryResult, UnsupportedRecoveryState,
 };
 use crate::{JournalEvent as E, RunInputBinding, RunPolicyPin};
-use vb_core::{CompiledNodeKind as K, CompiledWorkflow, RunFrame, SlotValue, StepIdx, StepState};
+use vb_core::{
+    CompiledNodeKind as K, CompiledWorkflow, RunFrame, SlotIdx, SlotValue, StepIdx, StepState,
+    Taint,
+};
 
-mod driver;
+mod action_wait;
+pub(crate) mod driver;
 mod steps;
+
+/// Which durable-trace contract the driver is validating.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TraceReplayMode {
+    /// Scalar-only trace; no runtime arena allocation is permitted.
+    Scalar,
+    /// Deterministic owned-arena trace (ForEach/Reduce/Together/Repeat);
+    /// the supplied value-store checkpoint is the exact arena the live run
+    /// started from.
+    OwnedArena,
+}
+
+/// Inputs and mode for [`driver::replay_with_inputs`].
+pub(crate) struct TraceReplayInput<'a> {
+    pub(crate) initial_inputs: &'a [(SlotIdx, SlotValue, Taint)],
+    pub(crate) store_checkpoint: Option<&'a vb_core::value_store::ValueStoreCheckpointV1>,
+    pub(crate) mode: TraceReplayMode,
+}
 
 /// A complete artifact-guided replay; no caller can construct its live frame.
 /// This proves trace completeness, not host authorization: cold activation must

@@ -138,9 +138,10 @@ impl Runtime {
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
         )?;
-        let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
+        let evidence =
+            Self::recover_seed_evidence(&prefix.events, &recovered.workflow, &retained_inputs)?;
         let boundary = Self::recovered_boundary_from_events(
-            &seed,
+            &evidence.seed,
             &prefix.events,
             &recovered.workflow,
             &expected,
@@ -149,21 +150,14 @@ impl Runtime {
         // a pending registered action must be reconciliable from the durable
         // receipt before the run is allowed to resume (no live re-execution).
         self.validate_registered_recovery(&recovered.artifact, boundary)?;
-        let complete_frame = vb_storage::recovery::complete_scalar::replay_complete_scalar(
-            &prefix.events,
-            &recovered.workflow,
-        )
-        .map_err(|error| RuntimeError::Recovery {
-            error: error.to_string(),
-        })?
-        .map(|replayed| replayed.into_frame());
         Self::product_from_recovered_seed(
             run,
             prefix,
-            seed,
+            evidence.seed,
             boundary,
             retained_inputs,
-            complete_frame,
+            evidence.complete_frame,
+            evidence.recovered_store,
         )
     }
 }

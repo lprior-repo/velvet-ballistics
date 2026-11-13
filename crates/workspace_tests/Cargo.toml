@@ -276,6 +276,10 @@ path = "tests/e2e_yaml_sweep.rs"
 name = "ps007_bridge_binding_tests"
 path = "tests/ps007_bridge_binding_tests.rs"
 
+[[test]]
+name = "shipping_foreach_recovery"
+path = "tests/shipping_foreach_recovery.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false
