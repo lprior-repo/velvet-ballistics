@@ -27,43 +27,46 @@
 // - ClockUnavailable: clock_unavailable_variant_and_display, clock_unavailable_error_code
 // - InvalidGateCount: invalid_gate_count_variant_and_fields, invalid_gate_count_display_format, invalid_gate_count_error_code
 // - MissingRequiredProofFlag: missing_required_proof_flag_variant_and_fields, missing_required_proof_flag_display_format, missing_required_proof_flag_error_code
+// - KeyCapacity: key_capacity_variant_and_display, key_capacity_error_code
+// - WriteLockPoisoned: write_lock_poisoned_variant_and_display, write_lock_poisoned_error_code
+// - QueueCapacity: queue_capacity_variant_and_display, queue_capacity_error_code
+// - QueueFull: queue_full_variant_and_display, queue_full_error_code
+// - QueueShutdown: queue_shutdown_variant_and_display, queue_shutdown_error_code
+// - SequenceOverflow: sequence_overflow_variant_and_display, sequence_overflow_error_code
+// - InvalidEvent: invalid_event_variant_and_display, invalid_event_error_code
+// - ArtifactMalformed: artifact_malformed_variant_and_display, artifact_malformed_error_code
+// - ArtifactChecksumMismatch: artifact_checksum_mismatch_variant_and_display, artifact_checksum_mismatch_error_code
+// - InvalidRunId: invalid_run_id_variant_and_fields, invalid_run_id_display_format, invalid_run_id_error_code
+// - StrictDurabilityFailed: strict_durability_failed_variant_and_display, strict_durability_failed_error_code
+// - ProcessLockHeld: process_lock_held_variant_and_fields, process_lock_held_display_format, process_lock_held_error_code
+// - ProcessLockIo: process_lock_io_variant_and_fields, process_lock_io_display_format, process_lock_io_error_code
 //
-// Untested variants:
-// - Fjall: no direct test (requires fjall mock/integration)
-// - Encode: no direct test (requires postcard mock)
-// - KeyCapacity: no direct test
-// - DuplicateEvent: no direct test
-// - WriteLockPoisoned: no direct test
-// - QueueCapacity: no direct test
-// - QueueFull: no direct test
-// - QueueShutdown: no direct test
-// - WrongRun: no direct test
-// - SequenceGap: no direct test
-// - SequenceOverflow: no direct test
-// - BadMagic: no direct test
-// - UnsupportedSchemaVersion: no direct test
-// - MigrationRequired: no direct test
-// - UnknownRecordKind: no direct test
-// - RecordKindFamilyMismatch: no direct test
-// - HeaderLengthMismatch: no direct test
-// - PayloadTooLarge: no direct test
-// - HeaderChecksumMismatch: no direct test
-// - PayloadDigestMismatch: no direct test
-// - UnexpectedEof: no direct test
-// - PostcardDecodeFailed: no direct test
-// - InvalidEvent: no direct test
-// - ArtifactMalformed: no direct test
-// - ArtifactChecksumMismatch: no direct test
-// - ArtifactNotFound: no direct test
-// - InvalidRunId: no direct test
-// - StrictDurabilityFailed: no direct test
-// - ProcessLockHeld: no direct test
-// - ProcessLockIo: no direct test
-// - Trim: no direct test
+// Tested in sibling suites (direct construction + diagnostic-code assertion
+// in error_code_tests.rs, behavioral production in tests/error_variants_and_bdd.rs):
+// - DuplicateEvent, SequenceGap, BadMagic, UnsupportedSchemaVersion,
+//   HeaderLengthMismatch, PayloadTooLarge, HeaderChecksumMismatch,
+//   PayloadDigestMismatch, UnexpectedEof, PostcardDecodeFailed: both suites
+// - WrongRun, ArtifactNotFound, Trim, ArtifactVersionIncompatible: error_code_tests.rs
+// - MigrationRequired, UnknownRecordKind, RecordKindFamilyMismatch,
+//   MalformedKeyspaceRow: tests/error_variants_and_bdd.rs
+//
+// Untested variants (documented external-wrapper exceptions; see
+// docs/error-variant-completeness.md):
+// - Fjall: no direct test (wraps fjall::Error, no stable public constructor)
+// - Encode: no direct test (wraps postcard::Error, no stable public constructor)
+//
+// Not yet audited (no direct test in the three JournalError suites; follow-up):
+// - DuplicateStagedKey, JournalBatchBytesExceeded, BatchAborted,
+//   ReplayKeyMismatch, ReplayEnvelopeSequenceMismatch, RecordKindPayloadMismatch,
+//   PostcardEncodeFailed, ArtifactValidation, ArtifactActionRegistry,
+//   WorkflowReconstruction, CompiledIrReadback, AdmissionAllocationFailed,
+//   OwnedInputs, IndexStatusStateCollision, InvalidConfig, UnsupportedReadOnly,
+//   EmergencyDenyMarkerUnsupportedVersion, EmergencyDenyMarkerMalformed
 //
 mod error_tests {
     use crate::JournalError;
     use crate::error::ArtifactInvalidSource;
+    use std::path::PathBuf;
     use vb_core::{DiagnosticCode, RunId};
 
     // -----------------------------------------------------------------------
@@ -553,6 +556,437 @@ mod error_tests {
         assert_eq!(
             JournalError::MISSING_REQUIRED_PROOF_FLAG_CODE,
             DiagnosticCode::new(0x401D),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // KeyCapacity
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn key_capacity_variant_and_display() {
+        let err = JournalError::KeyCapacity;
+        assert!(
+            matches!(err, JournalError::KeyCapacity),
+            "variant must be KeyCapacity"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("journal key capacity exceeded"),
+            "Display must mention key capacity: {display}"
+        );
+    }
+
+    #[test]
+    fn key_capacity_error_code() {
+        let err = JournalError::KeyCapacity;
+        assert_eq!(err.diagnostic_code(), JournalError::KEY_CAPACITY_CODE,);
+        assert_eq!(JournalError::KEY_CAPACITY_CODE, DiagnosticCode::new(0x4003),);
+    }
+
+    // -----------------------------------------------------------------------
+    // WriteLockPoisoned
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn write_lock_poisoned_variant_and_display() {
+        let err = JournalError::WriteLockPoisoned;
+        assert!(
+            matches!(err, JournalError::WriteLockPoisoned),
+            "variant must be WriteLockPoisoned"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("journal write lock is poisoned"),
+            "Display must mention poisoned write lock: {display}"
+        );
+    }
+
+    #[test]
+    fn write_lock_poisoned_error_code() {
+        let err = JournalError::WriteLockPoisoned;
+        assert_eq!(
+            err.diagnostic_code(),
+            JournalError::WRITE_LOCK_POISONED_CODE,
+        );
+        assert_eq!(
+            JournalError::WRITE_LOCK_POISONED_CODE,
+            DiagnosticCode::new(0x4005),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // QueueCapacity
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn queue_capacity_variant_and_display() {
+        let err = JournalError::QueueCapacity;
+        assert!(
+            matches!(err, JournalError::QueueCapacity),
+            "variant must be QueueCapacity"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("journal writer queue capacity must be non-zero"),
+            "Display must mention queue capacity: {display}"
+        );
+    }
+
+    #[test]
+    fn queue_capacity_error_code() {
+        let err = JournalError::QueueCapacity;
+        assert_eq!(err.diagnostic_code(), JournalError::QUEUE_CAPACITY_CODE,);
+        assert_eq!(
+            JournalError::QUEUE_CAPACITY_CODE,
+            DiagnosticCode::new(0x4006),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // QueueFull
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn queue_full_variant_and_display() {
+        let err = JournalError::QueueFull;
+        assert!(
+            matches!(err, JournalError::QueueFull),
+            "variant must be QueueFull"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("journal writer queue is full"),
+            "Display must mention queue full: {display}"
+        );
+    }
+
+    #[test]
+    fn queue_full_error_code() {
+        let err = JournalError::QueueFull;
+        assert_eq!(err.diagnostic_code(), JournalError::QUEUE_FULL_CODE,);
+        assert_eq!(JournalError::QUEUE_FULL_CODE, DiagnosticCode::new(0x4007),);
+    }
+
+    // -----------------------------------------------------------------------
+    // QueueShutdown
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn queue_shutdown_variant_and_display() {
+        let err = JournalError::QueueShutdown;
+        assert!(
+            matches!(err, JournalError::QueueShutdown),
+            "variant must be QueueShutdown"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("journal writer queue is shut down"),
+            "Display must mention queue shutdown: {display}"
+        );
+    }
+
+    #[test]
+    fn queue_shutdown_error_code() {
+        let err = JournalError::QueueShutdown;
+        assert_eq!(err.diagnostic_code(), JournalError::QUEUE_SHUTDOWN_CODE,);
+        assert_eq!(
+            JournalError::QUEUE_SHUTDOWN_CODE,
+            DiagnosticCode::new(0x4016),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // SequenceOverflow
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn sequence_overflow_variant_and_display() {
+        let err = JournalError::SequenceOverflow;
+        assert!(
+            matches!(err, JournalError::SequenceOverflow),
+            "variant must be SequenceOverflow"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("journal event sequence overflow"),
+            "Display must mention sequence overflow: {display}"
+        );
+    }
+
+    #[test]
+    fn sequence_overflow_error_code() {
+        let err = JournalError::SequenceOverflow;
+        assert_eq!(err.diagnostic_code(), JournalError::SEQUENCE_OVERFLOW_CODE,);
+        assert_eq!(
+            JournalError::SEQUENCE_OVERFLOW_CODE,
+            DiagnosticCode::new(0x400A),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // InvalidEvent
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn invalid_event_variant_and_display() {
+        let err = JournalError::InvalidEvent;
+        assert!(
+            matches!(err, JournalError::InvalidEvent),
+            "variant must be InvalidEvent"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("semantically invalid"),
+            "Display must mention semantic invalidity: {display}"
+        );
+    }
+
+    #[test]
+    fn invalid_event_error_code() {
+        let err = JournalError::InvalidEvent;
+        assert_eq!(err.diagnostic_code(), JournalError::INVALID_EVENT_CODE,);
+        assert_eq!(
+            JournalError::INVALID_EVENT_CODE,
+            DiagnosticCode::new(0x4020),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // ArtifactMalformed
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn artifact_malformed_variant_and_display() {
+        let err = JournalError::ArtifactMalformed;
+        assert!(
+            matches!(err, JournalError::ArtifactMalformed),
+            "variant must be ArtifactMalformed"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("artifact structure validation failed"),
+            "Display must mention artifact structure validation: {display}"
+        );
+    }
+
+    #[test]
+    fn artifact_malformed_error_code() {
+        let err = JournalError::ArtifactMalformed;
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
+        assert_eq!(
+            JournalError::ARTIFACT_MALFORMED_CODE,
+            DiagnosticCode::new(0x4017),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // ArtifactChecksumMismatch
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn artifact_checksum_mismatch_variant_and_display() {
+        let err = JournalError::ArtifactChecksumMismatch;
+        assert!(
+            matches!(err, JournalError::ArtifactChecksumMismatch),
+            "variant must be ArtifactChecksumMismatch"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("artifact checksum mismatch"),
+            "Display must mention artifact checksum mismatch: {display}"
+        );
+    }
+
+    #[test]
+    fn artifact_checksum_mismatch_error_code() {
+        let err = JournalError::ArtifactChecksumMismatch;
+        assert_eq!(
+            err.diagnostic_code(),
+            JournalError::ARTIFACT_CHECKSUM_MISMATCH_CODE,
+        );
+        assert_eq!(
+            JournalError::ARTIFACT_CHECKSUM_MISMATCH_CODE,
+            DiagnosticCode::new(0x4018),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // InvalidRunId
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn invalid_run_id_variant_and_fields() {
+        let err = JournalError::InvalidRunId { run: RunId::new(7) };
+        match err {
+            JournalError::InvalidRunId { run } => {
+                assert_eq!(run, RunId::new(7));
+            }
+            other => panic!("expected InvalidRunId, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn invalid_run_id_display_format() {
+        let err = JournalError::InvalidRunId { run: RunId::new(7) };
+        let display = format!("{err}");
+        assert!(
+            display.contains("invalid run identifier"),
+            "Display must mention invalid run identifier: {display}"
+        );
+    }
+
+    #[test]
+    fn invalid_run_id_error_code() {
+        let err = JournalError::InvalidRunId { run: RunId::new(1) };
+        assert_eq!(err.diagnostic_code(), JournalError::INVALID_RUN_ID_CODE,);
+        assert_eq!(
+            JournalError::INVALID_RUN_ID_CODE,
+            DiagnosticCode::new(0x4021),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // StrictDurabilityFailed
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn strict_durability_failed_variant_and_display() {
+        let err = JournalError::StrictDurabilityFailed;
+        assert!(
+            matches!(err, JournalError::StrictDurabilityFailed),
+            "variant must be StrictDurabilityFailed"
+        );
+        let display = format!("{err}");
+        assert!(
+            display.contains("strict durability failed"),
+            "Display must mention strict durability: {display}"
+        );
+    }
+
+    #[test]
+    fn strict_durability_failed_error_code() {
+        let err = JournalError::StrictDurabilityFailed;
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
+        assert_eq!(
+            JournalError::ARTIFACT_MALFORMED_CODE,
+            DiagnosticCode::new(0x4017),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // ProcessLockHeld
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn process_lock_held_variant_and_fields() {
+        let err = JournalError::ProcessLockHeld {
+            path: PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path(),
+            source: rustix::io::Errno::WOULDBLOCK,
+            holder_pid: Some(4242),
+        };
+        match err {
+            JournalError::ProcessLockHeld {
+                path,
+                source,
+                holder_pid,
+            } => {
+                assert_eq!(
+                    path,
+                    PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path()
+                );
+                assert!(matches!(source, rustix::io::Errno::WOULDBLOCK));
+                assert_eq!(holder_pid, Some(4242));
+            }
+            other => panic!("expected ProcessLockHeld, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn process_lock_held_display_format() {
+        let err = JournalError::ProcessLockHeld {
+            path: PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path(),
+            source: rustix::io::Errno::WOULDBLOCK,
+            holder_pid: Some(4242),
+        };
+        let display = format!("{err}");
+        assert!(
+            display.contains("process lock held by another process"),
+            "Display must mention process lock held: {display}"
+        );
+        assert!(
+            display.contains("4242"),
+            "Display must contain the holder pid: {display}"
+        );
+        assert!(
+            display.contains("/tmp/vb-test-process.lock"),
+            "Display must contain the lock path: {display}"
+        );
+    }
+
+    #[test]
+    fn process_lock_held_error_code() {
+        let err = JournalError::ProcessLockHeld {
+            path: PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path(),
+            source: rustix::io::Errno::WOULDBLOCK,
+            holder_pid: None,
+        };
+        assert_eq!(err.diagnostic_code(), JournalError::PROCESS_LOCK_HELD_CODE,);
+        assert_eq!(
+            JournalError::PROCESS_LOCK_HELD_CODE,
+            DiagnosticCode::new(0x401A),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // ProcessLockIo
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn process_lock_io_variant_and_fields() {
+        let err = JournalError::ProcessLockIo {
+            path: PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "test lock file missing"),
+        };
+        match err {
+            JournalError::ProcessLockIo { path, source } => {
+                assert_eq!(
+                    path,
+                    PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path()
+                );
+                assert_eq!(source.kind(), std::io::ErrorKind::NotFound);
+            }
+            other => panic!("expected ProcessLockIo, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn process_lock_io_display_format() {
+        let err = JournalError::ProcessLockIo {
+            path: PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "test lock file missing"),
+        };
+        let display = format!("{err}");
+        assert!(
+            display.contains("process lock I/O error"),
+            "Display must mention process lock I/O error: {display}"
+        );
+        assert!(
+            display.contains("/tmp/vb-test-process.lock"),
+            "Display must contain the lock path: {display}"
+        );
+    }
+
+    #[test]
+    fn process_lock_io_error_code() {
+        let err = JournalError::ProcessLockIo {
+            path: PathBuf::from("/tmp/vb-test-process.lock").into_boxed_path(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "test"),
+        };
+        assert_eq!(err.diagnostic_code(), JournalError::PROCESS_LOCK_IO_CODE,);
+        assert_eq!(
+            JournalError::PROCESS_LOCK_IO_CODE,
+            DiagnosticCode::new(0x401B),
         );
     }
 }
