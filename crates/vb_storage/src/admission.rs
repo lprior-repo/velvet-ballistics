@@ -12,6 +12,10 @@ use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 mod proof;
 pub use proof::{ProofFlag, VerificationProof, VerificationWarning};
 
+#[path = "admission/payload_tag.rs"]
+mod payload_tag;
+pub use payload_tag::{PayloadTag, classify_accepted_artifact, is_strict_accepted_artifact_tag};
+
 #[path = "admission/digest.rs"]
 mod digest;
 #[cfg(test)]
@@ -97,6 +101,11 @@ pub fn submit_artifact_with_contracts(
 ) -> Result<AcceptedArtifact, JournalError> {
     // Prepare validates first; pure prepare stays seq=0/unpersisted unchanged.
     let artifact = prepare_compiled_artifact(workflow, policy, action_contracts)?;
+    if matches!(policy, vb_core::RuntimePolicy::Strict)
+        && !is_strict_accepted_artifact_tag(classify_accepted_artifact(&artifact))
+    {
+        return Err(JournalError::ArtifactMalformed);
+    }
 
     // Delegate issuance to private journal helper. The helper holds the
     // write_lock across the entire RMW sequence: read counter, increment,
