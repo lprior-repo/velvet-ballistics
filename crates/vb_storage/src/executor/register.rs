@@ -156,6 +156,15 @@ impl FjallRegister {
         Ok(Some(RegisterReceipt(record)))
     }
 
+    #[cfg(test)]
+    pub(super) fn commit_effect_for_crash_test(
+        &mut self,
+        grant: &RegisterGrant,
+        value: i64,
+    ) -> Result<RegisterReceipt, ExecutorError> {
+        self.commit_effect(grant, value)
+    }
+
     fn commit_effect(
         &mut self,
         grant: &RegisterGrant,

@@ -29,3 +29,12 @@ mod issuance_scoped_tests;
 
 #[cfg(test)]
 mod issuance_boundary_tests;
+
+#[cfg(test)]
+mod test_support;
+
+#[cfg(test)]
+mod scope_pack_regression_tests;
+
+#[cfg(test)]
+mod register_crash_tests;
