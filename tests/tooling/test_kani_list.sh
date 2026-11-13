@@ -5,6 +5,15 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 SCRIPT="$ROOT/scripts/kani-list.sh"
 PASSED=0; FAILED=0
+HELPER_BIN=""
+SCRATCH_ROOT="$ROOT/target/native-tools/tests/kani-list"
+mkdir -p -- "$SCRATCH_ROOT"
+export TMPDIR="$SCRATCH_ROOT" TMP="$SCRATCH_ROOT" TEMP="$SCRATCH_ROOT"
+
+load_helper() {
+  source "$ROOT/scripts/kani-json-helper.sh"
+  HELPER_BIN="$(kani_json_helper_build)"
+}
 
 run_test() {
   local n="$1" f="$2"
@@ -23,7 +32,7 @@ test_i01() {
 test_i02() {
   # Behavioral test: run kani-list.sh with cargo kani unavailable
   # Create a fake cargo that rejects everything, simulating kani missing
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local fake_cargo; fake_cargo="$tmp/cargo"
   cat > "$fake_cargo" <<'FAKE_CARGO'
 #!/usr/bin/env bash
@@ -40,13 +49,14 @@ FAKE_CARGO
 test_i03() {
   if ! command -v cargo >/dev/null 2>&1; then printf 'SKIP: no cargo\n'; return 0; fi
   if ! cargo kani --version >/dev/null 2>&1; then printf 'SKIP: no cargo kani\n'; return 0; fi
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  load_helper
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local out; out="$(KANI_LIST_DIR="$tmp" "$SCRIPT" vb_core 2>&1)"; local rc=$?
   [ "$rc" -eq 0 ] || { printf 'exit %d: %s\n' "$rc" "$(echo "$out" | head -3)"; return 1; }
   echo "$out" | grep -q 'KANI_LIST_OK' || { printf 'missing KANI_LIST_OK\n'; return 1; }
   [ -f "$tmp/vb_core.json" ] || { printf 'missing evidence file\n'; return 1; }
-  python3 -m json.tool "$tmp/vb_core.json" >/dev/null 2>&1 || { printf 'invalid JSON\n'; return 1; }
-  local cnt; cnt="$(python3 -c "import json; print(json.load(open('$tmp/vb_core.json')).get('totals',{}).get('standard-harnesses',0))" 2>/dev/null)"
+  "$HELPER_BIN" validate-json "$tmp/vb_core.json" || { printf 'invalid JSON\n'; return 1; }
+  local cnt; cnt="$("$HELPER_BIN" standard-harnesses "$tmp/vb_core.json")"
   [ -n "$cnt" ] && [ "$cnt" -gt 0 ] || { printf 'zero harnesses\n'; return 1; }
   printf '  vb_core: %s harnesses\n' "$cnt"
 }
@@ -54,13 +64,14 @@ test_i03() {
 test_i04() {
   if ! command -v cargo >/dev/null 2>&1; then printf 'SKIP: no cargo\n'; return 0; fi
   if ! cargo kani --version >/dev/null 2>&1; then printf 'SKIP: no cargo kani\n'; return 0; fi
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  load_helper
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local out; out="$(KANI_LIST_DIR="$tmp" "$SCRIPT" vb_runtime 2>&1)"; local rc=$?
   [ "$rc" -eq 0 ] || { printf 'exit %d: %s\n' "$rc" "$(echo "$out" | head -3)"; return 1; }
   echo "$out" | grep -q 'KANI_LIST_OK' || { printf 'missing KANI_LIST_OK\n'; return 1; }
   [ -f "$tmp/vb_runtime.json" ] || { printf 'missing evidence file\n'; return 1; }
-  python3 -m json.tool "$tmp/vb_runtime.json" >/dev/null 2>&1 || { printf 'invalid JSON\n'; return 1; }
-  local cnt; cnt="$(python3 -c "import json; print(json.load(open('$tmp/vb_runtime.json')).get('totals',{}).get('standard-harnesses',0))" 2>/dev/null)"
+  "$HELPER_BIN" validate-json "$tmp/vb_runtime.json" || { printf 'invalid JSON\n'; return 1; }
+  local cnt; cnt="$("$HELPER_BIN" standard-harnesses "$tmp/vb_runtime.json")"
   [ -n "$cnt" ] && [ "$cnt" -gt 0 ] || { printf 'zero harnesses\n'; return 1; }
   printf '  vb_runtime: %s harnesses\n' "$cnt"
 }
@@ -68,7 +79,7 @@ test_i04() {
 test_i05() {
   if ! command -v cargo >/dev/null 2>&1; then printf 'SKIP: no cargo\n'; return 0; fi
   if ! cargo kani --version >/dev/null 2>&1; then printf 'SKIP: no cargo kani\n'; return 0; fi
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local out; out="$(KANI_LIST_DIR="$tmp" "$SCRIPT" nonexistent_package_xyz_12345 2>&1)"; local rc=$?
   [ "$rc" -eq 1 ] || { printf 'expected exit 1 got %d\n' "$rc"; return 1; }
   [ ! -f "$tmp/nonexistent_package_xyz_12345.json" ] || { printf 'evidence file exists for bad package\n'; return 1; }
@@ -77,7 +88,7 @@ test_i05() {
 test_i06() {
   if ! command -v cargo >/dev/null 2>&1; then printf 'SKIP: no cargo\n'; return 0; fi
   if ! cargo kani --version >/dev/null 2>&1; then printf 'SKIP: no cargo kani\n'; return 0; fi
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local out; out="$(KANI_LIST_DIR="$tmp" KANI_FEATURES='vb_runtime/kani-diagnostic-codes' "$SCRIPT" vb_runtime 2>&1)"; local rc=$?
   [ "$rc" -eq 1 ] || { printf 'expected exit 1 (fail-closed) got %d\n' "$rc"; return 1; }
   [ ! -f "$tmp/vb_runtime.json" ] || { printf 'evidence file should not exist\n'; return 1; }
@@ -87,7 +98,7 @@ test_i07() {
   if ! command -v cargo >/dev/null 2>&1; then printf 'SKIP: no cargo\n'; return 0; fi
   if ! cargo kani --version >/dev/null 2>&1; then printf 'SKIP: no cargo kani\n'; return 0; fi
   grep -q 'kani-diagnostic-codes' "$ROOT/crates/vb_core/Cargo.toml" 2>/dev/null || { printf 'SKIP: vb_core has no kani-diagnostic-codes\n'; return 0; }
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local out; out="$(KANI_LIST_DIR="$tmp" KANI_FEATURES='vb_core/kani-diagnostic-codes' "$SCRIPT" vb_core 2>&1)"; local rc=$?
   [ "$rc" -eq 0 ] || { printf 'expected exit 0 got %d\n' "$rc"; return 1; }
   echo "$out" | grep -q 'KANI_LIST_OK' || { printf 'missing KANI_LIST_OK\n'; return 1; }
@@ -97,17 +108,18 @@ test_i07() {
 test_i08() {
   if ! command -v cargo >/dev/null 2>&1; then printf 'SKIP: no cargo\n'; return 0; fi
   if ! cargo kani --version >/dev/null 2>&1; then printf 'SKIP: no cargo kani\n'; return 0; fi
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  load_helper
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local out; out="$(KANI_LIST_DIR="$tmp" "$SCRIPT" vb_core 2>&1)"; local rc=$?
   [ "$rc" -eq 0 ] || { printf 'expected exit 0 got %d\n' "$rc"; return 1; }
   [ -f "$tmp/vb_core.json" ] || { printf 'evidence not in KANI_LIST_DIR\n'; return 1; }
-  python3 -m json.tool "$tmp/vb_core.json" >/dev/null 2>&1 || { printf 'invalid JSON in override dir\n'; return 1; }
+  "$HELPER_BIN" validate-json "$tmp/vb_core.json" || { printf 'invalid JSON in override dir\n'; return 1; }
 }
 
 test_i09() {
   # Behavioral test: simulate cargo kani list producing empty JSON file
   # Create a fake cargo that produces real metadata but empty kani-list.json
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local real_cargo; real_cargo="$(command -v cargo)" || { printf 'SKIP: no cargo\n'; return 0; }
   local fake_cargo; fake_cargo="$tmp/cargo"
   cat > "$fake_cargo" <<FAKE_CARGO
@@ -119,6 +131,7 @@ case "\$1" in
     case "\$2" in
       list)
         # Create an empty kani-list.json file (zero bytes)
+        touch "$tmp/kani-list-reached"
         touch "\$(pwd)/kani-list.json"
         exit 0 ;;
       *)
@@ -134,13 +147,14 @@ FAKE_CARGO
 
   local out; out="$(PATH="$tmp:/usr/bin:/bin" "$SCRIPT" vb_core 2>&1)"; local rc=$?
   [ "$rc" -eq 1 ] || { printf 'expected exit 1 from empty JSON, got %d\n' "$rc"; return 1; }
+  [ -f "$tmp/kani-list-reached" ] || { printf 'fake cargo listing was not reached\n'; return 1; }
   echo "$out" | grep -qi 'did not produce' || { printf 'missing "did not produce" error\n'; return 1; }
 }
 
 test_i10() {
   # Behavioral test: simulate cargo kani list producing invalid JSON
   # Create a fake cargo that passes metadata through but produces invalid JSON from kani list
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local real_cargo; real_cargo="$(command -v cargo)" || { printf 'SKIP: no cargo\n'; return 0; }
   local fake_cargo; fake_cargo="$tmp/cargo"
   cat > "$fake_cargo" <<FAKE_CARGO
@@ -151,6 +165,7 @@ case "\$1" in
   kani)
     case "\$2" in
       list)
+        touch "$tmp/kani-list-reached"
         printf 'NOT JSON CONTENT\n' > "\$(pwd)/kani-list.json"
         exit 0 ;;
       *)
@@ -165,6 +180,8 @@ FAKE_CARGO
 
   local out; out="$(PATH="$tmp:/usr/bin:/bin" "$SCRIPT" vb_core 2>&1)"; local rc=$?
   [ "$rc" -ne 0 ] || { printf 'expected non-zero exit for invalid JSON, got %d\n' "$rc"; return 1; }
+  [ -f "$tmp/kani-list-reached" ] || { printf 'fake cargo listing was not reached\n'; return 1; }
+  echo "$out" | grep -qi 'invalid JSON' || { printf 'missing native JSON rejection diagnostic\n'; return 1; }
 }
 
 main() {
@@ -177,7 +194,7 @@ main() {
   run_test "I07: succeeds with declared KANI_FEATURES" test_i07
   run_test "I08: outputs to KANI_LIST_DIR override" test_i08
   run_test "I09: exits 1 on empty JSON output" test_i09
-  run_test "I10: validates JSON with python3 json.tool" test_i10
+  run_test "I10: rejects invalid listing JSON natively" test_i10
   printf '\nKani-list results: %d passed, %d failed\n' "$PASSED" "$FAILED"
   [ "$FAILED" -eq 0 ]
 }

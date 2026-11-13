@@ -75,10 +75,10 @@ fn lower_numeric_negation(
     ops: &mut Vec<ExprOp>,
     resolver: &mut impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
-    let zero = push_expression_constant(ConstValue::I64(0), constants)?;
-    ops.push(ExprOp::LoadConst(zero));
+    let negative_one = push_expression_constant(ConstValue::I64(-1), constants)?;
+    ops.push(ExprOp::LoadConst(negative_one));
     lower_expr(expr, constants, ops, resolver)?;
-    ops.push(ExprOp::Sub);
+    ops.push(ExprOp::Mul);
     Ok(())
 }
 

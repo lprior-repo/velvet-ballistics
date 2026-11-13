@@ -46,7 +46,9 @@ fn collect_kind_targets(
     let branches = match &node.kind {
         CompiledNodeKind::Choose { branches, .. } => branches.len(),
         CompiledNodeKind::ChooseSlot { branches, .. } => branches.len(),
-        CompiledNodeKind::TogetherStart { branches, .. } => branches.len(),
+        CompiledNodeKind::TogetherStart { branches, .. }
+        | CompiledNodeKind::TogetherConcurrentStart { branches, .. }
+        | CompiledNodeKind::FirstSuccessStart { branches, .. } => branches.len(),
         _ => 1,
     };
     let capacity = branches.checked_add(1).ok_or_else(resource_error)?;

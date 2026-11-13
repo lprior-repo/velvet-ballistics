@@ -41,6 +41,7 @@ pub(super) fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError>
     // the shape at the source. The helper returns
     // `WorkflowError::NestedTogether { outer, inner }`.
     crate::engine::validate::validate_no_nested_together(parts)?;
+    super::concurrent_together_policy::validate(parts)?;
     Ok(())
 }
 
@@ -128,7 +129,7 @@ pub(crate) fn validate_budget_result(
     }
 }
 
-fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowError> {
+pub(super) fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowError> {
     if node.id.as_usize() == index {
         Ok(())
     } else {
@@ -149,6 +150,20 @@ fn validate_entry(entry: StepIdx, node_count: usize) -> Result<(), WorkflowError
 
 fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_node_common(node, parts)?;
+    if matches!(
+        node.kind,
+        CompiledNodeKind::ForEachConcurrentStart { .. }
+            | CompiledNodeKind::TogetherConcurrentStart { .. }
+            | CompiledNodeKind::FirstSuccessStart { .. }
+    ) {
+        super::concurrent_pair::validate_concurrent_pair(parts, node.id)?;
+        super::concurrent_start_entries::validate(parts, node)?;
+        super::concurrent_lane_walk::check_start(parts, node.id)?;
+        drop(super::concurrent_analyze::analyze(parts)?);
+    }
+    if matches!(node.kind, CompiledNodeKind::ConcurrentLaneEnd { .. }) {
+        super::concurrent_lane_end::validate(parts, node)?;
+    }
     validate_node_kind(&node.kind, parts)?;
     validate_reduce_branch_targets(node)?;
     validate_for_each_next_targets(node)
@@ -181,7 +196,10 @@ fn validate_for_each_next_targets(node: &CompiledNode) -> Result<(), WorkflowErr
     }
 }
 
-fn validate_node_common(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
+pub(super) fn validate_node_common(
+    node: &CompiledNode,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
     validate_optional_slot(node.output.slot(), parts.slot_count)?;
     validate_optional_step(node.routing.next.step(), parts.nodes.len())?;
     validate_optional_step(node.routing.error.handler(), parts.nodes.len())?;

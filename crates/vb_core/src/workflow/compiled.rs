@@ -1,6 +1,15 @@
 #![forbid(unsafe_code)]
 //! Immutable compiled workflow assembled from validated parts.
 
+#[path = "bound_symbols.rs"]
+mod bound_symbols;
+#[path = "concurrent_requirements.rs"]
+mod concurrent_requirements;
+#[path = "profile_construct.rs"]
+mod profile_construct;
+pub use bound_symbols::{VersionedWorkflowParts, WorkflowIrV2};
+pub use concurrent_requirements::ConcurrentRequirements;
+
 use super::validate::{validate_budget, validate_input_slots, validate_parts};
 use super::{
     AccessorProgram, CompiledInputSlot, CompiledLoopRegion, CompiledNode, CompiledNodeKind,
@@ -28,46 +37,26 @@ pub struct CompiledWorkflow {
     step_names: Box<[Box<str>]>,
     input_slots: Box<[CompiledInputSlot]>,
     loop_slots: Box<[LoopRegionSlot]>,
+    source_symbols: Option<source_metadata::WorkflowSourceMetadata>,
+    profile: super::WorkflowIrProfile,
+    concurrent_requirements: Option<ConcurrentRequirements>,
 }
 
 impl CompiledWorkflow {
     /// Creates a compiled workflow after validating all numeric references.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
-        validate_parts(&parts)?;
-        if let Some(metadata) = &parts.source_metadata {
-            metadata
-                .validate_symbols_count(parts.symbols_count)
-                .map_err(|error| WorkflowError::SourceMetadata {
-                    detail: error.to_string().into(),
-                })?;
-        }
-        let loop_regions = loop_regions::validate(&parts)?;
-        cursor_ownership::validate(&parts, &loop_regions)?;
-        let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
-        let loop_slots = loop_regions::merge_slots(&loop_regions, &nested_activation_entries);
-        validate_budget(&parts)?;
-        source_metadata::resources::validate(&parts)?;
-        validate_input_slots(&parts)?;
-        source_metadata::secrets::validate(&parts)?;
-        retry_policy::validate(&parts)?;
-        slot_flow::validate_slot_flow(&parts)?;
-        Ok(Self {
-            name: parts.name,
-            digest: parts.digest,
-            semantic_source_identity: parts.semantic_source_identity,
-            source_metadata: parts.source_metadata,
-            nodes: parts.nodes,
-            expressions: parts.expressions,
-            accessors: parts.accessors,
-            constants: parts.constants,
-            slot_count: parts.slot_count,
-            symbols_count: parts.symbols_count,
-            entry: parts.entry,
-            resource_contract: parts.resource_contract,
-            step_names: parts.step_names,
-            input_slots: parts.input_slots,
-            loop_slots,
-        })
+        Self::try_from_parts_for_profile(parts, super::WorkflowIrProfile::LegacyV2)
+    }
+
+    /// Creates a checked workflow using concurrent execution nodes.
+    pub fn try_from_concurrent_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
+        Self::try_from_parts_for_profile(parts, super::WorkflowIrProfile::ConcurrentV3)
+    }
+
+    /// Execution profile checked during construction.
+    #[must_use]
+    pub const fn ir_profile(&self) -> super::WorkflowIrProfile {
+        self.profile
     }
 
     /// Creates a compiled workflow without validation.
@@ -92,6 +81,9 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots: Box::new([]),
+            source_symbols: None,
+            profile: super::WorkflowIrProfile::LegacyV2,
+            concurrent_requirements: None,
         }
     }
 
@@ -115,6 +107,9 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots: Box::new([]),
+            source_symbols: None,
+            profile: super::WorkflowIrProfile::LegacyV2,
+            concurrent_requirements: None,
         }
     }
 
@@ -234,7 +229,8 @@ impl CompiledWorkflow {
         self.loop_slots.get(step.as_usize())
     }
 
-    /// Converts back to the serializable parts representation for artifact emission.
+    /// Returns the legacy parts-only projection without bound symbol payloads.
+    /// Use [`Self::to_versioned_parts`] to retain the bound representation.
     #[must_use]
     pub fn to_parts(&self) -> WorkflowParts {
         WorkflowParts {

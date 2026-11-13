@@ -47,6 +47,15 @@ fn validate_kind_edges(
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
     match kind {
+        CompiledNodeKind::ForEachConcurrentStart { body, join, .. } => {
+            validate_loop_start_edges(*body, *join, ci, cid)
+        }
+        CompiledNodeKind::TogetherConcurrentStart { branches, join }
+        | CompiledNodeKind::FirstSuccessStart { branches, join } => {
+            validate_together_start_edges(branches, *join, ci, cid)
+        }
+        CompiledNodeKind::ConcurrentLaneEnd { .. }
+        | CompiledNodeKind::ConcurrentGroupJoin { .. } => Ok(()),
         CompiledNodeKind::Nop
         | CompiledNodeKind::SetConst { .. }
         | CompiledNodeKind::Copy { .. }

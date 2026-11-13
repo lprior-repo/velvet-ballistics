@@ -9,10 +9,11 @@ use thiserror::Error;
 
 mod budget;
 mod compound;
+mod concurrent;
 mod evidence;
 mod expression;
 mod facts;
-mod graph;
+pub(super) mod graph;
 mod solve;
 mod transfer;
 
@@ -62,6 +63,13 @@ fn capacity() -> SlotFlowError {
 /// Structural bounds/topology gates remain required independently. Dynamic
 /// action outputs and accessor leaves keep their existing runtime checks.
 pub fn validate_slot_flow(parts: &WorkflowParts) -> FlowResult<()> {
+    if parts
+        .nodes
+        .iter()
+        .any(|node| matches!(node.kind, super::concurrent_bootstrap::kinds!()))
+    {
+        return concurrent::validate(parts);
+    }
     solve::validate(parts)
 }
 

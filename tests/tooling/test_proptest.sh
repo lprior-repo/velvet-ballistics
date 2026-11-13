@@ -4,6 +4,9 @@ set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 PASSED=0; FAILED=0
+SCRATCH_ROOT="$ROOT/target/native-tools/tests/proptest"
+mkdir -p -- "$SCRATCH_ROOT"
+export TMPDIR="$SCRATCH_ROOT" TMP="$SCRATCH_ROOT" TEMP="$SCRATCH_ROOT"
 
 run_test() {
   local n="$1" f="$2"
@@ -43,7 +46,7 @@ test_p03() {
   for pat in \
     'printf "running 0 tests\n"; exit 0' \
     'printf "running 0 tests\n"; printf "test result: ok. 0 passed; 0 failed\n"; exit 0'; do
-    local fake; fake="$(mktemp)"; printf '#!/usr/bin/env bash\n%s\n' "$pat" > "$fake"; chmod +x "$fake"
+    local fake; fake="$(mktemp "$SCRATCH_ROOT/fake.XXXXXXXX")"; printf '#!/usr/bin/env bash\n%s\n' "$pat" > "$fake"; chmod +x "$fake"
     local out; out="$("$s" -- "$fake" 2>&1)"; local rc=$?; rm -f "$fake"
     [ "$rc" -eq 1 ] || { printf 'N=0 pattern exited %d, expected 1\n' "$rc"; return 1; }
   done
@@ -51,7 +54,7 @@ test_p03() {
   for pat in \
     'printf "running 5 tests\n"; exit 0' \
     'printf "running 1 tests\n"; printf "test result: ok. 1 passed; 0 failed\n"; exit 0'; do
-    local fake; fake="$(mktemp)"; printf '#!/usr/bin/env bash\n%s\n' "$pat" > "$fake"; chmod +x "$fake"
+    local fake; fake="$(mktemp "$SCRATCH_ROOT/fake.XXXXXXXX")"; printf '#!/usr/bin/env bash\n%s\n' "$pat" > "$fake"; chmod +x "$fake"
     local out; out="$("$s" -- "$fake" 2>&1)"; local rc=$?; rm -f "$fake"
     [ "$rc" -eq 0 ] || { printf 'N>0 pattern exited %d, expected 0\n' "$rc"; return 1; }
   done
@@ -62,9 +65,11 @@ test_p04() {
   [ -f "$s" ] || { printf 'SKIP: no kani-list.sh\n'; return 0; }
   if ! command -v cargo >/dev/null 2>&1; then printf 'SKIP: no cargo\n'; return 0; fi
   if ! cargo kani --version >/dev/null 2>&1; then printf 'SKIP: no cargo kani\n'; return 0; fi
+  source "$ROOT/scripts/kani-json-helper.sh"
+  local helper_bin; helper_bin="$(kani_json_helper_build)"
 
   # Behavioral property: ∀ packages with real cargo kani → output JSON is valid
-  local tmp; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  local tmp; tmp="$(mktemp -d "$SCRATCH_ROOT/case.XXXXXXXX")"; trap 'rm -rf "$tmp"' RETURN
   local failures=0
   for pkg in vb_core vb_runtime; do
     local out; out="$(KANI_LIST_DIR="$tmp" "$s" "$pkg" 2>&1)"; local rc=$?
@@ -73,10 +78,10 @@ test_p04() {
       continue
     fi
     [ -f "$tmp/${pkg}.json" ] || { printf '  %s: missing evidence file\n' "$pkg"; failures=$((failures+1)); continue; }
-    if ! python3 -m json.tool "$tmp/${pkg}.json" >/dev/null 2>&1; then
+    if ! "$helper_bin" validate-json "$tmp/${pkg}.json"; then
       printf '  %s: invalid JSON evidence\n' "$pkg"; failures=$((failures+1)); continue
     fi
-    local cnt; cnt="$(python3 -c "import json; print(json.load(open('$tmp/${pkg}.json')).get('totals',{}).get('standard-harnesses',0))" 2>/dev/null)"
+    local cnt; cnt="$("$helper_bin" standard-harnesses "$tmp/${pkg}.json")"
     if [ -z "$cnt" ] || [ "$cnt" -le 0 ]; then
       printf '  %s: zero harnesses in valid JSON\n' "$pkg"; failures=$((failures+1)); continue
     fi
