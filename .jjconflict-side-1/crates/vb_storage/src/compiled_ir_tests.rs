@@ -58,3 +58,6 @@ mod digests;
 mod metadata;
 #[path = "compiled_ir_version_tests.rs"]
 mod versions;
+
+#[path = "compiled_ir_current_outer_tests.rs"]
+mod current_outer;

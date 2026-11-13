@@ -33,6 +33,7 @@ pub(super) fn parts(symbols_count: u32) -> WorkflowParts {
         name: Box::from("codec-fixture"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([value_node(), finish_node(1, 0)]),
         expressions: Box::new([]),
         accessors: Box::new([]),
