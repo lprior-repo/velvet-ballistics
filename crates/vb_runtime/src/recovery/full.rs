@@ -32,7 +32,7 @@ pub(crate) use boundary::RecoveredRetryTimer;
 pub use boundary::{
     RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind, RecoveredTimerSuspension,
 };
-pub(crate) use pending::pending_action_ticket_from_events;
+pub(crate) use pending::{pending_action_ticket_from_events, validate_replayed_action_abi_events};
 pub(crate) use product::ResumableRecoveryParts;
 pub use product::{
     NonResumableRecoveryProduct, ResumableRecoveryProduct, RuntimeRecoveryProduct,

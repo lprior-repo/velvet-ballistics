@@ -378,9 +378,11 @@ fn assert_malformed_pending_prefix_is_nonmutating(
         runtime.inspect_run_state(RUN).map(|_| ()),
         Err(vb_runtime::RuntimeError::RunNotFound)
     );
+    let recovery_result = runtime.recover_product(RUN);
     assert!(matches!(
-        runtime.recover_product(RUN),
-        Err(vb_runtime::RuntimeError::Recovery { .. })
+        recovery_result,
+        Err(vb_runtime::RuntimeError::Recovery { ref error })
+            if error == "postcard payload decode failed: Serde Deserialization Error"
     ));
     assert_eq!(
         raw_bytes()?,
@@ -439,23 +441,31 @@ fn owned_foreach_limit_is_revalidated_during_replay() -> TestResult {
         (body, StepState::Succeeded),
     )?;
     let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
-    let list = store.insert_list(Box::from([
-        SlotValue::I64(3),
-        SlotValue::I64(1),
-        SlotValue::I64(2),
-        SlotValue::I64(4),
-        SlotValue::I64(5),
-    ]))?;
+    let list = store.insert_list_with_taint(
+        Box::from([
+            SlotValue::I64(3),
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(4),
+            SlotValue::I64(5),
+        ]),
+        Box::from([
+            Taint::Secret,
+            Taint::Clean,
+            Taint::Clean,
+            Taint::Clean,
+            Taint::Clean,
+        ]),
+    )?;
     let input = workflow.input_slots().first().ok_or("input")?.slot;
-    let roots = Box::from([(input, SlotValue::List(list), Taint::Clean)]);
+    let roots = Box::from([(input, SlotValue::List(list), Taint::Secret)]);
     let checkpoint = store.checkpoint_v1();
-    let result = replay_owned_for_each(&cut.events, &workflow, &roots, Some(&checkpoint));
-    assert!(
-        matches!(
-            result,
-            Err(vb_storage::recovery::RecoveryError::ReplayDivergence { .. })
-        ),
-        "over-limit source must be rejected during replay: {result:?}"
-    );
-    Ok(())
+    assert_divergence(
+        &cut.events,
+        &workflow,
+        &roots,
+        &checkpoint,
+        StepIdx::new(2),
+        "artifact replay failed: Internal { reason: \"for_each item count exceeds limit during replay\" }",
+    )
 }

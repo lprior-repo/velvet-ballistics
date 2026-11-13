@@ -192,6 +192,10 @@ impl Runtime {
         recovered: RecoveryArtifactWorkflow,
         retained_inputs: crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let expected = crate::recovery::action_abi_digests_from_contracts(
+            &recovered.artifact.action_contracts,
+        )?;
+        crate::recovery::validate_replayed_action_abi_events(&prefix.events, &expected)?;
         if let Some(product) = self.retry_timer_recovery_product(run, &prefix, &recovered)? {
             return Ok(product);
         }
@@ -199,9 +203,6 @@ impl Runtime {
             &prefix.events,
             &recovered.workflow,
             &retained_inputs,
-        )?;
-        let expected = crate::recovery::action_abi_digests_from_contracts(
-            &recovered.artifact.action_contracts,
         )?;
         let evidence =
             Self::recover_seed_evidence(&prefix.events, &recovered.workflow, &retained_inputs)?;

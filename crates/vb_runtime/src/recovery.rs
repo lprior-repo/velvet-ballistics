@@ -23,7 +23,7 @@ pub(crate) use full::{
     action_contract_abi_digest, classify_full_recovery_resume, handler_route_for_failure,
     hydrate_frame_for_full_recovery_with_inputs, pending_action_ticket_from_events,
     recovered_run_boundary_from_seed, restore_routed_action_failure, run_is_currently_terminal,
-    validate_recovered_admission_evidence,
+    validate_recovered_admission_evidence, validate_replayed_action_abi_events,
 };
 
 pub(crate) use input_binding::{RecoveredRetainedInputs, load_retained_inputs_for_recovery};
