@@ -197,9 +197,15 @@ tasks:
       runInCI: true
 
   blocker-closure-evidence:
-    script: 'python scripts/check-vb-jpq7-closure-evidence.py --parent vb-jpq7 --bd-workdir "${VB_JPQ7_BD_WORKDIR:-/home/lewis/src/velvet-ballistics}"'
+    script: 'bash scripts/check-vb-jpq7-closure-evidence.sh --parent vb-jpq7 --bd-workdir "${VB_JPQ7_BD_WORKDIR:-/home/lewis/src/velvet-ballistics}"'
     inputs:
-      - 'scripts/check-vb-jpq7-closure-evidence.py'
+      - 'scripts/check-vb-jpq7-closure-evidence.sh'
+      - 'crates/workspace_tests/src/bin/closure-evidence.rs'
+      - 'crates/workspace_tests/src/closure_evidence/**/*'
+      - 'crates/workspace_tests/src/source_validators/text.rs'
+      - 'crates/workspace_tests/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
       - 'schemas/vb-jpq7-closure-evidence.schema.json'
       - 'docs/vb-jpq7-closure-evidence.md'
       - '.beads/vb-jpq7/closure-evidence-manifest.jsonl'
