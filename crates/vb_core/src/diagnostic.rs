@@ -363,6 +363,30 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     active_code_entry("STORAGE_COMPACTION_FAILED", 0x207C, CodeCategory::Storage),
     active_code_entry("STORAGE_SEALED", 0x207D, CodeCategory::Storage),
     // ---- RuntimeCore: E30xx (0x3001–0x301B) ----
+    // IPC errors emitted by vb_ipc (0x3001-0x300E). vb_ipc 0x300F/0x3010 collide
+    // with RUNTIME_TIMEOUT/RUNTIME_BUDGET_EXHAUSTED below and are not registered.
+    active_code_entry("IPC_QUEUE_FULL", 0x3001, CodeCategory::Runtime),
+    active_code_entry("IPC_DISCONNECTED", 0x3002, CodeCategory::Runtime),
+    active_code_entry(
+        "IPC_INGRESS_PAYLOAD_TOO_LARGE",
+        0x3003,
+        CodeCategory::Runtime,
+    ),
+    active_code_entry("IPC_INVALID_MAGIC", 0x3004, CodeCategory::Runtime),
+    active_code_entry("IPC_UNSUPPORTED_VERSION", 0x3005, CodeCategory::Runtime),
+    active_code_entry("IPC_UNKNOWN_COMMAND", 0x3006, CodeCategory::Runtime),
+    active_code_entry("IPC_RESERVED_NON_ZERO", 0x3007, CodeCategory::Runtime),
+    active_code_entry("IPC_PAYLOAD_LENGTH_MISMATCH", 0x3008, CodeCategory::Runtime),
+    active_code_entry("IPC_HEADER_ENCODE_FAILED", 0x3009, CodeCategory::Runtime),
+    active_code_entry("IPC_HEADER_DECODE_FAILED", 0x300A, CodeCategory::Runtime),
+    active_code_entry(
+        "IPC_PAYLOAD_LENGTH_OUT_OF_RANGE",
+        0x300B,
+        CodeCategory::Runtime,
+    ),
+    active_code_entry("IPC_PAYLOAD_ENCODE_FAILED", 0x300C, CodeCategory::Runtime),
+    active_code_entry("IPC_PAYLOAD_DECODE_FAILED", 0x300D, CodeCategory::Runtime),
+    active_code_entry("IPC_RESPONSE_DECODE_FAILED", 0x300E, CodeCategory::Runtime),
     active_code_entry("RUNTIME_TIMEOUT", 0x300F, CodeCategory::Runtime),
     active_code_entry("RUNTIME_BUDGET_EXHAUSTED", 0x3010, CodeCategory::Runtime),
     active_code_entry("RUNTIME_CYCLE_LIMIT", 0x3011, CodeCategory::Runtime),

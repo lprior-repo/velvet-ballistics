@@ -79,7 +79,8 @@ mod harnesses {
         assert!(is_supported_code(0x0601)); // Contract Discovery first
         assert!(is_supported_code(0x0603)); // Contract Discovery last
         assert!(is_supported_code(0x1001)); // Compilation first
-        assert!(is_supported_code(0x300F)); // Runtime first (new vs shadow)
+        assert!(is_supported_code(0x3001)); // Runtime first (IPC codes registered)
+        assert!(is_supported_code(0x300F)); // RuntimeCore (first of the original Runtime range)
         assert!(is_supported_code(0x3022)); // Runtime last (new vs shadow)
         assert!(is_supported_code(0x3201)); // Ipc first (new vs shadow)
         assert!(is_supported_code(0x3301)); // Lifecycle sample (new vs shadow)
@@ -93,7 +94,7 @@ mod harnesses {
         assert!(!is_supported_code(0x0200)); // Below Reference range
         assert!(!is_supported_code(0x0206)); // Above Reference range
         assert!(!is_supported_code(0x3000)); // Below Runtime range
-        assert!(!is_supported_code(0x300E)); // Removed shadow range is a gap
+        assert!(!is_supported_code(0x301C)); // Gap inside Runtime range (0x301B-0x3020)
         assert!(!is_supported_code(0xFFFF)); // Max u16 unsupported
     }
 }
