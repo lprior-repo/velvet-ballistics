@@ -8,6 +8,20 @@ pub(in crate::inputs) enum SubmissionInputs {
 }
 
 impl SubmissionInputs {
+    pub(in crate::inputs) fn with_artifact_digest(
+        &self,
+        digest: WorkflowDigest,
+    ) -> Result<Self, JournalError> {
+        match self {
+            Self::Scalar(record) => {
+                let mut rebound = record.clone();
+                rebound.artifact_digest = digest;
+                Ok(Self::Scalar(rebound))
+            }
+            Self::Owned(record) => record.with_artifact_digest(digest).map(Self::Owned),
+        }
+    }
+
     pub(in crate::inputs) fn run(&self) -> RunId {
         match self {
             Self::Scalar(v) => v.run(),

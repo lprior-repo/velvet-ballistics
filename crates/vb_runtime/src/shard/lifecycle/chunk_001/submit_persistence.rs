@@ -15,7 +15,14 @@ impl Header {
             let batch = self.prepare_batch(shard, workflow, inputs, admission);
             return self.append_batch(shard, frame, batch);
         }
-        let bytes = self.append_individual(shard, persist_header)?;
+        let bytes = match self.append_individual(shard, persist_header) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                shard.release_frame(frame);
+                shard.release_admission_quota(self.run)?;
+                return Err(error);
+            }
+        };
         Ok((frame, bytes))
     }
 

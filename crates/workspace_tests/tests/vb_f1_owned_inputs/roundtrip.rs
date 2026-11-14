@@ -33,14 +33,15 @@ fn assert_owned_graph(
 
 #[test]
 fn strict_owned_submission_reopens_with_exact_arenas_roots_taints_and_receipt() -> TestResult {
-    let f = fixture(7, Taint::DerivedFromSecret, Taint::Secret)?;
-    let expected = record(&f)?;
+    let mut f = fixture(7, Taint::DerivedFromSecret, Taint::Secret)?;
     let directory = tempfile::tempdir()?;
     {
         let journal = FjallJournal::open(directory.path(), None)?;
         journal.commit_run_submission(&submission(&f)?, RuntimePolicy::Strict)?;
     }
     let journal = FjallJournal::open(directory.path(), None)?;
+    f.artifact = super::support::issued_artifact(&journal, f.run, &f.artifact)?;
+    let expected = record(&f)?;
     let stored = journal
         .compiled_ir(f.artifact.digest)?
         .ok_or("artifact missing")?;

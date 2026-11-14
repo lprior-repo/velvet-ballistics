@@ -8,7 +8,7 @@ pub(super) const VERSION: u16 = 2;
 const DOMAIN: &str = "velvet-ballistics/owned-run-inputs/v1";
 
 /// Exact digest preimage; the digest itself is deliberately absent.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(super) struct Body {
     pub(super) version: u16,
     pub(super) run: RunId,

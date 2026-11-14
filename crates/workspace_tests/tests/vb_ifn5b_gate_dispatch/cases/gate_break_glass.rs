@@ -21,6 +21,7 @@ fn matching_break_glass_receipt_authorizes_one_registered_effect() -> TestResult
     )?;
     let source_digest =
         super::owned_submission::commit(&journal, &catalog, &workflow, &artifact, run)?;
+    let artifact = crate::issued_run_artifact::read(&journal, run, &artifact)?;
     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
         journal.clone(),
         Arc::new(catalog.clone()),

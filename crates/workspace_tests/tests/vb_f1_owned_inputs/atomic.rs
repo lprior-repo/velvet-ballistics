@@ -51,11 +51,12 @@ fn failed_actual_submission_stages_no_partial_record_or_admission() -> TestResul
 
 #[test]
 fn duplicate_owned_submission_cannot_replace_the_first_binding() -> TestResult {
-    let f = fixture(7, Taint::DerivedFromSecret, Taint::Secret)?;
+    let mut f = fixture(7, Taint::DerivedFromSecret, Taint::Secret)?;
     let different = fixture(9, Taint::Clean, Taint::Secret)?;
     let directory = tempfile::tempdir()?;
     let journal = FjallJournal::open(directory.path(), None)?;
     journal.commit_run_submission(&submission(&f)?, RuntimePolicy::Strict)?;
+    f.artifact = super::support::issued_artifact(&journal, f.run, &f.artifact)?;
     let before = journal
         .owned_run_inputs(f.run, f.artifact.digest, f.source.digest, &f.workflow)?
         .ok_or("missing owned input")?;

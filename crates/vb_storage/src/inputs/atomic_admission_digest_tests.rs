@@ -439,6 +439,16 @@ fn f_cold_reopen_recovers_valid_admitted_run_inputs() -> TestResult {
     let reopened = FjallJournal::open(&path, None)?;
 
     // Recover from durable state only.
+    let mut issued = artifact()?;
+    issued.accepted_at_seq = EventSeq::new(1);
+    crate::admission::bind_artifact_digest(&mut issued)?;
+    let valid = RunInputsRecord::new(
+        valid.run(),
+        issued.digest,
+        valid.source_digest(),
+        &workflow()?,
+        valid.inputs().to_vec().into_boxed_slice(),
+    )?;
     assert!(reopened.compiled_ir(valid.artifact_digest())?.is_some());
     let durable_events = reopened.events_for_run(valid.run())?;
     assert!(!durable_events.is_empty());

@@ -67,11 +67,10 @@ fn missing_origin_journal_for_run(
     let artifact =
         vb_storage::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Relaxed, &[])
             .map_err(|error| error.to_string())?;
-    let artifact_digest = artifact.digest;
     let policy_digest = artifact.policy_digest;
     let input = vb_storage::RunInputsRecord::new(
         run,
-        artifact_digest,
+        artifact.digest,
         source_digest,
         &workflow,
         Box::default(),
@@ -102,6 +101,12 @@ fn missing_origin_journal_for_run(
     journal
         .commit_run_submission(&submission, RuntimePolicy::Relaxed)
         .map_err(|error| error.to_string())?;
+    let issued_inputs = journal
+        .run_inputs(run)
+        .map_err(|error| error.to_string())?
+        .ok_or("issued inputs missing")?;
+    let artifact_digest = issued_inputs.artifact_digest();
+    assert_eq!(issued_inputs.input_digest(), input_digest);
     journal
         .append_strict(&vb_storage::JournalEvent::RunAccepted {
             run,

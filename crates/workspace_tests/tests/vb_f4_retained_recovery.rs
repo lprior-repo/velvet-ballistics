@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+#[path = "support/issued_run_artifact.rs"]
+mod issued_run_artifact;
 
 use std::{num::NonZeroUsize, sync::Arc};
 use vb_core::{RunId, RuntimePolicy, SlotValue, ValueStore, WorkflowDigest};

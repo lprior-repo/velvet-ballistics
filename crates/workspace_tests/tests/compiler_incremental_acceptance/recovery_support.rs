@@ -118,11 +118,54 @@ pub(super) fn case(accepted_at_ms: u64) -> FixtureResult<Case> {
     journal
         .commit_run_submission(&submission, vb_core::RuntimePolicy::Strict)
         .map_err(|error| format!("strict submission: {error:?}"))?;
+    let header = journal
+        .run_header(RUN)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "strict admission omitted run header".to_owned())?;
+    assert_eq!(header.compiled_digest, workflow.digest());
+    let events = journal
+        .events_for_run_full(RUN)
+        .map_err(|error| error.to_string())?;
+    let admission = events
+        .iter()
+        .find(|event| matches!(event, vb_storage::JournalEvent::RunAdmissionBudget { .. }))
+        .ok_or_else(|| "strict admission omitted budget receipt".to_owned())?;
+    let vb_storage::JournalEvent::RunAdmissionBudget {
+        artifact_digest, ..
+    } = admission
+    else {
+        return Err("expected budget admission".to_owned());
+    };
+    let ir = journal
+        .compiled_ir(*artifact_digest)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "strict admission omitted issued artifact".to_owned())?;
+    let issued: vb_storage::AcceptedArtifact =
+        postcard::from_bytes(&ir.ir).map_err(|error| error.to_string())?;
+    assert_eq!(issued.digest, *artifact_digest);
+    assert_eq!(issued.accepted_at_seq, vb_storage::EventSeq::new(1));
+    assert_ne!(issued.digest, artifact.digest);
+    let mut expected_artifact = artifact.clone();
+    expected_artifact.accepted_at_seq = vb_storage::EventSeq::new(1);
+    expected_artifact.digest = vb_storage::admission::accepted_artifact_digest(&expected_artifact)
+        .map_err(|error| error.to_string())?;
+    expected_artifact.verification.digest = expected_artifact.digest;
+    assert_eq!(issued, expected_artifact);
+    assert_eq!(
+        vb_storage::admission::verify_accepted_artifact(&issued)
+            .map_err(|error| error.to_string())?
+            .to_parts(),
+        workflow.to_parts()
+    );
     let persisted = journal
-        .owned_run_inputs(RUN, artifact.digest, source_digest, &workflow)
+        .owned_run_inputs(RUN, issued.digest, source_digest, &workflow)
         .map_err(|error| format!("read owned receipt: {error:?}"))?
         .ok_or_else(|| "strict admission omitted owned receipt".to_owned())?;
     assert_eq!(persisted.checkpoint(), &input_store);
+    assert_eq!(persisted.roots(), bundle.roots());
+    persisted
+        .validate_admission(admission)
+        .map_err(|error| error.to_string())?;
     drop(journal);
     Ok(Case {
         directory,

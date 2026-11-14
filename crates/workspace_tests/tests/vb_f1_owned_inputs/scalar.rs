@@ -72,6 +72,7 @@ fn scalar_submission_keeps_kind4_digest_and_reader_semantics() -> TestResult {
     let directory = tempfile::tempdir()?;
     let journal = FjallJournal::open(directory.path(), None)?;
     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
+    let artifact = super::support::issued_artifact(&journal, run, &artifact)?;
     assert_eq!(RecordKind::RunInputs.id(), 4);
     assert_eq!(
         journal

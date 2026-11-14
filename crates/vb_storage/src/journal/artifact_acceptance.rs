@@ -52,7 +52,7 @@ impl IssuedArtifactSequence {
 /// The literal key for the last-issued counter in the artifact_acceptance
 /// keyspace. The dedicated keyspace already isolates this key; no prefix
 /// is needed.
-const LAST_ISSUED_KEY: &[u8] = b"last_issued";
+pub(crate) const LAST_ISSUED_KEY: &[u8] = b"last_issued";
 
 /// Reads the last issued artifact sequence from the metadata keyspace.
 ///
@@ -178,8 +178,7 @@ fn issue_artifact(
         .lock()
         .map_err(|_| JournalError::WriteLockPoisoned)?;
 
-    let last = read_counter(journal)?;
-    let (next, stamped) = prepare_artifact(last, artifact)?;
+    let (next, stamped) = prepare_artifact_with_sequence(journal, artifact)?;
     let (_record, encoded) = encode_record(&stamped)?;
     let batch = build_batch(journal, next, &stamped, &encoded)?;
     commit_batch(journal, batch, policy)?;
@@ -194,4 +193,12 @@ pub(crate) fn issue_next_artifact_sequence(
     policy: RuntimePolicy,
 ) -> Result<AcceptedArtifact, JournalError> {
     issue_artifact(journal, artifact, policy)
+}
+
+/// Prepares issuance under the caller-owned journal write lock; publishes nothing.
+pub(crate) fn prepare_artifact_with_sequence(
+    journal: &FjallJournal,
+    artifact: AcceptedArtifact,
+) -> Result<(u64, AcceptedArtifact), JournalError> {
+    prepare_artifact(read_counter(journal)?, artifact)
 }

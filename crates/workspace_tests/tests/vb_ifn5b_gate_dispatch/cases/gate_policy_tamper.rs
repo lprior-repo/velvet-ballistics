@@ -55,6 +55,7 @@ fn durable_policy_case(mismatch: &'static str) -> TestResult {
         std::slice::from_ref(&pack),
     )?;
     let source = owned_submission::commit(&source_journal, &catalog, &workflow, &artifact, run)?;
+    let artifact = crate::issued_run_artifact::read(&source_journal, run, &artifact)?;
     let source_storage = StorageRuntimeJournal::shared_strict_with_catalog(
         source_journal.clone(),
         Arc::new(catalog.clone()),

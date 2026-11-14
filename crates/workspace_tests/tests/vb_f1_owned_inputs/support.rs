@@ -135,3 +135,37 @@ pub(super) fn submission(f: &Fixture) -> TestResult<RunSubmission> {
         header(f)?,
     )?)
 }
+
+pub(super) fn issued_artifact(
+    journal: &vb_storage::FjallJournal,
+    run: RunId,
+    prepared: &AcceptedArtifact,
+) -> TestResult<AcceptedArtifact> {
+    let events = journal.events_for_run_full(run)?;
+    let issued_digest = events
+        .iter()
+        .find_map(|event| match event {
+            vb_storage::JournalEvent::RunAdmissionBudget {
+                artifact_digest, ..
+            } => Some(*artifact_digest),
+            _ => None,
+        })
+        .ok_or("budget receipt missing")?;
+    let record = journal
+        .compiled_ir(issued_digest)?
+        .ok_or("issued artifact missing")?;
+    let artifact: AcceptedArtifact = postcard::from_bytes(&record.ir)?;
+    assert_eq!(artifact.digest, issued_digest);
+    assert_eq!(artifact.accepted_at_seq, vb_storage::EventSeq::new(1));
+    assert_ne!(artifact.digest, prepared.digest);
+    let mut expected_artifact = prepared.clone();
+    expected_artifact.accepted_at_seq = vb_storage::EventSeq::new(1);
+    expected_artifact.digest = vb_storage::admission::accepted_artifact_digest(&expected_artifact)?;
+    expected_artifact.verification.digest = expected_artifact.digest;
+    assert_eq!(artifact, expected_artifact);
+    assert_eq!(
+        vb_storage::admission::verify_accepted_artifact(&artifact)?.to_parts(),
+        vb_storage::admission::verify_accepted_artifact(prepared)?.to_parts()
+    );
+    Ok(artifact)
+}

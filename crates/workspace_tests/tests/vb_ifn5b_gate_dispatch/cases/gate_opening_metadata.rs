@@ -46,6 +46,7 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
         std::slice::from_ref(&pack),
     )?;
     let source = owned_submission::commit(&source_journal, &catalog, &workflow, &artifact, run)?;
+    let artifact = crate::issued_run_artifact::read(&source_journal, run, &artifact)?;
     let original_header = source_journal
         .run_header(run)?
         .ok_or("original run header missing after commit")?;
@@ -94,9 +95,6 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
         &contracts,
         &[pack],
     )?;
-    if rebuilt_artifact.digest != artifact.digest {
-        return Err("rebuilt submission changed the accepted artifact".into());
-    }
     let rebuilt_source = owned_submission::commit_with_header(
         &rebuilt_journal,
         &catalog,
@@ -104,6 +102,12 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
         &rebuilt_artifact,
         original_header,
     )?;
+    let rebuilt_artifact =
+        crate::issued_run_artifact::read(&rebuilt_journal, run, &rebuilt_artifact)?;
+    if rebuilt_artifact.digest != artifact.digest {
+        return Err("rebuilt submission changed the accepted artifact".into());
+    }
+
     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
         rebuilt_journal.clone(),
         Arc::new(catalog.clone()),

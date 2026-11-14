@@ -449,6 +449,8 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
     let state = shard
         .run_state_remove(run)
         .ok_or_else(|| "admitted run must check out for terminal rollback test".to_owned())?;
+    shard.seed_journal_sequence(run, vb_storage::EventSeq::ZERO)
+        .map_err(|error| error.to_string())?;
     shard.max_active_runs = 0;
 
     let result = shard.fail_run_state(run, state);

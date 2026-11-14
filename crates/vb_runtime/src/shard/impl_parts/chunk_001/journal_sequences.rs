@@ -43,18 +43,6 @@ impl Shard {
             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
     }
 
-    #[cfg(not(kani))]
-    fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
-        let next = seq
-            .get()
-            .checked_add(1)
-            .map(EventSeq::new)
-            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
-        self.reserve_journal_sequence_slot(run)?;
-        let _previous = self.journal_sequences.insert(run, next);
-        Ok(())
-    }
-
     pub(crate) fn discard_journal_sequence(&mut self, run: RunId) {
         let _removed = self.journal_sequences.swap_remove(&run);
     }

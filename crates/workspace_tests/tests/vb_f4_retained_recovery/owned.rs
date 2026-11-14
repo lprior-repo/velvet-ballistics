@@ -53,7 +53,6 @@ impl Case {
             &bundle,
             &workflow,
         )?;
-        let record_bytes = postcard::to_allocvec(&record)?;
         let submission = RunSubmission::owned(
             source.clone(),
             artifact.clone(),
@@ -75,6 +74,17 @@ impl Case {
             let journal = FjallJournal::open(directory.path(), None)?;
             journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
         }
+        let journal = FjallJournal::open(directory.path(), None)?;
+        let artifact = crate::issued_run_artifact::read(&journal, RUN, &artifact)?;
+        let record = vb_storage::OwnedRunInputsRecordV1::new(
+            RUN,
+            artifact.digest,
+            source.digest,
+            &bundle,
+            &workflow,
+        )?;
+        let record_bytes = postcard::to_allocvec(&record)?;
+        drop(journal);
         Ok(Self {
             directory,
             workflow,

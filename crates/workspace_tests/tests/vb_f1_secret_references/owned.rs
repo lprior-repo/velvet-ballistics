@@ -62,6 +62,7 @@ fn strict_owned_activation_rechecks_host_presence_and_preserves_canonical_refere
     let directory = tempfile::tempdir()?;
     let journal = Arc::new(vb_storage::FjallJournal::open(directory.path(), None)?);
     journal.commit_run_submission(&submission, vb_core::RuntimePolicy::Strict)?;
+    let artifact = crate::issued_run_artifact::read(&journal, run, &artifact)?;
     let initial = journal.events_for_run_full(run)?;
     let mut runtime = Runtime::new(
         NonZeroUsize::MIN,

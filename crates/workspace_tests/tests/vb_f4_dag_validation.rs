@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+#[path = "support/issued_run_artifact.rs"]
+mod issued_run_artifact;
 use vb_core::input_validation::validate_input_value;
 use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::{
@@ -79,7 +81,6 @@ fn twenty_list_dag_record_admission_and_restore() -> TestResult {
     };
     let record =
         OwnedRunInputsRecordV1::new(RUN, artifact.digest, source.digest, &bundle, &workflow)?;
-    let retained_bytes = postcard::to_allocvec(&record)?;
     let submission = RunSubmission::owned(
         source,
         artifact.clone(),
@@ -102,6 +103,14 @@ fn twenty_list_dag_record_admission_and_restore() -> TestResult {
         journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
     }
     let journal = FjallJournal::open(directory.path(), None)?;
+    let artifact = issued_run_artifact::read(&journal, RUN, &artifact)?;
+    let retained_bytes = postcard::to_allocvec(&OwnedRunInputsRecordV1::new(
+        RUN,
+        artifact.digest,
+        WorkflowDigest::from_bytes(blake3::hash(SOURCE.as_bytes()).into()),
+        &bundle,
+        &workflow,
+    )?)?;
     let events = journal.events_for_run_full(RUN)?;
     let admission = events
         .iter()

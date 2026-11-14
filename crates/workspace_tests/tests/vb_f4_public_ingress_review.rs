@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+#[path = "support/issued_run_artifact.rs"]
+mod issued_run_artifact;
 
 use std::{num::NonZeroUsize, sync::Arc};
 use vb_core::{
@@ -444,6 +446,15 @@ fn recursive_owned_defaults_nulls_and_secret_payloads_survive_retention_and_runt
         journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
     }
     let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
+    let artifact = issued_run_artifact::read(&journal, run, &artifact)?;
+    let input_digest = vb_storage::OwnedRunInputsRecordV1::new(
+        run,
+        artifact.digest,
+        source.digest,
+        &bundle,
+        &workflow,
+    )?
+    .input_digest();
     let retained = journal
         .owned_run_inputs(run, artifact.digest, source.digest, &workflow)?
         .ok_or("retained input")?;

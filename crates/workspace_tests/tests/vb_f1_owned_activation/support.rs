@@ -63,7 +63,7 @@ impl Case {
             source: SOURCE.as_bytes().to_vec(),
         };
         let run = RunId::new(17);
-        let (directory, input_digest) =
+        let (directory, artifact, input_digest) =
             persist(&workflow, &source, &artifact, &bundle, run, policy)?;
         Ok(Self {
             directory,
@@ -225,10 +225,9 @@ fn persist(
     bundle: &OwnedRootBundle,
     run: RunId,
     policy: RuntimePolicy,
-) -> TestResult<(tempfile::TempDir, WorkflowDigest)> {
+) -> TestResult<(tempfile::TempDir, AcceptedArtifact, WorkflowDigest)> {
     let record =
         OwnedRunInputsRecordV1::new(run, artifact.digest, source.digest, bundle, workflow)?;
-    let input_digest = record.input_digest();
     let directory = tempfile::tempdir()?;
     let submission = RunSubmission::owned(
         source.clone(),
@@ -236,11 +235,46 @@ fn persist(
         record,
         header(run, workflow)?,
     )?;
-    {
+    let (issued, input_digest) = {
         let journal = FjallJournal::open(directory.path(), None)?;
         journal.commit_run_submission(&submission, policy)?;
-    }
-    Ok((directory, input_digest))
+        let events = journal.events_for_run_full(run)?;
+        let admission = events
+            .iter()
+            .find(|event| matches!(event, vb_storage::JournalEvent::RunAdmissionBudget { .. }))
+            .ok_or("budget receipt missing")?;
+        let vb_storage::JournalEvent::RunAdmissionBudget {
+            artifact_digest, ..
+        } = admission
+        else {
+            return Err("expected budget admission".into());
+        };
+        let stored = journal
+            .compiled_ir(*artifact_digest)?
+            .ok_or("issued artifact missing")?;
+        let issued: AcceptedArtifact = postcard::from_bytes(&stored.ir)?;
+        assert_eq!(issued.digest, *artifact_digest);
+        assert_eq!(issued.accepted_at_seq, vb_storage::EventSeq::new(1));
+        assert_ne!(issued.digest, artifact.digest);
+        let mut expected_artifact = artifact.clone();
+        expected_artifact.accepted_at_seq = vb_storage::EventSeq::new(1);
+        expected_artifact.digest =
+            vb_storage::admission::accepted_artifact_digest(&expected_artifact)?;
+        expected_artifact.verification.digest = expected_artifact.digest;
+        assert_eq!(issued, expected_artifact);
+        assert_eq!(
+            vb_storage::admission::verify_accepted_artifact_for_policy(&issued, policy)?.to_parts(),
+            workflow.to_parts()
+        );
+        let retained = journal
+            .owned_run_inputs(run, issued.digest, source.digest, workflow)?
+            .ok_or("owned receipt missing")?;
+        retained.validate_admission(admission)?;
+        assert_eq!(retained.checkpoint(), bundle.checkpoint());
+        assert_eq!(retained.roots(), bundle.roots());
+        (issued, retained.input_digest())
+    };
+    Ok((directory, issued, input_digest))
 }
 
 pub(super) fn additional_run(case: &Case, journal: &FjallJournal, run: RunId) -> TestResult {

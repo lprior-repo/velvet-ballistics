@@ -55,27 +55,54 @@ pub(super) fn persist_owned(
         status: 0,
         accepted_at_ms: started_millis,
     };
-    let submission = RunSubmission::owned(source.clone(), artifact, record, header)?;
+    let submission = RunSubmission::owned(source.clone(), artifact.clone(), record, header)?;
     let directory = tempfile::tempdir()?;
     {
         let journal = FjallJournal::open(directory.path(), None)?;
         journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
     }
-    load(directory.path(), workflow, source, expected, started_millis)
+    load(
+        directory.path(),
+        workflow,
+        source,
+        &artifact,
+        expected,
+        started_millis,
+    )
 }
 
 fn load(
     path: &std::path::Path,
     workflow: &CompiledWorkflow,
     source: &WorkflowSourceRecord,
-    expected: ContinuationExpected,
+    prepared: &AcceptedArtifact,
+    mut expected: ContinuationExpected,
     expected_started_millis: u64,
 ) -> TestResult<Receipt> {
     let journal = FjallJournal::open(path, None)?;
+    let events = journal.events_for_run_full(expected.run)?;
+    let issued_digest = events
+        .iter()
+        .find_map(|event| match event {
+            JournalEvent::RunAdmissionBudget {
+                artifact_digest, ..
+            } => Some(*artifact_digest),
+            _ => None,
+        })
+        .ok_or("budget receipt missing")?;
     let stored = journal
-        .compiled_ir(expected.artifact_digest)?
+        .compiled_ir(issued_digest)?
         .ok_or("artifact missing")?;
     let artifact: AcceptedArtifact = postcard::from_bytes(&stored.ir)?;
+    assert_eq!(artifact.digest, issued_digest);
+    assert_eq!(artifact.accepted_at_seq, vb_storage::EventSeq::new(1));
+    assert_ne!(artifact.digest, expected.artifact_digest);
+    let mut expected_artifact = prepared.clone();
+    expected_artifact.accepted_at_seq = vb_storage::EventSeq::new(1);
+    expected_artifact.digest = vb_storage::admission::accepted_artifact_digest(&expected_artifact)?;
+    expected_artifact.verification.digest = expected_artifact.digest;
+    assert_eq!(artifact, expected_artifact);
+    expected.artifact_digest = artifact.digest;
     let verified =
         vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, expected.policy)?;
     assert_eq!(verified.to_parts(), workflow.to_parts());
@@ -86,7 +113,6 @@ fn load(
     let record = journal
         .owned_run_inputs(expected.run, artifact.digest, source.digest, &verified)?
         .ok_or("owned record missing")?;
-    let events = journal.events_for_run_full(expected.run)?;
     // Submission writes the accepted, budgeted admission, compatibility, and origin prefix.
     assert_eq!(events.len(), 4);
     let [

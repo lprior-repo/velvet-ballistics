@@ -1,3 +1,5 @@
+#[path = "support/issued_run_artifact.rs"]
+mod issued_run_artifact;
 use vb_core::{
     CapabilitySet, CompiledWorkflow, RunId, SlotValue, StepBudget, Taint, ValueStore,
     new_run_frame, root_bundle::OwnedRootBundle,

@@ -1,0 +1,3 @@
+# Atomic artifact issuance during run submission
+
+Implements the accepted `.beads/vb-vs630/contract.md` v3 under the existing write lock. All three policies, default/catalog/CLI share the existing private counter. Pure preparation retains zero. Checked private scratch rebinds artifact/verification/input/admission digests, validates final identity, and stages the counter together with the complete run batch. No public API, format, dependency, lock re-acquisition or caller-selected issuance is added. Precommit faults, malformed counters, duplicates and overflow publish nothing. Arbitrary commit IO can acknowledge failure after whole-batch publication.

@@ -602,6 +602,8 @@ fn finish_run_append_failure_reports_rollback_failure() -> Result<(), String> {
     let state = shard
         .take_run_state(run)
         .map_err(|error| error.to_string())?;
+    shard.seed_journal_sequence(run, vb_storage::EventSeq::ZERO)
+        .map_err(|error| error.to_string())?;
     shard.max_active_runs = 0;
     let result = shard.finish_run(run, state);
 

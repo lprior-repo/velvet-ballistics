@@ -126,7 +126,6 @@ fn retained_owned_text_reopens_with_canonical_roots_and_unchanged_receipt() -> T
         let run = RunId::new(117);
         let record =
             OwnedRunInputsRecordV1::new(run, artifact.digest, source.digest, &bundle, &workflow)?;
-        let digest = record.input_digest();
         let submission = RunSubmission::owned(
             source.clone(),
             artifact.clone(),
@@ -149,6 +148,10 @@ fn retained_owned_text_reopens_with_canonical_roots_and_unchanged_receipt() -> T
             journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
         }
         let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
+        let artifact = crate::issued_run_artifact::read(&journal, run, &artifact)?;
+        let digest =
+            OwnedRunInputsRecordV1::new(run, artifact.digest, source.digest, &bundle, &workflow)?
+                .input_digest();
         let loaded = journal
             .owned_run_inputs(run, artifact.digest, source.digest, &workflow)?
             .ok_or("retained inputs")?;

@@ -6,6 +6,7 @@ use crate::{
 };
 use vb_core::{AggregateResourceBudget, CapabilitySet, RuntimePolicy};
 mod catalog;
+mod issuance;
 pub use catalog::ExecutorCatalogSubmissionContext;
 
 /// Complete prepared admission. Private members prevent partial publication.
@@ -138,9 +139,11 @@ impl RunSubmission {
     }
 
     fn commit(&self, journal: &FjallJournal, policy: RuntimePolicy) -> Result<(), JournalError> {
+        let (next, issued) = self.prepare_issued(journal)?;
         let mut batch = journal.batch();
-        self.stage(&mut batch)?;
-        self.stage_acceptance(&mut batch, policy)?;
+        batch.put_artifact_sequence(next)?;
+        issued.stage(&mut batch)?;
+        issued.stage_acceptance(&mut batch, policy)?;
         match policy {
             RuntimePolicy::Strict => batch.strict().commit(),
             _ => batch.commit(),
@@ -282,3 +285,7 @@ fn validate_submission_origin(submission: &RunSubmission) -> Result<(), JournalE
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "issuance_regressions.rs"]
+mod issuance_regressions;

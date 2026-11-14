@@ -159,7 +159,10 @@ fn admitted_run(db: &Path) -> TestResult<vb_core::SlotIdx> {
         vb_storage::compat::schema_version_digest(artifact.artifact_version),
         vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
     );
-    let artifact_digest = artifact.digest;
+    assert_eq!(artifact.accepted_at_seq, EventSeq::ZERO);
+    let mut expected_issued = artifact.clone();
+    expected_issued.accepted_at_seq = EventSeq::new(1);
+    let artifact_digest = vb_storage::admission::accepted_artifact_digest(&expected_issued)?;
     let policy_digest = artifact.policy_digest;
     let accepted_at_ms = u64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())?;
     let submission = vb_storage::RunSubmission::new(

@@ -4,7 +4,7 @@ use vb_core::RuntimePolicy;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-fn submission(
+pub(super) fn submission(
     policy: RuntimePolicy,
     value: i64,
 ) -> Result<RunSubmission, Box<dyn std::error::Error>> {
@@ -43,7 +43,7 @@ fn submission_with_version(
     )?)
 }
 
-fn assert_empty(journal: &FjallJournal) -> TestResult {
+pub(super) fn assert_empty(journal: &FjallJournal) -> TestResult {
     for keyspace in [
         &journal.workflow_source,
         &journal.compiled_ir,

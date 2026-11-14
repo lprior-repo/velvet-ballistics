@@ -41,3 +41,6 @@ mod scope_pack_regression_tests;
 
 #[cfg(test)]
 mod register_crash_tests;
+
+#[cfg(test)]
+mod atomic_issuance_tests;

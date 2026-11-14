@@ -19,6 +19,7 @@ fn cold_resume_reissues_bound_authority_for_pending_registered_do() -> TestResul
         &[pack],
     )?;
     let source = owned_submission::commit(&journal, &catalog, &workflow, &artifact, run)?;
+    let artifact = crate::issued_run_artifact::read(&journal, run, &artifact)?;
     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
         journal.clone(),
         Arc::new(catalog.clone()),

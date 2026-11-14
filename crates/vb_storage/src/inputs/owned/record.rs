@@ -7,6 +7,21 @@ use vb_core::value_store::ValueStoreCheckpointV1;
 use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, Taint, WorkflowDigest};
 
 impl OwnedRunInputsRecordV1 {
+    pub(in crate::inputs) fn with_artifact_digest(
+        &self,
+        artifact: WorkflowDigest,
+    ) -> Result<Self, JournalError> {
+        self.data.validate_integrity()?;
+        let mut body = self.data.body.clone();
+        body.artifact = artifact;
+        let digest = body.digest()?;
+        let record = Self {
+            data: Box::new(Wire { body, digest }),
+        };
+        record.validate_encoded_size()?;
+        Ok(record)
+    }
+
     /// Retains the complete validated bundle and exact accepted projection.
     pub fn new(
         run: RunId,

@@ -3,8 +3,11 @@ impl Shard {
     pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         let run = event.run_id();
         let seq = self.journal_sequence_for(run);
+        let next = Self::journal_sequence_after(seq, 1)?;
+        self.reserve_journal_sequence_slot(run)?;
         self.journal.append_sequenced(event, seq)?;
-        self.advance_journal_sequence(run, seq)
+        let _previous = self.journal_sequences.insert(run, next);
+        Ok(())
     }
 
     #[cfg(not(kani))]

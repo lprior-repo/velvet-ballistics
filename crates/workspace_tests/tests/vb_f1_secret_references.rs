@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 #[path = "vb_f1_secret_references/boundaries.rs"]
 mod boundaries;
+#[path = "support/issued_run_artifact.rs"]
+mod issued_run_artifact;
 #[path = "vb_f1_secret_references/owned.rs"]
 mod owned;
 #[path = "vb_f1_secret_references/recovery.rs"]
