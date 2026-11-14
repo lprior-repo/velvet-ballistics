@@ -269,7 +269,7 @@ impl Runtime {
                 },
             })?;
         let workflow =
-            crate::admission::verify_stored_artifact(&store, &artifact, Some(self.policy))
+            crate::admission::verify_stored_artifact_detailed(&store, &artifact, Some(self.policy))
                 .map_err(|error| RuntimeError::Recovery {
                     error: error.to_string(),
                 })?;
