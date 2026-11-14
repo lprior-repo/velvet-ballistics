@@ -225,6 +225,9 @@ pub fn check_capability(
 #[path = "admission/parts/compat_codec.rs"]
 mod compat_codec;
 
+#[path = "admission/parts/human_codec.rs"]
+mod human_codec;
+
 include!("admission/parts/chunk_001_types_errors_traits.rs");
 include!("admission/parts/chunk_002_records.rs");
 include!("admission/parts/chunk_003_stores.rs");
