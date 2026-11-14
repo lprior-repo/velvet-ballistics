@@ -101,6 +101,21 @@ pub fn submit_artifact_with_contracts(
 ) -> Result<AcceptedArtifact, JournalError> {
     // Prepare validates first; pure prepare stays seq=0/unpersisted unchanged.
     let artifact = prepare_compiled_artifact(workflow, policy, action_contracts)?;
+    submit_prepared_artifact(journal, artifact, policy)
+}
+
+/// Persists a prepared artifact without re-preparing it.
+///
+/// The Strict tag check runs here, before any journal write, so a prepared
+/// artifact stamped with a legacy IR version is rejected with
+/// [`JournalError::ArtifactMalformed`] instead of being persisted.
+/// `prepare_compiled_artifact` always stamps the current version, so this
+/// seam is the only submit path on which that rejection can be exercised.
+pub(crate) fn submit_prepared_artifact(
+    journal: &FjallJournal,
+    artifact: AcceptedArtifact,
+    policy: vb_core::RuntimePolicy,
+) -> Result<AcceptedArtifact, JournalError> {
     if matches!(policy, vb_core::RuntimePolicy::Strict)
         && !is_strict_accepted_artifact_tag(classify_accepted_artifact(&artifact))
     {

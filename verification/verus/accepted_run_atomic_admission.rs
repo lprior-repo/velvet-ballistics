@@ -24,7 +24,7 @@
 //     `vb_runtime::admission::RunAdmission::new` at
 //     crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66.
 //   - `vb_storage::admission::submit_artifact_with_contracts` at
-//     crates/vb_storage/src/admission.rs:96-121 performs no gate/flag
+//     crates/vb_storage/src/admission.rs:96-105 performs no gate/flag
 //     validation; `verify_accepted_artifact`
 //     (crates/vb_storage/src/admission/verification.rs:60-90) enforces the
 //     prepared shape by recompute-and-compare, any deviation returned as

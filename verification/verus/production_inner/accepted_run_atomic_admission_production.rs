@@ -11,7 +11,7 @@
 //   - `vb_runtime::admission::REQUIRED_GATE_COUNT` (= 15)
 //     (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2)
 //   - `vb_storage::admission::submit_artifact_with_contracts`
-//     (crates/vb_storage/src/admission.rs:96-121)
+//     (crates/vb_storage/src/admission.rs:96-105)
 //   - `vb_storage::admission::PayloadTag`, `classify_accepted_artifact`,
 //     `is_strict_accepted_artifact_tag`
 //     (crates/vb_storage/src/admission/payload_tag.rs:10-39)
@@ -35,12 +35,12 @@
 // which builds the legacy 15-gate/all-true shape with Unverified
 // evidence; real validation rejects it.
 //
-// DRIFT POLICY: `crates/vb_storage/src/admission.rs:96-121`
+// DRIFT POLICY: `crates/vb_storage/src/admission.rs:96-105`
 // Production source coverage:
 //   - `REQUIRED_GATE_COUNT` (= 15)
 //     <- crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
 //   - `submit_artifact_with_contracts`
-//     <- crates/vb_storage/src/admission.rs:96-121
+//     <- crates/vb_storage/src/admission.rs:96-105
 //   - `PayloadTag`, `classify_accepted_artifact`, `is_strict_accepted_artifact_tag`
 //     <- crates/vb_storage/src/admission/payload_tag.rs:10-39
 // Regenerate this file whenever production changes. Any rename of
