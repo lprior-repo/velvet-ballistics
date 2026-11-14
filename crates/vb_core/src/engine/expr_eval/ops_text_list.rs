@@ -77,69 +77,61 @@ pub(super) fn eval_has(stack: &mut ExprStack, store: &ValueStore) -> Result<(), 
 
 pub(super) fn eval_length(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
-    let len = match value {
-        SlotValue::Null => 0,
-        SlotValue::Symbol(id) => {
-            let s = store
-                .symbol(id)
-                .map_err(|_| EngineError::SymbolOutOfBounds { symbol: id })?;
-            s.len()
-        }
-        SlotValue::List(id) => {
-            let items = store
-                .list(id)
-                .map_err(|_| EngineError::ListOutOfBounds { list: id })?;
-            items.len()
-        }
-        SlotValue::Object(id) => {
-            let fields = store
-                .object(id)
-                .map_err(|_| EngineError::ObjectOutOfBounds { object: id })?;
-            fields.len()
-        }
-        other => {
-            return Err(EngineError::TypeMismatch {
-                expected: "text, list, or object",
-                found: other.type_name(),
-            });
-        }
-    };
+    let len = length_of_value(value, store)?;
     let len_i64 = i64::try_from(len).map_err(|_| EngineError::InvalidCompiledWorkflow {
         reason: "length exceeds i64 range",
     })?;
     push_value(stack, SlotValue::I64(len_i64))
 }
 
+fn length_of_value(value: SlotValue, store: &ValueStore) -> Result<usize, EngineError> {
+    match value {
+        SlotValue::Null => Ok(0),
+        SlotValue::Symbol(id) => store
+            .symbol(id)
+            .map(str::len)
+            .map_err(|_| EngineError::SymbolOutOfBounds { symbol: id }),
+        SlotValue::List(id) => store
+            .list(id)
+            .map(|items| items.len())
+            .map_err(|_| EngineError::ListOutOfBounds { list: id }),
+        SlotValue::Object(id) => store
+            .object(id)
+            .map(|fields| fields.len())
+            .map_err(|_| EngineError::ObjectOutOfBounds { object: id }),
+        other => Err(EngineError::TypeMismatch {
+            expected: "text, list, or object",
+            found: other.type_name(),
+        }),
+    }
+}
+
 pub(super) fn eval_empty(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
-    let is_empty = match value {
-        SlotValue::Null => true,
-        SlotValue::Symbol(id) => {
-            let s = store
-                .symbol(id)
-                .map_err(|_| EngineError::SymbolOutOfBounds { symbol: id })?;
-            s.is_empty()
-        }
-        SlotValue::List(id) => {
-            let items = store
-                .list(id)
-                .map_err(|_| EngineError::ListOutOfBounds { list: id })?;
-            items.is_empty()
-        }
-        SlotValue::Object(id) => {
-            let fields = store
-                .object(id)
-                .map_err(|_| EngineError::ObjectOutOfBounds { object: id })?;
-            fields.is_empty()
-        }
-        other => {
-            return Err(EngineError::TypeMismatch {
-                expected: "text, list, object, or null",
-                found: other.type_name(),
-            });
-        }
-    };
+    let is_empty = value_is_empty(value, store)?;
     push_value(stack, SlotValue::Bool(is_empty))
+}
+
+fn value_is_empty(value: SlotValue, store: &ValueStore) -> Result<bool, EngineError> {
+    match value {
+        SlotValue::Null => Ok(true),
+        SlotValue::Symbol(id) => store
+            .symbol(id)
+            .map(str::is_empty)
+            .map_err(|_| EngineError::SymbolOutOfBounds { symbol: id }),
+        SlotValue::List(id) => store
+            .list(id)
+            .map(|items| items.is_empty())
+            .map_err(|_| EngineError::ListOutOfBounds { list: id }),
+        SlotValue::Object(id) => store
+            .object(id)
+            .map(|fields| fields.is_empty())
+            .map_err(|_| EngineError::ObjectOutOfBounds { object: id }),
+        other => Err(EngineError::TypeMismatch {
+            expected: "text, list, object, or null",
+            found: other.type_name(),
+        }),
+    }
 }
 
 pub(super) fn eval_sum(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
@@ -206,11 +198,38 @@ pub(super) fn eval_append_if(
     stack: &mut ExprStack,
     store: &mut ValueStore,
 ) -> Result<(), EngineError> {
-    let (condition, condition_taint) = stack.pop_tainted()?;
-    let (item, item_taint) = stack.pop_tainted()?;
-    let (list, list_taint) = stack.pop_tainted()?;
+    let condition = stack.pop_tainted()?;
+    let item = stack.pop_tainted()?;
+    let list = stack.pop_tainted()?;
+    append_if_values(stack, store, condition, item, list)
+}
+
+fn append_if_values(
+    stack: &mut ExprStack,
+    store: &mut ValueStore,
+    condition: (SlotValue, crate::value::Taint),
+    item: (SlotValue, crate::value::Taint),
+    list: (SlotValue, crate::value::Taint),
+) -> Result<(), EngineError> {
+    let (condition, condition_taint) = condition;
+    let (item, item_taint) = item;
+    let (list, list_taint) = list;
     let list_id = expect_list(list)?;
     let cond = super::stack::expect_bool(condition)?;
+    let new_list = append_if_to_store(store, list_id, cond, item, item_taint)?;
+    stack.push_tainted(
+        SlotValue::List(new_list),
+        join_taint(join_taint(list_taint, item_taint), condition_taint),
+    )
+}
+
+fn append_if_to_store(
+    store: &mut ValueStore,
+    list_id: crate::ids::ListId,
+    cond: bool,
+    item: SlotValue,
+    item_taint: crate::value::Taint,
+) -> Result<crate::ids::ListId, EngineError> {
     store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
@@ -222,13 +241,9 @@ pub(super) fn eval_append_if(
     if tests::oom_inject::dec() {
         return Err(EngineError::AllocationFailed);
     }
-    let new_list = store
+    store
         .insert_list_with_taint(values, taints)
-        .map_err(|_| EngineError::AllocationFailed)?;
-    stack.push_tainted(
-        SlotValue::List(new_list),
-        join_taint(join_taint(list_taint, item_taint), condition_taint),
-    )
+        .map_err(|_| EngineError::AllocationFailed)
 }
 
 pub(super) fn eval_unique(

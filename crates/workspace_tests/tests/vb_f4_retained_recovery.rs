@@ -46,7 +46,11 @@ fn commit_secret(path: &std::path::Path, owned: bool) -> TestResult {
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: u64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_millis(),
+        )?,
     };
     let submission = if owned {
         let bundle = vb_core::root_bundle::OwnedRootBundle::new(
@@ -83,7 +87,7 @@ fn commit_secret(path: &std::path::Path, owned: bool) -> TestResult {
     };
     let journal = FjallJournal::open(path, None)?;
     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
-    assert_eq!(journal.events_for_run_full(RUN)?.len(), 3);
+    assert_eq!(journal.events_for_run_full(RUN)?.len(), 4);
     Ok(())
 }
 

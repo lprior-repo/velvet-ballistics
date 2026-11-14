@@ -49,14 +49,37 @@ fn compat_gate_submit_suspended(shard: &mut Shard, run: RunId) {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return;
     };
+    let workflow = match honest_digest_workflow(workflow) {
+        Ok(workflow) => workflow,
+        Err(error) => {
+            assert!(false, "compatibility workflow must be canonical: {error}");
+            return;
+        }
+    };
+    let contracts = strict_submit_contracts();
+    let Some(journal) = crate::journal::RuntimeJournal::storage_journal(shard.journal.as_ref())
+    else {
+        assert!(false, "compatibility fixture requires Fjall journal");
+        return;
+    };
+    let artifact = vb_storage::submit_artifact_with_contracts(
+        journal.as_ref(),
+        &workflow,
+        vb_core::policy::RuntimePolicy::Journaled,
+        &contracts,
+    );
+    if let Err(error) = artifact {
+        assert!(false, "compatibility artifact must persist: {error}");
+        return;
+    }
+    shard.policy = vb_core::policy::RuntimePolicy::Journaled;
+    shard.artifact_store = crate::admission::StorageArtifactStore::shared(journal);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
-            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
-                ActionId::new(0)
-            ),
+            caps: strict_submit_caps(),
+            action_contracts: contracts,
             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
         }),
         Ok(())
@@ -89,7 +112,7 @@ fn compat_gate_blocks_submit_with_journaled_replay_only_decision() {
         Some(super::super::RuntimeState::Initial)
     );
     let events = journal.events_for_run(run).expect("read journal events");
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 5);
 }
 
 #[test]

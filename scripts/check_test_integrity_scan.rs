@@ -63,7 +63,7 @@ fn scan_diff(diff: &str, removed_path: &str, added_path: &str) -> Vec<Finding> {
             ),
         });
     }
-    if added_weak > 0 || added_exact < removed_exact {
+    if added_exact < removed_exact || (removed_exact > 0 && added_weak > 0) {
         findings.push(Finding {
             kind: "WeakenedAssertion",
             path: removed_path.to_owned(),
@@ -97,8 +97,9 @@ pub(crate) fn scan_changed_entry(
         base_file_bytes(root, base, path, vcs)
     };
     let base_has_tests = base_bytes.as_ref().map_or(false, |bytes| {
-        std::str::from_utf8(bytes)
-            .map_or(false, |text| has_test_decl(text) || has_exact_assertion(text))
+        std::str::from_utf8(bytes).map_or(false, |text| {
+            has_test_decl(text) || has_exact_assertion(text)
+        })
     });
     if !is_test && !base_has_tests {
         return Ok(Vec::new());
@@ -146,8 +147,9 @@ pub(crate) fn scan_changed_entry(
 }
 
 fn content_has_tests(bytes: &[u8]) -> bool {
-    std::str::from_utf8(bytes)
-        .map_or(false, |text| has_test_decl(text) || has_exact_assertion(text))
+    std::str::from_utf8(bytes).map_or(false, |text| {
+        has_test_decl(text) || has_exact_assertion(text)
+    })
 }
 
 fn count_signals(text: &str) -> (usize, usize) {

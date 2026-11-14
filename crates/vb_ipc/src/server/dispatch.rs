@@ -27,8 +27,8 @@ pub fn serve_ipc_with_resolver(
 
 use super::handlers::{
     handle_answer_ask, handle_cancel_run, handle_complete_action, handle_fail_action,
-    handle_health, handle_inspect_run, handle_list_events, handle_shutdown, handle_submit_run,
-    handle_submit_run_inline,
+    handle_health, handle_inspect_run, handle_list_events, handle_shutdown,
+    handle_submit_bound_gate_decision, handle_submit_run, handle_submit_run_inline,
 };
 use super::trace::handle_drain_trace;
 use crate::IpcCommand;
@@ -61,6 +61,7 @@ pub fn dispatch_command_with_resolver(
         IpcCommand::CompleteAction => handle_complete_action(payload, runtime),
         IpcCommand::FailAction => handle_fail_action(payload, runtime),
         IpcCommand::DrainTrace => handle_drain_trace(payload, runtime),
+        IpcCommand::SubmitBoundGateDecision => handle_submit_bound_gate_decision(payload, runtime),
         IpcCommand::UnknownCommand(_) => IpcResponse::BadRequest,
     }
 }

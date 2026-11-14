@@ -18,7 +18,7 @@ fn wrong_source_run_and_header_are_rejected_without_publication() -> TestResult 
         Err(RuntimeError::RunNotFound)
     ));
     assert_pristine(&case, &journal)?;
-    let mut header = super::support::header(case.run, &case.workflow);
+    let mut header = super::support::header(case.run, &case.workflow)?;
     header.compiled_digest = WorkflowDigest::from_bytes([8; 32]);
     journal.put_run_header(&header)?;
     assert!(
@@ -66,16 +66,28 @@ fn source_advancement_between_enqueue_and_shard_processing_is_revalidated() -> T
     let journal = case.open()?;
     let mut runtime = case.runtime(journal.clone(), 10)?;
     runtime.activate_owned_submission(case.run, case.source.digest)?;
-    journal.append_strict(&vb_storage::JournalEvent::StepStarted {
-        run: case.run,
-        seq: vb_storage::EventSeq::new(3),
-        step: case.workflow.entry(),
-        attempt: 1,
-    })?;
+
+    let mut tick_runtime = case.runtime(journal.clone(), 10)?;
+    tick_runtime.activate_owned_submission(case.run, case.source.digest)?;
+    assert!(tick_runtime.tick_all()?);
+
     let before = journal.events_for_run_full(case.run)?;
     assert!(
-        matches!(runtime.tick_all(), Err(RuntimeError::StorageJournalAppend { source })
-        if matches!(*source, vb_storage::JournalError::TooManyEvents { .. }))
+        before.len() > 5,
+        "expected > 5 events, got {}",
+        before.len()
+    );
+
+    let result = runtime.tick_all();
+    let error = match result {
+        Err(e) => e,
+        Ok(_) => return Err("advanced journal source was accepted".into()),
+    };
+
+    assert!(
+        matches!(error, RuntimeError::StorageJournalAppend { ref source }
+            if matches!(source.as_ref(), vb_storage::JournalError::TooManyEvents { .. })),
+        "unexpected source-advancement error: {error:?}"
     );
     assert_eq!(journal.events_for_run_full(case.run)?, before);
     assert!(matches!(
@@ -128,13 +140,18 @@ fn forged_public_command_must_revalidate_the_same_owned_authority() -> TestResul
     let case = Case::new(false, RuntimePolicy::Strict)?;
     let journal = case.open()?;
     let adapter = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut shard = vb_runtime::shard::Shard::new_with_journal(config(10, 8, 8), adapter);
-    shard.enqueue(ShardCommand::ActivateOwnedSubmission {
-        run: case.run,
-        expected_source_digest: WorkflowDigest::from_bytes([7; 32]),
-    })?;
-    assert!(matches!(shard.tick(), Err(RuntimeError::RunNotFound)));
+    let shard = vb_runtime::shard::Shard::new_with_journal(config(10, 8, 8), adapter);
+    let before = journal.events_for_run_full(case.run)?;
+    assert!(matches!(
+        shard.enqueue(ShardCommand::ActivateOwnedSubmission {
+            run: case.run,
+            expected_source_digest: WorkflowDigest::from_bytes([7; 32]),
+        }),
+        Err(RuntimeError::RunNotFound)
+    ));
+    assert_eq!(shard.command_queue_pending_for(case.run), 0);
     assert_eq!(shard.active_run_count(), 0);
+    assert_eq!(journal.events_for_run_full(case.run)?, before);
     assert_pristine(&case, &journal)?;
     Ok(())
 }
@@ -151,7 +168,7 @@ fn actual_full_capacity_is_rechecked_at_processing_then_submission_can_retry() -
     runtime.activate_owned_submission(second, case.source.digest)?;
     assert!(runtime.tick_all()?);
     let pending = journal.events_for_run_full(second)?;
-    assert_eq!(pending.len(), 3);
+    assert_eq!(pending.len(), 4);
     assert!(matches!(
         runtime.tick_all(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })

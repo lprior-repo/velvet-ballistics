@@ -1,0 +1,236 @@
+impl ShardCommandQueue {
+    pub(crate) fn enqueue_with_reservation(
+        &self,
+        cmd: ShardCommand,
+        limit: Option<u32>,
+        quota_candidate: Option<PendingQuotaReservation>,
+        quota_ledger: Option<&crate::quota::SharedQuotaLedger>,
+    ) -> RuntimeResult<()> {
+        let run = cmd.run_id();
+        let submit_run = pending_submit_run(&cmd);
+        let submit_depth = submit_depth(&cmd);
+        let mut indexes = self.lock_indexes();
+        let quota = pending_quota(submit_run, &indexes.submissions, quota_candidate);
+        let update = indexes.plan(run, limit, submit_depth, submit_run)?;
+        reserve_queued_quota(quota, quota_ledger)?;
+        self.push_reserved(
+            PendingQueuePush {
+                command: cmd,
+                quota,
+                ledger: quota_ledger,
+            },
+            &mut indexes,
+            update,
+        )
+    }
+
+    fn push_reserved(
+        &self,
+        push: PendingQueuePush<'_>,
+        indexes: &mut PendingQueueIndexes<'_>,
+        update: PendingIndexUpdate,
+    ) -> RuntimeResult<()> {
+        match self.inner.push(QueuedShardCommand {
+            command: push.command,
+            quota: push.quota,
+        }) {
+            Ok(()) => {
+                indexes.update(update);
+                Ok(())
+            }
+            Err(_) => {
+                self.rollback_reservation(crate::RuntimeError::QueueFull, push.quota, push.ledger)
+            }
+        }
+    }
+
+    fn rollback_reservation(
+        &self,
+        error: crate::RuntimeError,
+        reservation: Option<PendingQuotaReservation>,
+        ledger: Option<&crate::quota::SharedQuotaLedger>,
+    ) -> RuntimeResult<()> {
+        let Some(reservation) = reservation else {
+            return Err(error);
+        };
+        let rollback = ledger.map_or_else(
+            || {
+                Err(crate::RuntimeError::ResourceAccountingUnderflow {
+                    resource: "pending_quota_ledger_missing",
+                })
+            },
+            |ledger| ledger.release(reservation.tenant, reservation.cost_units),
+        );
+        match rollback {
+            Ok(()) => Err(error),
+            Err(rollback) => Err(crate::RuntimeError::rollback_failed(
+                "pending_submission_quota",
+                error,
+                rollback,
+            )),
+        }
+    }
+
+    fn lock_indexes(&self) -> PendingQueueIndexes<'_> {
+        PendingQueueIndexes {
+            pending: Self::lock_or_recover(&self.pending),
+            admitted: Self::lock_or_recover(&self.admitted_depth),
+            submissions: Self::lock_or_recover(&self.pending_submissions),
+        }
+    }
+}
+
+fn submit_depth(command: &ShardCommand) -> Option<(RunId, u32)> {
+    match command {
+        ShardCommand::Submit { run, workflow, .. }
+        | ShardCommand::SubmitWithLifetimeCap { run, workflow, .. }
+        | ShardCommand::SubmitPrePersisted { run, workflow, .. }
+        | ShardCommand::SubmitWithInputs { run, workflow, .. }
+        | ShardCommand::SubmitWithContracts { run, workflow, .. }
+        | ShardCommand::SubmitWithInputsAndContracts { run, workflow, .. }
+        | ShardCommand::SubmitTenantScoped { run, workflow, .. }
+        | ShardCommand::SubmitTenantWithInputsAndContracts { run, workflow, .. } => {
+            vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
+                .ok()
+                .map(|budget| (*run, budget.max_queue_depth))
+        }
+        _ => None,
+    }
+}
+
+fn pending_quota(
+    submit_run: Option<RunId>,
+    submissions: &indexmap::IndexMap<RunId, u32>,
+    candidate: Option<PendingQuotaReservation>,
+) -> Option<PendingQuotaReservation> {
+    match submit_run {
+        Some(run) if submissions.contains_key(&run) => None,
+        _ => candidate,
+    }
+}
+
+struct PendingQueueIndexes<'a> {
+    pending: std::sync::MutexGuard<'a, indexmap::IndexMap<RunId, u32>>,
+    admitted: std::sync::MutexGuard<'a, indexmap::IndexMap<RunId, u32>>,
+    submissions: std::sync::MutexGuard<'a, indexmap::IndexMap<RunId, u32>>,
+}
+
+struct PendingQueuePush<'a> {
+    command: ShardCommand,
+    quota: Option<PendingQuotaReservation>,
+    ledger: Option<&'a crate::quota::SharedQuotaLedger>,
+}
+
+struct PendingIndexUpdate {
+    pending: Option<(RunId, u32)>,
+    admitted_depth: Option<(RunId, u32)>,
+    submission: Option<(RunId, u32)>,
+}
+
+impl PendingQueueIndexes<'_> {
+    fn plan(
+        &self,
+        run: Option<RunId>,
+        limit: Option<u32>,
+        submit_depth: Option<(RunId, u32)>,
+        submit_run: Option<RunId>,
+    ) -> RuntimeResult<PendingIndexUpdate> {
+        Ok(PendingIndexUpdate {
+            pending: self.next_pending(run, limit, submit_depth)?,
+            admitted_depth: self.next_admitted_depth(run, limit, submit_depth),
+            submission: self.next_submission(submit_run)?,
+        })
+    }
+
+    fn next_admitted_depth(
+        &self,
+        run: Option<RunId>,
+        limit: Option<u32>,
+        submit_depth: Option<(RunId, u32)>,
+    ) -> Option<(RunId, u32)> {
+        let run = run?;
+        let recorded = self.admitted.get(&run).copied();
+        let candidate = submit_depth.map(|(_, depth)| depth);
+        [limit, recorded, candidate]
+            .into_iter()
+            .flatten()
+            .min()
+            .map(|depth| (run, depth))
+    }
+
+    fn next_pending(
+        &self,
+        run: Option<RunId>,
+        limit: Option<u32>,
+        submit_depth: Option<(RunId, u32)>,
+    ) -> RuntimeResult<Option<(RunId, u32)>> {
+        let recorded = run.and_then(|run| self.admitted.get(&run).copied());
+        let candidate = submit_depth.map(|(_, depth)| depth);
+        let effective = [limit, recorded, candidate].into_iter().flatten().min();
+        let current = run.map_or(0, |run| self.pending.get(&run).copied().unwrap_or(0));
+        if let (Some(run), Some(limit)) = (run, effective)
+            && current >= limit
+        {
+            return Err(crate::RuntimeError::PerRunQueueDepthExceeded {
+                run,
+                pending: current,
+                limit,
+            });
+        }
+        next_count(run, current)
+    }
+
+    fn next_submission(&self, submit_run: Option<RunId>) -> RuntimeResult<Option<(RunId, u32)>> {
+        let Some(run) = submit_run else {
+            return Ok(None);
+        };
+        let current = self.submissions.get(&run).copied().unwrap_or(0);
+        current
+            .checked_add(1)
+            .map(|count| Some((run, count)))
+            .ok_or(crate::RuntimeError::PerRunQueueDepthExceeded {
+                run,
+                pending: u32::MAX,
+                limit: u32::MAX,
+            })
+    }
+
+    fn update(&mut self, update: PendingIndexUpdate) {
+        if let Some((run, count)) = update.pending {
+            let _previous = self.pending.insert(run, count);
+        }
+        if let Some((run, depth)) = update.admitted_depth {
+            let _previous = self.admitted.insert(run, depth);
+        }
+        if let Some((run, count)) = update.submission {
+            let _previous = self.submissions.insert(run, count);
+        }
+    }
+}
+
+fn next_count(run: Option<RunId>, current: u32) -> RuntimeResult<Option<(RunId, u32)>> {
+    match run {
+        Some(run) => current.checked_add(1).map(|next| Some((run, next))).ok_or(
+            crate::RuntimeError::PerRunQueueDepthExceeded {
+                run,
+                pending: current,
+                limit: current,
+            },
+        ),
+        None => Ok(None),
+    }
+}
+
+fn reserve_queued_quota(
+    reservation: Option<PendingQuotaReservation>,
+    ledger: Option<&crate::quota::SharedQuotaLedger>,
+) -> RuntimeResult<()> {
+    if let Some(reservation) = reservation {
+        ledger
+            .ok_or(crate::RuntimeError::ResourceAccountingUnderflow {
+                resource: "pending_quota_ledger_missing",
+            })?
+            .reserve(reservation.tenant, reservation.cost_units)?;
+    }
+    Ok(())
+}

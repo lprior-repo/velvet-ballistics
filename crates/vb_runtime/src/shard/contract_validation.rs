@@ -108,43 +108,60 @@ pub fn validate_workflow_action_binding(
 ) -> RuntimeResult<()> {
     for step in 0u16..workflow.node_count() {
         let step_idx = vb_core::ids::StepIdx::new(step);
-        let node = match workflow.node(step_idx) {
-            Some(node) => node,
-            None => continue,
+        let Some(node) = workflow.node(step_idx) else {
+            continue;
         };
         if let vb_core::workflow::CompiledNodeKind::Do { action, .. } = node.kind {
-            let action_index = usize::from(action.get());
-            let contract = match contracts.get(action_index) {
-                Some(contract) => contract,
-                None => {
-                    return Err(RuntimeError::ContractValidationError {
-                        action,
-                        error: "no contract for workflow Do action".to_string(),
-                    });
-                }
-            };
-            if contract.id != action {
-                return Err(RuntimeError::ContractValidationError {
-                    action,
-                    error: "contract ID mismatch for workflow Do action".to_string(),
-                });
-            }
-            if node.retry.is_some_and(|policy| policy.max_attempts > 1)
-                && (!matches!(
-                    contract.retry_safety,
-                    vb_core::action::RetrySafety::Safe | vb_core::action::RetrySafety::KeyRequired
-                ) || !matches!(
-                    contract.idempotency,
-                    vb_core::action::Idempotency::DeterministicPure
-                        | vb_core::action::Idempotency::IdempotentExternal
-                ))
-            {
-                return Err(RuntimeError::ContractValidationError {
-                    action,
-                    error: "retry requires an idempotent retry-safe action contract".into(),
-                });
-            }
+            let retry_required = node.retry.is_some_and(|policy| policy.max_attempts > 1);
+            validate_action_binding(action, retry_required, contracts)?;
         }
     }
     Ok(())
+}
+
+fn validate_action_binding(
+    action: ActionId,
+    retry_required: bool,
+    contracts: &[ActionContract],
+) -> RuntimeResult<()> {
+    let contract = action_contract(action, contracts)?;
+    if retry_required && !contract_is_retry_safe(contract) {
+        return Err(RuntimeError::ContractValidationError {
+            action,
+            error: "retry requires an idempotent retry-safe action contract".into(),
+        });
+    }
+    Ok(())
+}
+
+fn action_contract(
+    action: ActionId,
+    contracts: &[ActionContract],
+) -> RuntimeResult<&ActionContract> {
+    let action_index = usize::from(action.get());
+    let contract =
+        contracts
+            .get(action_index)
+            .ok_or_else(|| RuntimeError::ContractValidationError {
+                action,
+                error: "no contract for workflow Do action".to_string(),
+            })?;
+    if contract.id != action {
+        return Err(RuntimeError::ContractValidationError {
+            action,
+            error: "contract ID mismatch for workflow Do action".to_string(),
+        });
+    }
+    Ok(contract)
+}
+
+fn contract_is_retry_safe(contract: &ActionContract) -> bool {
+    matches!(
+        contract.retry_safety,
+        vb_core::action::RetrySafety::Safe | vb_core::action::RetrySafety::KeyRequired
+    ) && matches!(
+        contract.idempotency,
+        vb_core::action::Idempotency::DeterministicPure
+            | vb_core::action::Idempotency::IdempotentExternal
+    )
 }

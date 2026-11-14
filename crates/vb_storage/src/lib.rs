@@ -286,6 +286,6 @@ pub use admission::{
 };
 
 pub use inputs::{
-    OwnedInputError, OwnedRunInputsRecordV1, RetainedRunInputs, RunInputBinding, RunInputsRecord,
-    RunPolicyPin, RunSubmission,
+    ExecutorCatalogSubmissionContext, OwnedInputError, OwnedRunInputsRecordV1, RetainedRunInputs,
+    RunInputBinding, RunInputsRecord, RunPolicyPin, RunSubmission,
 };

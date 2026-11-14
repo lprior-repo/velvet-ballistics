@@ -1,7 +1,21 @@
 /// Workflow: SetConst(slot0=true) -> Ask(prompt=slot0, timeout=Some(slot1)) -> AskResume(answer=slot2) -> Finish(result=slot2)
 fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_prompt = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(vb_core::ids::StepIdx::new(1)));
-    let set_timeout = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(2)));
+    let set_prompt = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let set_timeout = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+        Some(SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(2)),
+    );
     let ask = vb_core::workflow::node(
         vb_core::ids::StepIdx::new(2),
         CompiledNodeKind::Ask {
@@ -11,8 +25,22 @@ fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(vb_core::ids::StepIdx::new(3)),
     );
-    let resume = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::AskResume { answer: SlotIdx::new(2), }, None, Some(vb_core::ids::StepIdx::new(4)));
-    let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(4), CompiledNodeKind::Finish { result: SlotIdx::new(2), }, None, None);
+    let resume = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(3),
+        CompiledNodeKind::AskResume {
+            answer: SlotIdx::new(2),
+        },
+        None,
+        Some(vb_core::ids::StepIdx::new(4)),
+    );
+    let finish = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(4),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(2),
+        },
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
@@ -182,6 +210,10 @@ impl RejectAdmissionHeaderJournal {
 }
 
 impl crate::journal::RuntimeJournal for RejectAdmissionHeaderJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         let reject_submitted =
             matches!(event, RuntimeJournalEvent::RunSubmitted { .. }) && self.reject_submitted;
@@ -252,8 +284,13 @@ fn shard_submit_run_submitted_append_failure_maps_to_admission_header_persistenc
         Ok(())
     );
 
+    let (frame_pool_free_before, frame_pool_total_before) = shard.frame_pool_metrics();
+    assert_eq!(frame_pool_free_before, 0);
+    assert_eq!(frame_pool_total_before, 0);
     assert_admission_header_persistence_failed(shard.tick());
-
+    let (frame_pool_free_after, frame_pool_total_after) = shard.frame_pool_metrics();
+    assert_eq!(frame_pool_total_after, 4);
+    assert_eq!(frame_pool_free_after, 4);
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_submitted, 0);
     assert_eq!(journal.snapshot(), Ok(Vec::new()));

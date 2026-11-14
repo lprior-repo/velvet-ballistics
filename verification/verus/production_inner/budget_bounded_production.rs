@@ -52,10 +52,10 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:17-93
-// Production `crates/vb_core/src/budget/compute.rs:17-93`
-//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:100-106
-// Production `crates/vb_core/src/budget/compute.rs:100-106`
+//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:21-97
+// Production `crates/vb_core/src/budget/compute.rs:21-97`
+//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:104-110
+// Production `crates/vb_core/src/budget/compute.rs:104-110`
 //   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:9-56
 // Production `crates/vb_core/src/budget/validate.rs:9-56`
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
@@ -81,8 +81,8 @@
 // Production `crates/vb_core/src/budget/usage.rs:11-140`
 //   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget/usage.rs:145-236
 // Production `crates/vb_core/src/budget/usage.rs:145-236`
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
-// Production `crates/vb_core/src/budget/aggregate_validate.rs:109-243`
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:126-260
+// Production `crates/vb_core/src/budget/aggregate_validate.rs:126-260`
 //   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:24-59
 //   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
 // Production `crates/vb_core/src/budget.rs:61-79`

@@ -1,6 +1,20 @@
 fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_prompt = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
-    let set_timeout = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(StepIdx::new(2)));
+    let set_prompt = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let set_timeout = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    );
     let ask = vb_core::workflow::node(
         StepIdx::new(2),
         CompiledNodeKind::Ask {
@@ -10,8 +24,22 @@ fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
     );
-    let resume = vb_core::workflow::node(StepIdx::new(3), CompiledNodeKind::AskResume { answer: SlotIdx::new(2), }, None, Some(StepIdx::new(4)));
-    let finish_node = vb_core::workflow::node(StepIdx::new(4), CompiledNodeKind::Finish { result: SlotIdx::new(2), }, None, None);
+    let resume = vb_core::workflow::node(
+        StepIdx::new(3),
+        CompiledNodeKind::AskResume {
+            answer: SlotIdx::new(2),
+        },
+        None,
+        Some(StepIdx::new(4)),
+    );
+    let finish_node = vb_core::workflow::node(
+        StepIdx::new(4),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(2),
+        },
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
@@ -57,7 +85,8 @@ fn make_ticket(run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {
         attempt,
         idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 1,
-     fencing_token: 0, }
+        fencing_token: 0,
+    }
 }
 
 fn pending_ticket(shard: &Shard, run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {
@@ -118,10 +147,41 @@ fn action_failed_count(events: &[RuntimeJournalEvent], run: RunId, step: StepIdx
 }
 
 fn retry_workflow() -> Result<vb_core::workflow::CompiledWorkflow, String> {
-    let set_policy = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(1)));
-    let action = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), Some(StepIdx::new(2)));
-    let retry = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::RetryCheck { policy_slot: SlotIdx::new(1), body: StepIdx::new(1), exhausted: StepIdx::new(3), }, None, None);
-    let finish = vb_core::workflow::node(StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
+    let set_policy = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
+    let action = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(2)),
+    );
+    let retry = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(1),
+            body: StepIdx::new(1),
+            exhausted: StepIdx::new(3),
+        },
+        None,
+        None,
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(3),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+        None,
+        None,
+    );
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
@@ -151,15 +211,43 @@ fn submit_run(
     workflow: CompiledWorkflow,
     inputs: &[(SlotIdx, SlotValue)],
 ) {
+    let storage_journal = crate::journal::RuntimeJournal::storage_journal(shard.journal.as_ref());
+    let (workflow, caps, action_contracts) = match storage_journal {
+        Some(journal) => {
+            shard.policy = vb_core::policy::RuntimePolicy::Journaled;
+            let workflow = match honest_digest_workflow(workflow) {
+                Ok(workflow) => workflow,
+                Err(error) => {
+                    assert!(false, "current workflow fixture must canonicalize: {error}");
+                    return;
+                }
+            };
+            let contracts = strict_submit_contracts();
+            let accepted = vb_storage::submit_artifact_with_contracts(
+                journal.as_ref(),
+                &workflow,
+                vb_core::policy::RuntimePolicy::Journaled,
+                &contracts,
+            );
+            if let Err(error) = accepted {
+                assert!(false, "current workflow artifact must persist: {error}");
+                return;
+            }
+            (workflow, strict_submit_caps(), contracts)
+        }
+        None => (
+            workflow,
+            crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+        ),
+    };
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             inputs: inputs.into(),
             run,
             workflow,
-            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
-                0
-            )),
+            caps,
+            action_contracts,
         }),
         Ok(())
     );
@@ -205,7 +293,7 @@ fn assert_retry_exhaustion_journal(events: &[RuntimeJournalEvent], run: RunId) {
             action: ActionId::new(0),
             attempt: 1,
         },
-        RuntimeJournalEvent::RunFailed { run, attempt: 1},
+        RuntimeJournalEvent::RunFailed { run, attempt: 1 },
     );
 }
 

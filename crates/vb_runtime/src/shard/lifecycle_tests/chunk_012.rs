@@ -53,8 +53,8 @@ fn journal_before_dispatch() -> Result<(), String> {
 
 #[test]
 fn journal_before_dispatch_full_journal_blocks_dispatch() -> Result<(), String> {
-    let Some(capacity) = std::num::NonZeroUsize::new(2) else {
-        assert_eq!(None::<()>, Some(()), "capacity 2 must be nonzero");
+    let Some(capacity) = std::num::NonZeroUsize::new(3) else {
+        assert_eq!(None::<()>, Some(()), "capacity 3 must be nonzero");
         return Ok(());
     };
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::with_capacity(
@@ -79,7 +79,7 @@ fn journal_before_dispatch_full_journal_blocks_dispatch() -> Result<(), String> 
         }),
         Ok(())
     );
-    assert_eq!(shard.tick(), Err(RuntimeError::JournalFull { capacity: 2 }));
+    assert_eq!(shard.tick(), Err(RuntimeError::JournalFull { capacity: 3 }));
     assert_eq!(shard.pending_action_get(run), None);
     let events = journal.snapshot().map_err(|error| error.to_string())?;
     assert_eq!(
@@ -89,7 +89,7 @@ fn journal_before_dispatch_full_journal_blocks_dispatch() -> Result<(), String> 
             .count(),
         0
     );
-    assert_eq!(events.len(), 2);
+    assert_eq!(events.len(), 3);
     assert!(shard.run_state_get_mut(run).is_some());
     Ok(())
 }

@@ -10,28 +10,13 @@ impl ShardConfig {
         max_open_gates: usize,
         policy: vb_core::policy::RuntimePolicy,
     ) -> RuntimeResult<Self> {
-        if !is_valid_command_queue_capacity(command_queue_capacity) {
-            return Err(RuntimeError::CommandQueueCapacityExceeded {
-                capacity: command_queue_capacity,
-                max: MAX_COMMAND_QUEUE_CAPACITY,
-            });
-        }
-        if !is_valid_trace_capacity(trace_capacity) {
-            return Err(RuntimeError::UnsupportedOperation {
-                operation: "trace_capacity_zero",
-            });
-        }
-        if !is_valid_step_budget_per_tick(step_budget_per_tick) {
-            return Err(RuntimeError::UnsupportedOperation {
-                operation: "step_budget_per_tick_zero",
-            });
-        }
-        if max_active_runs == 0 {
-            return Err(RuntimeError::ActiveRunCapacityZero);
-        }
-        if max_open_gates == 0 {
-            return Err(RuntimeError::OpenGateCapacityZero);
-        }
+        validate_command_queue_capacity(command_queue_capacity)?;
+        validate_runtime_capacities(
+            trace_capacity,
+            step_budget_per_tick,
+            max_active_runs,
+            max_open_gates,
+        )?;
         Ok(Self {
             command_queue_capacity,
             trace_capacity,
@@ -41,4 +26,39 @@ impl ShardConfig {
             policy,
         })
     }
+}
+
+fn validate_command_queue_capacity(capacity: usize) -> RuntimeResult<()> {
+    if !is_valid_command_queue_capacity(capacity) {
+        return Err(RuntimeError::CommandQueueCapacityExceeded {
+            capacity,
+            max: MAX_COMMAND_QUEUE_CAPACITY,
+        });
+    }
+    Ok(())
+}
+
+fn validate_runtime_capacities(
+    trace_capacity: usize,
+    step_budget_per_tick: u64,
+    max_active_runs: usize,
+    max_open_gates: usize,
+) -> RuntimeResult<()> {
+    if !is_valid_trace_capacity(trace_capacity) {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "trace_capacity_zero",
+        });
+    }
+    if !is_valid_step_budget_per_tick(step_budget_per_tick) {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "step_budget_per_tick_zero",
+        });
+    }
+    if max_active_runs == 0 {
+        return Err(RuntimeError::ActiveRunCapacityZero);
+    }
+    if max_open_gates == 0 {
+        return Err(RuntimeError::OpenGateCapacityZero);
+    }
+    Ok(())
 }

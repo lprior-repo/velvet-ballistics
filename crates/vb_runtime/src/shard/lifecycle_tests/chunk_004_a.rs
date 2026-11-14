@@ -256,6 +256,10 @@ fn legacy_action_completion_journal_first() -> Result<(), String> {
     // the run frame. On journal append failure, the frame MUST remain unchanged.
     struct LegacyStepFailsJournal;
     impl crate::journal::RuntimeJournal for LegacyStepFailsJournal {
+        fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+            Some(vb_storage::DurabilityProfile::Volatile)
+        }
+
         fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
             self.append_sequenced(event, vb_storage::EventSeq::ZERO)
         }
@@ -419,6 +423,10 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
     }
 
     impl crate::journal::RuntimeJournal for AskAnswerBatchFailsOnce {
+        fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+            Some(vb_storage::DurabilityProfile::Volatile)
+        }
+
         fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
             self.append_sequenced(event, vb_storage::EventSeq::ZERO)
         }

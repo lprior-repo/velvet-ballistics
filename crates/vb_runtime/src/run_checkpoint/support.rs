@@ -1,0 +1,137 @@
+use super::*;
+
+pub(super) fn validate_checkpoint_identity(
+    checkpoint: &RunCheckpointV1,
+    workflow: &CompiledWorkflow,
+    artifact_digest: WorkflowDigest,
+) -> Result<(), RunCheckpointV1Error> {
+    if checkpoint.version != 3 {
+        return Err(RunCheckpointV1Error::UnsupportedVersion);
+    }
+    if checkpoint.workflow_digest != workflow.digest() {
+        return Err(RunCheckpointV1Error::WorkflowIdentityMismatch);
+    }
+    if checkpoint.artifact_digest != artifact_digest {
+        return Err(RunCheckpointV1Error::ArtifactIdentityMismatch);
+    }
+    if checkpoint.frame.run_id != checkpoint.run_id {
+        return Err(RunCheckpointV1Error::RunIdentityMismatch);
+    }
+    let step_count = u16::try_from(checkpoint.frame.states.len())
+        .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
+    let slot_count = u16::try_from(checkpoint.frame.slots.len())
+        .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
+    if step_count != workflow.node_count() || slot_count != workflow.slot_count() {
+        return Err(RunCheckpointV1Error::FrameDimensionsMismatch);
+    }
+    Ok(())
+}
+
+pub(super) fn validate_checkpoint_retry_authority(
+    checkpoint: &RunCheckpointV1,
+    accepted_action_contracts: &[ActionContract],
+) -> Result<(), RunCheckpointV1Error> {
+    let retry_index = usize::from(checkpoint.retry_step.get());
+    if checkpoint.frame.states.get(retry_index) != Some(&CheckpointStepState::Pending)
+        || checkpoint.frame.pc != checkpoint.retry_step
+    {
+        return Err(RunCheckpointV1Error::RetryStepMismatch);
+    }
+    if checkpoint.action_attempts.len() != checkpoint.frame.states.len() {
+        return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
+    }
+    let admission = checkpoint
+        .admission
+        .as_ref()
+        .ok_or(RunCheckpointV1Error::MissingAdmissionAuthority)?;
+    super::validate_admission(admission, checkpoint.run_id, checkpoint.artifact_digest)?;
+    if checkpoint.action_contracts.as_ref() != accepted_action_contracts {
+        return Err(RunCheckpointV1Error::ActionContractsMismatch);
+    }
+    Ok(())
+}
+
+pub(super) fn validate_checkpoint_nested_state(
+    checkpoint: &RunCheckpointV1,
+    workflow: &CompiledWorkflow,
+) -> Result<(), RunCheckpointV1Error> {
+    let frame = RunFrame::from_checkpoint_v1(checkpoint.frame.clone())
+        .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+    vb_core::root_bundle::validate_runtime_store(&frame, &checkpoint.value_store, workflow)
+        .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+    ValueStore::from_checkpoint_v1(checkpoint.value_store.clone())
+        .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+    CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone())
+        .map_err(|_| RunCheckpointV1Error::InvalidNestedState)
+        .map(|_| ())
+}
+
+pub(super) fn restore_checkpoint_state(
+    checkpoint: RunCheckpointV1,
+    workflow: CompiledWorkflow,
+) -> Result<RunState, RunCheckpointV1Error> {
+    let frame = RunFrame::from_checkpoint_v1(checkpoint.frame)
+        .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+    let store = ValueStore::from_checkpoint_v1(checkpoint.value_store)
+        .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+    let collect_states = CollectStates::from_checkpoint_v1(checkpoint.collect_states)
+        .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+    Ok(RunState {
+        registered_execution: crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
+        frame,
+        run_attempt: checkpoint.run_attempt,
+        workflow,
+        store,
+        action_attempts: checkpoint.action_attempts,
+        admission: checkpoint.admission,
+        run_started_millis: checkpoint.run_started_millis,
+        collect_states,
+        action_contracts: checkpoint.action_contracts,
+        journal_bytes_written: checkpoint.journal_bytes_written,
+    })
+}
+
+pub(super) fn validate_capture_run(
+    state: &RunState,
+    run_id: RunId,
+) -> Result<(), RunCheckpointV1Error> {
+    if state.frame.checkpoint_v1().run_id == run_id {
+        Ok(())
+    } else {
+        Err(RunCheckpointV1Error::RunIdentityMismatch)
+    }
+}
+
+pub(super) fn validate_capture_admission(
+    state: &RunState,
+    run_id: RunId,
+    artifact_digest: WorkflowDigest,
+) -> Result<(), RunCheckpointV1Error> {
+    let admission = state
+        .admission
+        .as_ref()
+        .ok_or(RunCheckpointV1Error::MissingAdmissionAuthority)?;
+    super::validate_admission(admission, run_id, artifact_digest)
+}
+
+pub(super) fn failed_retry_frame(
+    state: &RunState,
+    retry_step: StepIdx,
+) -> Result<(RunFrameCheckpointV1, Box<[u16]>), RunCheckpointV1Error> {
+    let mut frame = state.frame.checkpoint_v1();
+    let retry_index = usize::from(retry_step.get());
+    if frame.states.get(retry_index) != Some(&CheckpointStepState::Failed) {
+        return Err(RunCheckpointV1Error::RetryStepMismatch);
+    }
+    let action_attempts = state.action_attempts.clone();
+    if action_attempts.get(retry_index).is_none() {
+        return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
+    }
+    let retry_state = frame
+        .states
+        .get_mut(retry_index)
+        .ok_or(RunCheckpointV1Error::RetryStepMismatch)?;
+    *retry_state = CheckpointStepState::Pending;
+    frame.pc = retry_step;
+    Ok((frame, action_attempts))
+}

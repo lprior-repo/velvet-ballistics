@@ -9,7 +9,7 @@
 //! slot because the `SlotValue` type system does not support arbitrary strings.
 //! If no handler exists, the run fails.
 
-use crate::CoreError;
+use crate::HasSymbolicCode;
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{SlotIdx, StepIdx};
@@ -50,63 +50,13 @@ impl ErrorSlotData {
     }
 }
 
-/// Returns the static string code for engine errors that don't have a runtime code.
+/// Returns the symbolic code stored in an engine error slot.
 fn engine_error_static_code(error: &EngineError) -> &'static str {
-    use CoreError::*;
     match error {
-        InvalidProgramCounter { .. } => "INVALID_PROGRAM_COUNTER",
-        MissingNextStep { .. } => "MISSING_NEXT_STEP",
-        MissingOutputSlot { .. } => "MISSING_OUTPUT_SLOT",
-        InvalidCompiledWorkflow { .. } => "INVALID_COMPILED_WORKFLOW",
-        SlotOutOfBounds { .. } => "SLOT_OUT_OF_BOUNDS",
-        ExprOutOfBounds { .. } => "EXPR_OUT_OF_BOUNDS",
-        ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
-        StepStateOutOfBounds { .. } => "STEP_STATE_OUT_OF_BOUNDS",
-        ListIndexOutOfBounds { .. } => "LIST_INDEX_OUT_OF_BOUNDS",
-        SymbolOutOfBounds { .. } => "SYMBOL_OUT_OF_BOUNDS",
-        ListOutOfBounds { .. } => "LIST_OUT_OF_BOUNDS",
-        ObjectOutOfBounds { .. } => "OBJECT_OUT_OF_BOUNDS",
-        BlobOutOfBounds { .. } => "BLOB_OUT_OF_BOUNDS",
-        TypeMismatch { .. } => "TYPE_MISMATCH",
-        NonBoolCondition { .. } => "NON_BOOL_CONDITION",
-        DivisionByZero => "DIVISION_BY_ZERO",
-        NonFiniteNumber => "NON_FINITE_NUMBER",
-        StepBudgetExhausted => "STEP_BUDGET_EXHAUSTED",
-        StepCounterOverflow => "STEP_COUNTER_OVERFLOW",
-        QueueFull => "QUEUE_FULL",
-        AllocationFailed => "ALLOCATION_FAILED",
-        ExpressionStackOverflow { .. } => "EXPRESSION_STACK_OVERFLOW",
-        ExpressionStackUnderflow => "EXPRESSION_STACK_UNDERFLOW",
-        UnsupportedPrimitive { .. } => "UNSUPPORTED_PRIMITIVE",
-        UnsupportedAccessorTraversal { .. } => "UNSUPPORTED_ACCESSOR_TRAVERSAL",
-        ObjectFieldNotFound { .. } => "OBJECT_FIELD_NOT_FOUND",
-        InternalInvariantViolation { .. } => "INTERNAL_INVARIANT_VIOLATION",
-        IterationLimitExceeded { .. } => "ITERATION_LIMIT_EXCEEDED",
-        RepeatExhausted { .. } => "REPEAT_EXHAUSTED",
-        InvalidRepeatState { .. } => "INVALID_REPEAT_STATE",
-        CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
-        CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
-        CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
-        TogetherBranchLimitExceeded { .. } => "TOGETHER_BRANCH_LIMIT_EXCEEDED",
-        ParallelLimitExceeded { .. } => "PARALLEL_LIMIT_EXCEEDED",
-        BudgetExceeded { .. } => "BUDGET_EXCEEDED",
-        BudgetParse { .. } => "BUDGET_PARSE",
-        ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
-        &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
-        CapabilityDenied { .. } => "CAPABILITY_DENIED",
-        ActionFailed { .. } => "ACTION_FAILED",
-        ActionResumeRejected { .. } => "ACTION_RESUME_REJECTED",
-        CollectPageOrderViolation { .. } => "COLLECT_PAGE_ORDER_VIOLATION",
-        CollectExtraHydrationFailed { .. } => "COLLECT_EXTRA_HYDRATION_FAILED",
-        CollectEvidenceCapacityExceeded { .. } => "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",
-        EvidenceCapacityExceeded { .. } => "EVIDENCE_CAPACITY_EXCEEDED",
-        LifecycleStorageUnavailable { .. } => "LIFECYCLE_STORAGE_UNAVAILABLE",
-        LifecycleDuplicateRequest { .. } => "LIFECYCLE_DUPLICATE_REQUEST",
-        LifecycleStaleRequest { .. } => "LIFECYCLE_STALE_REQUEST",
-        LifecycleInvalidTransition { .. } => "LIFECYCLE_INVALID_TRANSITION",
-        JournalWriteFailure { .. } => "JOURNAL_WRITE_FAILURE",
-        ReplayCorruption { .. } => "REPLAY_CORRUPTION",
-        InvalidSpan { .. } => "INVALID_SPAN",
+        EngineError::LifecycleStorageUnavailable { .. } => "LIFECYCLE_STORAGE_UNAVAILABLE",
+        EngineError::LifecycleDuplicateRequest { .. } => "LIFECYCLE_DUPLICATE_REQUEST",
+        EngineError::LifecycleInvalidTransition { .. } => "LIFECYCLE_INVALID_TRANSITION",
+        _ => error.symbolic_code().as_str(),
     }
 }
 
@@ -165,25 +115,17 @@ pub fn abandoned_together_count(
 ) -> Result<u16, EngineError> {
     let mut count = 0u16;
     for raw in 0..plan.node_count() {
+        let step = StepIdx::new(raw);
         let node = plan
-            .node(StepIdx::new(raw))
-            .ok_or(EngineError::InvalidProgramCounter {
-                step: StepIdx::new(raw),
-            })?;
-        if let crate::workflow::CompiledNodeKind::TogetherStart { ref branches, join } = node.kind
-            && node.id < failed
-            && failed <= join
-            && !(node.id < handler && handler <= join)
-            && run.step_state(node.id)? == crate::frame::StepState::Succeeded
-            && run.step_state(join)? != crate::frame::StepState::Succeeded
-        {
-            let branches = u16::try_from(branches.len())
-                .map_err(|_| EngineError::TogetherBranchLimitExceeded { max: u16::MAX })?;
-            count = count
-                .checked_add(branches)
-                .ok_or(EngineError::InternalInvariantViolation {
-                    reason: "parallel_in_flight overflow".into(),
-                })?;
+            .node(step)
+            .ok_or(EngineError::InvalidProgramCounter { step })?;
+        if let Some(branch_count) = abandoned_group_branch_count(node, run, failed, handler)? {
+            count =
+                count
+                    .checked_add(branch_count)
+                    .ok_or(EngineError::InternalInvariantViolation {
+                        reason: "parallel_in_flight overflow".into(),
+                    })?;
         }
     }
     if count > run.parallel_in_flight() {
@@ -192,6 +134,26 @@ pub fn abandoned_together_count(
         });
     }
     Ok(count)
+}
+
+fn abandoned_group_branch_count(
+    node: &crate::workflow::CompiledNode,
+    run: &RunFrame,
+    failed: StepIdx,
+    handler: StepIdx,
+) -> Result<Option<u16>, EngineError> {
+    if let crate::workflow::CompiledNodeKind::TogetherStart { ref branches, join } = node.kind
+        && node.id < failed
+        && failed <= join
+        && !(node.id < handler && handler <= join)
+        && run.step_state(node.id)? == crate::frame::StepState::Succeeded
+        && run.step_state(join)? != crate::frame::StepState::Succeeded
+    {
+        let branches = u16::try_from(branches.len())
+            .map_err(|_| EngineError::TogetherBranchLimitExceeded { max: u16::MAX })?;
+        return Ok(Some(branches));
+    }
+    Ok(None)
 }
 
 #[inline]

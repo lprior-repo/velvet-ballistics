@@ -181,6 +181,20 @@ pub enum RuntimeError {
         /// Digest of the invalid artifact.
         digest: vb_core::ids::WorkflowDigest,
     },
+    /// Tenant or shard-global admitted cost quota would be exceeded.
+    ResourceQuotaExceeded {
+        /// Quota dimension (`tenant_quota_cost_units` or `global_quota_cost_units`).
+        resource: &'static str,
+        /// Requested new total.
+        requested: u64,
+        /// Admitted quota.
+        available: u64,
+    },
+    /// Quota ledger release exceeded the recorded total.
+    ResourceAccountingUnderflow {
+        /// Quota dimension whose release underflowed.
+        resource: &'static str,
+    },
     /// Admission gate rejected because the artifact digest did not match the requested digest.
     AdmissionArtifactDigestMismatch {
         /// Digest that was requested at admission.

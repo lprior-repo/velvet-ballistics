@@ -1,9 +1,6 @@
 use blake3::Hasher;
 use vb_core::ActionTicket;
-use vb_core::policy::{
-    CurrentPolicyIdentity, DecisionCode, InfluenceState, PinnedAdmissionPolicy, PolicyDigest,
-    PolicyLayer,
-};
+use vb_core::policy::{CurrentPolicyIdentity, PolicyDigest};
 use vb_core::value::{SlotValue, Taint};
 
 /// Oracle: compute the expected input digest independently of production code.
@@ -108,30 +105,6 @@ pub(super) fn compute_expected_input_digest(
     hash_capacity_field(&mut hasher, ticket.capacity);
 
     Ok(finalize_policy_hash(hasher))
-}
-
-pub(super) fn make_expected_decision(
-    ticket: ActionTicket,
-    admission_pin: PinnedAdmissionPolicy,
-    current_live: CurrentPolicyIdentity,
-    input_digest: PolicyDigest,
-    outcome: DecisionCode,
-) -> vb_core::policy::DecisionRecord {
-    vb_core::policy::DecisionRecord {
-        ticket,
-        admission: admission_pin,
-        current_live,
-        input_digest,
-        taint: Taint::Clean,
-        outcome,
-        layer: PolicyLayer::Admission,
-        emergency_influence: InfluenceState::Inactive,
-        compat_influence: InfluenceState::NotEvaluated,
-    }
-}
-
-pub(super) fn admission_pin_unverified() -> PinnedAdmissionPolicy {
-    PinnedAdmissionPolicy::Unverified
 }
 
 pub(super) fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {

@@ -29,6 +29,14 @@ impl IntrospectionRegistry {
         }
     }
 
+    fn inspect_handle(&self, run: RunId, epoch: u64) -> InspectHandle {
+        InspectHandle {
+            run,
+            epoch,
+            registry: self.inner.clone(),
+        }
+    }
+
     /// Registers a handle for the given run.
     ///
     /// Returns the handle guard on success. Recovers transparently from
@@ -49,11 +57,7 @@ impl IntrospectionRegistry {
             .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
         guard.insert(run, epoch);
 
-        Ok(InspectHandle {
-            run,
-            epoch,
-            registry: self.inner.clone(),
-        })
+        Ok(self.inspect_handle(run, epoch))
     }
 
     /// Registers a handle for the given run, allowing epoch replacement on conflict.
@@ -67,11 +71,7 @@ impl IntrospectionRegistry {
 
         let (outcome, epoch) = if let Some(&old_epoch) = guard.get(&run) {
             // Overlap detected - replace with new epoch
-            let new_epoch = self.next_epoch;
-            self.next_epoch = self
-                .next_epoch
-                .checked_add(1)
-                .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
+            let new_epoch = advance_registration_epoch(&mut self.next_epoch)?;
             guard.insert(run, new_epoch);
             (
                 Err(RegisterOverlapOutcome::Replaced {
@@ -81,24 +81,11 @@ impl IntrospectionRegistry {
                 new_epoch,
             )
         } else {
-            // No overlap - insert with new epoch
-            let epoch = self.next_epoch;
-            self.next_epoch = self
-                .next_epoch
-                .checked_add(1)
-                .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
+            let epoch = advance_registration_epoch(&mut self.next_epoch)?;
             guard.insert(run, epoch);
             (Ok(()), epoch)
         };
-
-        Ok((
-            InspectHandle {
-                run,
-                epoch,
-                registry: self.inner.clone(),
-            },
-            outcome,
-        ))
+        Ok((self.inspect_handle(run, epoch), outcome))
     }
 
     /// Unregisters a handle for the given run.
@@ -144,6 +131,13 @@ impl IntrospectionRegistry {
     ) -> std::sync::Arc<std::sync::Mutex<std::collections::HashMap<RunId, u64>>> {
         self.inner.clone()
     }
+}
+fn advance_registration_epoch(next_epoch: &mut u64) -> crate::RuntimeResult<u64> {
+    let current = *next_epoch;
+    *next_epoch = current
+        .checked_add(1)
+        .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
+    Ok(current)
 }
 
 /// Snapshot formatting stays cold path (no computation on hot path).

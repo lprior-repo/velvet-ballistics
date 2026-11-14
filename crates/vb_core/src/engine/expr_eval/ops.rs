@@ -145,19 +145,29 @@ pub(super) fn eval_expr_operator(
     store: &mut ValueStore,
 ) -> Result<(), EngineError> {
     match op {
-        ExprOp::Eq => eval_eq(stack, true),
-        ExprOp::NotEq => eval_eq(stack, false),
-        ExprOp::And => eval_bool_pair(stack, |left, right| left && right),
-        ExprOp::Or => eval_bool_pair(stack, |left, right| left || right),
-        ExprOp::Not => eval_not(stack),
-        ExprOp::Add => eval_numeric_pair(stack, numeric::add),
-        ExprOp::Sub => eval_numeric_pair(stack, numeric::sub),
-        ExprOp::Mul => eval_numeric_pair(stack, numeric::mul),
-        ExprOp::Div => eval_div(stack),
-        ExprOp::Gt => eval_numeric_cmp(stack, core::cmp::Ordering::is_gt),
-        ExprOp::Gte => eval_numeric_cmp(stack, core::cmp::Ordering::is_ge),
-        ExprOp::Lt => eval_numeric_cmp(stack, core::cmp::Ordering::is_lt),
-        ExprOp::Lte => eval_numeric_cmp(stack, core::cmp::Ordering::is_le),
+        ExprOp::Contains
+        | ExprOp::StartsWith
+        | ExprOp::EndsWith
+        | ExprOp::Has
+        | ExprOp::Exists
+        | ExprOp::Length
+        | ExprOp::Empty
+        | ExprOp::Append
+        | ExprOp::AppendIf
+        | ExprOp::Merge
+        | ExprOp::Sum
+        | ExprOp::Count
+        | ExprOp::Unique => eval_collection_operator(op, stack, store),
+        _ => eval_scalar_operator(op, stack),
+    }
+}
+
+fn eval_collection_operator(
+    op: ExprOp,
+    stack: &mut ExprStack,
+    store: &mut ValueStore,
+) -> Result<(), EngineError> {
+    match op {
         ExprOp::Contains => eval_contains(stack, store),
         ExprOp::StartsWith => eval_starts_with(stack, store),
         ExprOp::EndsWith => eval_ends_with(stack, store),
@@ -171,11 +181,35 @@ pub(super) fn eval_expr_operator(
         ExprOp::Sum => eval_sum(stack, store),
         ExprOp::Count => eval_count(stack, store),
         ExprOp::Unique => eval_unique(stack, store),
+        _ => Err(EngineError::InternalInvariantViolation {
+            reason: "non-collection operator sent to collection dispatcher".into(),
+        }),
+    }
+}
+
+fn eval_scalar_operator(op: ExprOp, stack: &mut ExprStack) -> Result<(), EngineError> {
+    match op {
+        ExprOp::Eq => eval_eq(stack, true),
+        ExprOp::NotEq => eval_eq(stack, false),
+        ExprOp::And => eval_bool_pair(stack, |left, right| left && right),
+        ExprOp::Or => eval_bool_pair(stack, |left, right| left || right),
+        ExprOp::Not => eval_not(stack),
+        ExprOp::Add => eval_numeric_pair(stack, numeric::add),
+        ExprOp::Sub => eval_numeric_pair(stack, numeric::sub),
+        ExprOp::Mul => eval_numeric_pair(stack, numeric::mul),
+        ExprOp::Div => eval_div(stack),
+        ExprOp::Gt => eval_numeric_cmp(stack, core::cmp::Ordering::is_gt),
+        ExprOp::Gte => eval_numeric_cmp(stack, core::cmp::Ordering::is_ge),
+        ExprOp::Lt => eval_numeric_cmp(stack, core::cmp::Ordering::is_lt),
+        ExprOp::Lte => eval_numeric_cmp(stack, core::cmp::Ordering::is_le),
         ExprOp::LoadSlot(_) | ExprOp::LoadConst(_) | ExprOp::LoadAccessor(_) => {
             Err(EngineError::InternalInvariantViolation {
                 reason: "load ops should be handled in eval_expr_op".into(),
             })
         }
+        _ => Err(EngineError::InternalInvariantViolation {
+            reason: "collection operator sent to scalar dispatcher".into(),
+        }),
     }
 }
 

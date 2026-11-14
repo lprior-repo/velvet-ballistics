@@ -8,54 +8,40 @@ impl Shard {
         &self,
         command: &super::ShardCommand,
     ) -> RuntimeResult<()> {
-        use super::ShardCommand;
-        let (run, workflow, caps, contracts) = match command {
-            ShardCommand::Submit {
-                run,
-                workflow,
-                caps,
-            }
-            | ShardCommand::SubmitPrePersisted {
-                run,
-                workflow,
-                caps,
-            }
-            | ShardCommand::SubmitWithInputs {
-                run,
-                workflow,
-                caps,
-                ..
-            } => (run, workflow, caps, None),
-            ShardCommand::SubmitWithContracts {
-                run,
-                workflow,
-                caps,
-                action_contracts,
-            }
-            | ShardCommand::SubmitWithInputsAndContracts {
-                run,
-                workflow,
-                caps,
-                action_contracts,
-                ..
-            } => (run, workflow, caps, Some(action_contracts.as_ref())),
-            _ => return Ok(()),
-        };
-        if workflow
-            .source_metadata()
-            .is_some_and(|metadata| !metadata.secret_requirements().is_empty())
-        {
-            match contracts {
-                Some(contracts) => self.validate_submit_admission_with_contracts(
-                    *run,
-                    workflow,
-                    caps.clone(),
-                    contracts,
-                )?,
-                None => self.validate_submit_admission(*run, workflow, caps.clone())?,
-            }
+        plain_secret_submission(command).map_or_else(
+            || match contract_secret_submission(command) {
+                Some((run, workflow, caps, contracts)) => {
+                    self.validate_secret_contract_submission(run, workflow, caps, contracts)
+                }
+                None => Ok(()),
+            },
+            |(run, workflow, caps)| self.validate_secret_plain_submission(run, workflow, caps),
+        )
+    }
+
+    fn validate_secret_contract_submission(
+        &self,
+        run: &vb_core::ids::RunId,
+        workflow: &CompiledWorkflow,
+        caps: &vb_core::CapabilitySet,
+        contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        if !workflow_has_secrets(workflow) {
+            return Ok(());
         }
-        Ok(())
+        self.validate_submit_admission_with_contracts(*run, workflow, caps.clone(), contracts)
+    }
+
+    fn validate_secret_plain_submission(
+        &self,
+        run: &vb_core::ids::RunId,
+        workflow: &CompiledWorkflow,
+        caps: &vb_core::CapabilitySet,
+    ) -> RuntimeResult<()> {
+        if !workflow_has_secrets(workflow) {
+            return Ok(());
+        }
+        self.validate_submit_admission(*run, workflow, caps.clone())
     }
     pub(crate) fn initialize_secret_frame(
         &self,
@@ -99,27 +85,7 @@ impl Shard {
             .try_reserve_exact(inputs.len())
             .map_err(|_| vb_core::CoreError::AllocationFailed)?;
         filled.extend_from_slice(inputs);
-        if let Some(metadata) = workflow.source_metadata() {
-            for binding in metadata.secret_requirements() {
-                let Some(slot) = binding.slot() else {
-                    continue;
-                };
-                let expected = vb_core::SlotValue::Symbol(binding.requirement());
-                if let Some((_, value)) = filled.iter().find(|(candidate, _)| *candidate == slot) {
-                    if *value != expected {
-                        return Err(vb_core::CoreError::InternalInvariantViolation {
-                            reason: "secret_input_binding".into(),
-                        }
-                        .into());
-                    }
-                } else {
-                    filled
-                        .try_reserve(1)
-                        .map_err(|_| vb_core::CoreError::AllocationFailed)?;
-                    filled.push((slot, expected));
-                }
-            }
-        }
+        append_secret_requirements(workflow, &mut filled)?;
         Ok(filled)
     }
 
@@ -148,4 +114,110 @@ impl Shard {
         }
         Ok(())
     }
+}
+
+type PlainSecretSubmission<'a> = (
+    &'a vb_core::ids::RunId,
+    &'a CompiledWorkflow,
+    &'a vb_core::CapabilitySet,
+);
+
+type ContractSecretSubmission<'a> = (
+    &'a vb_core::ids::RunId,
+    &'a CompiledWorkflow,
+    &'a vb_core::CapabilitySet,
+    &'a [vb_core::action::ActionContract],
+);
+
+fn plain_secret_submission(command: &super::ShardCommand) -> Option<PlainSecretSubmission<'_>> {
+    use super::ShardCommand;
+    match command {
+        ShardCommand::Submit {
+            run,
+            workflow,
+            caps,
+        }
+        | ShardCommand::SubmitWithLifetimeCap {
+            run,
+            workflow,
+            caps,
+            ..
+        }
+        | ShardCommand::SubmitPrePersisted {
+            run,
+            workflow,
+            caps,
+        }
+        | ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            caps,
+            ..
+        } => Some((run, workflow, caps)),
+        _ => None,
+    }
+}
+
+fn contract_secret_submission(
+    command: &super::ShardCommand,
+) -> Option<ContractSecretSubmission<'_>> {
+    use super::ShardCommand;
+    match command {
+        ShardCommand::SubmitWithContracts {
+            run,
+            workflow,
+            caps,
+            action_contracts,
+        }
+        | ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            caps,
+            action_contracts,
+            ..
+        }
+        | ShardCommand::SubmitTenantWithInputsAndContracts {
+            run,
+            workflow,
+            caps,
+            action_contracts,
+            ..
+        } => Some((run, workflow, caps, action_contracts)),
+        _ => None,
+    }
+}
+
+fn workflow_has_secrets(workflow: &CompiledWorkflow) -> bool {
+    workflow
+        .source_metadata()
+        .is_some_and(|metadata| !metadata.secret_requirements().is_empty())
+}
+
+fn append_secret_requirements(
+    workflow: &CompiledWorkflow,
+    filled: &mut Vec<(vb_core::SlotIdx, vb_core::SlotValue)>,
+) -> RuntimeResult<()> {
+    let Some(metadata) = workflow.source_metadata() else {
+        return Ok(());
+    };
+    for binding in metadata.secret_requirements() {
+        let Some(slot) = binding.slot() else {
+            continue;
+        };
+        let expected = vb_core::SlotValue::Symbol(binding.requirement());
+        if let Some((_, value)) = filled.iter().find(|(candidate, _)| *candidate == slot) {
+            if *value != expected {
+                return Err(vb_core::CoreError::InternalInvariantViolation {
+                    reason: "secret_input_binding".into(),
+                }
+                .into());
+            }
+        } else {
+            filled
+                .try_reserve(1)
+                .map_err(|_| vb_core::CoreError::AllocationFailed)?;
+            filled.push((slot, expected));
+        }
+    }
+    Ok(())
 }

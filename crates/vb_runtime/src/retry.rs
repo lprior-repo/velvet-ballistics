@@ -129,39 +129,49 @@ fn attempt_for_step(
         .unwrap_or(1);
     let latest = events
         .iter()
-        .filter_map(|event| match event {
-            JournalEvent::StepStarted {
-                run: event_run,
-                step: event_step,
-                attempt,
-                ..
-            }
-            | JournalEvent::StepFailed {
-                run: event_run,
-                step: event_step,
-                attempt,
-                ..
-            }
-            | JournalEvent::ActionFailedEvent {
-                run: event_run,
-                step: event_step,
-                attempt,
-                ..
-            } if *event_run == run && *event_step == step && *attempt == run_attempt => {
-                Some(*attempt)
-            }
-            JournalEvent::RetryScheduledEvent {
-                run: event_run,
-                step: event_step,
-                attempt,
-                ..
-            } if *event_run == run && *event_step == step && *attempt == run_attempt => {
-                Some(*attempt)
-            }
-            _ => None,
-        })
+        .filter_map(|event| step_attempt_for_run(event, run, step, run_attempt))
         .max();
     latest.ok_or(RetryAttemptError::FailedStepMissing { step })
+}
+
+fn step_attempt_for_run(
+    event: &JournalEvent,
+    run: RunId,
+    step: StepIdx,
+    current_attempt: u16,
+) -> Option<u16> {
+    let (event_run, event_step, attempt) = step_attempt_event(event)?;
+    (event_run == run && event_step == step && attempt == current_attempt).then_some(attempt)
+}
+
+fn step_attempt_event(event: &JournalEvent) -> Option<(RunId, StepIdx, u16)> {
+    match event {
+        JournalEvent::StepStarted {
+            run: event_run,
+            step: event_step,
+            attempt,
+            ..
+        }
+        | JournalEvent::StepFailed {
+            run: event_run,
+            step: event_step,
+            attempt,
+            ..
+        }
+        | JournalEvent::ActionFailedEvent {
+            run: event_run,
+            step: event_step,
+            attempt,
+            ..
+        }
+        | JournalEvent::RetryScheduledEvent {
+            run: event_run,
+            step: event_step,
+            attempt,
+            ..
+        } => Some((*event_run, *event_step, *attempt)),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

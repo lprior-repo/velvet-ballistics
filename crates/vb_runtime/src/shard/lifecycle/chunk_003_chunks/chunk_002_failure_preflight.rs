@@ -28,54 +28,72 @@ pub(crate) fn preflight_action_failure(
     failure: &ActionFailure,
 ) -> RuntimeResult<ActionFailurePreflight> {
     crate::shard::helpers::validate_action_completion(state, ticket)?;
-
-    // Retry path: policy is Retryable, the failure can actually change on a
-    // retry, and retry metadata exists. A caller-supplied Retryable alone is
-    // not enough: retrying a refusal (invalid input, denied permission,
-    // rejected request) burns the attempt budget and delays the error handler
-    // without ever changing the outcome.
-    if failure.retry_policy == VbCoreRetryPolicy::Retryable
-        && failure.code.is_transient()
-        && crate::shard::helpers::retry_metadata_exists(state, ticket.step)
-    {
-        let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
-        // attempt must be within (0, max_attempts] — mirrors
-        // record_retry_attempt's validation.
-        if policy.max_attempts == 0 || ticket.attempt == 0 || ticket.attempt > policy.max_attempts {
-            return Err(RuntimeError::AttemptBeyondMax {
-                attempt: ticket.attempt,
-                max: policy.max_attempts,
-            });
-        }
-        let current_attempt = state
-            .action_attempts
-            .get(ticket.step.as_usize())
-            .copied()
-            .ok_or(RuntimeError::InvalidActionCompletion)?;
-        let new_attempt = current_attempt.max(ticket.attempt);
-        if new_attempt < policy.max_attempts {
-            let next = new_attempt
-                .checked_add(1)
-                .ok_or(RuntimeError::UnsupportedOperation {
-                    operation: "retry_attempt_overflow",
-                })?;
-            validate_retry_apply(state, ticket.step)?;
-            return Ok(ActionFailurePreflight {
-                ticket,
-                outcome: ActionFailureOutcome::RetryNow,
-                next_attempt: next,
-                delay_ms: policy.base_delay_ms,
-                handler_pc: None,
-                error_slot: None,
-            });
-        }
-        // Retry budget exhausted: fall through to error-handler path
-        // (matches existing semantics where `record_retry_attempt`
-        // returning false causes the caller to fall through to
-        // `apply_error_handler`).
+    if let Some(retry) = preflight_retry_outcome(state, ticket, failure)? {
+        return Ok(retry);
     }
+    preflight_failure_handler(state, ticket)
+}
 
-    // Error-handler path.
+fn preflight_retry_outcome(
+    state: &RunState,
+    ticket: ActionTicket,
+    failure: &ActionFailure,
+) -> RuntimeResult<Option<ActionFailurePreflight>> {
+    if failure.retry_policy != VbCoreRetryPolicy::Retryable
+        || !failure.code.is_transient()
+        || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+    {
+        return Ok(None);
+    }
+    let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+    validate_retry_attempt(ticket, policy.max_attempts)?;
+    let current = action_attempt(state, ticket.step)?;
+    let attempt = current.max(ticket.attempt);
+    if attempt >= policy.max_attempts {
+        return Ok(None);
+    }
+    let next_attempt = next_retry_attempt(attempt)?;
+    validate_retry_apply(state, ticket.step)?;
+    Ok(Some(ActionFailurePreflight {
+        ticket,
+        outcome: ActionFailureOutcome::RetryNow,
+        next_attempt,
+        delay_ms: policy.base_delay_ms,
+        handler_pc: None,
+        error_slot: None,
+    }))
+}
+
+fn validate_retry_attempt(ticket: ActionTicket, max: u16) -> RuntimeResult<()> {
+    if max == 0 || ticket.attempt == 0 || ticket.attempt > max {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt: ticket.attempt,
+            max,
+        });
+    }
+    Ok(())
+}
+
+fn action_attempt(state: &RunState, step: StepIdx) -> RuntimeResult<u16> {
+    state
+        .action_attempts
+        .get(step.as_usize())
+        .copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)
+}
+
+fn next_retry_attempt(attempt: u16) -> RuntimeResult<u16> {
+    attempt
+        .checked_add(1)
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "retry_attempt_overflow",
+        })
+}
+
+fn preflight_failure_handler(
+    state: &RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<ActionFailurePreflight> {
     match crate::shard::helpers::find_error_handler_for_failure(&state.workflow, ticket.step) {
         Some((handler, error_slot)) => {
             validate_handler_apply(state, ticket.step, handler, error_slot)?;
@@ -108,55 +126,68 @@ pub(crate) fn apply_action_failure_preflight(
     preflight: &ActionFailurePreflight,
 ) -> RuntimeResult<()> {
     match preflight.outcome {
-        ActionFailureOutcome::RetryNow => {
-            // Persist the pre-computed attempt counter, then reset pc
-            // to the failed step for the next attempt.
-            if let Some(slot) = state
-                .action_attempts
-                .get_mut(preflight.ticket.step.as_usize())
-            {
-                *slot = preflight.next_attempt;
-            }
-            state
-                .frame
-                .mark_waiting(preflight.ticket.step)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            state
-                .frame
-                .set_pc(preflight.ticket.step)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            Ok(())
-        }
-        ActionFailureOutcome::DriveHandler => {
-            let Some(handler) = preflight.handler_pc else {
-                return Err(RuntimeError::UnsupportedOperation {
-                    operation: "drive_handler_missing_target",
-                });
-            };
-            state
-                .frame
-                .mark_failed(preflight.ticket.step)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            write_failure_slot(state, preflight.ticket.step, preflight.error_slot)?;
-            vb_core::engine::abandon_together_scopes(
-                &state.workflow,
-                &mut state.frame,
-                preflight.ticket.step,
-                handler,
-            )
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            state
-                .frame
-                .set_pc(handler)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            Ok(())
-        }
+        ActionFailureOutcome::RetryNow => apply_retry_failure(state, preflight),
+        ActionFailureOutcome::DriveHandler => apply_handler_failure(state, preflight),
         ActionFailureOutcome::FailRun => {
             // No frame mutation here; the caller drives
             // take_run_state / apply(Fail) / fail_run_state.
             Ok(())
         }
     }
+}
+
+fn apply_retry_failure(
+    state: &mut RunState,
+    preflight: &ActionFailurePreflight,
+) -> RuntimeResult<()> {
+    if let Some(slot) = state
+        .action_attempts
+        .get_mut(preflight.ticket.step.as_usize())
+    {
+        *slot = preflight.next_attempt;
+    }
+    state
+        .frame
+        .mark_waiting(preflight.ticket.step)
+        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+    state
+        .frame
+        .set_pc(preflight.ticket.step)
+        .map_err(|_| RuntimeError::InvalidActionCompletion)
+}
+
+fn apply_handler_failure(
+    state: &mut RunState,
+    preflight: &ActionFailurePreflight,
+) -> RuntimeResult<()> {
+    let handler = failure_handler_target(preflight)?;
+    state
+        .frame
+        .mark_failed(preflight.ticket.step)
+        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+    write_failure_slot(state, preflight.ticket.step, preflight.error_slot)?;
+    abandon_failed_together_scopes(state, preflight.ticket.step, handler)?;
+    state
+        .frame
+        .set_pc(handler)
+        .map_err(|_| RuntimeError::InvalidActionCompletion)
+}
+
+fn failure_handler_target(preflight: &ActionFailurePreflight) -> RuntimeResult<StepIdx> {
+    preflight
+        .handler_pc
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "drive_handler_missing_target",
+        })
+}
+
+fn abandon_failed_together_scopes(
+    state: &mut RunState,
+    step: StepIdx,
+    handler: StepIdx,
+) -> RuntimeResult<()> {
+    vb_core::engine::abandon_together_scopes(&state.workflow, &mut state.frame, step, handler)
+        .map_err(|_| RuntimeError::InvalidActionCompletion)
 }
 
 fn validate_retry_apply(state: &RunState, step: StepIdx) -> RuntimeResult<()> {

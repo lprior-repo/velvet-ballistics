@@ -20,6 +20,25 @@ use crate::engine::types::{RuntimeEngineError, RuntimeEngineResult, RuntimeSigna
 use crate::primitives::body_entry::BodyEntryPolicy;
 use crate::primitives::collect::CollectStates;
 
+pub(super) struct CollectStartRequest {
+    pub(super) source: SlotIdx,
+    pub(super) limit: u32,
+    pub(super) page_size: u32,
+    pub(super) body: StepIdx,
+    pub(super) done: StepIdx,
+    pub(super) output: Option<SlotIdx>,
+}
+
+pub(super) struct ReduceStartRequest {
+    pub(super) input: SlotIdx,
+    pub(super) accumulator: SlotIdx,
+    pub(super) initial: ConstIdx,
+    pub(super) limit: u32,
+    pub(super) body: StepIdx,
+    pub(super) done: StepIdx,
+    pub(super) output: Option<SlotIdx>,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn handle_for_each_start(
     run: &mut RunFrame,
@@ -135,20 +154,23 @@ pub(super) fn handle_together_join(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn handle_collect_start(
     run: &mut RunFrame,
     store: &mut ValueStore,
     cs: &mut CollectStates,
-    source: SlotIdx,
-    limit: u32,
-    page_size: u32,
-    body: StepIdx,
-    done: StepIdx,
-    output: Option<SlotIdx>,
+    request: CollectStartRequest,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     crate::primitives::collect::collect_start(
-        run, store, cs, source, limit, page_size, body, done, output, None,
+        run,
+        store,
+        cs,
+        request.source,
+        request.limit,
+        request.page_size,
+        request.body,
+        request.done,
+        request.output,
+        None,
     )
     .map_err(RuntimeEngineError::Core)
     .map(runtime_from_core)
@@ -201,30 +223,23 @@ pub(super) fn handle_collect_finish(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn handle_reduce_start(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
     store: &mut ValueStore,
-    input: SlotIdx,
-    accumulator: SlotIdx,
-    initial: ConstIdx,
-    limit: u32,
-    body: StepIdx,
-    done: StepIdx,
-    output: Option<SlotIdx>,
+    request: ReduceStartRequest,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     crate::primitives::reduce::reduce_start(
         plan,
         run,
         store,
-        input,
-        accumulator,
-        initial,
-        limit,
-        body,
-        done,
-        output,
+        request.input,
+        request.accumulator,
+        request.initial,
+        request.limit,
+        request.body,
+        request.done,
+        request.output,
     )
     .map_err(RuntimeEngineError::Core)
     .map(runtime_from_core)

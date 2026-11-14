@@ -224,15 +224,15 @@ fn observed_shard_resets_after_real_resume_error_and_finish() -> Result<(), Stri
             CompletionObservationSlot::default(),
         ),
     );
-    assert!(!shard.completion_capture.enabled);
+    assert!(!shard.control.completion_capture.enabled);
     assert_eq!(
-        shard.completion_capture.slot,
+        shard.control.completion_capture.slot,
         CompletionObservationSlot::default(),
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert!(!shard.completion_capture.enabled);
+    assert!(!shard.control.completion_capture.enabled);
     assert_eq!(
-        shard.completion_capture.slot,
+        shard.control.completion_capture.slot,
         CompletionObservationSlot::default(),
     );
     let fixture = state(RunId::new(7), None, Taint::Clean);
@@ -259,9 +259,9 @@ fn observed_shard_resets_after_real_resume_error_and_finish() -> Result<(), Stri
             },
         ),
     );
-    assert!(!shard.completion_capture.enabled);
+    assert!(!shard.control.completion_capture.enabled);
     assert_eq!(
-        shard.completion_capture.slot,
+        shard.control.completion_capture.slot,
         CompletionObservationSlot::default(),
     );
     let enqueue_result = shard.enqueue(ShardCommand::Submit {
@@ -271,9 +271,9 @@ fn observed_shard_resets_after_real_resume_error_and_finish() -> Result<(), Stri
     });
     enqueue_result.map_err(|error| format!("ordinary submit enqueue failed: {error:?}"))?;
     assert_eq!(shard.tick(), Ok(true));
-    assert!(!shard.completion_capture.enabled);
+    assert!(!shard.control.completion_capture.enabled);
     assert_eq!(
-        shard.completion_capture.slot,
+        shard.control.completion_capture.slot,
         CompletionObservationSlot::default(),
     );
     Ok(())

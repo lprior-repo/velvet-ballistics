@@ -22,20 +22,24 @@
 //     crates/vb_storage/src/admission/verification.rs:39-42: sets exactly
 //     bounded_claimed and idempotency_verified_claimed true and leaves the
 //     idempotency attestation empty.
-//   - submit_artifact_with_contracts mirrors
+//   - submit_artifact_with_contracts is unproved call-chain context:
 //     `vb_storage::admission::submit_artifact_with_contracts` at
-//     crates/vb_storage/src/admission.rs:96-105: prepares, issues, and
-//     readback-verifies. It performs no gate-count or proof-flag validation.
+//     crates/vb_storage/src/admission.rs:96-105: prepares then calls private
+//     submit_prepared_artifact; it performs no gate-count or proof-flag validation.
+//   - submit_prepared_artifact is unproved call-chain context:
+//     `vb_storage::admission::submit_prepared_artifact` at
+//     crates/vb_storage/src/admission.rs:114-136: owns the Strict tag check,
+//     sequence issuance and readback verification; no submit body is mirrored here.
 //   - verify_accepted_artifact mirrors
 //     `vb_storage::admission::verify_accepted_artifact` at
 //     crates/vb_storage/src/admission/verification.rs:60-90: recomputes the
 //     expected artifact and rejects any deviation via verify_expected_bindings
 //     (crates/vb_storage/src/admission/verification.rs:145-160); the runtime
-//     maps every such failure to ArtifactEvidenceInvalid for admission callers
+//     maps every such failure for admission callers to ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
-//     Recovery uses the private detailed path at
-//     crates/vb_runtime/src/admission/registered_verification.rs:24-49;
-//     that call-chain context is not proved by this model.
+//     Recovery's detailed path at
+//     crates/vb_runtime/src/admission/registered_verification.rs:24-49
+//     remains unproved call-chain context.
 //   - The legacy 15-gate, all-flags-true shape exists only in the
 //     AlwaysPresentArtifactStore fixture
 //     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91).

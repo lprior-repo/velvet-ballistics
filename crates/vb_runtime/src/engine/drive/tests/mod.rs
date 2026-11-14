@@ -28,3 +28,4 @@ mod cat_owned_rearm;
 mod cat_nested_activation;
 
 mod cat_for_each_alias;
+mod concurrent_foreach_scheduler;

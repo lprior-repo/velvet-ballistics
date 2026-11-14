@@ -56,7 +56,7 @@ use check_test_integrity_bypass_tests::{
 };
 use check_test_integrity_cases::{
     run_delete_case, run_ignore_case, run_relocate_case, run_rename_out_case,
-    run_silent_return_case, run_strengthen_case, run_weaken_case,
+    run_replaced_oracle_case, run_silent_return_case, run_strengthen_case, run_weaken_case,
 };
 use check_test_integrity_cases_rename::{
     run_binary_with_test_delete_case, run_non_utf8_relevant_case, run_relocate_invalid_utf8_case,
@@ -84,15 +84,14 @@ mod check_test_integrity_paths;
 mod check_test_integrity_roots;
 mod check_test_integrity_scan;
 mod check_test_integrity_signal_cases;
+mod check_test_ownership;
 
 fn collect_findings(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<Finding>, String> {
     validate_base_revision(root, base, vcs)?;
     let entries = changed_files(root, base, vcs)?;
     let renames = rename_pairs(root, base, vcs)?;
-    let rename_old: BTreeSet<String> =
-        renames.iter().map(|pair| pair.old_path.clone()).collect();
-    let rename_new: BTreeSet<String> =
-        renames.iter().map(|pair| pair.new_path.clone()).collect();
+    let rename_old: BTreeSet<String> = renames.iter().map(|pair| pair.old_path.clone()).collect();
+    let rename_new: BTreeSet<String> = renames.iter().map(|pair| pair.new_path.clone()).collect();
 
     let mut findings = Vec::new();
     for pair in &renames {
@@ -154,6 +153,7 @@ fn self_test() -> i32 {
     all &= run_weaken_case("weaken", workspace_path);
     all &= run_strengthen_case("strengthen", workspace_path);
     all &= run_silent_return_case("silent-return", workspace_path);
+    all &= run_replaced_oracle_case("replaced-oracle", workspace_path);
     all &= run_delete_case("module-rs-delete", module_rs_path);
     all &= run_weaken_case("module-dir-weaken", module_child_path);
     all &= run_rename_out_case("rename-out");
@@ -173,6 +173,12 @@ fn self_test() -> i32 {
     all &= run_justification_bypass_tests();
     all &= run_justification_lifecycle_tests();
     all &= check_test_integrity_signal_cases::run_signal_cases();
+    let ownership_ok = check_test_ownership::self_test();
+    println!(
+        "SelfTest:ownership-lexer: {}",
+        if ownership_ok { "PASS" } else { "FAIL" }
+    );
+    all &= ownership_ok;
 
     if all { 0 } else { 1 }
 }

@@ -35,25 +35,14 @@ impl Shard {
             return Ok(None);
         }
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-        if let Some(budget) = state
-            .admission
-            .as_ref()
-            .and_then(|admission| admission.budget())
-            && budget.max_timer_entries == 0
-        {
-            return Err(RuntimeError::UnsupportedOperation {
-                operation: "retry_timer_budget",
-            });
-        }
+        Self::validate_retry_timer_budget(state)?;
         self.reserve_pending_timer_slot(run)?;
         let generation = self
             .journal_sequence_for(run)
             .get()
             .checked_add(1)
             .ok_or(RuntimeError::InvalidTimerFire)?;
-        let deadline = std::time::Instant::now()
-            .checked_add(std::time::Duration::from_millis(preflight.delay_ms))
-            .ok_or(RuntimeError::InvalidTimerFire)?;
+        let deadline = Self::retry_timer_deadline(preflight.delay_ms)?;
         let mut timer = PendingTimer {
             step: preflight.ticket.step,
             kind: PendingTimerKind::Wait,
@@ -61,10 +50,7 @@ impl Shard {
             deadline,
         };
         let event = self.retry_timer_event(run, preflight, timer)?;
-        let RuntimeJournalEvent::RetryTimerScheduled { timer: durable, .. } = &event else {
-            return Err(RuntimeError::InvalidTimerFire);
-        };
-        timer.deadline = retry_deadline(durable.deadline_unix_ms)?;
+        timer.deadline = Self::scheduled_retry_deadline(&event)?;
         Ok(Some(RetryTimerPlan { timer, event }))
     }
 
@@ -93,5 +79,31 @@ impl Shard {
             }
             Err(DriveApplyFailure::AfterCommit(error)) => Err(error),
         }
+    }
+    fn validate_retry_timer_budget(state: &RunState) -> RuntimeResult<()> {
+        if state
+            .admission
+            .as_ref()
+            .and_then(|admission| admission.budget())
+            .is_some_and(|budget| budget.max_timer_entries == 0)
+        {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "retry_timer_budget",
+            });
+        }
+        Ok(())
+    }
+
+    fn retry_timer_deadline(delay_ms: u64) -> RuntimeResult<std::time::Instant> {
+        std::time::Instant::now()
+            .checked_add(std::time::Duration::from_millis(delay_ms))
+            .ok_or(RuntimeError::InvalidTimerFire)
+    }
+
+    fn scheduled_retry_deadline(event: &RuntimeJournalEvent) -> RuntimeResult<std::time::Instant> {
+        let RuntimeJournalEvent::RetryTimerScheduled { timer, .. } = event else {
+            return Err(RuntimeError::InvalidTimerFire);
+        };
+        retry_deadline(timer.deadline_unix_ms)
     }
 }

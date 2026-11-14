@@ -165,8 +165,10 @@ fn journal_bytes_after_append_projects_measured_total() -> Result<(), String> {
             .len(),
     )
     .map_err(|_| "length overflow".to_string())?;
+    let shard = Shard::new(small_config());
     assert_eq!(
-        Shard::journal_bytes_after_append(&state, &[event])
+        shard
+            .journal_bytes_after_append(&state, &[event])
             .map_err(|error| format!("projection failed: {error:?}"))?,
         len
     );
@@ -616,10 +618,7 @@ fn count_events(
     run: RunId,
     matches: fn(&RuntimeJournalEvent, RunId) -> bool,
 ) -> usize {
-    events
-        .iter()
-        .filter(|event| matches(event, run))
-        .count()
+    events.iter().filter(|event| matches(event, run)).count()
 }
 
 fn is_action_completed(event: &RuntimeJournalEvent, run: RunId) -> bool {
@@ -658,9 +657,10 @@ fn command_journal_bytes_exceeds_boundary() -> Result<(), String> {
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .ok_or_else(|| "run state builds".to_string())?;
     let event = RuntimeJournalEvent::RunFailed { run, attempt: 1 };
-    let bytes = postcard::to_allocvec(&event)
-        .map_err(|error| format!("event encode failed: {error:?}"))?;
+    let bytes =
+        postcard::to_allocvec(&event).map_err(|error| format!("event encode failed: {error:?}"))?;
     let len = u64::try_from(bytes.len()).map_err(|_| "event length overflow".to_string())?;
+    let shard = Shard::new(small_config());
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -669,7 +669,8 @@ fn command_journal_bytes_exceeds_boundary() -> Result<(), String> {
         journal_bytes_budget(len),
     ));
     assert!(
-        !Shard::command_journal_bytes_exceeds(&state, &[event.clone()])
+        !shard
+            .command_journal_bytes_exceeds(&state, &[event.clone()])
             .map_err(|error| format!("probe failed: {error:?}"))?,
         "appending exactly up to the budget must not exceed it"
     );
@@ -678,16 +679,21 @@ fn command_journal_bytes_exceeds_boundary() -> Result<(), String> {
         run,
         CapabilitySet::empty(),
         vb_core::policy::RuntimePolicy::Relaxed,
-        journal_bytes_budget(len.checked_sub(1).ok_or_else(|| "budget underflow".to_string())?),
+        journal_bytes_budget(
+            len.checked_sub(1)
+                .ok_or_else(|| "budget underflow".to_string())?,
+        ),
     ));
     assert!(
-        Shard::command_journal_bytes_exceeds(&state, &[event.clone()])
+        shard
+            .command_journal_bytes_exceeds(&state, &[event.clone()])
             .map_err(|error| format!("probe failed: {error:?}"))?,
         "one byte over the budget must exceed it"
     );
     state.admission = None;
     assert!(
-        !Shard::command_journal_bytes_exceeds(&state, &[event])
+        !shard
+            .command_journal_bytes_exceeds(&state, &[event])
             .map_err(|error| format!("probe failed: {error:?}"))?,
         "no admitted budget must never exceed"
     );
@@ -712,13 +718,16 @@ fn command_completion_charges_journal_bytes() -> Result<(), String> {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_action_completed), 1);
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_action_completed),
+        1
+    );
     assert_counter_matches_journal(&shard, &journal, run)
 }
 
 #[test]
-fn command_completion_falls_back_to_single_run_failed_when_journal_budget_exceeded(
-) -> Result<(), String> {
+fn command_completion_falls_back_to_single_run_failed_when_journal_budget_exceeded()
+-> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -820,8 +829,8 @@ fn command_retryable_failure_falls_back_when_journal_budget_exceeded() -> Result
 }
 
 #[test]
-fn command_fail_run_failure_records_fallback_only_when_journal_budget_exceeded(
-) -> Result<(), String> {
+fn command_fail_run_failure_records_fallback_only_when_journal_budget_exceeded()
+-> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -910,7 +919,10 @@ fn command_ask_answer_charges_journal_bytes() -> Result<(), String> {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_ask_answered), 1);
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_ask_answered),
+        1
+    );
     assert_counter_matches_journal(&shard, &journal, run)
 }
 
@@ -964,7 +976,10 @@ fn command_timer_resolution_charges_journal_bytes() -> Result<(), String> {
     assert_eq!(shard.enqueue(timer_command(&shard, run)), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_wait_resolved), 1);
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_wait_resolved),
+        1
+    );
     assert_counter_matches_journal(&shard, &journal, run)
 }
 
@@ -1005,10 +1020,17 @@ fn command_cancel_records_journal_bytes() -> Result<(), String> {
         .run_state_get(run)
         .map(|state| state.run_attempt.get())
         .ok_or_else(|| "run should still be active".to_string())?;
-    shard.append_cancel_terminal_events(run, None, attempt)
+    shard
+        .append_cancel_terminal_events(run, None, attempt)
         .map_err(|error| format!("cancel append failed: {error:?}"))?;
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_run_cancelled), 1);
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_action_abandoned), 1);
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_run_cancelled),
+        1
+    );
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_action_abandoned),
+        1
+    );
     assert_counter_matches_journal(&shard, &journal, run)
 }
 
@@ -1024,10 +1046,17 @@ fn command_kill_records_journal_bytes() -> Result<(), String> {
         .run_state_get(run)
         .map(|state| state.run_attempt.get())
         .ok_or_else(|| "run should still be active".to_string())?;
-    shard.append_kill_terminal_events(run, attempt)
+    shard
+        .append_kill_terminal_events(run, attempt)
         .map_err(|error| format!("kill append failed: {error:?}"))?;
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_run_killed), 1);
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_action_abandoned), 1);
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_run_killed),
+        1
+    );
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_action_abandoned),
+        1
+    );
     assert_counter_matches_journal(&shard, &journal, run)
 }
 
@@ -1042,7 +1071,10 @@ fn command_resumed_records_journal_bytes() -> Result<(), String> {
     shard
         .append_resumed_event(run)
         .map_err(|error| format!("resumed event append failed: {error:?}"))?;
-    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_resumed), 1);
+    assert_eq!(
+        count_events(&require_snapshot(&journal)?, run, is_resumed),
+        1
+    );
     assert_counter_matches_journal(&shard, &journal, run)
 }
 

@@ -2,6 +2,39 @@ use super::select_pristine_resume;
 use vb_core::{RunId, RuntimePolicy, WorkflowDigest, errors::CoreError};
 use vb_storage::{EventSeq, JournalEvent, RunInputBinding, RunPolicyPin, compat};
 
+fn budget() -> vb_core::AggregateResourceBudget {
+    vb_core::AggregateResourceBudget {
+        max_steps_executable: 1,
+        max_action_tickets: 1,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 1,
+        max_gather_items: 1,
+        max_for_each_iterations: 1,
+        max_together_branches: 1,
+        max_repeat_attempts: 1,
+        max_run_time_seconds: 1,
+        max_result_bytes: 1,
+        max_total_slots_written: 1,
+        max_timer_entries: 1,
+        max_trace_events: 1,
+        max_queue_depth: 1,
+        max_journal_batch_bytes: 1,
+        max_ipc_payload_bytes: 1,
+        max_blob_bytes: 1,
+        max_input_bytes: 1,
+        max_step_budget_per_tick: 1,
+        max_transitions_per_tick: 1,
+        max_open_gates: 1,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions: 1,
+        max_journal_bytes_total: 1,
+        max_value_store_entries: 1,
+        max_cost_units: 1,
+    }
+}
+
 fn prefix(run: RunId) -> Vec<JournalEvent> {
     vec![
         JournalEvent::RunAccepted {
@@ -9,7 +42,7 @@ fn prefix(run: RunId) -> Vec<JournalEvent> {
             seq: EventSeq::ZERO,
             workflow: WorkflowDigest::from_bytes([1; 32]),
         },
-        JournalEvent::RunAdmission {
+        JournalEvent::RunAdmissionBudget {
             run,
             seq: EventSeq::new(1),
             artifact_digest: WorkflowDigest::from_bytes([2; 32]),
@@ -17,6 +50,7 @@ fn prefix(run: RunId) -> Vec<JournalEvent> {
             policy_pin: RunPolicyPin::Pinned(WorkflowDigest::from_bytes([4; 32])),
             granted_capabilities: vb_core::CapabilitySet::empty(),
             policy: RuntimePolicy::Strict,
+            budget: budget(),
         },
     ]
 }
@@ -44,6 +78,11 @@ fn pristine_resume_accepts_compatibility_tail_and_preserves_exact_rejections() -
     };
     let mut valid = prefix(run);
     valid.push(event.clone());
+    valid.push(JournalEvent::RunBudgetOriginEvent {
+        run,
+        seq: EventSeq::new(3),
+        started_millis: 456,
+    });
     assert_eq!(
         select_pristine_resume(run, original.clone(), Ok(valid.clone())),
         Ok(())
@@ -68,6 +107,11 @@ fn pristine_resume_accepts_compatibility_tail_and_preserves_exact_rejections() -
             _ => return Err("bounded case".into()),
         }
         invalid.push(event);
+        invalid.push(JournalEvent::RunBudgetOriginEvent {
+            run,
+            seq: EventSeq::new(3),
+            started_millis: 456,
+        });
         assert_eq!(
             select_pristine_resume(run, original.clone(), Ok(invalid)),
             Err(original.clone()),

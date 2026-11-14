@@ -111,7 +111,10 @@ pub(super) fn replay_eval_expr(
                 .map_err(engine_to_replay_err)?;
             return Ok(ReplayAction::Continue(run.pc()));
         }
-        Err(_) => return Err(ReplayError::ExpressionEvalFailed { step: node.id }),
+        Err(error) if crate::engine::is_ordinary_expression_failure(&error) => {
+            return Err(ReplayError::ExpressionEvalFailed { step: node.id });
+        }
+        Err(error) => return Err(engine_to_replay_err(error)),
     };
     let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "EvalExpr node missing output slot",

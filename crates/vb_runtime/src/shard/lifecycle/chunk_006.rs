@@ -1,8 +1,17 @@
 impl Shard {
     pub(super) fn drive_one_pending_run(&mut self) -> RuntimeResult<()> {
         let run = self.active_runs_iter().find_map(|(&run, state)| {
+            let step = state.frame.pc();
+            let step_state = state.frame.step_state(step);
+            let pending = step_state == Ok(vb_core::StepState::Pending);
+            let rearmable_body = step_state == Ok(vb_core::StepState::Succeeded)
+                && crate::engine::drive::transitions::concurrent_foreach_body_owner(
+                    &state.workflow,
+                    step,
+                )
+                .is_some();
             (self.runtime_state_get(run) == Some(RuntimeState::Running)
-                && state.frame.step_state(state.frame.pc()) == Ok(vb_core::StepState::Pending))
+                && (pending || rearmable_body))
             .then_some(run)
         });
         let Some(run) = run else {

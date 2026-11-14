@@ -2,6 +2,7 @@
 //! Whole-workflow budget computation: the `WholeWorkflowBudget` type and
 //! the traversal that derives every budget dimension from the IR.
 
+use crate::budget::BoundednessPolicy;
 use crate::ids::StepIdx;
 use crate::workflow::{ResourceContract, WorkflowError};
 
@@ -162,6 +163,12 @@ impl WholeWorkflowBudget {
                 &mut max_signal_subscriptions,
             )?;
 
+            if concurrent::has_composed_gather_limits(nodes) {
+                let (pages, items) = concurrent::composed_gather_limits(nodes, entry)?;
+                max_gather_pages = pages;
+                max_gather_items = items;
+            }
+
             let peak = super::parallel::compute_peak(nodes.iter().enumerate().filter_map(
                 |(index, node)| (visited.get(index).copied() == Some(true)).then_some(node),
             ))?;
@@ -170,8 +177,7 @@ impl WholeWorkflowBudget {
             let max_nesting_depth = compute_structural_depth(nodes, &visited)?;
             let max_total_slots = u64::from(contract.max_slots);
 
-            // Phase 0 executes at most one step per runtime tick, so steps bound time.
-            let max_run_time_seconds = max_total_steps;
+            let max_run_time_seconds = BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;
 
             let derived = derive_budget_dimensions(max_total_steps, max_action_tickets, contract)?;
 

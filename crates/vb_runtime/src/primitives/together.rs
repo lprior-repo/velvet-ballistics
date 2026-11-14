@@ -6,6 +6,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{BranchCount, BranchIdx, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, join_taint};
 use vb_core::value_store::ValueStore;
+use vb_core::{ListId, Taint};
 
 use super::helpers::{expect_list, jump_to, require_next_step, require_output};
 
@@ -22,6 +23,24 @@ pub fn together_start(
     _join: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
+    let (count, iter_output, first_branch) = validate_together_start(run, branches, output)?;
+    let state = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
+    run.write_slot(iter_output, SlotValue::List(state))?;
+    run.add_parallel_in_flight(count)?;
+    jump_to(run, first_branch)
+}
+
+fn validate_together_start(
+    run: &RunFrame,
+    branches: &[StepIdx],
+    output: Option<SlotIdx>,
+) -> Result<(u16, SlotIdx, StepIdx), EngineError> {
+    let count = validate_parallel_capacity(run, branches)?;
+    let (iter_output, first_branch) = validate_together_targets(run, branches, output)?;
+    Ok((count, iter_output, first_branch))
+}
+
+fn validate_parallel_capacity(run: &RunFrame, branches: &[StepIdx]) -> Result<u16, EngineError> {
     let count = u16::try_from(branches.len())
         .map_err(|_| EngineError::TogetherBranchLimitExceeded { max: u16::MAX })?;
     if count == 0 {
@@ -38,6 +57,14 @@ pub fn together_start(
     if requested > max {
         return Err(EngineError::ParallelLimitExceeded { limit: max });
     }
+    Ok(count)
+}
+
+fn validate_together_targets(
+    run: &RunFrame,
+    branches: &[StepIdx],
+    output: Option<SlotIdx>,
+) -> Result<(SlotIdx, StepIdx), EngineError> {
     let iter_output = require_output(output, run.pc())?;
     if iter_output.get() >= run.slot_count() {
         return Err(EngineError::SlotOutOfBounds { slot: iter_output });
@@ -55,10 +82,7 @@ pub fn together_start(
     if run.executed() == u64::MAX {
         return Err(EngineError::StepCounterOverflow);
     }
-    let state = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
-    run.write_slot(iter_output, SlotValue::List(state))?;
-    run.add_parallel_in_flight(count)?;
-    jump_to(run, first_branch)
+    Ok((iter_output, first_branch))
 }
 
 /// Executes TogetherBranch: runs one branch body and appends its result.
@@ -109,22 +133,29 @@ pub fn together_join(
             reason: "parallel_in_flight underflow".into(),
         });
     }
-    // Read the accumulator list built by together_branch invocations.
+    let (final_list, combined_taint) = collect_join_result(run, store, accumulator, out)?;
+    run.write_slot_with_taint(out, final_list, combined_taint)?;
+    run.sub_parallel_in_flight(count)?;
+    jump_to(run, target)
+}
+
+fn collect_join_result(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    accumulator: SlotIdx,
+    output: SlotIdx,
+) -> Result<(SlotValue, Taint), EngineError> {
     let acc_value = *run.read_slot(accumulator)?;
-    // A distinct result slot holds a branch value, including Null or a list.
-    let final_list = if matches!(acc_value, SlotValue::List(_)) && out != accumulator {
-        let last_result = *run.read_slot(out)?;
-        append_to_accumulator(run, store, accumulator, last_result, out)?;
+    let final_list = if matches!(acc_value, SlotValue::List(_)) && output != accumulator {
+        let last_result = *run.read_slot(output)?;
+        append_to_accumulator(run, store, accumulator, last_result, output)?;
         *run.read_slot(accumulator)?
     } else {
         acc_value
     };
     let acc_taint = run.read_taint(accumulator)?;
-    let out_taint = run.read_taint(out)?;
-    let combined_taint = join_taint(acc_taint, out_taint);
-    run.write_slot_with_taint(out, final_list, combined_taint)?;
-    run.sub_parallel_in_flight(count)?;
-    jump_to(run, target)
+    let out_taint = run.read_taint(output)?;
+    Ok((final_list, join_taint(acc_taint, out_taint)))
 }
 
 /// Reads the current accumulator list from the accumulator slot,
@@ -146,6 +177,17 @@ fn append_to_accumulator(
     let branch_taint = run.read_taint(branch_output)?;
     let combined_taint = join_taint(acc_taint, branch_taint);
     let list_id = expect_list(current)?;
+    let updated = append_list_value(store, list_id, value, branch_taint)?;
+    run.write_slot_with_taint(accumulator, SlotValue::List(updated), combined_taint)?;
+    Ok(())
+}
+
+fn append_list_value(
+    store: &mut ValueStore,
+    list_id: ListId,
+    value: SlotValue,
+    branch_taint: Taint,
+) -> Result<ListId, EngineError> {
     let existing = store.list(list_id)?;
     let mut items = existing.to_vec();
     let mut taints = (0..existing.len())
@@ -158,10 +200,7 @@ fn append_to_accumulator(
         .collect::<Result<Vec<_>, _>>()?;
     items.push(value);
     taints.push(branch_taint);
-    let updated =
-        store.insert_list_with_taint(items.into_boxed_slice(), taints.into_boxed_slice())?;
-    run.write_slot_with_taint(accumulator, SlotValue::List(updated), combined_taint)?;
-    Ok(())
+    store.insert_list_with_taint(items.into_boxed_slice(), taints.into_boxed_slice())
 }
 
 #[cfg(test)]

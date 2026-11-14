@@ -26,6 +26,9 @@ include!("lifecycle/chunk_001/submit.rs");
 include!("lifecycle/chunk_001/admission.rs");
 include!("lifecycle/chunk_001/resume.rs");
 include!("lifecycle/chunk_001/recover.rs");
+include!("lifecycle/chunk_001/recover_artifact.rs");
+include!("lifecycle/chunk_001/recover_quota.rs");
+include!("lifecycle/chunk_001/open_wait_restore.rs");
 include!("lifecycle/chunk_001/resume_helpers.rs");
 include!("lifecycle/chunk_001/completion.rs");
 include!("lifecycle/chunk_001/ticket.rs");
@@ -35,11 +38,16 @@ include!("lifecycle/chunk_006.rs");
 include!("lifecycle/chunk_005_prepare.rs");
 include!("lifecycle/chunk_005_drive_apply.rs");
 include!("lifecycle/chunk_005_drive_apply/drive_budgets.rs");
+include!("lifecycle/chunk_005_drive_apply/drive_budgets_lifetime.rs");
 include!("lifecycle/chunk_005_drive_apply/drive_budgets_counts.rs");
 include!("lifecycle/chunk_005_drive_apply/journal_bytes.rs");
 include!("lifecycle/chunk_005.rs");
 include!("lifecycle/chunk_004.rs");
 include!("lifecycle/gate_submission.rs");
+include!("lifecycle/gate_registry.rs");
+include!("lifecycle/gate_submission_bound.rs");
+include!("lifecycle/gate_recovery.rs");
+include!("lifecycle/gate_restore.rs");
 
 #[cfg(test)]
 mod tests {
@@ -60,6 +68,7 @@ mod tests {
     include!("lifecycle_tests/contract_validation_tests.rs");
     include!("lifecycle_tests/action_recovery_tests.rs");
     include!("lifecycle_tests/secret_recovery_tests.rs");
+    include!("lifecycle_tests/lifetime_clock_regressions.rs");
     include!("lifecycle_tests/timer_due_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
     include!("lifecycle_tests/chunk_014.rs");
@@ -78,5 +87,9 @@ mod tests {
 
     mod gate_submission {
         include!("lifecycle_tests/gate_submission.rs");
+    }
+
+    mod gate_bound_submission {
+        include!("lifecycle_tests/gate_bound_submission.rs");
     }
 }

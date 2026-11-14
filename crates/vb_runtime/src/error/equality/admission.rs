@@ -23,6 +23,11 @@ fn compat_gate_blocked_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
 }
 
 fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    runtime_error_admission_artifact_digest_eq(left, right)
+        || runtime_error_envelope_digest_eq(left, right)
+}
+
+fn runtime_error_admission_artifact_digest_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     match (left, right) {
         (
             RuntimeError::AdmissionArtifactNotFound { digest: a },
@@ -46,6 +51,13 @@ fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) 
             RuntimeError::AdmissionArtifactStale { digest: a },
             RuntimeError::AdmissionArtifactStale { digest: b },
         ) => a == b,
+        _ => false,
+    }
+}
+
+fn runtime_error_envelope_digest_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    matches!(
+        (left, right),
         (
             RuntimeError::AdmissionDigestMismatch {
                 requested: a,
@@ -57,9 +69,8 @@ fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) 
                 record: d,
                 envelope: f,
             },
-        ) => a == b && c == d && e == f,
-        _ => false,
-    }
+        ) if a == b && c == d && e == f
+    )
 }
 
 fn runtime_error_admission_capability_eq(left: &RuntimeError, right: &RuntimeError) -> bool {

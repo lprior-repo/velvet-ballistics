@@ -111,3 +111,29 @@ fn reduce_accepts_exact_limit_and_empty_zero_limit() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn reduce_start_retains_secret_list_taint_on_clean_first_item() -> TestResult {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 4)?;
+    let mut store = ValueStore::new();
+    let first = SlotValue::I64(7);
+    let list = store.insert_list_with_taint(Box::new([first]), Box::new([Taint::Clean]))?;
+    let input = SlotIdx::ZERO;
+    run.write_slot_with_taint(input, SlotValue::List(list), Taint::Secret)?;
+    let signal = reduce_start(
+        &plan()?,
+        &mut run,
+        &mut store,
+        input,
+        SlotIdx::new(1),
+        ConstIdx::new(0),
+        1,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(2)),
+    )?;
+    assert_eq!(signal, EngineSignal::Continue);
+    assert_eq!(*run.read_slot(input)?, first);
+    assert_eq!(run.read_taint(input)?, Taint::Secret);
+    Ok(())
+}

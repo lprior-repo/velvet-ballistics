@@ -1,4 +1,7 @@
 /// Accepted run admission record, attached to a run frame after passing the admission gate.
+///
+/// Serialization uses the current ten-field record directly. Historical
+/// records without `input_digest` are rejected during deserialization.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RunAdmission {
     /// Digest of the accepted compiled artifact.
@@ -11,12 +14,13 @@ pub struct RunAdmission {
     policy: RuntimePolicy,
     /// Actual policy identity from the accepted artifact, or explicit absence.
     policy_pin: RunPolicyPin,
+    /// Canonical typed-input identity, or an explicit unbound construction state.
+    input_digest: RunInputBinding,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
     /// Caller-supplied tenant the run is charged to, when tenant-scoped
     /// admission was used. Absent for admissions that predate tenant
     /// scoping or did not use it.
-    #[serde(default)]
     tenant: Option<TenantId>,
     /// Actions whose idempotency evidence passed artifact admission.
     idempotency_attested: Box<[ActionId]>,
@@ -26,7 +30,6 @@ pub struct RunAdmission {
     /// and for admissions that predate compatibility journaling. Boxed:
     /// the three digests on the decision would otherwise push
     /// `RunAdmission` past the large-variant lint threshold.
-    #[serde(default)]
     ir_compat_decision: Option<Box<CompatDecision>>,
 }
 
@@ -44,8 +47,7 @@ pub struct AdmissionBudgetRequest {
 impl RunAdmission {
     /// Creates a new admission record with the default unverified policy pin.
     ///
-    /// This is the compatibility constructor used by callers that do not have
-    /// an accepted artifact's actual policy identity available.
+    /// Use when the accepted artifact's actual policy identity is unavailable.
     pub fn new(
         digest: WorkflowDigest,
         run_id: RunId,
@@ -58,6 +60,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: RunInputBinding::LegacyUnbound,
             budget: None,
             tenant: None,
             idempotency_attested: Box::new([]),
@@ -67,8 +70,7 @@ impl RunAdmission {
 
     /// Creates a new admission record carrying accepted idempotency evidence.
     ///
-    /// This is the compatibility constructor used by callers that do not have
-    /// an accepted artifact's actual policy identity available.
+    /// Use when the accepted artifact's actual policy identity is unavailable.
     pub fn with_idempotency_evidence(
         digest: WorkflowDigest,
         run_id: RunId,
@@ -82,6 +84,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: RunInputBinding::LegacyUnbound,
             budget: None,
             tenant: None,
             idempotency_attested,
@@ -91,8 +94,7 @@ impl RunAdmission {
 
     /// Creates a new admission record carrying an aggregate resource budget.
     ///
-    /// This is the compatibility constructor used by callers that do not have
-    /// an accepted artifact's actual policy identity available.
+    /// Use when the accepted artifact's actual policy identity is unavailable.
     pub fn with_budget(
         digest: WorkflowDigest,
         run_id: RunId,
@@ -106,6 +108,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: RunInputBinding::LegacyUnbound,
             budget: Some(budget),
             tenant: None,
             idempotency_attested: Box::new([]),
@@ -116,12 +119,23 @@ impl RunAdmission {
     /// Overrides the policy pin with the actual policy identity from an
     /// accepted artifact.
     ///
-    /// Use this after constructing an admission with the compatibility
-    /// constructors to attach a real policy pin when the artifact's actual
+    /// Use this to attach a real policy pin when the artifact's actual
     /// policy identity is available.
     pub(crate) fn with_policy_pin(mut self, policy_pin: RunPolicyPin) -> Self {
         self.policy_pin = policy_pin;
         self
+    }
+
+    /// Attaches the canonical typed-input identity from the submission.
+    pub(crate) fn with_input_digest(mut self, input_digest: RunInputBinding) -> Self {
+        self.input_digest = input_digest;
+        self
+    }
+
+    /// Returns the canonical typed-input identity or the unbound construction state.
+    #[must_use]
+    pub fn input_digest(&self) -> RunInputBinding {
+        self.input_digest
     }
 
     /// Attaches the workflow-derived aggregate budget to this admission.

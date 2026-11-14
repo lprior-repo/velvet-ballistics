@@ -14,6 +14,9 @@ use crate::admission::RunAdmission;
 use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
 use crate::shard::types::RunState;
 
+#[path = "run_checkpoint/support.rs"]
+mod support;
+
 /// Complete v1 state needed to restore a run at a retry boundary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunCheckpointV1 {
@@ -103,55 +106,21 @@ impl RunCheckpointV1 {
         prior_seq: u64,
         state: &RunState,
     ) -> Result<Self, RunCheckpointV1Error> {
-        if state.frame.checkpoint_v1().run_id != run_id {
-            return Err(RunCheckpointV1Error::RunIdentityMismatch);
-        }
-        if let Some(admission) = &state.admission {
-            validate_admission(admission, run_id, artifact_digest)?;
-        } else {
-            return Err(RunCheckpointV1Error::MissingAdmissionAuthority);
-        }
-        let mut frame = state.frame.checkpoint_v1();
-        let retry_index = usize::from(retry_step.get());
-        if frame.states.get(retry_index) != Some(&CheckpointStepState::Failed) {
-            return Err(RunCheckpointV1Error::RetryStepMismatch);
-        }
-        // Per-action attempt counters are captured verbatim: the CLI retry advances
-        // the run attempt (checked), not the per-step action attempt. Advancing the
-        // action attempt here would drive the re-executed ticket past the action's
-        // max-attempts capacity, so the failed step's action re-executes as its first
-        // action attempt in the new run attempt.
-        let action_attempts = state.action_attempts.clone();
-        if action_attempts.get(retry_index).is_none() {
-            return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
-        }
-        // Checkpoints are retry-ready state: keep the audited failed event in the journal,
-        // while resetting only the selected step and PC in the new checkpoint.
-        let retry_state = frame
-            .states
-            .get_mut(retry_index)
-            .ok_or(RunCheckpointV1Error::RetryStepMismatch)?;
-        *retry_state = CheckpointStepState::Pending;
-        frame.pc = retry_step;
-        let checkpoint = Self {
-            version: 3,
-            run_id,
-            artifact_digest,
-            workflow_digest: state.workflow.digest(),
-            run_attempt,
-            retry_step,
-            prior_seq,
+        support::validate_capture_run(state, run_id)?;
+        support::validate_capture_admission(state, run_id, artifact_digest)?;
+        let (frame, action_attempts) = support::failed_retry_frame(state, retry_step)?;
+        capture_checkpoint(
+            CheckpointCapture {
+                run_id,
+                artifact_digest,
+                run_attempt,
+                retry_step,
+                prior_seq,
+                state,
+            },
             frame,
-            value_store: state.store.checkpoint_v1(),
             action_attempts,
-            admission: state.admission.clone(),
-            run_started_millis: state.run_started_millis,
-            collect_states: state.collect_states.checkpoint_v1(),
-            journal_bytes_written: state.journal_bytes_written,
-            action_contracts: state.action_contracts.clone(),
-        };
-        checkpoint.validate_against(&state.workflow, artifact_digest, &state.action_contracts)?;
-        Ok(checkpoint)
+        )
     }
 
     /// Validates all identities and nested state against the accepted compiled workflow.
@@ -161,51 +130,9 @@ impl RunCheckpointV1 {
         artifact_digest: WorkflowDigest,
         accepted_action_contracts: &[ActionContract],
     ) -> Result<(), RunCheckpointV1Error> {
-        if self.version != 3 {
-            return Err(RunCheckpointV1Error::UnsupportedVersion);
-        }
-        if self.workflow_digest != workflow.digest() {
-            return Err(RunCheckpointV1Error::WorkflowIdentityMismatch);
-        }
-        if self.artifact_digest != artifact_digest {
-            return Err(RunCheckpointV1Error::ArtifactIdentityMismatch);
-        }
-        if self.frame.run_id != self.run_id {
-            return Err(RunCheckpointV1Error::RunIdentityMismatch);
-        }
-        let step_count = u16::try_from(self.frame.states.len())
-            .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
-        let slot_count = u16::try_from(self.frame.slots.len())
-            .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
-        if step_count != workflow.node_count() || slot_count != workflow.slot_count() {
-            return Err(RunCheckpointV1Error::FrameDimensionsMismatch);
-        }
-        let retry_index = usize::from(self.retry_step.get());
-        if self.frame.states.get(retry_index) != Some(&CheckpointStepState::Pending)
-            || self.frame.pc != self.retry_step
-        {
-            return Err(RunCheckpointV1Error::RetryStepMismatch);
-        }
-        if self.action_attempts.len() != self.frame.states.len() {
-            return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
-        }
-        if let Some(admission) = &self.admission {
-            validate_admission(admission, self.run_id, self.artifact_digest)?;
-        } else {
-            return Err(RunCheckpointV1Error::MissingAdmissionAuthority);
-        }
-        if self.action_contracts.as_ref() != accepted_action_contracts {
-            return Err(RunCheckpointV1Error::ActionContractsMismatch);
-        }
-        let frame = RunFrame::from_checkpoint_v1(self.frame.clone())
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        vb_core::root_bundle::validate_runtime_store(&frame, &self.value_store, workflow)
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        ValueStore::from_checkpoint_v1(self.value_store.clone())
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        CollectStates::from_checkpoint_v1(self.collect_states.clone())
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        Ok(())
+        support::validate_checkpoint_identity(self, workflow, artifact_digest)?;
+        support::validate_checkpoint_retry_authority(self, accepted_action_contracts)?;
+        support::validate_checkpoint_nested_state(self, workflow)
     }
 
     /// Restores a validated checkpoint using the independently loaded accepted workflow.
@@ -216,26 +143,59 @@ impl RunCheckpointV1 {
         accepted_action_contracts: &[ActionContract],
     ) -> Result<(RunState, NonZeroU16, StepIdx, u64), RunCheckpointV1Error> {
         self.validate_against(&workflow, artifact_digest, accepted_action_contracts)?;
-        let frame = RunFrame::from_checkpoint_v1(self.frame)
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        let store = ValueStore::from_checkpoint_v1(self.value_store)
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        let collect_states = CollectStates::from_checkpoint_v1(self.collect_states)
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        let state = RunState {
-            registered_execution: crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
-            frame,
-            run_attempt: self.run_attempt,
-            workflow,
-            store,
-            action_attempts: self.action_attempts,
-            admission: self.admission,
-            run_started_millis: self.run_started_millis,
-            collect_states,
-            action_contracts: self.action_contracts,
-            journal_bytes_written: self.journal_bytes_written,
-        };
-        Ok((state, self.run_attempt, self.retry_step, self.prior_seq))
+        let run_attempt = self.run_attempt;
+        let retry_step = self.retry_step;
+        let prior_seq = self.prior_seq;
+        let state = support::restore_checkpoint_state(self, workflow)?;
+        Ok((state, run_attempt, retry_step, prior_seq))
+    }
+}
+
+#[derive(Clone, Copy)]
+struct CheckpointCapture<'a> {
+    run_id: RunId,
+    artifact_digest: WorkflowDigest,
+    run_attempt: NonZeroU16,
+    retry_step: StepIdx,
+    prior_seq: u64,
+    state: &'a RunState,
+}
+
+fn capture_checkpoint(
+    capture: CheckpointCapture<'_>,
+    frame: RunFrameCheckpointV1,
+    action_attempts: Box<[u16]>,
+) -> Result<RunCheckpointV1, RunCheckpointV1Error> {
+    let checkpoint = checkpoint_from_capture(capture, frame, action_attempts);
+    checkpoint.validate_against(
+        &capture.state.workflow,
+        capture.artifact_digest,
+        &capture.state.action_contracts,
+    )?;
+    Ok(checkpoint)
+}
+
+fn checkpoint_from_capture(
+    capture: CheckpointCapture<'_>,
+    frame: RunFrameCheckpointV1,
+    action_attempts: Box<[u16]>,
+) -> RunCheckpointV1 {
+    RunCheckpointV1 {
+        version: 3,
+        run_id: capture.run_id,
+        artifact_digest: capture.artifact_digest,
+        workflow_digest: capture.state.workflow.digest(),
+        run_attempt: capture.run_attempt,
+        retry_step: capture.retry_step,
+        prior_seq: capture.prior_seq,
+        frame,
+        value_store: capture.state.store.checkpoint_v1(),
+        action_attempts,
+        admission: capture.state.admission.clone(),
+        run_started_millis: capture.state.run_started_millis,
+        collect_states: capture.state.collect_states.checkpoint_v1(),
+        journal_bytes_written: capture.state.journal_bytes_written,
+        action_contracts: capture.state.action_contracts.clone(),
     }
 }
 
@@ -272,7 +232,14 @@ pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunC
         .map_err(|_| RunCheckpointV1Error::UnsupportedVersion)?;
     match version {
         1 | 2 => Err(RunCheckpointV1Error::UnsupportedVersion),
-        3 => postcard::from_bytes(payload).map_err(|_| RunCheckpointV1Error::DecodeError),
+        3 => {
+            let (decoded, rest) = postcard::take_from_bytes::<RunCheckpointV1>(payload)
+                .map_err(|_| RunCheckpointV1Error::DecodeError)?;
+            if !rest.is_empty() {
+                return Err(RunCheckpointV1Error::DecodeError);
+            }
+            Ok(decoded)
+        }
         _ => Err(RunCheckpointV1Error::UnsupportedVersion),
     }
 }

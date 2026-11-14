@@ -5,7 +5,7 @@ use std::{
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
 };
-use vb_core::{CompiledWorkflow, RunId};
+use vb_core::{CompiledWorkflow, RunId, RuntimePolicy, WorkflowDigest};
 use vb_ipc::{IpcCommand, IpcFrameHeader, IpcPayload, SubmitRunPayload, server::IpcResponse};
 
 pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -50,6 +50,56 @@ pub(super) fn journal_events(db: &Path, run: RunId) -> TestResult<Vec<vb_storage
     let events = journal.events_for_run_full(run)?;
     no_value(&postcard::to_allocvec(&events)?);
     Ok(events)
+}
+
+pub(super) fn assert_current_admission_prefix(
+    journal: &vb_storage::FjallJournal,
+    run: RunId,
+    workflow: &CompiledWorkflow,
+    artifact: &vb_storage::AcceptedArtifact,
+    input_digest: WorkflowDigest,
+) -> TestResult {
+    use vb_storage::{EventSeq, JournalEvent, RunInputBinding, RunPolicyPin};
+
+    let header = journal.run_header(run)?.ok_or("run header")?;
+    let events = journal.events_for_run_full(run)?;
+    let budget = vb_core::AggregateResourceBudget::from_workflow(workflow)?;
+    let decision = vb_storage::compat::decide_boundary(
+        vb_storage::compat::artifact_ir_version_inputs(artifact.artifact_version),
+        vb_storage::compat::schema_version_digest(artifact.artifact_version),
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+    );
+    assert_eq!(
+        events,
+        vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: workflow.digest(),
+            },
+            JournalEvent::RunAdmissionBudget {
+                run,
+                seq: EventSeq::new(1),
+                artifact_digest: artifact.digest,
+                input_digest: RunInputBinding::Digest(input_digest),
+                policy_pin: RunPolicyPin::Pinned(artifact.policy_digest),
+                granted_capabilities: vb_core::CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+                budget,
+            },
+            JournalEvent::CompatibilityDecisionEvent {
+                run,
+                seq: EventSeq::new(2),
+                decision,
+            },
+            JournalEvent::RunBudgetOriginEvent {
+                run,
+                seq: EventSeq::new(3),
+                started_millis: header.accepted_at_ms,
+            },
+        ]
+    );
+    Ok(())
 }
 pub(super) fn assert_artifact(db: &Path, workflow: &CompiledWorkflow) -> TestResult {
     let journal = vb_storage::FjallJournal::open(db, None)?;

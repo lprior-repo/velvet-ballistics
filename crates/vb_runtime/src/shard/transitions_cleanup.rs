@@ -20,12 +20,15 @@ impl crate::shard::Shard {
     ) -> RuntimeResult<()> {
         // The terminal append wrapper succeeded. Capture before fallible cleanup;
         // the caller may still receive an execution error after this observation.
-        self.completion_capture.capture_terminal(run, &state);
+        self.control
+            .completion_capture
+            .capture_terminal(run, &state);
         let _removed_timer = self.pending_timer_remove(run);
         let _removed_action = self.pending_action_remove(run);
         self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_completed();
+        self.release_state_quota(run)?;
         self.add_executed_step_delta(run, state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
         self.release_frame(state.frame);
@@ -47,6 +50,7 @@ impl crate::shard::Shard {
         self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
+        self.release_state_quota(run)?;
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.release_frame(state.frame);
         self.runtime_state_remove(run);
@@ -75,52 +79,78 @@ impl crate::shard::Shard {
         retry_step: StepIdx,
         state: &mut RunState,
     ) -> RuntimeResult<()> {
+        let Some((event, projected)) = self.prepare_retry_checkpoint(run, retry_step, state)?
+        else {
+            return Ok(());
+        };
+        self.append_journal_event(event)?;
+        state.journal_bytes_written = projected;
+        Ok(())
+    }
+
+    fn prepare_retry_checkpoint(
+        &self,
+        run: RunId,
+        retry_step: StepIdx,
+        state: &mut RunState,
+    ) -> RuntimeResult<Option<(RuntimeJournalEvent, u64)>> {
+        let Some((mut checkpoint, next_attempt)) =
+            self.capture_retry_checkpoint_value(run, retry_step, state)
+        else {
+            return Ok(None);
+        };
+        let event =
+            match self.retry_checkpoint_event(&mut checkpoint, run, next_attempt, retry_step) {
+                Ok(event) => event,
+                Err(_) => return Ok(None),
+            };
+        let projected = state
+            .journal_bytes_written
+            .checked_add(self.journal_event_bytes(&event)?)
+            .ok_or(RuntimeError::EncodeFailed)?;
+        Ok(Some((event, projected)))
+    }
+
+    fn capture_retry_checkpoint_value(
+        &self,
+        run: RunId,
+        retry_step: StepIdx,
+        state: &mut RunState,
+    ) -> Option<(RunCheckpointV1, NonZeroU16)> {
         if state.frame.mark_failed(retry_step).is_err() {
-            return Ok(());
+            return None;
         }
-        let Some(admission) = state.admission.as_ref() else {
-            return Ok(());
-        };
-        let artifact_digest = admission.artifact_digest();
-        let next_attempt = match state
-            .run_attempt
-            .get()
-            .checked_add(1)
-            .and_then(core::num::NonZeroU16::new)
-        {
-            Some(attempt) => attempt,
-            None => return Ok(()),
-        };
-        let prior_seq = match self.journal_sequence_for(run).get().checked_sub(1) {
-            Some(seq) => seq,
-            None => return Ok(()),
-        };
-        let mut checkpoint = match RunCheckpointV1::capture(
+        let (artifact_digest, next_attempt, prior_seq) =
+            self.retry_checkpoint_context(run, state)?;
+        let checkpoint = RunCheckpointV1::capture(
             run,
             artifact_digest,
             next_attempt,
             retry_step,
             prior_seq,
             state,
-        ) {
-            Ok(checkpoint) => checkpoint,
-            Err(_) => return Ok(()),
-        };
-        let base = state.journal_bytes_written;
-        let event =
-            match Self::retry_checkpoint_event(&mut checkpoint, run, next_attempt, retry_step) {
-                Ok(event) => event,
-                Err(_) => return Ok(()),
-            };
-        let projected = base
-            .checked_add(Self::journal_event_bytes(&event)?)
-            .ok_or(RuntimeError::EncodeFailed)?;
-        self.append_journal_event(event)?;
-        state.journal_bytes_written = projected;
-        Ok(())
+        )
+        .ok()?;
+        Some((checkpoint, next_attempt))
+    }
+
+    fn retry_checkpoint_context(
+        &self,
+        run: RunId,
+        state: &RunState,
+    ) -> Option<(vb_core::ids::WorkflowDigest, NonZeroU16, u64)> {
+        let artifact_digest = state.admission.as_ref()?.artifact_digest();
+        let next_attempt = state
+            .run_attempt
+            .get()
+            .checked_add(1)
+            .and_then(NonZeroU16::new)?;
+        let prior_seq = self.journal_sequence_for(run).get().checked_sub(1)?;
+        Some((artifact_digest, next_attempt, prior_seq))
     }
 
     fn retry_checkpoint_event(
+        &self,
         checkpoint: &mut RunCheckpointV1,
         run: RunId,
         attempt: NonZeroU16,
@@ -135,27 +165,41 @@ impl crate::shard::Shard {
         // so the fixed point is reached within nineteen rounds; thirty-two
         // is a safe static bound.
         for _ in 0..32 {
-            checkpoint.journal_bytes_written = stored;
-            let payload =
-                postcard::to_allocvec(&*checkpoint).map_err(|_| RuntimeError::EncodeFailed)?;
-            let payload_digest = *blake3::hash(&payload).as_bytes();
-            let event = RuntimeJournalEvent::RetryCheckpoint {
-                run,
-                attempt: attempt.get(),
-                step,
-                payload_digest,
-                payload,
-            };
-            let event_bytes = Self::journal_event_bytes(&event)?;
-            let next = base
-                .checked_add(event_bytes)
-                .ok_or(RuntimeError::EncodeFailed)?;
+            let (event, next) =
+                self.retry_checkpoint_event_at(checkpoint, run, attempt, step, base, stored)?;
             if next == stored {
                 return Ok(event);
             }
             stored = next;
         }
         Err(RuntimeError::EncodeFailed)
+    }
+
+    fn retry_checkpoint_event_at(
+        &self,
+        checkpoint: &mut RunCheckpointV1,
+        run: RunId,
+        attempt: NonZeroU16,
+        step: StepIdx,
+        base: u64,
+        stored: u64,
+    ) -> RuntimeResult<(RuntimeJournalEvent, u64)> {
+        checkpoint.journal_bytes_written = stored;
+        let payload =
+            postcard::to_allocvec(&*checkpoint).map_err(|_| RuntimeError::EncodeFailed)?;
+        let payload_digest = *blake3::hash(&payload).as_bytes();
+        let event = RuntimeJournalEvent::RetryCheckpoint {
+            run,
+            attempt: attempt.get(),
+            step,
+            payload_digest,
+            payload,
+        };
+        let event_bytes = self.journal_event_bytes(&event)?;
+        let next = base
+            .checked_add(event_bytes)
+            .ok_or(RuntimeError::EncodeFailed)?;
+        Ok((event, next))
     }
 
     pub(crate) fn rollback_run_state_preserving_error(

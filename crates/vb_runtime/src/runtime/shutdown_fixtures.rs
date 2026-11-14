@@ -14,12 +14,8 @@ use vb_storage::{FjallJournal, JournalWriterQueue, StorageLimits};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 pub(super) fn waiting_workflow() -> TestResult<CompiledWorkflow> {
-    Ok(CompiledWorkflow::try_from_parts(WorkflowParts {
-        name: Box::from("shutdown_wait"),
-        digest: WorkflowDigest::from_bytes([33; 32]),
-        semantic_source_identity: None,
-        source_metadata: None,
-        nodes: Box::from([
+    workflow(
+        vec![
             node(
                 0,
                 CompiledNodeKind::SetConst {
@@ -44,22 +40,16 @@ pub(super) fn waiting_workflow() -> TestResult<CompiledWorkflow> {
                 None,
                 None,
             ),
-        ]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([ConstValue::I64(1_000_000)]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
-    })?)
+        ],
+        vec![ConstValue::I64(1_000_000)],
+    )
 }
 
 pub(super) fn runtime(journal: &Arc<FjallJournal>, queue: &Arc<JournalWriterQueue>) -> Runtime {
-    let mut config = ShardConfig::default();
-    config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+    let config = ShardConfig {
+        policy: vb_core::policy::RuntimePolicy::Journaled,
+        ..Default::default()
+    };
     Runtime::new(
         NonZeroUsize::MIN,
         config,
@@ -68,6 +58,20 @@ pub(super) fn runtime(journal: &Arc<FjallJournal>, queue: &Arc<JournalWriterQueu
             Arc::clone(queue),
         )),
     )
+}
+
+pub(super) fn accept_workflow(
+    journal: &FjallJournal,
+    workflow: &CompiledWorkflow,
+    contracts: &[vb_core::action::ActionContract],
+) -> TestResult {
+    vb_storage::submit_artifact_with_contracts(
+        journal,
+        workflow,
+        vb_core::policy::RuntimePolicy::Journaled,
+        contracts,
+    )?;
+    Ok(())
 }
 
 pub(super) fn storage() -> TestResult<(
@@ -115,25 +119,39 @@ fn node(
 }
 
 fn workflow(nodes: Vec<CompiledNode>, constants: Vec<ConstValue>) -> TestResult<CompiledWorkflow> {
-    Ok(CompiledWorkflow::try_from_parts(WorkflowParts {
-        name: Box::from("shutdown_fixture"),
-        digest: WorkflowDigest::from_bytes([34; 32]),
+    let parts = WorkflowParts {
+        name: Box::from("shutdown_wait"),
+        digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
         source_metadata: None,
         nodes: nodes.into_boxed_slice(),
-        constants: constants.into_boxed_slice(),
         expressions: Box::from([]),
         accessors: Box::from([]),
+        constants: constants.into_boxed_slice(),
         slot_count: 1,
         symbols_count: 0,
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
         input_slots: Box::from([]),
-    })?)
+    };
+    canonical_workflow(parts)
 }
 
-pub(super) fn submit_action(runtime: &Runtime, run: vb_core::RunId) -> TestResult {
+fn canonical_workflow(parts: WorkflowParts) -> TestResult<CompiledWorkflow> {
+    let workflow = CompiledWorkflow::try_from_parts(parts)?;
+    let mut canonical_parts = workflow.to_parts();
+    canonical_parts.digest = WorkflowDigest::from_bytes([0; 32]);
+    let canonical = postcard::to_allocvec(&canonical_parts)?;
+    canonical_parts.digest = WorkflowDigest::from_bytes(*blake3::hash(&canonical).as_bytes());
+    Ok(CompiledWorkflow::try_from_parts(canonical_parts)?)
+}
+
+pub(super) fn submit_action(
+    runtime: &Runtime,
+    journal: &FjallJournal,
+    run: vb_core::RunId,
+) -> TestResult {
     use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
     use vb_core::capability::{Capability, CapabilitySet};
     use vb_core::ids::ActionId;
@@ -153,7 +171,7 @@ pub(super) fn submit_action(runtime: &Runtime, run: vb_core::RunId) -> TestResul
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::from([capability.clone()]),
     };
-    let wf = CompiledWorkflow::try_from_parts(WorkflowParts {
+    let wf = canonical_workflow(WorkflowParts {
         name: Box::from("shutdown_action"),
         digest: WorkflowDigest::from_bytes([34; 32]),
         semantic_source_identity: None,
@@ -181,12 +199,16 @@ pub(super) fn submit_action(runtime: &Runtime, run: vb_core::RunId) -> TestResul
             constraint: CompiledInputConstraint::required(),
         }]),
     })?;
-    runtime.submit_direct_with_inputs_grants_and_contracts(
-        run,
-        wf,
-        Box::from([(SlotIdx::ZERO, SlotValue::I64(9))]),
-        CapabilitySet::from_grants(Box::from([capability])),
-        Box::from([contract]),
-    )?;
+    accept_workflow(journal, &wf, std::slice::from_ref(&contract))
+        .map_err(|error| format!("persist shutdown action artifact: {error}"))?;
+    runtime
+        .submit_direct_with_inputs_grants_and_contracts(
+            run,
+            wf,
+            Box::from([(SlotIdx::ZERO, SlotValue::I64(9))]),
+            CapabilitySet::from_grants(Box::from([capability])),
+            Box::from([contract]),
+        )
+        .map_err(|error| format!("submit shutdown action: {error}"))?;
     Ok(())
 }

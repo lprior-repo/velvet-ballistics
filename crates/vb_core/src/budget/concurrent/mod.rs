@@ -23,6 +23,39 @@ pub(super) fn contains_new_nodes(nodes: &[CompiledNode]) -> bool {
     })
 }
 
+pub(super) fn has_composed_gather_limits(nodes: &[CompiledNode]) -> bool {
+    let gathers = nodes
+        .iter()
+        .filter(|node| matches!(node.kind, K::CollectStart { .. }))
+        .count();
+    gathers > 1 || (gathers > 0 && has_repeated_enclosure(nodes))
+}
+
+fn has_repeated_enclosure(nodes: &[CompiledNode]) -> bool {
+    nodes.iter().any(|node| {
+        matches!(
+            node.kind,
+            K::ForEachStart { .. } | K::ReduceStart { .. } | K::RepeatStart { .. }
+        )
+    })
+}
+
+pub(super) fn composed_gather_limits(
+    nodes: &[CompiledNode],
+    entry: StepIdx,
+) -> Result<(u32, u32), BudgetTraversalError> {
+    let metrics = engine::analyze(nodes, entry)?;
+    let pages =
+        u32::try_from(metrics.pages).map_err(|_| BudgetTraversalError::StepCountOverflow {
+            actual: metrics.pages,
+        })?;
+    let items =
+        u32::try_from(metrics.items).map_err(|_| BudgetTraversalError::StepCountOverflow {
+            actual: metrics.items,
+        })?;
+    Ok((pages, items))
+}
+
 pub(super) fn compute(
     nodes: &[CompiledNode],
     entry: StepIdx,

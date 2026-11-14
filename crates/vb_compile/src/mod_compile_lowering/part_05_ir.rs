@@ -38,7 +38,7 @@ pub fn lower_steps_to_ir(
         input_slots: Box::new([]),
     };
     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
-    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+    crate::mod_compile_lowering::checked_workflow(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 
 /// Lowers a `set` (save) primitive into a `SetConst` or `Copy` node.

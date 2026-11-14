@@ -19,70 +19,11 @@ impl Shard {
         digest: vb_core::ids::WorkflowDigest,
         caps: CapabilitySet,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
-        use crate::admission::{AdmissionError, admit_artifact_run};
+        use crate::admission::admit_artifact_run;
 
         match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
             Ok(admission) => Ok(Some(admission)),
-            Err(AdmissionError::ArtifactNotFound { digest }) => {
-                Err(RuntimeError::AdmissionArtifactNotFound { digest })
-            }
-            Err(AdmissionError::CapabilityDenied {
-                action,
-                required,
-                granted,
-            }) => Err(RuntimeError::AdmissionCapabilityDenied {
-                action,
-                required,
-                granted,
-            }),
-            Err(AdmissionError::ResourceCapacityExceeded { available, .. }) => {
-                Err(RuntimeError::ActiveRunCapacityExceeded {
-                    capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
-                })
-            }
-            Err(AdmissionError::BudgetPolicyExceeded { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ResourceBudgetOverflow { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ResourceBudgetUnderflow { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ResourceBudgetInvalidCapacity { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ResourceStepCeilingExceeded { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ResourcePerTickCeilingExceeded { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ArtifactInvalidProofFlag { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
-            Err(AdmissionError::ArtifactDigestMismatch { requested, found }) => {
-                Err(RuntimeError::AdmissionArtifactDigestMismatch { requested, found })
-            }
-            Err(AdmissionError::ArtifactCertificateStale { digest, .. }) => {
-                Err(RuntimeError::AdmissionArtifactStale { digest })
-            }
-            Err(AdmissionError::CapabilityCountMismatch {
-                required_count,
-                granted_count,
-            }) => Err(RuntimeError::AdmissionCapabilityCountMismatch {
-                required_count,
-                granted_count,
-            }),
-            Err(AdmissionError::ArtifactVersionIncompatible { .. }) => {
-                Err(RuntimeError::AdmissionArtifactInvalid { digest })
-            }
+            Err(error) => Err(map_admission_error(error, digest)),
         }
     }
 
@@ -91,15 +32,26 @@ impl Shard {
         run: RunId,
         workflow: &CompiledWorkflow,
         caps: CapabilitySet,
+        lifetime_cap: Option<std::num::NonZeroU64>,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
         let admission = self.build_admission(run, workflow.digest(), caps)?;
         self.validate_secret_presence(workflow)?;
         match admission {
             Some(adm) => {
-                let budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
+                let mut budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
                     .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
                         digest: workflow.digest(),
                     })?;
+                if let Some(cap) = lifetime_cap {
+                    let profile_cap =
+                        vb_core::BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;
+                    if cap.get() > profile_cap {
+                        return Err(RuntimeError::AdmissionArtifactInvalid {
+                            digest: workflow.digest(),
+                        });
+                    }
+                    budget.max_run_time_seconds = cap.get();
+                }
                 Ok(Some(adm.with_attached_budget(budget)))
             }
             None => Ok(None),
@@ -144,5 +96,77 @@ impl Shard {
         )?;
         self.validate_secret_presence(workflow)?;
         Ok(())
+    }
+}
+
+fn map_admission_error(
+    error: crate::admission::AdmissionError,
+    digest: vb_core::ids::WorkflowDigest,
+) -> RuntimeError {
+    use crate::admission::AdmissionError;
+    match error {
+        AdmissionError::ArtifactNotFound { digest } => {
+            RuntimeError::AdmissionArtifactNotFound { digest }
+        }
+        AdmissionError::CapabilityDenied {
+            action,
+            required,
+            granted,
+        } => RuntimeError::AdmissionCapabilityDenied {
+            action,
+            required,
+            granted,
+        },
+        AdmissionError::ResourceCapacityExceeded { available, .. } => {
+            RuntimeError::ActiveRunCapacityExceeded {
+                capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
+            }
+        }
+        other => map_remaining_admission_error(other, digest),
+    }
+}
+
+fn map_remaining_admission_error(
+    error: crate::admission::AdmissionError,
+    digest: vb_core::ids::WorkflowDigest,
+) -> RuntimeError {
+    use crate::admission::AdmissionError;
+    match error {
+        AdmissionError::ArtifactDigestMismatch { requested, found } => {
+            RuntimeError::AdmissionArtifactDigestMismatch { requested, found }
+        }
+        AdmissionError::ArtifactCertificateStale { digest, .. } => {
+            RuntimeError::AdmissionArtifactStale { digest }
+        }
+        AdmissionError::CapabilityCountMismatch {
+            required_count,
+            granted_count,
+        } => RuntimeError::AdmissionCapabilityCountMismatch {
+            required_count,
+            granted_count,
+        },
+        other => map_invalid_admission_error(other, digest),
+    }
+}
+
+fn map_invalid_admission_error(
+    error: crate::admission::AdmissionError,
+    digest: vb_core::ids::WorkflowDigest,
+) -> RuntimeError {
+    use crate::admission::AdmissionError;
+    match error {
+        AdmissionError::BudgetPolicyExceeded { .. }
+        | AdmissionError::ResourceBudgetOverflow { .. }
+        | AdmissionError::ResourceBudgetUnderflow { .. }
+        | AdmissionError::ResourceBudgetInvalidCapacity { .. }
+        | AdmissionError::ResourceStepCeilingExceeded { .. }
+        | AdmissionError::ResourcePerTickCeilingExceeded { .. }
+        | AdmissionError::ArtifactEnvelopeDecodeFailed
+        | AdmissionError::ArtifactInvalidGateCount { .. }
+        | AdmissionError::ArtifactInvalidProofFlag { .. }
+        | AdmissionError::ArtifactVersionIncompatible { .. } => {
+            RuntimeError::AdmissionArtifactInvalid { digest }
+        }
+        _ => RuntimeError::AdmissionArtifactInvalid { digest },
     }
 }

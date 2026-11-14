@@ -7,18 +7,13 @@
 // all verified.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 //
-// This spec file is BOUND to the canonical runtime admission
-// digest-binding logic at `crates/vb_runtime/src/admission.rs` through
-// the companion extern surface
-// `verification/verus/extern_accepted_cli_digest_binding.rs`, which
-// mirrors the production digest positions
-// (`WorkflowDigest`, `RunAdmission::artifact_digest`,
-// `AcceptedArtifact::{digest, source_digest, verification.digest}`)
-// with `#[verifier::external]` bodies and attaches `assume_specification`
-// contracts here.
+// This spec is bound through `extern_accepted_cli_digest_binding.rs` to
+// handwritten structural mirrors in `production_inner/`. Those mirrors
+// expose digest fields and isolated decision predicates; they do not
+// include or prove the complete production admission call chain.
 //
 // The pre-binding spec defined a 5-element `digest_binding_total`
 // predicate as a pure-math chained equality over 5 abstract `int`
@@ -28,35 +23,21 @@
 // field on `RunAdmission` or `AcceptedArtifact` would not have
 // surfaced as a Verus error.
 //
-// This rewrite grounds every lemma in the production digest
-// positions (the 5-digest chain that production enforces at
-// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122` and post-conditions at
-// chunk_005_admit_core.rs:165-174):
+// This rewrite attaches small mirror predicates to production-shaped digest
+// positions. The actual admission path is
+// `admit_artifact_run_with_certificate_floor` (chunk_005_admit_core.rs:91-113),
+// which dispatches to `admit_strict_artifact_run` (lines 115-130), then
+// `verify_admission_digest` (lines 156-173) and
+// `admission_from_artifact` (lines 208-224). Those helpers are not proved
+// as one end-to-end path by this mirror.
 //
-//   1. source_digest  <->  SpecAcceptedArtifact.source_digest
-//                          (production: artifact.source_digest,
-//                          chunk_005_admit_core.rs:26-31, 108-113)
-//   2. artifact_digest <->  SpecAcceptedArtifact.digest
-//                          (production: artifact.digest,
-//                          chunk_005_admit_core.rs:26-31, 108-113, 117-122)
-//   3. header_digest  <->  requested SpecWorkflowDigest parameter
-//                          (production: artifact_digest parameter to
-//                          admit_artifact_run_with_certificate_floor,
-//                          chunk_005_admit_core.rs:108-113)
-//   4. event_digest   <->  SpecAcceptedArtifact.verification.digest
-//                          (production: artifact.verification.digest,
-//                          chunk_005_admit_core.rs:117-122, INV-003)
-//   5. admission_digest <->  SpecRunAdmission.artifact_digest
-//                          (production: RunAdmission::artifact_digest
-//                          set at chunk_005_admit_core.rs:165-174 via
-//                          RunAdmission::with_idempotency_evidence)
-//
-// The 5-digest chained equality in `digest_binding_total` is the
-// mathematical statement of the production post-condition that
-// `admit_artifact_run_with_certificate_floor` returns on the happy
-// path: after successful strict admission, every digest in the chain
-// is the SAME single canonical envelope digest computed by
-// `accepted_artifact_digest` and stored at all five positions.
+// `verify_admission_digest` accepts a request matching either
+// `artifact.digest` or `artifact.source_digest`, and separately requires
+// `artifact.verification.digest == artifact.digest`. Therefore the
+// production condition does not imply that the requested/header digest
+// equals `artifact.digest` when only `source_digest` matches. The 5-way
+// equality predicate below is a stronger model predicate, not an established
+// production post-condition.
 //
 // ============================================================================
 // PRODUCTION BINDING LEDGER (mirrors extern_accepted_cli_digest_binding.rs)
@@ -72,27 +53,26 @@
 //   - SpecRunAdmission              <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of
 //                                       vb_runtime::admission::RunAdmission
-//                                       at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31)
+//                                       at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34)
 //   - production_artifact_digest_eq_header
 //                                   <- extern_accepted_cli_digest_binding.rs
-//                                       (mirror of strict-policy check
-//                                       INV-002 at
-//                                       crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113)
+//                                       (isolated mirror of the digest
+//                                       acceptance condition in
+//                                       `verify_admission_digest` at
+//                                       chunk_005_admit_core.rs:156-165)
 //   - production_proof_digest_eq_artifact
 //                                   <- extern_accepted_cli_digest_binding.rs
-//                                       (mirror of strict-policy check
-//                                       INV-003 at
-//                                       crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122)
+//                                       (isolated mirror of the proof-digest
+//                                       check in `verify_admission_digest` at
+//                                       chunk_005_admit_core.rs:166-173)
 //   - production_run_admission_new_digest
 //                                   <- extern_accepted_cli_digest_binding.rs
-//                                       (mirror of RunAdmission::new
-//                                       at
-//                                       crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66)
+//                                       (mirror of RunAdmission::new at
+//                                       chunk_002_records.rs:51-69)
 //   - production_run_admission_artifact_digest
 //                                   <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of RunAdmission::artifact_digest
-//                                       at
-//                                       crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151)
+//                                       at chunk_002_records.rs:161-165)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS (VACUUM) FORM
@@ -103,37 +83,26 @@
 // vacuously. There was no production binding: the 5 `int` parameters
 // had no connection to any production field, type, or fn signature.
 //
-// This rewrite uses the production `SpecWorkflowDigest`,
-// `SpecAcceptedArtifact`, and `SpecRunAdmission` types as the spec-side
-// types, attaches `assume_specification` contracts to the 4
-// production-bound exec wrappers
-// (`production_artifact_digest_eq_header`,
-// `production_proof_digest_eq_artifact`,
-// `production_run_admission_new_digest`,
-// `production_run_admission_artifact_digest`), and discharges each
-// property through both proof-mode lemmas (revealing the spec
-// predicate) AND exec-mode witnesses that invoke the production exec
-// wrappers directly.
+// The current proofs use handwritten SpecWorkflowDigest,
+// SpecAcceptedArtifact and SpecRunAdmission mirror types. Their external
+// wrappers carry trusted assume_specification contracts. The lemmas and
+// witnesses reason about those mirror contracts; they neither execute
+// production admission nor discharge its end-to-end behavior.
 //
 // ============================================================================
 // TRUST BOUNDARY
 // ============================================================================
-// The production bodies of every exec wrapper in
-// `extern_accepted_cli_digest_binding.rs` are NOT verified by Verus.
-// Each exec wrapper is `#[verifier::external]`, the contracts are
-// attached via `assume_specification` below, and the production-bound
-// exec wrappers in this file invoke the production exec wrappers and
-// assert the contracts hold. Any drift between the mirror and the
-// production source is reported as binding-debt tracked outside
-// Verus.
+// The external mirror bodies are not verified. Production source
+// correspondence is checked separately by binding and drift audits;
+// verifier success here does not establish production-path proof closure.
 //
 // ============================================================================
 // Obligations:
-// - VERUS-CLI-DIGEST-002: accepted CLI path enforces 5-digest
-//   transitivity (source == artifact == header == event == admission)
-//   on the strict-policy admission happy path.
-// - VERUS-CLI-DIGEST-002: any pairwise digest mismatch at any of the
-//   5 positions rejects strict admission.
+// - VERUS-CLI-DIGEST-002: the abstract 5-digest equality predicate
+//   implies transitivity and rejects mismatched model inputs.
+// - The mirror witnesses verify assumed predicate contracts. They do
+//   not establish 5-way equality or mismatch rejection for production
+//   admission; the source-digest alternative prevents that inference.
 //
 // Verifier command:
 //   verus --crate-type=lib verification/verus/accepted_cli_digest_binding.rs
@@ -147,7 +116,7 @@ verus! {
 #[path = "extern_accepted_cli_digest_binding.rs"]
 mod production;
 
-// Re-export the production type and exec wrappers so the spec proofs
+// Re-export the mirror types and exec wrappers so the spec proofs
 // below reference them as `production::SpecAcceptedArtifact`,
 // `production::production_artifact_digest_eq_header`, etc.
 pub use production::{
@@ -162,23 +131,16 @@ pub use production::{
 };
 
 // ============================================================================
-// Spec predicate: 5-digest binding total (the mathematical statement
-// of the production strict-admission happy-path post-condition)
+// Spec predicate: abstract 5-digest binding equality
 // ============================================================================
-/// Spec view: the 5-digest chain is bound — source == artifact ==
-/// header == event == admission.
+/// Spec view: the abstract 5-digest chain is equal —
+/// source == artifact == header == event == admission.
 ///
-/// This is the spec-side statement of the production post-condition
-/// after successful strict admission: at
-/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:165-174` the production code
-/// constructs
-/// `RunAdmission::with_idempotency_evidence(admitted_digest, ...)`
-/// where `admitted_digest = artifact.digest` (line 165). Combined with
-/// the INV-002 check at chunk_005_admit_core.rs:108-113
-/// (`artifact.digest == artifact_digest || artifact.source_digest == artifact_digest`)
-/// and the INV-003 check at chunk_005_admit_core.rs:117-122
-/// (`artifact.verification.digest == artifact.digest`), all 5
-/// positions resolve to the same canonical envelope digest.
+/// This predicate is stronger than the production digest check:
+/// `verify_admission_digest` permits a source-digest match without
+/// requiring `source_digest == artifact.digest`. This spec predicate is
+/// not a production post-condition and is not established for every
+/// successful production admission.
 pub open spec fn digest_binding_total(
     source_digest: int,
     artifact_digest: int,
@@ -210,10 +172,10 @@ pub open spec fn digest_mismatch_rejects(
 }
 
 // ============================================================================
-// Production-bound exec wrappers (call the production extern fns)
+// Mirror-bound exec wrappers (call the external mirror functions)
 // ============================================================================
-/// Production-bound exec wrapper for the strict-policy INV-002
-/// check at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113`.
+/// Production-shaped mirror of the artifact/request condition in
+/// `verify_admission_digest` at chunk_005_admit_core.rs:156-165.
 pub fn production_artifact_digest_eq_header_exec(
     artifact: &production::SpecAcceptedArtifact,
     header_digest: production::SpecWorkflowDigest,
@@ -221,24 +183,24 @@ pub fn production_artifact_digest_eq_header_exec(
     production::production_artifact_digest_eq_header(artifact, header_digest)
 }
 
-/// Production-bound exec wrapper for the strict-policy INV-003
-/// check at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122`.
+/// Production-shaped mirror of the verification-digest condition in
+/// `verify_admission_digest` at chunk_005_admit_core.rs:166-173.
 pub fn production_proof_digest_eq_artifact_exec(
     artifact: &production::SpecAcceptedArtifact,
 ) -> bool {
     production::production_proof_digest_eq_artifact(artifact)
 }
 
-/// Production-bound exec wrapper for `RunAdmission::new` at
-/// `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66`.
+/// Production-shaped mirror of `RunAdmission::new` at
+/// chunk_002_records.rs:51-69.
 pub fn production_run_admission_new_digest_exec(
     digest: production::SpecWorkflowDigest,
 ) -> production::SpecRunAdmission {
     production::production_run_admission_new_digest(digest)
 }
 
-/// Production-bound exec wrapper for `RunAdmission::artifact_digest`
-/// at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151`.
+/// Production-shaped mirror of `RunAdmission::artifact_digest` at
+/// chunk_002_records.rs:161-165.
 pub fn production_run_admission_artifact_digest_exec(
     admission: &production::SpecRunAdmission,
 ) -> production::SpecWorkflowDigest {
@@ -246,21 +208,21 @@ pub fn production_run_admission_artifact_digest_exec(
 }
 
 // ============================================================================
-// assume_specification bridges — production contract surface
+// assume_specification bridges — trusted mirror contract surface
 // ============================================================================
 //
-// These bridges attach spec contracts to the production-bound exec
+// These bridges attach spec contracts to the mirror-bound exec
 // wrappers in `extern_accepted_cli_digest_binding.rs`. The body of
 // each extern fn is opaque to Verus (`#[verifier::external]`); the
 // spec proofs below exercise the contracts via the exec wrappers in
-// the "Production-bound exec wrappers" section.
+// the "Mirror-bound exec wrappers" section.
 // --------------------------------------------------------------------------
 // Bridge: `production_artifact_digest_eq_header` returns true iff
 // INV-002 holds — the artifact's `digest` OR `source_digest` matches
 // the requested header digest.
 // --------------------------------------------------------------------------
-// Mirrors the strict-policy check at
-// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113`:
+// Mirrors the artifact/request condition in `verify_admission_digest`
+// at chunk_005_admit_core.rs:156-165:
 //
 //     if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
 //         return Err(AdmissionError::ArtifactDigestMismatch { ... });
@@ -281,8 +243,8 @@ pub assume_specification[ production::production_artifact_digest_eq_header ](
 // INV-003 holds — the verification proof's `digest` matches the
 // artifact's `digest`.
 // --------------------------------------------------------------------------
-// Mirrors the strict-policy check at
-// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122`:
+// Mirrors the verification-digest condition in `verify_admission_digest`
+// at chunk_005_admit_core.rs:166-173:
 //
 //     if artifact.verification.digest != artifact.digest {
 //         return Err(AdmissionError::ArtifactDigestMismatch { ... });
@@ -302,9 +264,8 @@ pub assume_specification[ production::production_proof_digest_eq_artifact ](
 // `SpecRunAdmission` whose `artifact_digest` field equals the input
 // digest.
 // --------------------------------------------------------------------------
-// Mirrors `RunAdmission::new` at
-// `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66`, whose body sets
-// `Self.artifact_digest = digest` (line 117).
+// Mirrors `RunAdmission::new` at chunk_002_records.rs:51-69; the
+// constructor sets the record's artifact_digest field from the supplied digest.
 pub assume_specification[ production::production_run_admission_new_digest ](
     digest: production::SpecWorkflowDigest,
 ) -> (admission: production::SpecRunAdmission)
@@ -316,9 +277,8 @@ pub assume_specification[ production::production_run_admission_new_digest ](
 // Bridge: `production_run_admission_artifact_digest` returns the
 // `artifact_digest` field of the admission record.
 // --------------------------------------------------------------------------
-// Mirrors the `RunAdmission::artifact_digest(&self) -> WorkflowDigest`
-// accessor at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151`, whose
-// body is `self.artifact_digest` (line 165).
+// Mirrors `RunAdmission::artifact_digest` at chunk_002_records.rs:161-165,
+// whose body returns `self.artifact_digest`.
 pub assume_specification[ production::production_run_admission_artifact_digest ](
     admission: &production::SpecRunAdmission,
 ) -> (r: production::SpecWorkflowDigest)
@@ -327,19 +287,15 @@ pub assume_specification[ production::production_run_admission_artifact_digest ]
 ;
 
 // ============================================================================
-// Non-vacuous proofs — the 3 properties from the original (vacuum) spec
-// rewritten as production-grounded proofs.
+// Abstract mirror proofs of equality and mismatch predicates.
 // ============================================================================
 // --------------------------------------------------------------------------
 // VERUS-CLI-DIGEST-002 — total binding implies all pairwise
 // equalities.
 // --------------------------------------------------------------------------
-// Non-vacuous: reveals the chained conjunction `digest_binding_total`
-// and derives each conjunct by direct equality reasoning on `int`.
-// The 5 `int` parameters are spec-projected from production types
-// (SpecAcceptedArtifact, SpecWorkflowDigest, SpecRunAdmission) — so
-// any drift in the production digest positions or the projection
-// breaks the spec.
+// Reveals the abstract conjunction and derives equalities over the
+// mirror fields. Production source drift requires a separate binding
+// audit; these handwritten mirror fields do not track source changes automatically.
 pub proof fn proof_total_binding_implies_all_equal(
     artifact: production::SpecAcceptedArtifact,
     header_digest: production::SpecWorkflowDigest,
@@ -379,7 +335,7 @@ pub proof fn proof_total_binding_implies_all_equal(
 // VERUS-CLI-DIGEST-002 — any pairwise mismatch rejects (denies the
 // total binding).
 // --------------------------------------------------------------------------
-// Non-vacuous: the production-bound disjunction precondition is
+// The abstract mirror disjunction precondition is
 // exactly the negation of `digest_binding_total`'s conjuncts. Reveal
 // the chained conjunction and observe at least one conjunct must be
 // false, which forces the conjunction to be false.
@@ -418,28 +374,27 @@ pub proof fn proof_any_pairwise_mismatch_rejects(
 }
 
 // --------------------------------------------------------------------------
-// VERUS-CLI-DIGEST-002 — admitted digest matches run header (and
-// event) on the strict-policy happy path.
+// VERUS-CLI-DIGEST-002 — admission equals artifact and verification
+// digests under the stated mirror assumptions; header equality is not ensured.
 // --------------------------------------------------------------------------
-// Non-vacuous: when BOTH strict-policy checks (INV-002 and INV-003)
-// pass AND `RunAdmission::new` is constructed with `artifact.digest`,
-// the admission's `artifact_digest` equals the artifact's `digest`,
-// which equals the verification proof's `digest`, AND at least one of
-// {artifact.digest, artifact.source_digest} equals the header.
+// The theorem assumes the admission/artifact equality and the two
+// isolated digest conditions. It proves only the equalities listed in
+// ensures. Its historical function name does not imply equality with
+// the requested header when only artifact.source_digest matches.
 pub proof fn proof_admitted_digest_matches_run_header(
     artifact: production::SpecAcceptedArtifact,
     header_digest: production::SpecWorkflowDigest,
     admission: production::SpecRunAdmission,
 )
     requires
-// Production strict-policy digest binding holds:
-//   - INV-002 (chunk_005_admit_core.rs:108-113): artifact.digest or
-//     artifact.source_digest matches the requested header.
-//   - INV-003 (chunk_005_admit_core.rs:117-122): artifact.verification.digest
-//     equals artifact.digest.
-//   - RunAdmission::with_idempotency_evidence(admitted_digest, ...)
-//     at chunk_005_admit_core.rs:165-174 sets admission.artifact_digest
-//     to artifact.digest.
+// The isolated production-shaped predicates cover:
+//   - the artifact/source digest acceptance condition in
+//     `verify_admission_digest` (chunk_005_admit_core.rs:156-165).
+//   - equality between verification.digest and artifact.digest in
+//     `verify_admission_digest` (chunk_005_admit_core.rs:166-173).
+// They do not prove that source_digest equals artifact.digest or that
+// the entire strict-admission call chain satisfies the stronger 5-way
+// equality predicate in every accepted case.
 
         artifact.digest == header_digest || artifact.source_digest == header_digest,
         artifact.verification.digest == artifact.digest,
@@ -458,21 +413,20 @@ pub proof fn proof_admitted_digest_matches_run_header(
 }
 
 // ============================================================================
-// Production-bound exec witnesses — exercise the production code path
-// and discharge the assume_specification contracts via direct assert
+// Mirror exec witnesses — check contracts on constructed mirror values
+// using the existing trusted assume_specification boundaries
 // ============================================================================
 //
-// Each exec witness constructs a production `SpecAcceptedArtifact` +
-// `SpecWorkflowDigest` + `SpecRunAdmission`, invokes the
-// production-bound exec wrapper, and asserts the post-condition
-// matches the spec contract. These are the NON-VACUUM closure
-// witnesses for the proof obligations above.
+// Each witness constructs SpecAcceptedArtifact, SpecWorkflowDigest and
+// SpecRunAdmission mirror values, invokes an external mirror wrapper,
+// and checks the assumed contract. These witnesses do not execute or
+// prove the complete production admission path.
 // --------------------------------------------------------------------------
 // VERUS-CLI-DIGEST-002 — exec witness for the 5-digest happy path.
 // --------------------------------------------------------------------------
 // Constructs an artifact + header + admission where all 5 digest
 // positions hold the same canonical digest, and asserts that the
-// production-bound exec wrappers return the expected values
+// mirror exec wrappers return the expected values
 // (INV-002 passes, INV-003 passes, RunAdmission::artifact_digest
 // returns the canonical digest).
 pub fn exec_witness_digest_binding_happy_path(canonical: production::SpecWorkflowDigest) -> (result:
@@ -505,10 +459,9 @@ pub fn exec_witness_digest_binding_happy_path(canonical: production::SpecWorkflo
 // VERUS-CLI-DIGEST-002 — exec witness for digest mismatch rejection.
 // --------------------------------------------------------------------------
 // Constructs an artifact where artifact.verification.digest does NOT
-// equal artifact.digest, and asserts that the production-bound exec
-// wrapper `production_proof_digest_eq_artifact` returns false (i.e.,
-// INV-003 fails and strict admission would return
-// AdmissionError::ArtifactDigestMismatch).
+// equal artifact.digest, and asserts that the mirror-bound exec
+// wrapper `production_proof_digest_eq_artifact` returns false for these
+// mirror values. This witness does not establish a production error outcome.
 pub fn exec_witness_digest_mismatch_rejected(
     artifact_digest: production::SpecWorkflowDigest,
     proof_digest: production::SpecWorkflowDigest,

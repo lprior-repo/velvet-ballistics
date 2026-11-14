@@ -12,6 +12,8 @@ use crate::ids::{RunId, TenantId};
 use crate::workflow::WorkflowError;
 use thiserror::Error;
 
+mod release;
+
 /// Aggregate whole-run budget required for runtime admission.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AggregateResourceBudget {

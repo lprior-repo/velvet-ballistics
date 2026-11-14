@@ -118,6 +118,29 @@ mod secret_authority {
             caps: vb_core::CapabilitySet::empty(),
         })?;
         source.tick()?;
+        let source_admission = source
+            .run_state_get(run)
+            .and_then(|state| state.admission.clone())
+            .ok_or("source run must retain current admission evidence")?;
+        let run_started_millis = source
+            .run_state_get(run)
+            .and_then(|state| state.run_started_millis)
+            .ok_or("source run must retain its budget origin")?;
+        let source_state = source.run_state_get(run).ok_or("source run state")?;
+        let action_attempts = source_state.action_attempts.clone();
+        let journal_bytes = source_state.journal_bytes_written;
+        let accepted_artifact = store.load_accepted_artifact(digest)?;
+        let admission = crate::admission::RunAdmission::with_budget(
+            accepted_artifact.digest,
+            run,
+            source_admission.granted_capabilities().clone(),
+            vb_core::RuntimePolicy::Relaxed,
+            vb_core::AggregateResourceBudget::from_workflow(&workflow)?,
+        )
+        .with_input_digest(source_admission.input_digest().clone())
+        .with_policy_pin(vb_storage::RunPolicyPin::Pinned(
+            accepted_artifact.policy_digest,
+        ));
         let frame = source
             .run_state_get(run)
             .ok_or("live source")?
@@ -144,15 +167,24 @@ mod secret_authority {
                 Shard::new_with_journal_and_artifact_store(config, journal.clone(), store.clone());
             target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
             target.enqueue(ShardCommand::Recover {
-                command: Box::new(RecoverRunCommand::new(
-                    run,
-                    RunFrame::from_checkpoint_v1(frame).map_err(|error| format!("{error:?}"))?,
-                    digest,
-                    workflow.digest(),
-                    next_seq,
-                    CollectStates::new(),
-                    RecoveredRunBoundary::none(),
-                )),
+                command: Box::new(
+                    RecoverRunCommand::new(
+                        run,
+                        RunFrame::from_checkpoint_v1(frame)
+                            .map_err(|error| format!("{error:?}"))?,
+                        digest,
+                        workflow.digest(),
+                        next_seq,
+                        CollectStates::new(),
+                        RecoveredRunBoundary::none(),
+                    )
+                    .with_validated_admission(admission.clone())
+                    .with_recovered_accounting(
+                        Some(run_started_millis),
+                        Some(action_attempts.clone()),
+                        Some(journal_bytes),
+                    ),
+                ),
             })?;
             if change == 0 {
                 assert_eq!(target.tick(), Ok(true));
@@ -337,6 +369,36 @@ mod secret_authority {
                 .count(),
             1
         );
+        Ok(())
+    }
+
+    #[test]
+    fn retry_recovery_restores_tenant_charge() -> TestResult {
+        let mut fixture = checkpoint_fixture()?;
+        let tenant = vb_core::ids::TenantId::new(77);
+        let admission = fixture
+            .checkpoint
+            .admission
+            .clone()
+            .ok_or("checkpoint admission")?;
+        let mut budget = admission.budget().ok_or("checkpoint budget")?;
+        budget.max_cost_units = 5;
+        let cost = budget.max_cost_units;
+        fixture.checkpoint.admission =
+            Some(admission.with_attached_budget(budget).with_tenant(tenant));
+        let command = RecoverRunCommand::for_retry(fixture.checkpoint.clone(), fixture.next_seq)?;
+        let mut target = Shard::new_with_journal(
+            fixture.config,
+            crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
+        );
+        target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
+        target.set_resource_quotas(cost, cost);
+        target.enqueue(ShardCommand::Recover {
+            command: Box::new(command),
+        })?;
+        assert_eq!(target.tick(), Ok(true));
+        assert_eq!(target.usage_snapshot().tenant_cost_usage(tenant), Ok(cost));
+        assert_eq!(target.global_cost_usage(), cost);
         Ok(())
     }
 

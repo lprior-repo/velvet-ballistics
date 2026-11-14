@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use vb_core::AggregateResourceBudget;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
 use vb_core::capability::{Capability, CapabilitySet};
@@ -8,6 +9,7 @@ use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::Runtime;
 use vb_storage::executor::ExecutorCatalog;
 use vb_storage::executor::FjallRegister;
+use vb_storage::inputs::compute_input_digest;
 use vb_storage::{JournalEvent, RunInputBinding, RunPolicyPin};
 
 use crate::legacy_admission_test::{append_events, open_journal};
@@ -73,33 +75,52 @@ fn forged_policy_pin_rejected_before_recovery_mutation() -> TestResult {
     let wrong_pin = WorkflowDigest::from_bytes([0xFFu8; 32]);
     assert_ne!(real_policy_digest, wrong_pin);
 
-    // Write the legacy prefix with a FORGED policy pin that does not match
-    // the accepted artifact's actual policy digest.
+    // Write a current admission prefix with only its policy pin forged.
     let journal = open_journal(temp.path())?;
+    let started_millis = u64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_millis(),
+    )?;
     let forged_events = [
         JournalEvent::RunAccepted {
             run,
             seq: vb_storage::EventSeq::new(0),
             workflow: workflow.digest(),
         },
-        JournalEvent::RunAdmission {
-            input_digest: RunInputBinding::LegacyUnbound,
+        JournalEvent::RunAdmissionBudget {
             run,
             seq: vb_storage::EventSeq::new(1),
             artifact_digest: artifact.digest,
+            input_digest: RunInputBinding::Digest(compute_input_digest(&[])?),
             policy_pin: RunPolicyPin::Pinned(wrong_pin),
             granted_capabilities: action_grants(action),
             policy: vb_core::policy::RuntimePolicy::Strict,
+            budget: AggregateResourceBudget::from_workflow(&workflow)?,
+        },
+        JournalEvent::CompatibilityDecisionEvent {
+            run,
+            seq: vb_storage::EventSeq::new(2),
+            decision: vb_storage::compat::decide_boundary(
+                vb_storage::compat::artifact_ir_version_inputs(artifact.artifact_version),
+                vb_storage::compat::schema_version_digest(artifact.artifact_version),
+                vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+            ),
+        },
+        JournalEvent::RunBudgetOriginEvent {
+            run,
+            seq: vb_storage::EventSeq::new(3),
+            started_millis,
         },
         JournalEvent::StepStarted {
             run,
-            seq: vb_storage::EventSeq::new(2),
+            seq: vb_storage::EventSeq::new(4),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::AskScheduledEvent {
             run,
-            seq: vb_storage::EventSeq::new(3),
+            seq: vb_storage::EventSeq::new(5),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -110,8 +131,8 @@ fn forged_policy_pin_rejected_before_recovery_mutation() -> TestResult {
     let journal_before = vb_storage::read_run_events(&journal, run)?;
     assert_eq!(
         journal_before.len(),
-        4,
-        "forged journal has exactly the legacy prefix events"
+        6,
+        "forged journal has current admission plus pending ask events"
     );
 
     drop(journal);

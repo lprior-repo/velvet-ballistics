@@ -13,7 +13,9 @@ fn failed_shutdown_preserves_actual_pending_timer_authority() -> TestResult {
     let (_dir, journal, queue) = storage()?;
     let mut runtime = runtime(&journal, &queue);
     let run = RunId::new(700);
-    runtime.submit_direct(run, waiting_workflow()?)?;
+    let workflow = waiting_workflow()?;
+    accept_workflow(&journal, &workflow, &[])?;
+    runtime.submit_direct(run, workflow)?;
     assert!(runtime.tick_all()?);
     let before = runtime.pending_boundary_snapshot(64);
     assert_eq!(before.active_run_count(), 1);
@@ -88,7 +90,9 @@ fn successful_shutdown_reports_suspended_authority_without_cancelling_run() -> T
     let (_dir, journal, queue) = storage()?;
     let mut runtime = runtime(&journal, &queue);
     let run = RunId::new(701);
-    runtime.submit_direct(run, waiting_workflow()?)?;
+    let workflow = waiting_workflow()?;
+    accept_workflow(&journal, &workflow, &[])?;
+    runtime.submit_direct(run, workflow)?;
     assert!(runtime.tick_all()?);
     let before = runtime.pending_boundary_snapshot(64);
     let queued = queue.pending_profile_counts()?.journaled;
@@ -129,7 +133,7 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
     let (_dir, journal, queue) = storage()?;
     let config = crate::shard::ShardConfig {
         command_queue_capacity: 2,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Journaled,
         ..Default::default()
     };
     let mut runtime = super::Runtime::new(
@@ -141,13 +145,13 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
         )),
     );
     for run in [RunId::new(710), RunId::new(711)] {
-        runtime.submit_direct(run, finished_workflow()?)?;
+        let workflow = finished_workflow()?;
+        accept_workflow(&journal, &workflow, &[])?;
+        runtime.submit_direct(run, workflow)?;
     }
-    assert!(
-        runtime
-            .submit_direct(RunId::new(712), finished_workflow()?)
-            .is_err()
-    );
+    let workflow = finished_workflow()?;
+    accept_workflow(&journal, &workflow, &[])?;
+    assert!(runtime.submit_direct(RunId::new(712), workflow).is_err());
     assert_eq!(
         runtime.pending_boundary_snapshot(64).command_queue_depth(),
         2
@@ -197,7 +201,7 @@ fn suspended_action_report_keeps_actual_ticket_and_frame() -> TestResult {
     let (_dir, journal, queue) = storage()?;
     let mut runtime = runtime(&journal, &queue);
     let run = RunId::new(730);
-    submit_action(&runtime, run)?;
+    submit_action(&runtime, &journal, run)?;
     assert!(runtime.tick_all()?);
     let before = runtime.pending_boundary_snapshot(64);
     assert_eq!(before.pending_action_count(), 1);
@@ -230,7 +234,9 @@ fn report_bounds_details_without_losing_actual_totals() -> TestResult {
     )?);
     let mut runtime = runtime(&journal, &queue);
     for id in 1..=65 {
-        runtime.submit_direct(RunId::new(id), waiting_workflow()?)?;
+        let workflow = waiting_workflow()?;
+        accept_workflow(&journal, &workflow, &[])?;
+        runtime.submit_direct(RunId::new(id), workflow)?;
         assert!(runtime.tick_all()?);
     }
     let report = runtime.shutdown_graceful()?;

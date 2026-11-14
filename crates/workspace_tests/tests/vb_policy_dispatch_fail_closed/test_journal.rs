@@ -55,6 +55,10 @@ impl FailingPolicyPortJournal {
 }
 
 impl RuntimeJournal for FailingPolicyPortJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        self.inner.durability_profile()
+    }
+
     fn append(&self, event: vb_runtime::journal::RuntimeJournalEvent) -> RuntimeResult<()> {
         self.inner.append(event)
     }
@@ -73,6 +77,23 @@ impl RuntimeJournal for FailingPolicyPortJournal {
         start_seq: EventSeq,
     ) -> RuntimeResult<()> {
         self.inner.append_sequenced_batch(events, start_seq)
+    }
+
+    fn convert_to_storage_event(
+        &self,
+        event: vb_runtime::journal::RuntimeJournalEvent,
+        seq: EventSeq,
+    ) -> RuntimeResult<vb_storage::JournalEvent> {
+        self.inner.convert_to_storage_event(event, seq)
+    }
+
+    fn append_admission_batch(
+        &self,
+        events: &[vb_runtime::journal::RuntimeJournalEvent],
+        start_seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        self.inner.append_admission_batch(events, start_seq, inputs)
     }
 
     fn probe(&self) -> RuntimeResult<()> {

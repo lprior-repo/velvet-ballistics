@@ -1,46 +1,15 @@
 impl StorageRuntimeJournal {
     fn storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<JournalEvent> {
-        // Dispatch on `&event` so the full event is cloned at most once, by the
-        // matched arm that actually consumes it. The previous chain cloned the
-        // event three times before the real variant was determined.
-        let result = match &event {
-            RuntimeJournalEvent::RunSubmitted { .. }
-            | RuntimeJournalEvent::RunAdmission { .. }
-            | RuntimeJournalEvent::CompatibilityDecision { .. }
-            | RuntimeJournalEvent::TenantAdmission { .. }
-            | RuntimeJournalEvent::RetryCheckpoint { .. }
-            | RuntimeJournalEvent::RunFinished { .. }
-            | RuntimeJournalEvent::RunFailed { .. }
-            | RuntimeJournalEvent::RunCancelled { .. }
-            | RuntimeJournalEvent::RunKilled { .. }
-            | RuntimeJournalEvent::Resumed { .. }
-            | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. }
-            | RuntimeJournalEvent::StepFailed { .. } => {
-                Self::run_storage_event(clone_for_dispatch(&event), seq)
-            }
-            RuntimeJournalEvent::ActionScheduled { .. }
-            | RuntimeJournalEvent::ActionCompleted { .. }
-            | RuntimeJournalEvent::ActionScheduledTicket { .. }
-            | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
-            | RuntimeJournalEvent::ActionFailed { .. }
-            | RuntimeJournalEvent::ActionAbandoned { .. } => {
+        let result = match storage_event_family(&event) {
+            StorageEventFamily::Run => Self::run_storage_event(clone_for_dispatch(&event), seq),
+            StorageEventFamily::Action => {
                 Ok(Self::action_storage_event(clone_for_dispatch(&event), seq))
             }
-            RuntimeJournalEvent::RetryTimerScheduled { .. }
-            | RuntimeJournalEvent::WaitScheduled { .. }
-            | RuntimeJournalEvent::WaitResolved { .. }
-            | RuntimeJournalEvent::AskScheduled { .. }
-            | RuntimeJournalEvent::AskAnswered { .. }
-            | RuntimeJournalEvent::AskTimedOut { .. }
-            | RuntimeJournalEvent::SlotWritten { .. } => {
+            StorageEventFamily::Boundary => {
                 Self::boundary_storage_event(clone_for_dispatch(&event), seq)
             }
         }?;
-        if let Some(storage_event) = result {
-            return Ok(storage_event);
-        }
-        Err(RuntimeError::UnsupportedRuntimeJournalEventMapping {
+        result.ok_or_else(|| RuntimeError::UnsupportedRuntimeJournalEventMapping {
             event_kind: event.kind(),
         })
     }
@@ -172,12 +141,55 @@ impl RuntimeJournal for StorageRuntimeJournal {
             .map_err(RuntimeError::from)
     }
 
+    fn append_gate_decision_bound_strict(
+        &self,
+        record: vb_core::manual_gate::BoundGateOutcomeRecord,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        let storage_event = JournalEvent::GateDecisionBoundEvent {
+            run: record.record.run,
+            seq,
+            record: Box::new(record),
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
+
+    fn append_gate_opened_bound_strict(
+        &self,
+        gate: vb_core::manual_gate::BoundManualGate,
+        opened_at_ms: u64,
+        requester: vb_core::manual_gate::ApproverId,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        let storage_event = JournalEvent::GateOpenedBoundEvent {
+            run: gate.gate.run,
+            seq,
+            gate,
+            opened_at_ms,
+            requester,
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
+
     fn append_sequenced_batch(
         &self,
         events: &[RuntimeJournalEvent],
         start_seq: EventSeq,
     ) -> RuntimeResult<()> {
         Self::append_runtime_event_batch(self.journal.as_ref(), self.profile, events, start_seq)
+    }
+
+    fn append_admission_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        Self::append_runtime_admission_batch(&self.journal, self.profile, events, start_seq, inputs)
     }
 
     fn probe(&self) -> RuntimeResult<()> {

@@ -106,6 +106,23 @@ pub fn check_global_quota(
     check_capacity("global_quota_cost_units", total, global_quota)
 }
 
+/// Releases shard-wide cost after a terminal, cancelled, failed, shut-down,
+/// or reconciled run.
+///
+/// The shard usage snapshot carries no summed global cost, so global-scoped
+/// admission and release use the caller's shard-summed cost. Releasing more
+/// than the summed usage is a typed underflow.
+pub fn release_global_quota(
+    global_cost_usage: u64,
+    released_cost: u64,
+) -> Result<u64, AggregateBudgetError> {
+    global_cost_usage
+        .checked_sub(released_cost)
+        .ok_or(AggregateBudgetError::Underflow {
+            resource: "global_quota_cost_units",
+        })
+}
+
 pub fn validate_aggregate_budget(
     budget: &AggregateResourceBudget,
     policy: &BoundednessPolicy,

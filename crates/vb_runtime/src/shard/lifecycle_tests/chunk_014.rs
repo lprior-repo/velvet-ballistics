@@ -129,21 +129,14 @@ fn crash_lab_boundary_ticket(
 #[test]
 fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(60_014);
-    let parts = crash_lab_minimal_parts(WorkflowDigest::from_bytes([42u8; 32]));
-    let workflow = require_workflow(
+    let parts = crash_lab_minimal_parts(WorkflowDigest::from_bytes([0; 32]));
+    let workflow = honest_digest_workflow(require_workflow(
         "crash-lab-minimal",
         CompiledWorkflow::try_from_parts(parts).ok(),
-    )?;
-    let workflow = honest_digest_workflow(workflow)?;
+    )?)?;
     let workflow_digest = workflow.digest();
     let contract = action_recovery_test_contract()?;
-    let artifact = vb_storage::admission::prepare_compiled_artifact(
-        &workflow,
-        vb_core::policy::RuntimePolicy::Relaxed,
-        &[contract],
-    )?;
-    let artifact_digest = artifact.digest;
-    let store = action_recovery_contract_store(artifact);
+    let (artifact_digest, store) = action_recovery_contract_store(&workflow, &contract)?;
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard =
@@ -151,7 +144,7 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     submit_run(
         &mut shard,
         run,
-        workflow,
+        workflow.clone(),
         &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -180,11 +173,22 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     ));
     assert_eq!(crash_lab_completion_count(&pre_crash), 0);
     assert_eq!(crash_lab_run_finished_count(&pre_crash, run), 0);
-    let frame = shard
+    let source_state = shard
         .run_state_get(run)
-        .ok_or("run must have state before the crash")?
-        .frame
-        .clone();
+        .ok_or("run must have state before the crash")?;
+    let frame = source_state.frame.clone();
+    let run_started_millis = source_state
+        .run_started_millis
+        .ok_or("current admission must retain its budget origin")?;
+    let action_attempts = source_state.action_attempts.clone();
+    let journal_bytes = source_state.journal_bytes_written;
+    let accepted_artifact = store.load_accepted_artifact(artifact_digest)?;
+    let admission = action_recovery_current_admission(
+        run,
+        &workflow,
+        &accepted_artifact,
+        vb_core::policy::RuntimePolicy::Relaxed,
+    )?;
     assert_eq!(
         frame.step_state(StepIdx::ZERO),
         Ok(vb_core::frame::StepState::Running)
@@ -205,6 +209,12 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
         vb_storage::types::EventSeq::new(u64::try_from(pre_crash.len())?),
         crate::primitives::collect::CollectStates::new(),
         boundary,
+    )
+    .with_validated_admission(admission)
+    .with_recovered_accounting(
+        Some(run_started_millis),
+        Some(action_attempts),
+        Some(journal_bytes),
     );
     recovered.handle_recover(command)?;
     assert_eq!(recovered.pending_action_get(run), Some(ticket));

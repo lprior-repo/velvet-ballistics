@@ -15,35 +15,36 @@ impl Shard {
         requester: vb_core::manual_gate::ApproverId,
     ) -> crate::RuntimeResult<()> {
         let run = gate.run;
-
         if !gate.is_structurally_valid() || !requester.is_valid() {
             return Err(crate::RuntimeError::InvalidGateOpenedRecord);
         }
+        self.append_gate_opened_record(gate, opened_at_ms, requester, run)
+    }
 
+    fn append_gate_opened_record(
+        &mut self,
+        gate: vb_core::manual_gate::ManualGate,
+        opened_at_ms: u64,
+        requester: vb_core::manual_gate::ApproverId,
+        run: vb_core::ids::RunId,
+    ) -> crate::RuntimeResult<()> {
         let seq = self.journal_sequence_for(run);
         let next = Self::checked_next_seq(seq)?;
-
         self.reserve_journal_sequence_slot(run)?;
-
-        let event_bytes =
-            Self::gate_opened_event_bytes(&gate, opened_at_ms, &requester, seq)?;
+        let event_bytes = Self::gate_opened_event_bytes(&gate, opened_at_ms, &requester, seq)?;
         let projected = self
             .run_state_get(run)
             .map(|state| state.journal_bytes_written)
             .ok_or(crate::RuntimeError::RunNotFound)?
             .checked_add(event_bytes)
             .ok_or(crate::RuntimeError::EncodeFailed)?;
-
         self.journal
             .append_gate_opened_strict(gate, opened_at_ms, requester, seq)?;
-
         let _previous = self.journal_sequences.insert(run, next);
-
         let state = self
             .run_state_get_mut(run)
             .ok_or(crate::RuntimeError::RunNotFound)?;
         state.journal_bytes_written = projected;
-
         Ok(())
     }
 

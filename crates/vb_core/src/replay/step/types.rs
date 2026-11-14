@@ -56,7 +56,27 @@ pub(super) struct ReplayCollectState {
     pub(super) cursor: usize,
     pub(super) page_size: usize,
     pub(super) item_count: usize,
+    pub(super) limit: usize,
     pub(super) taint: Taint,
+}
+
+/// Non-persisted evidence for one deterministic Collect replay state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReplayCollectStateSnapshot {
+    /// Source list being paginated.
+    pub source: ListId,
+    /// Current page list expected in the collector slot.
+    pub current_page: ListId,
+    /// Next source item cursor.
+    pub cursor: usize,
+    /// Maximum page size.
+    pub page_size: usize,
+    /// Source item count captured at start.
+    pub item_count: usize,
+    /// Maximum total item count.
+    pub limit: usize,
+    /// Taint of the source and emitted pages.
+    pub taint: Taint,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,5 +119,21 @@ impl ReplayCollectStates {
 
     pub(super) fn remove(&mut self, collector: SlotIdx) {
         self.entries.remove(&collector);
+    }
+
+    /// Return deterministic replay state without exposing the mutable table.
+    #[must_use]
+    pub fn snapshot(&self, collector: SlotIdx) -> Option<ReplayCollectStateSnapshot> {
+        self.entries
+            .get(&collector)
+            .map(|state| ReplayCollectStateSnapshot {
+                source: state.source,
+                current_page: state.current_page,
+                cursor: state.cursor,
+                page_size: state.page_size,
+                item_count: state.item_count,
+                limit: state.limit,
+                taint: state.taint,
+            })
     }
 }

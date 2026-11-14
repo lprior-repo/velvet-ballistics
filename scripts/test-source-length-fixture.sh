@@ -22,6 +22,8 @@ fi
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 GATE="$SCRIPT_DIR/check-source-length.sh"
+PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+mkdir -p "$PROJECT_ROOT/target/tmp"
 
 PASS=0
 FAIL_CASES=()
@@ -118,9 +120,33 @@ run_gate() {
   GATE_REPO_ROOT="$root" bash "$GATE" "$@" 2>&1
 }
 
+build_hot_fixture() {
+  local root="$1"
+  rm -rf "$root"
+  mkdir -p "$root/.config" "$root/crates/vb_x/src/engine"
+  printf '# empty\n' > "$root/.config/source-length-exceptions.txt"
+}
+
+write_long_function() {
+  local file="$1"
+  local name="$2"
+  local body_lines="$3"
+  local index
+  local append="${4:-0}"
+  if [[ "$append" == "1" ]]; then
+    printf 'fn %s() {\n' "$name" >> "$file"
+  else
+    printf 'fn %s() {\n' "$name" > "$file"
+  fi
+  for ((index = 0; index < body_lines; index += 1)); do
+    printf '    let value_%d = %d;\n' "$index" "$index" >> "$file"
+  done
+  printf '}\n' >> "$file"
+}
+
 # ---- fixture 1: clean repo with all files under the production limit ----
 
-fx1=$(mktemp -d)
+fx1="$PROJECT_ROOT/target/tmp/source-length-fixture-1"
 build_fixture "$fx1" \
   files="crates/vb_x/src/lib.rs:50;crates/vb_y/src/lib.rs:299"
 out=$(run_gate "$fx1" -q; echo "_EXIT_$?")
@@ -133,7 +159,7 @@ rm -rf "$fx1"
 
 # ---- fixture 2: production file over 300 lines, no exception ----------
 
-fx2=$(mktemp -d)
+fx2="$PROJECT_ROOT/target/tmp/source-length-fixture-2"
 build_fixture "$fx2" \
   files="crates/vb_x/src/oversize.rs:350"
 out=$(run_gate "$fx2" -q; echo "_EXIT_$?")
@@ -153,7 +179,7 @@ rm -rf "$fx2"
 
 # ---- fixture 3: test_in_src file over 1500 lines, no exception ----------
 
-fx3=$(mktemp -d)
+fx3="$PROJECT_ROOT/target/tmp/source-length-fixture-3"
 build_fixture "$fx3" \
   files="crates/vb_x/src/tests.rs:1700"
 out=$(run_gate "$fx3" -q; echo "_EXIT_$?")
@@ -170,7 +196,7 @@ rm -rf "$fx3"
 
 # ---- fixture 4: ledger exception rescues over-limit file --------------
 
-fx4=$(mktemp -d)
+fx4="$PROJECT_ROOT/target/tmp/source-length-fixture-4"
 mkdir -p "$fx4/.config" "$fx4/crates/vb_x/src"
 printf '# fixture ledger\n' > "$fx4/.config/source-length-exceptions.txt"
 printf 'crates/vb_x/src/oversize.rs|lewis|vb-fixture|split-after-landing|fixture test exception\n' >> "$fx4/.config/source-length-exceptions.txt"
@@ -187,7 +213,7 @@ rm -rf "$fx4"
 
 # ---- fixture 5: malformed ledger ---------------------------------------
 
-fx5=$(mktemp -d)
+fx5="$PROJECT_ROOT/target/tmp/source-length-fixture-5"
 build_fixture "$fx5" bad_ledger=1 files="crates/vb_x/src/lib.rs:50"
 out=$(run_gate "$fx5" -q; echo "_EXIT_$?")
 exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
@@ -200,7 +226,7 @@ rm -rf "$fx5"
 
 # ---- fixture 6: verus file over 800 lines, no exception ----------------
 
-fx6=$(mktemp -d)
+fx6="$PROJECT_ROOT/target/tmp/source-length-fixture-6"
 build_fixture "$fx6" \
   files="verification/verus/spec.rs:900"
 out=$(run_gate "$fx6" -q; echo "_EXIT_$?")
@@ -214,7 +240,7 @@ rm -rf "$fx6"
 
 # ---- fixture 7: generated file excluded --------------------------------
 
-fx7=$(mktemp -d)
+fx7="$PROJECT_ROOT/target/tmp/source-length-fixture-7"
 build_fixture "$fx7" \
   files="crates/vb_x/src/generated/big.rs:5000"
 out=$(run_gate "$fx7" -q; echo "_EXIT_$?")
@@ -225,7 +251,7 @@ rm -rf "$fx7"
 
 # ---- fixture 8: summary mode prints WARNs only in verbose ------------
 
-fx8=$(mktemp -d)
+fx8="$PROJECT_ROOT/target/tmp/source-length-fixture-8"
 build_fixture "$fx8" \
   files="crates/vb_x/src/warner.rs:260"
 out=$(run_gate "$fx8" -q; echo "_EXIT_$?")
@@ -241,6 +267,188 @@ else
   printf 'not ok    - --verbose mode hides WARNs\n'
 fi
 rm -rf "$fx8"
+
+# ---- hot-function lexical closure and ownership -----------------------
+
+fx9="$PROJECT_ROOT/target/tmp/source-length-fixture-9"
+build_hot_fixture "$fx9"
+cat > "$fx9/crates/vb_x/src/engine.rs" <<'EOF'
+fn short() { 1 }
+use crate::{first,
+    second,
+    third,
+    fourth,
+};
+EOF
+out=$(run_gate "$fx9" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+assert_eq 'hot function: short body closes before later grouped use' 0 "$exit_code"
+rm -rf "$fx9"
+
+fx10="$PROJECT_ROOT/target/tmp/source-length-fixture-10"
+build_hot_fixture "$fx10"
+write_long_function "$fx10/crates/vb_x/src/engine.rs" exceeds_limit 25
+out=$(run_gate "$fx10" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+out_only=$(printf '%s' "$out" | sed 's/_EXIT_[0-9]*$//')
+assert_eq 'hot function: 26 logical lines fail' 1 "$exit_code"
+assert_contains 'hot function: 26-line failure names symbol and measured count' \
+  'exceeds_limit ends at 27: 26 logical lines (limit 25)' "$out_only"
+rm -rf "$fx10"
+
+fx11="$PROJECT_ROOT/target/tmp/source-length-fixture-11"
+build_hot_fixture "$fx11"
+cat > "$fx11/crates/vb_x/src/engine.rs" <<'EOF'
+fn nested() {
+    let raw = r#"} {"#;
+    let character = '}';
+    let escaped_character = '\u{7d}';
+    /* } { */
+    if true {
+        let _ = (raw, character, escaped_character);
+    }
+}
+EOF
+printf 'fn eof_closes() { 1 }' >> "$fx11/crates/vb_x/src/engine.rs"
+out=$(run_gate "$fx11" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+assert_eq 'hot function: nested braces, literals, comments, and EOF closure pass' 0 "$exit_code"
+rm -rf "$fx11"
+
+fx12="$PROJECT_ROOT/target/tmp/source-length-fixture-12"
+build_hot_fixture "$fx12"
+printf '#[cfg(test)]\n' > "$fx12/crates/vb_x/src/engine.rs"
+write_long_function "$fx12/crates/vb_x/src/engine.rs" test_only 30 1
+printf '#[kani::proof]\n' >> "$fx12/crates/vb_x/src/engine.rs"
+write_long_function "$fx12/crates/vb_x/src/engine.rs" proof_only 30 1
+out=$(run_gate "$fx12" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+assert_eq 'hot function ownership: cfg(test) and Kani bodies excluded' 0 "$exit_code"
+rm -rf "$fx12"
+
+fx13="$PROJECT_ROOT/target/tmp/source-length-fixture-13"
+build_hot_fixture "$fx13"
+printf '#![cfg(test)]\n' > "$fx13/crates/vb_x/src/engine.rs"
+write_long_function "$fx13/crates/vb_x/src/engine.rs" crate_test_only 30 1
+out=$(run_gate "$fx13" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+assert_eq 'hot function ownership: crate-level cfg(test) body is excluded' 0 "$exit_code"
+rm -rf "$fx13"
+
+fx14="$PROJECT_ROOT/target/tmp/source-length-fixture-14"
+build_hot_fixture "$fx14"
+cat > "$fx14/crates/vb_x/src/engine/parent.rs" <<'EOF'
+#[cfg(test)]
+#[path = "child.rs"]
+mod test_child;
+#[path = "child.rs"]
+mod production_child;
+EOF
+write_long_function "$fx14/crates/vb_x/src/engine/child.rs" dual_child 25
+out=$(run_gate "$fx14" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+out_only=$(printf '%s' "$out" | sed 's/_EXIT_[0-9]*$//')
+assert_eq 'hot function ownership: dual-reachable test child remains production' 1 "$exit_code"
+assert_contains 'hot function ownership: dual reachability reports the child function' \
+  'dual_child ends at 27: 26 logical lines (limit 25)' "$out_only"
+rm -rf "$fx14"
+
+fx15="$PROJECT_ROOT/target/tmp/source-length-fixture-15"
+build_hot_fixture "$fx15"
+for ((index = 0; index < 301; index += 1)); do
+  printf '// physical line %d\n' "$index" >> "$fx15/crates/vb_x/src/engine.rs"
+done
+out=$(run_gate "$fx15" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+out_only=$(printf '%s' "$out" | sed 's/_EXIT_[0-9]*$//')
+assert_eq 'physical category: 301-line production file fails' 1 "$exit_code"
+assert_contains 'physical category: failure retains the 300-line limit' \
+  'hard limit 300' "$out_only"
+rm -rf "$fx15"
+
+fx16="$PROJECT_ROOT/target/tmp/source-length-fixture-16"
+build_hot_fixture "$fx16"
+engine="$fx16/crates/vb_x/src/engine.rs"
+cat > "$engine" <<'EOF'
+pub fn const_return() -> [u8; { 1 }] {
+EOF
+for ((index = 0; index < 24; index += 1)); do
+  printf '    let value_%d = %d;\n' "$index" "$index" >> "$engine"
+done
+cat >> "$engine" <<'EOF'
+    [0; 1]
+}
+pub fn const_argument<const N: usize>() -> [u8; { N }] {
+EOF
+for ((index = 0; index < 24; index += 1)); do
+  printf '    let value_%d = %d;\n' "$index" "$index" >> "$engine"
+done
+cat >> "$engine" <<'EOF'
+    [0; N]
+}
+pub fn multiline_header<T, const N: usize>(
+    _value: T,
+) -> [u8; { N }]
+where
+    T: Copy,
+    [(); { N }]:,
+{
+EOF
+for ((index = 0; index < 24; index += 1)); do
+  printf '    let value_%d = %d;\n' "$index" "$index" >> "$engine"
+done
+cat >> "$engine" <<'EOF'
+    [0; N]
+}
+EOF
+if rustc +nightly-2026-04-28 --edition=2024 --crate-type=lib "$engine" \
+    -o "$fx16/libfixture.rlib" 2>"$fx16/rustc.log"; then
+  assert_eq 'hot function signatures: const-block controls compile' 0 0
+else
+  cat "$fx16/rustc.log" >&2
+  assert_eq 'hot function signatures: const-block controls compile' 0 1
+fi
+out=$(run_gate "$fx16" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+out_only=$(printf '%s' "$out" | sed 's/_EXIT_[0-9]*$//')
+assert_eq 'hot function signatures: over-limit const blocks fail' 1 "$exit_code"
+assert_contains 'hot function signatures: const return type body counted' \
+  'const_return ends at' "$out_only"
+assert_contains 'hot function signatures: const generic body counted' \
+  'const_argument ends at' "$out_only"
+assert_contains 'hot function signatures: multiline where body counted' \
+  'multiline_header ends at' "$out_only"
+rm -rf "$fx16"
+
+# ---- constant operators and function arrows inside signatures ---------
+
+fx17="$PROJECT_ROOT/target/tmp/source-length-fixture-17"
+build_hot_fixture "$fx17"
+{
+  printf '%s\n' 'pub fn comparison_const() -> [u8; { if 0 < 1 { 1 } else { 0 } }] {'
+  for _ in $(seq 1 26); do printf '%s\n' '    let _ = 0u8;'; done
+  printf '%s\n' '    [0]' '}'
+  printf '%s\n' 'pub fn shift_const() -> [u8; { (4 >> 1) - 1 }] {'
+  for _ in $(seq 1 26); do printf '%s\n' '    let _ = 0u8;'; done
+  printf '%s\n' '    [0]' '}'
+  printf '%s\n' 'pub fn callback_generic<F: Fn() -> [u8; 1]>() -> [u8; 1] {'
+  for _ in $(seq 1 26); do printf '%s\n' '    let _ = 0u8;'; done
+  printf '%s\n' '    [0]' '}'
+} > "$fx17/crates/vb_x/src/engine.rs"
+if rustup run nightly-2026-04-28 rustc --edition=2024 --crate-type=lib \
+  "$fx17/crates/vb_x/src/engine.rs" -o "$fx17/signatures.rlib"; then
+  assert_eq 'hot function signatures: constant operators and callbacks compile' 0 0
+else
+  assert_eq 'hot function signatures: constant operators and callbacks compile' 0 1
+fi
+out=$(run_gate "$fx17" -q; echo "_EXIT_$?")
+exit_code=$(printf '%s' "$out" | sed -n 's/.*_EXIT_\([0-9]*\).*/\1/p')
+out_only=$(printf '%s' "$out" | sed 's/_EXIT_[0-9]*$//')
+assert_eq 'hot function signatures: operators cannot hide an over-limit body' 1 "$exit_code"
+assert_contains 'hot function signatures: comparison const body counted' 'comparison_const ends at' "$out_only"
+assert_contains 'hot function signatures: shift const body counted' 'shift_const ends at' "$out_only"
+assert_contains 'hot function signatures: generic callback body counted' 'callback_generic ends at' "$out_only"
+rm -rf "$fx17"
 
 # ---- summary ----------------------------------------------------------
 

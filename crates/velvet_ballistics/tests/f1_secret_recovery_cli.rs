@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
-use std::{num::NonZeroUsize, path::Path, process::Command, sync::Arc};
+use std::{
+    num::NonZeroUsize, path::Path, process::Command, sync::Arc, time::SystemTime, time::UNIX_EPOCH,
+};
 use vb_core::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionName, Idempotency, RetryPolicy,
     RetrySafety, SideEffect,
@@ -124,6 +126,8 @@ fn failed_run(db: &Path) -> TestResult<vb_core::StepIdx> {
 }
 
 fn admitted_run(db: &Path) -> TestResult<vb_core::SlotIdx> {
+    use vb_storage::{EventSeq, RunInputBinding, RunPolicyPin};
+
     let text = source(false);
     let workflow = vb_compile::compile_workflow(text.as_bytes())?;
     let binding = *workflow
@@ -148,21 +152,60 @@ fn admitted_run(db: &Path) -> TestResult<vb_core::SlotIdx> {
             SlotValue::Symbol(binding.requirement()),
         )]),
     )?;
+    let input_digest = record.input_digest();
+    let budget = vb_core::AggregateResourceBudget::from_workflow(&workflow)?;
+    let compatibility = vb_storage::compat::decide_boundary(
+        vb_storage::compat::artifact_ir_version_inputs(artifact.artifact_version),
+        vb_storage::compat::schema_version_digest(artifact.artifact_version),
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+    );
+    let artifact_digest = artifact.digest;
+    let policy_digest = artifact.policy_digest;
+    let accepted_at_ms = u64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())?;
     let submission = vb_storage::RunSubmission::new(
         source,
-        artifact,
+        artifact.clone(),
         record,
         vb_storage::RunHeaderRecord {
             run: RUN,
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms,
         },
     )?;
     let journal = FjallJournal::open(db, None)?;
     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
-    assert_eq!(journal.events_for_run_full(RUN)?.len(), 3);
+    assert_eq!(
+        journal.events_for_run_full(RUN)?,
+        vec![
+            JournalEvent::RunAccepted {
+                run: RUN,
+                seq: EventSeq::new(0),
+                workflow: workflow.digest(),
+            },
+            JournalEvent::RunAdmissionBudget {
+                run: RUN,
+                seq: EventSeq::new(1),
+                artifact_digest,
+                input_digest: RunInputBinding::Digest(input_digest),
+                policy_pin: RunPolicyPin::Pinned(policy_digest),
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+                budget,
+            },
+            JournalEvent::CompatibilityDecisionEvent {
+                run: RUN,
+                seq: EventSeq::new(2),
+                decision: compatibility,
+            },
+            JournalEvent::RunBudgetOriginEvent {
+                run: RUN,
+                seq: EventSeq::new(3),
+                started_millis: accepted_at_ms,
+            },
+        ]
+    );
     Ok(binding.slot().ok_or("slot")?)
 }
 

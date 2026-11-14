@@ -11,6 +11,12 @@ use vb_storage::JournalEvent;
 #[path = "vb_f1_retry/rejection_cases.rs"]
 mod rejection_cases;
 
+fn runtime(
+    journal: vb_runtime::journal::SharedRuntimeJournal,
+) -> TestResult<vb_runtime::runtime::Runtime> {
+    runtime_with_policy(journal, vb_core::policy::RuntimePolicy::Relaxed)
+}
+
 #[test]
 fn yaml_retry_success_continues_once_without_retry_check() -> TestResult {
     let workflow = compile(3, "0ms", false)?;
@@ -146,6 +152,12 @@ fn yaml_retry_transient_then_success_and_permanent_handler() -> TestResult {
 fn yaml_retry_delay_is_a_journaled_timer_before_next_action() -> TestResult {
     let (_directory, journal, mut runtime) = durable()?;
     let workflow = compile(2, "200ms", false)?;
+    vb_storage::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        vb_core::policy::RuntimePolicy::Journaled,
+        &[contract()?],
+    )?;
     let parts = workflow.to_parts();
     assert!(
         vb_core::budget::WholeWorkflowBudget::compute(
@@ -252,11 +264,10 @@ fn retry_timer_rejects_early_and_forged_authority_without_rescheduling() -> Test
         .generation
         .checked_add(1)
         .ok_or("generation overflow")?;
-    runtime.timer_entry_fired(forged)?;
-    assert!(matches!(
-        runtime.tick_all(),
+    assert_eq!(
+        runtime.timer_entry_fired(forged),
         Err(RuntimeError::InvalidTimerFire)
-    ));
+    );
     assert_eq!(runtime.capture_timer_entry(RUN)?, entry);
     assert_eq!(journal.snapshot()?, before);
     assert!(matches!(runtime.lookup_pending_action_ticket(RUN, 1), None));

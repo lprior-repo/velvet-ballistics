@@ -63,6 +63,7 @@ fn cold_submit_publishes_canonical_secret_and_recursive_defaults_without_host_va
     let record = journal
         .owned_run_inputs(run, artifact.digest, digest, &compiled)?
         .ok_or("owned roots")?;
+    assert_current_admission_prefix(&journal, run, &compiled, &artifact, record.input_digest())?;
     let canonical = vb_core::root_bundle::OwnedRootBundle::new(
         Box::new([]),
         vb_core::value_store::ValueStore::with_max_slots(compiled.resource_contract().max_slots)
@@ -121,7 +122,6 @@ fn cold_submit_publishes_canonical_secret_and_recursive_defaults_without_host_va
     assert_eq!(fields.len(), 2);
     no_value(&postcard::to_allocvec(&record)?);
     no_value(&postcard::to_allocvec(&artifact)?);
-    assert_eq!(journal.events_for_run_full(run)?.len(), 3);
     Ok(())
 }
 
@@ -166,13 +166,30 @@ fn cold_secret_submit_then_resume_uses_only_persisted_artifacts_and_rechecks_pre
             .ok_or("run")?,
     );
     let before = journal_events(&db, run)?;
+    let journal = vb_storage::FjallJournal::open(&db, None)?;
+    let stored = journal
+        .compiled_ir_for_source_digest(compiled.digest())?
+        .ok_or("artifact")?;
+    let artifact: vb_storage::AcceptedArtifact = postcard::from_bytes(&stored.ir)?;
+    let source_digest =
+        vb_core::WorkflowDigest::from_bytes(blake3::hash(std::fs::read(&yaml)?.as_slice()).into());
+    let record = journal
+        .owned_run_inputs(run, artifact.digest, source_digest, &compiled)?
+        .ok_or("owned roots")?;
+    assert_current_admission_prefix(&journal, run, &compiled, &artifact, record.input_digest())?;
+    drop(journal);
     std::fs::remove_file(yaml)?;
     std::fs::remove_file(inputs)?;
     let missing = command()
         .args(["resume", &run.get().to_string(), "--db"])
         .arg(&db)
         .output()?;
-    assert_eq!(missing.status.code(), Some(1));
+    assert_eq!(
+        missing.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&missing.stderr)
+    );
     assert_eq!(missing.stdout, b"");
     assert_eq!(
         String::from_utf8(missing.stderr)?,

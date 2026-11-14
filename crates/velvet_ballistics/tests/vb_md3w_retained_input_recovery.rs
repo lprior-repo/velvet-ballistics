@@ -97,11 +97,52 @@ fn retained_inputs_recovered_from_cold_storage_with_runtime_api() -> TestResult 
         );
 
         // Validate the retained record against the admission receipt
-        let events = fjall_journal.events_for_run(run)?;
+        let workflow = vb_compile::compile_workflow(INPUT_FINISH.as_bytes())?;
+        let stored = fjall_journal
+            .compiled_ir_for_source_digest(workflow.digest())?
+            .ok_or("missing accepted artifact")?;
+        let artifact: vb_storage::AcceptedArtifact = postcard::from_bytes(&stored.ir)?;
+        let header = fjall_journal.run_header(run)?.ok_or("missing run header")?;
+        let events = fjall_journal.events_for_run_full(run)?;
         let admission_event = events
-            .iter()
-            .find(|e| matches!(e, vb_storage::JournalEvent::RunAdmission { .. }))
-            .ok_or("missing RunAdmission event")?;
+            .get(1)
+            .ok_or("missing current RunAdmissionBudget event")?;
+        let expected_budget = vb_core::AggregateResourceBudget::from_workflow(&workflow)?;
+        let expected_compatibility = vb_storage::compat::decide_boundary(
+            vb_storage::compat::artifact_ir_version_inputs(artifact.artifact_version),
+            vb_storage::compat::schema_version_digest(artifact.artifact_version),
+            vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+        );
+        assert_eq!(
+            events,
+            vec![
+                vb_storage::JournalEvent::RunAccepted {
+                    run,
+                    seq: vb_storage::EventSeq::new(0),
+                    workflow: workflow.digest(),
+                },
+                vb_storage::JournalEvent::RunAdmissionBudget {
+                    run,
+                    seq: vb_storage::EventSeq::new(1),
+                    artifact_digest: artifact.digest,
+                    input_digest: vb_storage::RunInputBinding::Digest(retained.input_digest()),
+                    policy_pin: vb_storage::RunPolicyPin::Pinned(artifact.policy_digest),
+                    granted_capabilities: vb_core::CapabilitySet::empty(),
+                    policy: RuntimePolicy::Journaled,
+                    budget: expected_budget,
+                },
+                vb_storage::JournalEvent::CompatibilityDecisionEvent {
+                    run,
+                    seq: vb_storage::EventSeq::new(2),
+                    decision: expected_compatibility,
+                },
+                vb_storage::JournalEvent::RunBudgetOriginEvent {
+                    run,
+                    seq: vb_storage::EventSeq::new(3),
+                    started_millis: header.accepted_at_ms,
+                },
+            ]
+        );
         retained.validate_admission(admission_event)?;
 
         // Create a runtime with the storage journal and recover the run

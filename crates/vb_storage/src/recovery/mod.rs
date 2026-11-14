@@ -59,11 +59,14 @@ pub use types::{
 // ============================================================================
 
 pub use replay::{
-    RecoveryFrameSeedBuilder, extract_terminal, is_terminal_event, load_snapshot,
-    recover_full_journal, recover_raw_runtime_frame_seed_from_events,
+    OwnedForEachReplay, OwnedForEachReplayWithCollectSnapshots, RecoveryFrameSeedBuilder,
+    extract_terminal, is_owned_for_each_contract, is_owned_input_replay_contract,
+    is_terminal_event, load_snapshot, recover_full_journal,
+    recover_raw_runtime_frame_seed_from_events,
     recover_raw_runtime_frame_seed_from_events_with_workflow,
     recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
+    recover_snapshot_plus_tail, replay_events, replay_owned_for_each,
+    replay_owned_for_each_with_collect_snapshots, summarize_recovery_events,
 };
 
 // ============================================================================

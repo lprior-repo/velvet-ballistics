@@ -9,17 +9,25 @@ include!("impl_parts/chunk_001/journal_append.rs");
 include!("impl_parts/chunk_001/journal_sequences.rs");
 include!("impl_parts/chunk_001/run_state.rs");
 include!("impl_parts/chunk_001/run_admission.rs");
+include!("impl_parts/chunk_001/resource_ledger.rs");
 include!("impl_parts/chunk_001/pending.rs");
 include!("impl_parts/chunk_001/tick_drive.rs");
+include!("impl_parts/chunk_001/tick_quota.rs");
+include!("impl_parts/chunk_001/dispatch.rs");
+include!("impl_parts/chunk_001/dispatch_submit.rs");
+include!("impl_parts/chunk_001/dispatch_gates.rs");
+include!("impl_parts/chunk_001/dispatch_control.rs");
 include!("impl_parts/chunk_001/inspect_evidence.rs");
 include!("impl_parts/chunk_002.rs");
 include!("impl_parts/chunk_003.rs");
 include!("impl_parts/policy_decision.rs");
 include!("impl_parts/gate_decision.rs");
 include!("impl_parts/gate_opened.rs");
+include!("impl_parts/gate_bound.rs");
 
 #[cfg(test)]
 mod tests {
     include!("impl_tests/chunk_001.rs");
     include!("impl_tests/chunk_002.rs");
+    include!("impl_tests/default_binding.rs");
 }

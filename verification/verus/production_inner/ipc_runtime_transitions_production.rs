@@ -12,7 +12,7 @@
 //   - `crates/vb_runtime/src/ipc_refinement.rs`             (REFINE-IPC-003..005)
 //   - `crates/vb_runtime/src/shard/types/runtime_state.rs:4-67`      (`RuntimeState`,
 //                                                            `RuntimeEvent`)
-//   - `crates/vb_runtime/src/shard/types/shard.rs:34-67`      (`ShardStatus`,
+//   - `crates/vb_runtime/src/shard/types/shard.rs:63-96`      (`ShardStatus`,
 //                                                            `ShardHealth`)
 //   - `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8` (`PendingTimerKind`)
 //   - `crates/vb_runtime/src/shard/types/command_queue.rs:2,20-36` (`ShardCommandQueue`,
@@ -20,7 +20,7 @@
 //   - `crates/vb_runtime/src/shard/timer_wheel.rs:20-159`   (`TimerEntry`,
 //                                                            `TimerWheel`)
 //   - `crates/vb_core/src/policy.rs:194-201`                     (`RuntimePolicy`)
-//   - `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31` (`RunAdmission`)
+//   - `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34` (`RunAdmission`)
 //
 // The substitutions relative to direct `#[path]` inclusion of the
 // production source are documented in the companion extern file
@@ -62,10 +62,10 @@
 //   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types/runtime_state.rs:4-15
 // Production `crates/vb_runtime/src/shard/types/runtime_state.rs:4-15`
 //   - `RuntimeState::is_resumable()`                  <- crates/vb_runtime/src/shard/types/runtime_state.rs:20-22
-//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:34-57
-// Production `crates/vb_runtime/src/shard/types/shard.rs:34-57`
-//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:62-67
-// Production `crates/vb_runtime/src/shard/types/shard.rs:62-67`
+//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:63-86
+// Production `crates/vb_runtime/src/shard/types/shard.rs:63-86`
+//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:91-96
+// Production `crates/vb_runtime/src/shard/types/shard.rs:91-96`
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types/command_queue.rs:2
 //     (declared in the spec file, not this mirror — see header note)
 //   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types/command_queue.rs:20-36
@@ -75,7 +75,8 @@
 //   - `TimerWheel`                                    <- crates/vb_runtime/src/shard/timer_wheel.rs:41-46
 //   - `RuntimePolicy` (3 known variants plus mirror fallback)                <- crates/vb_core/src/policy.rs:194-201
 // Production `crates/vb_core/src/policy.rs:194-201`
-//   - `RunAdmission` (9-field struct)                 <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31
+//   - `RunAdmission` (current ten-field admission record with direct Serde encoding)
+//                                                    <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -192,50 +193,50 @@ pub fn runtime_state_is_resumable(state: RuntimeState) -> bool {
 }
 
 // ============================================================================
-// Mirror of production `ShardHealth` (shard/types/shard.rs:62-67)
+// Mirror of production `ShardHealth` (shard/types/shard.rs:91-96)
 // ============================================================================
 
 /// Mirror of production `vb_runtime::shard::ShardHealth` at
-/// `crates/vb_runtime/src/shard/types/shard.rs:62-67`. Discriminant set
+/// `crates/vb_runtime/src/shard/types/shard.rs:91-96`. Discriminant set
 /// is the production set: 2 variants.
 #[derive(Clone, Copy)]
 pub enum ShardHealth {
-    /// Production variant 0: `ShardHealth::Running` (types/shard.rs:63).
+    /// Production variant 0: `ShardHealth::Running` (types/shard.rs:93).
     Running,
-    /// Production variant 1: `ShardHealth::ShuttingDown` (types/shard.rs:65).
+    /// Production variant 1: `ShardHealth::ShuttingDown` (types/shard.rs:95).
     ShuttingDown,
 }
 
 // ============================================================================
-// Mirror of production `ShardStatus` (shard/types/shard.rs:34-57)
+// Mirror of production `ShardStatus` (shard/types/shard.rs:63-86)
 // ============================================================================
 
 /// Mirror of production `vb_runtime::shard::ShardStatus` at
-/// `crates/vb_runtime/src/shard/types/shard.rs:34-57`. Field names and
+/// `crates/vb_runtime/src/shard/types/shard.rs:63-86`. Field names and
 /// types match production exactly.
 #[derive(Clone, Copy)]
 pub struct ShardStatus {
-    /// Production field (types/shard.rs:35).
+    /// Production field (types/shard.rs:65).
     pub health: ShardHealth,
-    /// Production field (types/shard.rs:37).
+    /// Production field (types/shard.rs:67).
     pub running: bool,
-    /// Production field (types/shard.rs:39).
+    /// Production field (types/shard.rs:69).
     pub shutting_down: bool,
-    /// Production field (types/shard.rs:41).
+    /// Production field (types/shard.rs:71).
     pub command_queue_depth: usize,
-    /// Production field (types/shard.rs:43).
+    /// Production field (types/shard.rs:73).
     pub command_queue_capacity: usize,
-    /// Production field (types/shard.rs:45).
+    /// Production field (types/shard.rs:75).
     pub active_runs: usize,
-    /// Production field (types/shard.rs:47).
+    /// Production field (types/shard.rs:77).
     pub max_active_runs: usize,
-    /// Production field (types/shard.rs:49).
+    /// Production field (types/shard.rs:79).
     pub trace_capacity: usize,
-    /// Production field (types/shard.rs:51).
+    /// Production field (types/shard.rs:81).
     pub trace_dropped: u64,
-    /// Production field (types/shard.rs:53).
+    /// Production field (types/shard.rs:83).
     pub step_budget_per_tick: u64,
-    /// Production field (types/shard.rs:55).
+    /// Production field (types/shard.rs:85).
     pub runtime_policy: RuntimePolicy,
 }
 
@@ -354,11 +355,11 @@ impl TimerWheel {
 }
 
 // ============================================================================
-// Mirror of production `RunAdmission` (admission/parts/chunk_002_records.rs:3-31)
+// Mirror of production `RunAdmission` (admission/parts/chunk_002_records.rs:6-34)
 // ============================================================================
 //
 // Mirror of production `vb_runtime::admission::RunAdmission` at
-// `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31`. Declared here only for
+// `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34`. Declared here only for
 // production-resolution drift detection; the spec proofs do not
 // reference this type. We declare an empty field set so Verus does
 // not complain about an unsupported unit-type field.

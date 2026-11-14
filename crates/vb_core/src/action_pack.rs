@@ -98,7 +98,7 @@ pub struct CapabilityScopeSpec {
 /// Synchronous adapter never retries automatically after an uncertain failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeoutPolicy {
-    /// Deadline checked after the durable batch/persist attempt; a late acknowledgement requires reconciliation.
+    /// Deadline checked before starting I/O; late acknowledgement requires reconciliation.
     /// Fjall fsync is synchronous and does not promise a hard syscall time bound.
     pub timeout_ms: u64,
 }

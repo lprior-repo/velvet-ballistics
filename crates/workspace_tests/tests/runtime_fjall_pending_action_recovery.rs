@@ -2,13 +2,18 @@
 
 use std::path::Path;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use vb_core::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
     Idempotency, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ListId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, ListId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::manual_gate::{
+    ApproverId, ApproverRole, BoundManualGate, GateBinding, GateDigest, GateId, ManualGate,
+    RiskClass, SeparationOfDuties,
+};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -295,19 +300,105 @@ fn encoded_slot_value(value: SlotValue) -> Result<Vec<u8>, String> {
     postcard::to_allocvec(&value).map_err(|err| err.to_string())
 }
 
+fn current_admission_prefix(
+    run: RunId,
+    workflow_digest: WorkflowDigest,
+    workflow: &CompiledWorkflow,
+    artifact: &vb_storage::AcceptedArtifact,
+    artifact_digest: WorkflowDigest,
+    granted_capabilities: CapabilitySet,
+    policy: RuntimePolicy,
+    input_digest: WorkflowDigest,
+) -> Result<[JournalEvent; 4], String> {
+    let budget = vb_core::AggregateResourceBudget::from_workflow(workflow)
+        .map_err(|err| format!("compute current workflow budget: {err:?}"))?;
+    let started_millis = u64::try_from(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|err| err.to_string())?
+            .as_millis(),
+    )
+    .map_err(|err| err.to_string())?;
+    Ok([
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        },
+        JournalEvent::RunAdmissionBudget {
+            run,
+            seq: EventSeq::new(1),
+            artifact_digest,
+            input_digest: vb_storage::RunInputBinding::Digest(input_digest),
+            policy_pin: vb_storage::RunPolicyPin::Pinned(artifact.policy_digest),
+            granted_capabilities,
+            policy,
+            budget,
+        },
+        JournalEvent::CompatibilityDecisionEvent {
+            run,
+            seq: EventSeq::new(2),
+            decision: vb_storage::compat::decide_boundary(
+                vb_storage::compat::artifact_ir_version_inputs(artifact.artifact_version),
+                vb_storage::compat::schema_version_digest(artifact.artifact_version),
+                vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+            ),
+        },
+        JournalEvent::RunBudgetOriginEvent {
+            run,
+            seq: EventSeq::new(3),
+            started_millis,
+        },
+    ])
+}
+
+fn append_current_admission(
+    journal: &FjallJournal,
+    run: RunId,
+    workflow: &CompiledWorkflow,
+    artifact: &vb_storage::AcceptedArtifact,
+    granted_capabilities: CapabilitySet,
+    policy: RuntimePolicy,
+    inputs: Box<[(SlotIdx, SlotValue)]>,
+) -> Result<(), String> {
+    let record = vb_storage::RunInputsRecord::new(
+        run,
+        artifact.digest,
+        artifact.source_digest,
+        workflow,
+        inputs,
+    )
+    .map_err(|err| format!("construct retained inputs: {err:?}"))?;
+    let events = current_admission_prefix(
+        run,
+        workflow.digest(),
+        workflow,
+        artifact,
+        artifact.digest,
+        granted_capabilities,
+        policy,
+        record.input_digest(),
+    )?;
+    journal
+        .append_runtime_admission_batch(&events, &record, vb_storage::DurabilityProfile::Strict)
+        .map_err(|err| format!("append retained current admission: {err:?}"))
+}
+
 fn write_pending_action_events(
     journal: &FjallJournal,
     run: RunId,
     workflow: &CompiledWorkflow,
-    artifact_digest: WorkflowDigest,
+    artifact: &vb_storage::AcceptedArtifact,
     ticket: ActionTicket,
     action_abi_digest: WorkflowDigest,
 ) -> Result<(), String> {
     write_pending_action_events_custom(
         journal,
         run,
+        workflow,
         workflow.digest(),
-        artifact_digest,
+        artifact,
+        artifact.digest,
         action_grants(ticket.action),
         RuntimePolicy::Strict,
         ticket,
@@ -318,7 +409,9 @@ fn write_pending_action_events(
 fn write_pending_action_events_custom(
     journal: &FjallJournal,
     run: RunId,
+    workflow: &CompiledWorkflow,
     workflow_digest: WorkflowDigest,
+    artifact: &vb_storage::AcceptedArtifact,
     artifact_digest: WorkflowDigest,
     granted_capabilities: CapabilitySet,
     policy: RuntimePolicy,
@@ -328,7 +421,9 @@ fn write_pending_action_events_custom(
     write_pending_action_events_with_input(
         journal,
         run,
+        workflow,
         workflow_digest,
+        artifact,
         artifact_digest,
         granted_capabilities,
         policy,
@@ -341,7 +436,9 @@ fn write_pending_action_events_custom(
 fn write_pending_action_events_with_input(
     journal: &FjallJournal,
     run: RunId,
+    workflow: &CompiledWorkflow,
     workflow_digest: WorkflowDigest,
+    artifact: &vb_storage::AcceptedArtifact,
     artifact_digest: WorkflowDigest,
     granted_capabilities: CapabilitySet,
     policy: RuntimePolicy,
@@ -349,27 +446,46 @@ fn write_pending_action_events_with_input(
     action_abi_digest: WorkflowDigest,
     input_value: SlotValue,
 ) -> Result<(), String> {
+    if workflow_digest == workflow.digest() && artifact_digest == artifact.digest {
+        // The admitted retained root stays schema-valid and exactly bound to
+        // the current receipt. These recovery cases exercise a later durable
+        // slot write whose arena handle cannot be resolved after reopen.
+        let retained_value = match &input_value {
+            SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_) => SlotValue::I64(0),
+            value => *value,
+        };
+        append_current_admission(
+            journal,
+            run,
+            workflow,
+            artifact,
+            granted_capabilities.clone(),
+            policy,
+            Box::from([(SlotIdx::ZERO, retained_value)]),
+        )?;
+    } else {
+        let input_digest =
+            vb_storage::inputs::compute_input_digest(&[(SlotIdx::ZERO, input_value)])
+                .map_err(|err| format!("compute malformed-fixture input digest: {err:?}"))?;
+        let events = current_admission_prefix(
+            run,
+            workflow_digest,
+            workflow,
+            artifact,
+            artifact_digest,
+            granted_capabilities,
+            policy,
+            input_digest,
+        )?;
+        append_events(journal, events)?;
+    }
     let input_bytes = encoded_slot_value(input_value)?;
     let input_extra =
         encode_slot_written_extra(Taint::Clean, None).map_err(|err| format!("{err:?}"))?;
     let events = [
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: workflow_digest,
-        },
-        JournalEvent::RunAdmission {
-            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-            run,
-            seq: EventSeq::new(1),
-            artifact_digest,
-            policy_pin: vb_storage::RunPolicyPin::Unverified,
-            granted_capabilities,
-            policy,
-        },
         JournalEvent::SlotWrittenEvent {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(4),
             slot: SlotIdx::ZERO,
             value: Some(input_bytes),
             extra: Some(input_extra),
@@ -377,13 +493,13 @@ fn write_pending_action_events_with_input(
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(5),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::ActionScheduledTicket {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(6),
             ticket,
             input: SlotIdx::ZERO,
             output: SlotIdx::new(1),
@@ -393,7 +509,7 @@ fn write_pending_action_events_with_input(
     for event in events {
         journal
             .append_strict(&event)
-            .map_err(|err| err.to_string())?;
+            .map_err(|err| format!("append {:?}: {err:?}", event.record_kind()))?;
     }
     Ok(())
 }
@@ -428,31 +544,26 @@ fn write_wait_boundary_events(
     journal: &FjallJournal,
     run: RunId,
     workflow: &CompiledWorkflow,
-    artifact_digest: WorkflowDigest,
+    artifact: &vb_storage::AcceptedArtifact,
 ) -> Result<(), String> {
     // Slot 0 carries the wait deadline (0 ms: immediately due once resumed)
     // and doubles as the finish result slot, so a resumed run can complete.
     let deadline_bytes = encoded_slot_value(SlotValue::I64(0))?;
     let deadline_extra =
         encode_slot_written_extra(Taint::Clean, None).map_err(|err| format!("{err:?}"))?;
+    append_current_admission(
+        journal,
+        run,
+        workflow,
+        artifact,
+        CapabilitySet::empty(),
+        RuntimePolicy::Strict,
+        Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    )?;
     let events = [
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: workflow.digest(),
-        },
-        JournalEvent::RunAdmission {
-            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-            run,
-            seq: EventSeq::new(1),
-            artifact_digest,
-            policy_pin: vb_storage::RunPolicyPin::Unverified,
-            granted_capabilities: CapabilitySet::empty(),
-            policy: RuntimePolicy::Strict,
-        },
         JournalEvent::SlotWrittenEvent {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(4),
             slot: SlotIdx::ZERO,
             value: Some(deadline_bytes),
             extra: Some(deadline_extra),
@@ -460,13 +571,13 @@ fn write_wait_boundary_events(
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(5),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::WaitScheduledEvent {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(6),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -478,32 +589,28 @@ fn write_ask_boundary_events(
     journal: &FjallJournal,
     run: RunId,
     workflow: &CompiledWorkflow,
-    artifact_digest: WorkflowDigest,
+    artifact: &vb_storage::AcceptedArtifact,
+    inputs: Box<[(SlotIdx, SlotValue)]>,
 ) -> Result<(), String> {
+    append_current_admission(
+        journal,
+        run,
+        workflow,
+        artifact,
+        CapabilitySet::empty(),
+        RuntimePolicy::Strict,
+        inputs,
+    )?;
     let events = [
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: workflow.digest(),
-        },
-        JournalEvent::RunAdmission {
-            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-            run,
-            seq: EventSeq::new(1),
-            artifact_digest,
-            policy_pin: vb_storage::RunPolicyPin::Unverified,
-            granted_capabilities: CapabilitySet::empty(),
-            policy: RuntimePolicy::Strict,
-        },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::AskScheduledEvent {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(5),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -515,30 +622,29 @@ fn write_ask_boundary_events_with_prompt(
     journal: &FjallJournal,
     run: RunId,
     workflow: &CompiledWorkflow,
-    artifact_digest: WorkflowDigest,
+    artifact: &vb_storage::AcceptedArtifact,
     prompt: SlotValue,
 ) -> Result<(), String> {
     let prompt_bytes = encoded_slot_value(prompt)?;
     let prompt_extra =
         encode_slot_written_extra(Taint::Clean, None).map_err(|err| format!("{err:?}"))?;
+    let retained_prompt = match &prompt {
+        SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_) => SlotValue::I64(0),
+        value => *value,
+    };
+    append_current_admission(
+        journal,
+        run,
+        workflow,
+        artifact,
+        CapabilitySet::empty(),
+        RuntimePolicy::Strict,
+        Box::from([(SlotIdx::ZERO, retained_prompt)]),
+    )?;
     let events = [
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: workflow.digest(),
-        },
-        JournalEvent::RunAdmission {
-            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-            run,
-            seq: EventSeq::new(1),
-            artifact_digest,
-            policy_pin: vb_storage::RunPolicyPin::Unverified,
-            granted_capabilities: CapabilitySet::empty(),
-            policy: RuntimePolicy::Strict,
-        },
         JournalEvent::SlotWrittenEvent {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(4),
             slot: SlotIdx::ZERO,
             value: Some(prompt_bytes),
             extra: Some(prompt_extra),
@@ -546,13 +652,13 @@ fn write_ask_boundary_events_with_prompt(
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(5),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::AskScheduledEvent {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(6),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -660,7 +766,9 @@ fn assert_pending_recovery_rejects(
     write_pending_action_events_custom(
         &journal,
         run,
+        &workflow,
         choose_digest(workflow_digest, &artifact, &workflow),
+        &artifact,
         choose_digest(artifact_digest, &artifact, &workflow),
         choose_grants(granted_capabilities, action),
         policy,
@@ -912,7 +1020,7 @@ fn recover_and_resume_rehydrates_fjall_pending_action_ticket_after_reopen() -> R
         &journal,
         run,
         &workflow,
-        artifact.digest,
+        &artifact,
         expected_ticket,
         action_abi_digest,
     )?;
@@ -969,7 +1077,7 @@ fn recovered_fjall_pending_action_can_complete_after_reopen() -> Result<(), Stri
         &journal,
         run,
         &workflow,
-        artifact.digest,
+        &artifact,
         expected_ticket,
         action_abi_digest,
     )?;
@@ -1019,7 +1127,9 @@ fn recover_and_resume_fails_closed_for_store_dependent_fjall_pending_action_afte
     write_pending_action_events_with_input(
         &journal,
         run,
+        &workflow,
         workflow.digest(),
+        &artifact,
         artifact.digest,
         action_grants(action),
         RuntimePolicy::Strict,
@@ -1058,7 +1168,7 @@ fn recovered_fjall_wait_timer_resumes_after_reopen() -> Result<(), String> {
     let artifact =
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
             .map_err(|err| err.to_string())?;
-    write_wait_boundary_events(&journal, run, &workflow, artifact.digest)?;
+    write_wait_boundary_events(&journal, run, &workflow, &artifact)?;
     drop(journal);
 
     let journal = open_journal(temp.path())?;
@@ -1067,7 +1177,7 @@ fn recovered_fjall_wait_timer_resumes_after_reopen() -> Result<(), String> {
 
     match recovered
         .recover_product(run)
-        .map_err(|err| err.to_string())?
+        .map_err(|err| format!("recover_product: {err:?}"))?
     {
         RuntimeRecoveryProduct::Resumable(product) => {
             assert_eq!(
@@ -1083,7 +1193,7 @@ fn recovered_fjall_wait_timer_resumes_after_reopen() -> Result<(), String> {
     }
     recovered
         .recover_and_resume(run)
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| format!("recover_and_resume: {err:?}"))?;
     // First tick processes the Recover command and leaves the run suspended
     // on its re-armed timer; the timer is immediately due (0 ms deadline).
     recovered.tick_all().map_err(|err| err.to_string())?;
@@ -1106,7 +1216,13 @@ fn recovered_fjall_open_ask_can_answer_after_reopen() -> Result<(), String> {
     let artifact =
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
             .map_err(|err| err.to_string())?;
-    write_ask_boundary_events(&journal, run, &workflow, artifact.digest)?;
+    write_ask_boundary_events(
+        &journal,
+        run,
+        &workflow,
+        &artifact,
+        Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    )?;
     drop(journal);
 
     let journal = open_journal(temp.path())?;
@@ -1177,13 +1293,7 @@ fn recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen() -> Resu
     let artifact =
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
             .map_err(|err| err.to_string())?;
-    write_ask_boundary_events_with_prompt(
-        &journal,
-        run,
-        &workflow,
-        artifact.digest,
-        SlotValue::I64(11),
-    )?;
+    write_ask_boundary_events_with_prompt(&journal, run, &workflow, &artifact, SlotValue::I64(11))?;
     drop(journal);
 
     let journal = open_journal(temp.path())?;
@@ -1243,7 +1353,7 @@ fn recover_and_resume_fails_closed_for_store_dependent_fjall_open_ask_after_reop
         &journal,
         run,
         &workflow,
-        artifact.digest,
+        &artifact,
         SlotValue::List(ListId::new(0)),
     )?;
     drop(journal);
@@ -1278,7 +1388,16 @@ fn recovered_fjall_timed_ask_can_answer_after_reopen() -> Result<(), String> {
     let artifact =
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
             .map_err(|err| err.to_string())?;
-    write_ask_boundary_events(&journal, run, &workflow, artifact.digest)?;
+    write_ask_boundary_events(
+        &journal,
+        run,
+        &workflow,
+        &artifact,
+        Box::from([
+            (SlotIdx::ZERO, SlotValue::I64(0)),
+            (SlotIdx::new(1), SlotValue::I64(0)),
+        ]),
+    )?;
     drop(journal);
 
     let journal = open_journal(temp.path())?;
@@ -1401,7 +1520,9 @@ fn recover_store_missing_probe(
     write_pending_action_events_with_input(
         &journal,
         run,
+        &workflow,
         workflow.digest(),
+        &artifact,
         artifact.digest,
         action_grants(ActionId::new(0)),
         RuntimePolicy::Strict,
@@ -1536,7 +1657,7 @@ fn runtime_recover_product_refines_pending_timers_to_resumable_timer() -> Result
     let artifact =
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
             .map_err(|err| err.to_string())?;
-    write_wait_boundary_events(&journal, run, &workflow, artifact.digest)?;
+    write_wait_boundary_events(&journal, run, &workflow, &artifact)?;
     drop(journal);
 
     let journal = open_journal(temp.path())?;
@@ -1580,7 +1701,16 @@ fn runtime_recover_product_refines_pending_asks_to_resumable_timer() -> Result<(
     let artifact =
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
             .map_err(|err| err.to_string())?;
-    write_ask_boundary_events(&journal, run, &workflow, artifact.digest)?;
+    write_ask_boundary_events(
+        &journal,
+        run,
+        &workflow,
+        &artifact,
+        Box::from([
+            (SlotIdx::ZERO, SlotValue::I64(0)),
+            (SlotIdx::new(1), SlotValue::I64(0)),
+        ]),
+    )?;
     drop(journal);
 
     let journal = open_journal(temp.path())?;
@@ -1743,7 +1873,13 @@ fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> 
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: u64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|error| error.to_string())?
+                .as_millis(),
+        )
+        .map_err(|error| error.to_string())?,
     };
     let submission = vb_storage::RunSubmission::owned(source, artifact.clone(), record, header)
         .map_err(|err| format!("{err}"))?;
@@ -1752,17 +1888,27 @@ fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> 
     journal
         .commit_run_submission(&submission, RuntimePolicy::Strict)
         .map_err(|err| format!("{err}"))?;
-    // Suspend on the ask after the commit prefix (seq 0..=2).
+    // The current budgeted admission prefix includes its durable origin.
+    let first_seq = journal
+        .events_for_run_full(run)
+        .map_err(|error| error.to_string())?
+        .last()
+        .map(|event| event.seq().get().checked_add(1))
+        .flatten()
+        .ok_or_else(|| String::from("submission event sequence missing or exhausted"))?;
+    let second_seq = first_seq
+        .checked_add(1)
+        .ok_or_else(|| String::from("submission event sequence exhausted"))?;
     let suspend = [
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(first_seq),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::AskScheduledEvent {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(second_seq),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -1811,5 +1957,129 @@ fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> 
 
     assert_eq!(recovered.counters_snapshot().runs_completed, 1);
     assert_eq!(recovered.list_active_runs(8, None), Vec::new());
+    Ok(())
+}
+
+fn chain_then_finish_workflow() -> Result<CompiledWorkflow, String> {
+    let mut nodes = Vec::new();
+    for index in 0..33_u16 {
+        nodes.push(node(
+            index,
+            Some(0),
+            Some(index + 1),
+            CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        ));
+    }
+    nodes.push(node(
+        33,
+        None,
+        None,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    ));
+    workflow_from_parts_with_inputs(
+        "fjall_bound_gate_recovery",
+        Box::from([]),
+        nodes.into_boxed_slice(),
+        Box::from([ConstValue::I64(0)]),
+        1,
+    )
+}
+
+fn gate_digest(byte: u8) -> GateDigest {
+    GateDigest::from_bytes([byte; 32])
+}
+
+fn person(value: &str) -> Result<ApproverId, String> {
+    ApproverId::new(value.to_string()).ok_or_else(|| String::from("invalid approver"))
+}
+
+fn bound_gate(
+    run: RunId,
+    artifact_digest: vb_core::WorkflowDigest,
+    policy_digest: vb_core::WorkflowDigest,
+) -> Result<BoundManualGate, String> {
+    let role = ApproverRole::new(String::from("deploy-approver"))
+        .ok_or_else(|| String::from("invalid role"))?;
+    let input_digest =
+        vb_storage::inputs::compute_input_digest(&[]).map_err(|err| format!("{err:?}"))?;
+    Ok(BoundManualGate {
+        gate: ManualGate {
+            id: GateId::new(7),
+            run,
+            action: ActionId::new(1),
+            risk: RiskClass::High,
+            compensatable: false,
+            required_role: role,
+            separation_of_duties: SeparationOfDuties::DistinctFromRequester,
+            evidence_bundle_digest: gate_digest(1),
+            prompt_digest: gate_digest(2),
+            timeout_ms: 60_000,
+            escalation_policy_digest: gate_digest(3),
+            break_glass_allowed: true,
+            approval_reason_required: true,
+        },
+        binding: GateBinding {
+            artifact_digest: GateDigest::from_bytes(artifact_digest.as_bytes()),
+            policy_digest: GateDigest::from_bytes(policy_digest.as_bytes()),
+            input_digest: GateDigest::from_bytes(input_digest.as_bytes()),
+            attempt: 1,
+        },
+    })
+}
+
+#[test]
+fn runtime_recovers_bound_gate_and_blocks_resume_after_fjall_reopen() -> Result<(), String> {
+    let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
+    let run = RunId::new(8_801);
+    let workflow = chain_then_finish_workflow()?;
+
+    let journal = open_journal(temp.path())?;
+    let artifact =
+        submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &Box::from([]))
+            .map_err(|err| err.to_string())?;
+    let shared = StorageRuntimeJournal::shared_strict(journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    runtime
+        .submit_direct_with_grants_and_contracts(
+            run,
+            workflow,
+            CapabilitySet::empty(),
+            Box::from([]),
+        )
+        .map_err(|err| err.to_string())?;
+    runtime.tick_all().map_err(|err| err.to_string())?;
+    runtime
+        .open_bound_gate(
+            run,
+            bound_gate(run, artifact.digest, artifact.policy_digest)?,
+            0,
+            person("bob")?,
+        )
+        .map_err(|err| err.to_string())?;
+    runtime.tick_all().map_err(|err| err.to_string())?;
+    drop(runtime);
+    drop(journal);
+
+    let journal = open_journal(temp.path())?;
+    let shared = StorageRuntimeJournal::shared_strict(journal);
+    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    recovered
+        .recover_and_resume(run)
+        .map_err(|err| err.to_string())?;
+    recovered.tick_all().map_err(|err| err.to_string())?;
+
+    recovered.resume_run(run).map_err(|err| err.to_string())?;
+    let err = recovered
+        .tick_all()
+        .expect_err("resume must not bypass a recovered bound gate");
+    assert!(matches!(
+        err,
+        RuntimeError::GateOpenBlocksResume { run: blocked, gate }
+            if blocked == run && gate == GateId::new(7)
+    ));
     Ok(())
 }

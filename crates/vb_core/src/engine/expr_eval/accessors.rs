@@ -126,16 +126,20 @@ pub(super) fn eval_accessor_with_taint_inner(
         .ok_or(EngineError::InvalidCompiledWorkflow {
             reason: "accessor index out of bounds",
         })?;
-    let mut accumulated_taint = run.read_taint(program.root)?;
-    let mut current = *run.read_slot(program.root)?;
+    let taint = run.read_taint(program.root)?;
+    let value = *run.read_slot(program.root)?;
+    traverse_accessor_path(store, value, taint, &program.path)
+}
 
-    if program.path.is_empty() {
-        return Ok((current, accumulated_taint));
-    }
-
+fn traverse_accessor_path(
+    store: &ValueStore,
+    mut current: SlotValue,
+    mut accumulated_taint: crate::value::Taint,
+    path: &[crate::workflow::PathSegment],
+) -> Result<(SlotValue, crate::value::Taint), EngineError> {
     let mut index = 0usize;
-    while index < program.path.len() {
-        let segment = program.path.get(index).copied().ok_or({
+    while index < path.len() {
+        let segment = path.get(index).copied().ok_or({
             EngineError::InternalInvariantViolation {
                 reason: "accessor path index checked by loop bound".into(),
             }

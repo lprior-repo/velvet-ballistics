@@ -73,25 +73,37 @@ pub(super) fn admission_digest(case: &Case, digest: WorkflowDigest) -> TestResul
         let journal = case.open()?;
         journal
             .events_for_run_full(RUN)?
-            .get(1)
-            .cloned()
+            .into_iter()
+            .find(|event| {
+                matches!(
+                    event,
+                    vb_storage::JournalEvent::RunAdmissionBudget { .. }
+                        | vb_storage::JournalEvent::RunAdmission { .. }
+                )
+            })
             .ok_or("admission")?
     };
-    let vb_storage::JournalEvent::RunAdmission { input_digest, .. } = &mut admission else {
-        return Err("admission variant".into());
+    let (input_digest, seq) = match &mut admission {
+        vb_storage::JournalEvent::RunAdmissionBudget {
+            input_digest, seq, ..
+        }
+        | vb_storage::JournalEvent::RunAdmission {
+            input_digest, seq, ..
+        } => (input_digest, *seq),
+        _ => return Err("admission variant".into()),
     };
     *input_digest = vb_storage::RunInputBinding::Digest(digest);
     let bytes = vb_storage::encode_record(
         vb_storage::constants::MAGIC_JOURNAL_EVENT,
         admission.record_kind(),
-        1,
+        seq.get(),
         &admission,
         vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
     replace(
         case,
         vb_storage::constants::KEYSPACE_RUN_EVENT,
-        &vb_storage::keys::run_event_key(RUN, vb_storage::EventSeq::new(1))?,
+        &vb_storage::keys::run_event_key(RUN, seq)?,
         &bytes,
     )
 }

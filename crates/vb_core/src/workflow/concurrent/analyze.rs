@@ -9,6 +9,8 @@ use crate::workflow::{
     CompiledNode, CompiledNodeKind as K, ContractResource, WorkflowError, WorkflowParts,
 };
 
+type RegionAnalysis = (Box<[ConcurrentGroupRegion]>, Option<(StepIdx, StepIdx)>);
+
 fn foreach_capacity(limit: u32, cap: u16) -> Result<u16, WorkflowError> {
     let value = limit.min(u32::from(cap));
     u16::try_from(value).map_err(|_| WorkflowError::ResourceContractExceeded {
@@ -42,26 +44,34 @@ fn lane(
     parts: &WorkflowParts,
     owner: StepIdx,
     entry: StepIdx,
-) -> Result<ConcurrentLaneRegion, WorkflowError> {
+) -> Result<(ConcurrentLaneRegion, Option<StepIdx>), WorkflowError> {
     let exclusive_end = super::concurrent_lane_walk::boundary(parts, owner, entry)?;
-    let (ends, children) = super::concurrent_lane_walk::walk_lane(parts, owner, entry)?;
-    Ok(ConcurrentLaneRegion {
-        entry,
-        exclusive_end,
-        ends: ends.into_boxed_slice(),
-        children: children.into_boxed_slice(),
-    })
+    let (ends, children, suspension) = super::concurrent_lane_walk::walk_lane(parts, owner, entry)?;
+    Ok((
+        ConcurrentLaneRegion {
+            entry,
+            exclusive_end,
+            ends: ends.into_boxed_slice(),
+            children: children.into_boxed_slice(),
+        },
+        suspension,
+    ))
 }
 
 fn group(
     parts: &WorkflowParts,
     map: &[LaneOwner],
     node: &CompiledNode,
-) -> Result<ConcurrentGroupRegion, WorkflowError> {
+) -> Result<(ConcurrentGroupRegion, Option<StepIdx>), WorkflowError> {
     let (starts, join) = super::concurrent_lane_walk::entries(node)?;
     let mut lanes = super::concurrent_lane_walk::scratch(starts.len())?;
+    let mut first_suspension = None;
     for entry in starts {
-        lanes.push(lane(parts, node.id, *entry)?);
+        let (lane_region, suspension) = lane(parts, node.id, *entry)?;
+        if first_suspension.is_none() {
+            first_suspension = suspension;
+        }
+        lanes.push(lane_region);
     }
     let (mode, capacity) = mode_cap(&node.kind, node.id)?;
     let parent = map
@@ -69,21 +79,23 @@ fn group(
         .copied()
         .ok_or(WorkflowError::StepOutOfBounds { step: node.id })?
         .map(|(parent, _)| parent);
-    Ok(ConcurrentGroupRegion {
-        owner: node.id,
-        join,
-        parent,
-        mode,
-        capacity,
-        lanes: lanes.into_boxed_slice(),
-    })
+    Ok((
+        ConcurrentGroupRegion {
+            owner: node.id,
+            join,
+            parent,
+            mode,
+            capacity,
+            lanes: lanes.into_boxed_slice(),
+        },
+        first_suspension,
+    ))
 }
 
-pub(super) fn analyze(
-    parts: &WorkflowParts,
-) -> Result<Box<[ConcurrentGroupRegion]>, WorkflowError> {
+fn build_regions(parts: &WorkflowParts) -> Result<RegionAnalysis, WorkflowError> {
     let map = super::concurrent_ownership::owners(parts)?;
     let mut groups = super::concurrent_lane_walk::scratch(parts.nodes.len())?;
+    let mut first_suspension = None;
     for node in parts.nodes.iter() {
         if matches!(
             node.kind,
@@ -91,10 +103,33 @@ pub(super) fn analyze(
                 | K::TogetherConcurrentStart { .. }
                 | K::FirstSuccessStart { .. }
         ) {
-            groups.push(group(parts, &map, node)?);
+            let (group_region, suspension) = group(parts, &map, node)?;
+            if first_suspension.is_none()
+                && let Some(step) = suspension
+            {
+                first_suspension = Some((group_region.owner, step));
+            }
+            groups.push(group_region);
         }
     }
-    Ok(groups.into_boxed_slice())
+    Ok((groups.into_boxed_slice(), first_suspension))
+}
+
+pub(super) fn analyze(
+    parts: &WorkflowParts,
+) -> Result<Box<[ConcurrentGroupRegion]>, WorkflowError> {
+    let (groups, first_suspension) = build_regions(parts)?;
+    if let Some((owner, step)) = first_suspension {
+        return Err(WorkflowError::ConcurrentLaneSuspension { owner, step });
+    }
+    Ok(groups)
+}
+
+pub(super) fn analyze_raw(
+    parts: &WorkflowParts,
+) -> Result<Box<[ConcurrentGroupRegion]>, WorkflowError> {
+    let (groups, _suspensions) = build_regions(parts)?;
+    Ok(groups)
 }
 
 fn from_frame(error: FrameBoundError) -> WorkflowError {

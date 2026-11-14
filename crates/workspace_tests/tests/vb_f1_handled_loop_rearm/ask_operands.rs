@@ -216,8 +216,8 @@ fn resequence(events: &mut [E]) -> TestResult {
             E::RunAccepted { seq, .. }
             | E::RunAdmission { seq, .. }
             | E::RunAdmissionBudget { seq, .. }
+            | E::RunBudgetOriginEvent { seq, .. }
             | E::CompatibilityDecisionEvent { seq, .. }
-            | E::TenantAdmissionEvent { seq, .. }
             | E::PolicyDecisionEvent { seq, .. }
             | E::StepStarted { seq, .. }
             | E::SlotWrittenEvent { seq, .. }

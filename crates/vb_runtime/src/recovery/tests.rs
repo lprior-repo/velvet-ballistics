@@ -12,6 +12,191 @@ use vb_storage::recovery::{
     RecoveryTerminalState, UnsupportedRecoveryState,
 };
 
+fn admission_budget() -> vb_core::AggregateResourceBudget {
+    vb_core::AggregateResourceBudget {
+        max_steps_executable: 1,
+        max_action_tickets: 1,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 1,
+        max_gather_items: 1,
+        max_for_each_iterations: 1,
+        max_together_branches: 1,
+        max_repeat_attempts: 1,
+        max_run_time_seconds: 1,
+        max_result_bytes: 1,
+        max_total_slots_written: 1,
+        max_timer_entries: 1,
+        max_trace_events: 1,
+        max_queue_depth: 1,
+        max_journal_batch_bytes: 1,
+        max_ipc_payload_bytes: 1,
+        max_blob_bytes: 1,
+        max_input_bytes: 1,
+        max_step_budget_per_tick: 1,
+        max_transitions_per_tick: 1,
+        max_open_gates: 1,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions: 1,
+        max_journal_bytes_total: 1,
+        max_value_store_entries: 1,
+        max_cost_units: 1,
+    }
+}
+
+fn budgeted_admission_event(run: RunId) -> vb_storage::JournalEvent {
+    vb_storage::JournalEvent::RunAdmissionBudget {
+        run,
+        seq: EventSeq::new(1),
+        artifact_digest: WorkflowDigest::from_bytes([0x31; 32]),
+        input_digest: vb_storage::RunInputBinding::Digest(WorkflowDigest::from_bytes([0x32; 32])),
+        policy_pin: vb_storage::RunPolicyPin::Pinned(WorkflowDigest::from_bytes([0x33; 32])),
+        granted_capabilities: vb_core::CapabilitySet::empty(),
+        policy: vb_core::RuntimePolicy::Strict,
+        budget: admission_budget(),
+    }
+}
+
+#[test]
+fn current_admission_hydration_keeps_budget_and_bindings_from_one_receipt() {
+    let run = RunId::new(31_001);
+    let events = [budgeted_admission_event(run)];
+
+    let expected = crate::admission::RunAdmission::with_budget(
+        WorkflowDigest::from_bytes([0x31; 32]),
+        run,
+        vb_core::CapabilitySet::empty(),
+        vb_core::RuntimePolicy::Strict,
+        admission_budget(),
+    )
+    .with_policy_pin(vb_storage::RunPolicyPin::Pinned(
+        WorkflowDigest::from_bytes([0x33; 32]),
+    ))
+    .with_input_digest(vb_storage::RunInputBinding::Digest(
+        WorkflowDigest::from_bytes([0x32; 32]),
+    ));
+    assert_eq!(
+        super::hydrate_run_admission_from_events(&events),
+        Some(expected)
+    );
+}
+
+#[test]
+fn current_admission_hydration_keeps_budget_and_bindings_after_fjall_reopen()
+-> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(31_004);
+    let event = budgeted_admission_event(run);
+    let accepted = vb_storage::JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::ZERO,
+        workflow: WorkflowDigest::from_bytes([0x35; 32]),
+    };
+    let directory = tempfile::tempdir()?;
+    {
+        let journal = vb_storage::FjallJournal::open(directory.path(), None)?;
+        journal.append_strict(&accepted)?;
+        journal.append_strict(&event)?;
+    }
+    let journal = vb_storage::FjallJournal::open(directory.path(), None)?;
+    let events = journal.events_for_run_full(run)?;
+    assert_eq!(events, vec![accepted, event]);
+    let expected = crate::admission::RunAdmission::with_budget(
+        WorkflowDigest::from_bytes([0x31; 32]),
+        run,
+        vb_core::CapabilitySet::empty(),
+        vb_core::RuntimePolicy::Strict,
+        admission_budget(),
+    )
+    .with_policy_pin(vb_storage::RunPolicyPin::Pinned(
+        WorkflowDigest::from_bytes([0x33; 32]),
+    ))
+    .with_input_digest(vb_storage::RunInputBinding::Digest(
+        WorkflowDigest::from_bytes([0x32; 32]),
+    ));
+    assert_eq!(
+        super::hydrate_run_admission_from_events(&events),
+        Some(expected)
+    );
+    Ok(())
+}
+
+#[test]
+fn current_admission_hydration_rejects_legacy_and_ambiguous_receipts() {
+    let run = RunId::new(31_002);
+    let legacy = vb_storage::JournalEvent::RunAdmission {
+        run,
+        seq: EventSeq::new(1),
+        artifact_digest: WorkflowDigest::from_bytes([0x31; 32]),
+        input_digest: vb_storage::RunInputBinding::Digest(WorkflowDigest::from_bytes([0x32; 32])),
+        policy_pin: vb_storage::RunPolicyPin::Pinned(WorkflowDigest::from_bytes([0x33; 32])),
+        granted_capabilities: vb_core::CapabilitySet::empty(),
+        policy: vb_core::RuntimePolicy::Strict,
+    };
+    assert_eq!(super::hydrate_run_admission_from_events(&[legacy]), None);
+
+    let mut unbound = budgeted_admission_event(run);
+    if let vb_storage::JournalEvent::RunAdmissionBudget { input_digest, .. } = &mut unbound {
+        *input_digest = vb_storage::RunInputBinding::LegacyUnbound;
+    }
+    assert_eq!(super::hydrate_run_admission_from_events(&[unbound]), None);
+
+    let mut unverified = budgeted_admission_event(run);
+    if let vb_storage::JournalEvent::RunAdmissionBudget { policy_pin, .. } = &mut unverified {
+        *policy_pin = vb_storage::RunPolicyPin::Unverified;
+    }
+    assert_eq!(
+        super::hydrate_run_admission_from_events(&[unverified]),
+        None
+    );
+
+    let current = budgeted_admission_event(run);
+    assert_eq!(
+        super::hydrate_run_admission_from_events(&[current.clone(), current]),
+        None
+    );
+}
+
+#[test]
+fn current_admission_validation_rejects_unbudgeted_unbound_and_unpinned_state() {
+    let run = RunId::new(31_003);
+    let digest = WorkflowDigest::from_bytes([0x34; 32]);
+    let unbudgeted = crate::admission::RunAdmission::new(
+        digest,
+        run,
+        vb_core::CapabilitySet::empty(),
+        vb_core::RuntimePolicy::Strict,
+    );
+    assert_eq!(
+        super::validate_current_admission(&unbudgeted),
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("admission_budget_missing")
+        })
+    );
+
+    let unbound = crate::admission::RunAdmission::with_budget(
+        digest,
+        run,
+        vb_core::CapabilitySet::empty(),
+        vb_core::RuntimePolicy::Strict,
+        admission_budget(),
+    );
+    assert_eq!(
+        super::validate_current_admission(&unbound),
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("admission_input_binding_missing")
+        })
+    );
+
+    let unpinned = unbound.with_input_digest(vb_storage::RunInputBinding::Digest(digest));
+    assert_eq!(
+        super::validate_current_admission(&unpinned),
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("admission_policy_pin_missing")
+        })
+    );
+}
+
 fn shape_validation_seed() -> RecoveryFrameSeed {
     RecoveryFrameSeed {
         summary: RecoveryRuntimeSummary {
@@ -906,4 +1091,31 @@ fn terminal_gate_suspended_run_without_terminal_is_not_terminal() {
     let run = RunId::new(27_004);
     let events = vec![started_event(run, 0, 1)];
     assert!(!super::run_is_currently_terminal(&events));
+}
+
+#[test]
+fn recovery_reconstructs_action_attempts_and_journal_bytes() -> Result<(), String> {
+    let run = RunId::new(27_005);
+    let events = vec![
+        vb_storage::JournalEvent::ActionFailedEvent {
+            run,
+            seq: EventSeq::ZERO,
+            step: StepIdx::new(1),
+            action: ActionId::new(0),
+            attempt: 3,
+        },
+        vb_storage::JournalEvent::ActionFailedEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            action: ActionId::new(0),
+            attempt: 2,
+        },
+    ];
+    let attempts = super::recover_action_attempts(&events, 2);
+    assert_eq!(attempts.get(0).copied(), Some(0));
+    assert_eq!(attempts.get(1).copied(), Some(3));
+    let bytes = super::recover_journal_bytes_written(&events).map_err(|error| error.to_string())?;
+    assert!(bytes > 0);
+    Ok(())
 }

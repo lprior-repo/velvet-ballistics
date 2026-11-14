@@ -46,14 +46,16 @@ fn descriptor(value: u8) -> AggregateResourceBudget {
 
 #[test]
 fn every_recorded_budget_dimension_is_enforced_without_mutation() -> TestResult {
-    let required = descriptor(2);
-    let enough = descriptor(3);
+    let mut required = descriptor(2);
+    required.max_run_time_seconds = 2_592_000;
+    let mut enough = descriptor(3);
+    enough.max_run_time_seconds = required.max_run_time_seconds;
     assert_eq!(
         validate_recorded_budget_limits(&required, &required),
         Ok(())
     );
     assert_eq!(validate_recorded_budget_limits(&enough, &required), Ok(()));
-    let deficiencies: [(&str, fn(&mut AggregateResourceBudget)); 28] = [
+    let deficiencies: [(&str, fn(&mut AggregateResourceBudget)); 27] = [
         ("max_steps_executable", |budget| {
             budget.max_steps_executable = 1
         }),
@@ -74,9 +76,6 @@ fn every_recorded_budget_dimension_is_enforced_without_mutation() -> TestResult 
         }),
         ("max_repeat_attempts", |budget| {
             budget.max_repeat_attempts = 1
-        }),
-        ("max_run_time_seconds", |budget| {
-            budget.max_run_time_seconds = 1
         }),
         ("max_result_bytes", |budget| budget.max_result_bytes = 1),
         ("max_total_slots_written", |budget| {
@@ -129,8 +128,32 @@ fn every_recorded_budget_dimension_is_enforced_without_mutation() -> TestResult 
     Ok(())
 }
 
+#[test]
+fn recorded_lifetime_is_a_positive_cap_not_a_minimum_reservation() -> TestResult {
+    let mut required = descriptor(2);
+    required.max_run_time_seconds = 2_592_000;
+    let mut recorded = descriptor(2);
+    recorded.max_run_time_seconds = 3;
+    assert_eq!(
+        validate_recorded_budget_limits(&recorded, &required),
+        Ok(())
+    );
+
+    recorded.max_run_time_seconds = 0;
+    assert_eq!(
+        validate_recorded_budget_limits(&recorded, &required),
+        Err(cannot_resume_error("admission_budget_lifetime_invalid"))
+    );
+    recorded.max_run_time_seconds = required.max_run_time_seconds + 1;
+    assert_eq!(
+        validate_recorded_budget_limits(&recorded, &required),
+        Err(cannot_resume_error("admission_budget_lifetime_invalid"))
+    );
+    Ok(())
+}
+
 fn workflow() -> TestResult<CompiledWorkflow> {
-    let mut parts = WorkflowParts {
+    let parts = WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
         name: Box::from("recovered-budget-limits"),
@@ -168,9 +191,19 @@ fn workflow() -> TestResult<CompiledWorkflow> {
             constraint: vb_core::CompiledInputConstraint::required(),
         }]),
     };
-    parts.digest =
-        WorkflowDigest::from_bytes(*blake3::hash(&postcard::to_allocvec(&parts)?).as_bytes());
-    Ok(CompiledWorkflow::try_from_parts(parts)?)
+    let workflow = CompiledWorkflow::try_from_parts(parts)?;
+    let mut canonical_parts = workflow.to_parts();
+    canonical_parts.digest = WorkflowDigest::from_bytes([0; 32]);
+    let canonical = postcard::to_allocvec(&canonical_parts)?;
+    canonical_parts.digest = WorkflowDigest::from_bytes(*blake3::hash(&canonical).as_bytes());
+    Ok(CompiledWorkflow::try_from_parts(canonical_parts)?)
+}
+
+fn input_digest() -> TestResult<WorkflowDigest> {
+    Ok(vb_storage::inputs::compute_input_digest(&[(
+        SlotIdx::ZERO,
+        vb_core::SlotValue::I64(7),
+    )])?)
 }
 
 fn contract() -> TestResult<ActionContract> {
@@ -197,7 +230,10 @@ fn current_requirements_validate_without_replacing_admission_identity_or_limits(
         RuntimePolicy::Strict,
         &[contract()?],
     )?;
-    let recorded = AggregateResourceBudget::from_workflow(&workflow)?;
+    let required = AggregateResourceBudget::from_workflow(&workflow)?;
+    assert_eq!(required.max_run_time_seconds, 2_592_000);
+    let mut recorded = AggregateResourceBudget::from_workflow(&workflow)?;
+    recorded.max_run_time_seconds = 3;
     let run = RunId::new(201);
     let admission = RunAdmission::with_budget(
         artifact.digest,
@@ -206,7 +242,8 @@ fn current_requirements_validate_without_replacing_admission_identity_or_limits(
         RuntimePolicy::Strict,
         recorded,
     )
-    .with_policy_pin(vb_storage::RunPolicyPin::Pinned(artifact.policy_digest));
+    .with_policy_pin(vb_storage::RunPolicyPin::Pinned(artifact.policy_digest))
+    .with_input_digest(vb_storage::RunInputBinding::Digest(input_digest()?));
     let before = postcard::to_allocvec(&admission)?;
     validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
         context: RecoveredAdmissionContext {
@@ -224,7 +261,7 @@ fn current_requirements_validate_without_replacing_admission_identity_or_limits(
 }
 
 #[test]
-fn missing_recorded_budget_is_not_inferred_as_zero_or_replaced() -> TestResult {
+fn missing_recorded_budget_fails_closed_without_mutation() -> TestResult {
     let workflow = workflow()?;
     let admission = RunAdmission::new(
         WorkflowDigest::from_bytes([8; 32]),
@@ -232,9 +269,69 @@ fn missing_recorded_budget_is_not_inferred_as_zero_or_replaced() -> TestResult {
         CapabilitySet::empty(),
         RuntimePolicy::Strict,
     );
-    assert_eq!(validate_recovered_budget(&admission, &workflow), Ok(()));
+    let before = postcard::to_allocvec(&admission)?;
+    assert_eq!(
+        validate_recovered_budget(&admission, &workflow),
+        Err(cannot_resume_error("admission_budget_missing"))
+    );
     assert_eq!(admission.budget(), None);
+    assert_eq!(postcard::to_allocvec(&admission)?, before);
     Ok(())
+}
+
+#[test]
+fn obsolete_admission_bytes_reject_while_current_journal_record_roundtrips() -> TestResult {
+    let admission_bytes = [
+        0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a,
+        0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a,
+        0x2a, 0x2a, 0x92, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ];
+    let obsolete_admission: Result<RunAdmission, _> = postcard::from_bytes(&admission_bytes);
+    assert!(obsolete_admission.is_err());
+
+    let event_bytes = hex_decode(concat!(
+        "454a4256010018003c000000260000000000000000000000b18884489ad095c626e5884606c27aa4",
+        "33591c671fca1b5f81680b7565ba60957cfdb313189221002a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+        "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a0000"
+    ))?;
+    let (envelope, event) = vb_storage::codec::decode_journal_event(
+        &event_bytes,
+        vb_storage::constants::MAGIC_JOURNAL_EVENT,
+        vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    assert!(matches!(
+        event,
+        vb_storage::JournalEvent::RunAdmission { .. }
+    ));
+    assert_eq!(
+        blake3::hash(&event_bytes).to_hex().as_str(),
+        "a459f12713fcd76acc67dc04d6717031a057bc55c5e29097c704cf5d14227fb7"
+    );
+    assert_eq!(
+        vb_storage::codec::encode_record(
+            envelope.magic,
+            event.record_kind(),
+            envelope.sequence,
+            &event,
+            vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?,
+        event_bytes
+    );
+    Ok(())
+}
+
+fn hex_decode(value: &str) -> TestResult<Vec<u8>> {
+    if value.len() % 2 != 0 {
+        return Err("hex fixture must contain pairs".into());
+    }
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let pair = std::str::from_utf8(pair)?;
+            Ok(u8::from_str_radix(pair, 16)?)
+        })
+        .collect()
 }
 
 struct DurableFixture {
@@ -246,6 +343,14 @@ struct DurableFixture {
 }
 
 fn durable_fixture(deficient_cost: bool) -> TestResult<DurableFixture> {
+    durable_fixture_with_lifetime(deficient_cost, Some(3), true)
+}
+
+fn durable_fixture_with_lifetime(
+    deficient_cost: bool,
+    lifetime: Option<u64>,
+    include_origin: bool,
+) -> TestResult<DurableFixture> {
     let dir = tempfile::tempdir()?;
     let journal = Arc::new(vb_storage::FjallJournal::open(dir.path(), None)?);
     let workflow = workflow()?;
@@ -256,19 +361,63 @@ fn durable_fixture(deficient_cost: bool) -> TestResult<DurableFixture> {
         RuntimePolicy::Strict,
         std::slice::from_ref(&contract),
     )?;
+    let artifact_digest = artifact.digest;
+    let policy_digest = artifact.policy_digest;
     let run = RunId::new(203);
+    let source = b"recovered budget workflow source".to_vec();
+    let source_digest = WorkflowDigest::from_bytes(*blake3::hash(&source).as_bytes());
+    let inputs = vb_storage::RunInputsRecord::new(
+        run,
+        artifact_digest,
+        source_digest,
+        &workflow,
+        Box::from([(SlotIdx::ZERO, vb_core::SlotValue::I64(7))]),
+    )
+    .map_err(|error| format!("create retained input fixture: {error}"))?;
+    let input_digest = inputs.input_digest();
+    let accepted_at_ms =
+        crate::shard::helpers::wall_clock_millis_since_epoch().ok_or("clock unavailable")?;
+    let current_control = !deficient_cost && lifetime == Some(3) && include_origin;
+    if current_control {
+        let submission = vb_storage::RunSubmission::new(
+            vb_storage::WorkflowSourceRecord {
+                digest: source_digest,
+                source,
+            },
+            artifact.clone(),
+            inputs.clone(),
+            vb_storage::RunHeaderRecord {
+                run,
+                workflow_id: vb_core::WorkflowId::new(0),
+                compiled_digest: workflow.digest(),
+                status: 0,
+                accepted_at_ms,
+            },
+        )?;
+        journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
+    }
     let mut recorded = AggregateResourceBudget::from_workflow(&workflow)?;
-    if deficient_cost {
-        recorded.max_cost_units = recorded
-            .max_cost_units
-            .checked_sub(1)
-            .ok_or("positive action cost required")?;
-    } else {
-        recorded.max_cost_units = recorded
-            .max_cost_units
-            .checked_add(1)
-            .ok_or("larger recorded cost must remain bounded")?;
-        validate_descriptor(&recorded)?;
+    if !current_control {
+        if let Some(seconds) = lifetime {
+            recorded.max_run_time_seconds = seconds;
+        }
+        if deficient_cost {
+            recorded.max_cost_units = recorded
+                .max_cost_units
+                .checked_sub(1)
+                .ok_or("positive action cost required")?;
+        } else {
+            recorded.max_cost_units = recorded
+                .max_cost_units
+                .checked_add(1)
+                .ok_or("larger recorded cost must remain bounded")?;
+            if lifetime.is_none_or(|seconds| {
+                seconds > 0
+                    && seconds <= vb_core::BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds
+            }) {
+                validate_descriptor(&recorded)?;
+            }
+        }
     }
     let seq = vb_core::SeqNo::new(2);
     let ticket = vb_core::ActionTicket {
@@ -287,39 +436,91 @@ fn durable_fixture(deficient_cost: bool) -> TestResult<DurableFixture> {
         ),
         fencing_token: 0,
     };
-    let events = [
-        vb_storage::JournalEvent::RunAccepted {
+    let mut events = Vec::new();
+    if !current_control {
+        events.push(vb_storage::JournalEvent::RunAccepted {
             run,
             seq: vb_storage::EventSeq::ZERO,
             workflow: workflow.digest(),
-        },
-        vb_storage::JournalEvent::RunAdmissionBudget {
-            run,
-            seq: vb_storage::EventSeq::new(1),
-            artifact_digest: artifact.digest,
-            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-            policy_pin: vb_storage::RunPolicyPin::Pinned(artifact.policy_digest),
-            granted_capabilities: CapabilitySet::empty(),
-            policy: RuntimePolicy::Strict,
-            budget: recorded,
-        },
-        vb_storage::JournalEvent::StepStarted {
+        });
+        events.push(match lifetime {
+            Some(_) => vb_storage::JournalEvent::RunAdmissionBudget {
+                run,
+                seq: vb_storage::EventSeq::new(1),
+                artifact_digest,
+                input_digest: vb_storage::RunInputBinding::Digest(input_digest),
+                policy_pin: vb_storage::RunPolicyPin::Pinned(policy_digest),
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+                budget: recorded,
+            },
+            None => vb_storage::JournalEvent::RunAdmission {
+                run,
+                seq: vb_storage::EventSeq::new(1),
+                artifact_digest,
+                input_digest: vb_storage::RunInputBinding::Digest(input_digest),
+                policy_pin: vb_storage::RunPolicyPin::Pinned(policy_digest),
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+            },
+        });
+    }
+    let has_origin = include_origin && lifetime.is_some();
+    if has_origin && !current_control {
+        events.push(vb_storage::JournalEvent::CompatibilityDecisionEvent {
             run,
             seq: vb_storage::EventSeq::new(2),
+            decision: vb_storage::compat::decide_boundary(
+                vb_storage::compat::artifact_ir_version_inputs(artifact.artifact_version),
+                vb_storage::compat::schema_version_digest(artifact.artifact_version),
+                vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+            ),
+        });
+        events.push(vb_storage::JournalEvent::RunBudgetOriginEvent {
+            run,
+            seq: vb_storage::EventSeq::new(3),
+            started_millis: accepted_at_ms,
+        });
+    }
+    let step_seq: u64 = if current_control {
+        4
+    } else if has_origin {
+        4
+    } else {
+        2
+    };
+    let action_event_seq = step_seq.checked_add(1).ok_or("action seq overflow")?;
+    events.extend([
+        vb_storage::JournalEvent::StepStarted {
+            run,
+            seq: vb_storage::EventSeq::new(step_seq),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         vb_storage::JournalEvent::ActionScheduledTicket {
             run,
-            seq: vb_storage::EventSeq::new(3),
+            seq: vb_storage::EventSeq::new(action_event_seq),
             ticket,
             input: SlotIdx::ZERO,
             output: SlotIdx::new(1),
             action_abi_digest: action_contract_abi_digest(&contract)?,
         },
-    ];
-    for event in events {
-        journal.append_strict(&event)?;
+    ]);
+    if !current_control {
+        if has_origin {
+            journal.append_runtime_admission_batch(
+                &events[..4],
+                &inputs,
+                vb_storage::DurabilityProfile::Strict,
+            )?;
+            for event in events.iter().skip(4) {
+                journal.append_strict(event)?;
+            }
+        } else {
+            for event in events {
+                journal.append_strict(&event)?;
+            }
+        }
     }
     let runtime = Runtime::new(
         NonZeroUsize::MIN,
@@ -342,9 +543,25 @@ fn durable_fixture(deficient_cost: bool) -> TestResult<DurableFixture> {
 fn sufficient_budget_recovery_query_is_a_nonmutating_artifact_control() -> TestResult {
     let fixture = durable_fixture(false)?;
     let before = fixture.journal.events_for_run_full(fixture.run)?;
+    let admission_seq = before
+        .iter()
+        .find_map(|event| match event {
+            vb_storage::JournalEvent::RunAdmissionBudget { seq, .. } => Some(*seq),
+            _ => None,
+        })
+        .ok_or("persisted budgeted admission missing")?;
+    let admission_wire = fixture
+        .journal
+        .get_event_bytes(fixture.run, admission_seq)?
+        .ok_or("persisted budgeted admission bytes missing")?;
     let state = fixture.runtime.pending_boundary_snapshot(4);
     let required = AggregateResourceBudget::from_workflow(&workflow()?)?;
-    assert!(fixture.recorded.max_cost_units > required.max_cost_units);
+    assert_eq!(required.max_run_time_seconds, 2_592_000);
+    assert_eq!(
+        fixture.recorded.max_run_time_seconds,
+        required.max_run_time_seconds
+    );
+    assert_eq!(fixture.recorded.max_cost_units, required.max_cost_units);
     let original = crate::recovery::hydrate_run_admission_from_events(&before)
         .ok_or("original durable admission missing")?;
     assert_eq!(original.budget(), Some(fixture.recorded));
@@ -360,12 +577,18 @@ fn sufficient_budget_recovery_query_is_a_nonmutating_artifact_control() -> TestR
     };
     assert_eq!(carried.as_ref(), &original);
     assert_eq!(carried.budget(), Some(fixture.recorded));
-    assert_ne!(carried.budget(), Some(required));
+    assert_eq!(carried.budget(), Some(required));
     assert_eq!(postcard::to_allocvec(carried.as_ref())?, original_bytes);
     assert_eq!(command.run, fixture.run);
     assert_eq!(command.artifact_digest, original.artifact_digest());
     assert_eq!(fixture.runtime.pending_boundary_snapshot(4), state);
     assert_eq!(fixture.journal.events_for_run_full(fixture.run)?, before);
+    assert_eq!(
+        fixture
+            .journal
+            .get_event_bytes(fixture.run, admission_seq)?,
+        Some(admission_wire)
+    );
     Ok(())
 }
 
@@ -391,6 +614,34 @@ fn underfunded_cost_refuses_public_recovery_before_enqueue_or_state_mutation() -
     Ok(())
 }
 
+#[test]
+fn persisted_invalid_lifetime_headers_refuse_public_recovery_without_mutation() -> TestResult {
+    let ceiling = vb_core::BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;
+    for (lifetime, reason) in [
+        (None, "admission_missing"),
+        (Some(0), "admission_budget_lifetime_invalid"),
+        (
+            Some(ceiling.checked_add(1).ok_or("profile ceiling overflow")?),
+            "admission_budget_lifetime_invalid",
+        ),
+    ] {
+        let fixture = durable_fixture_with_lifetime(false, lifetime, true)?;
+        let before = fixture.journal.events_for_run_full(fixture.run)?;
+        let pending = fixture.runtime.pending_boundary_snapshot(4);
+        assert_eq!(
+            fixture.runtime.recover_product(fixture.run),
+            Err(cannot_resume_error(reason))
+        );
+        assert_eq!(fixture.runtime.pending_boundary_snapshot(4), pending);
+        assert_eq!(fixture.journal.events_for_run_full(fixture.run)?, before);
+        assert!(matches!(
+            fixture.runtime.snapshot_run(fixture.run, 1)?,
+            crate::shard::InspectResponse::NotFound { .. }
+        ));
+    }
+    Ok(())
+}
+
 fn validate_descriptor(budget: &AggregateResourceBudget) -> TestResult {
     vb_core::budget::validate_aggregate_budget(budget, &vb_core::BoundednessPolicy::DEFAULT)?;
     vb_core::budget::validate_step_ceilings(budget)?;
@@ -399,7 +650,7 @@ fn validate_descriptor(budget: &AggregateResourceBudget) -> TestResult {
 
 #[test]
 fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
-    let raise: [(&str, fn(&mut AggregateResourceBudget)); 28] = [
+    let raise: [(&str, fn(&mut AggregateResourceBudget)); 27] = [
         ("max_steps_executable", |required| {
             required.max_steps_executable = 3
         }),
@@ -422,9 +673,6 @@ fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
         }),
         ("max_repeat_attempts", |required| {
             required.max_repeat_attempts = 3
-        }),
-        ("max_run_time_seconds", |required| {
-            required.max_run_time_seconds = 3
         }),
         ("max_result_bytes", |required| required.max_result_bytes = 3),
         ("max_total_slots_written", |required| {
@@ -465,12 +713,15 @@ fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
         }),
         ("max_cost_units", |required| required.max_cost_units = 3),
     ];
-    let uniform_two = descriptor(2);
-    let larger = descriptor(3);
+    let mut uniform_two = descriptor(2);
+    uniform_two.max_run_time_seconds = 1;
+    let mut larger = descriptor(3);
+    larger.max_run_time_seconds = 1;
     validate_descriptor(&uniform_two)?;
     validate_descriptor(&larger)?;
     for (name, raise) in raise {
         let mut required = descriptor(1);
+        required.max_run_time_seconds = 1;
         raise(&mut required);
         validate_descriptor(&required)?;
         let exact = required;
@@ -516,11 +767,20 @@ fn recovery_product_carries_reconstructed_open_gate_into_command() -> TestResult
     };
     let requester = vb_core::manual_gate::ApproverId::new("bob".to_string())
         .ok_or("requester must be valid")?;
+    let next_sequence = fixture
+        .journal
+        .events_for_run_full(fixture.run)?
+        .last()
+        .map(vb_storage::JournalEvent::seq)
+        .ok_or("current fixture event tail must be present")?
+        .get()
+        .checked_add(1)
+        .ok_or("open gate event sequence overflow")?;
     let opened = crate::manual_gate::gate_opened_event(
         gate.clone(),
         0,
         requester.clone(),
-        vb_storage::EventSeq::new(4),
+        vb_storage::EventSeq::new(next_sequence),
     );
     fixture.journal.append_strict(&opened)?;
     let product = match fixture.runtime.recover_product(fixture.run)? {

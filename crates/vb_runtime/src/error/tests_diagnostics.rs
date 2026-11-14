@@ -65,6 +65,22 @@ fn runtime_error_runtime_code_is_absent_without_section_17_equivalent() {
 }
 
 #[test]
+fn runtime_input_slot_kind_mismatch_preserves_stable_diagnostic_code() {
+    let error = RuntimeError::RuntimeInputSlotKindMismatch {
+        slot: vb_core::SlotIdx::new(0),
+        expected: vb_core::InputSlotKind::Null,
+        actual: vb_core::InputSlotKind::Bool,
+    };
+
+    assert_eq!(
+        error.diagnostic_code(),
+        RuntimeError::UNSUPPORTED_OPERATION_CODE
+    );
+    assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x2005));
+    assert_eq!(error.runtime_code(), None);
+}
+
+#[test]
 fn open_gate_capacity_errors_have_stable_codes() {
     assert_eq!(
         RuntimeError::OpenGateCapacityExceeded { capacity: 2 }.diagnostic_code(),

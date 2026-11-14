@@ -4,36 +4,31 @@
 // IN-TREE PRODUCTION-SOURCE MIRROR for accepted-cli digest binding
 // ============================================================================
 //
-// This file is a VERBATIM mirror of the production runtime admission
-// digest-binding types and decision fns.
+// This file is a handwritten structural mirror of selected production
+// admission fields and isolated digest predicates, not a verbatim copy.
 //
-// DRIFT POLICY: `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31`
-//                + `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189`
+// DRIFT POLICY: `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34`
+//                + `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:91-130,156-173,208-224`
 // Production source coverage:
 //   - `WorkflowDigest`           <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255
 //   - `AcceptedArtifact`         <- crates/vb_storage/src/admission.rs:41-77
-//   - `RunAdmission`             <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31
-//   - `RunAdmission::new`        <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66
+//   - `RunAdmission`             <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34
+//   - `RunAdmission::new`        <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:51-69
 //   - `RunAdmission::artifact_digest`
-//                                   <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151
-//   - production_artifact_digest_eq_header
-//                                   <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113
-//                                     (INV-002 strict-policy check:
-//                                      artifact.digest == header
-//                                      || artifact.source_digest == header)
-//   - production_proof_digest_eq_artifact
-//                                   <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122
-//                                     (INV-003 strict-policy check:
-//                                      artifact.verification.digest == artifact.digest)
-//   - production_digest_binding_total
-//                                   <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122,
-//                                      166-174
-//                                     (5-digest chain post-condition:
-//                                      source == artifact == header
-//                                      == event == admission)
-// Regenerate this file whenever production changes. Any rename of
-// `digest`, `source_digest`, `verification.digest`, or `artifact_digest`
-// breaks the `extern_accepted_cli_digest_binding` Verus build.
+//                                   <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:161-165
+//   - digest acceptance and proof-digest checks
+//                                   <- `verify_admission_digest` at
+//                                      crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:156-173
+//   - returned RunAdmission construction
+//                                   <- `admission_from_artifact` at
+//                                      crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:208-224
+// The production check permits a request matching `source_digest` while
+// `artifact.digest` differs. Thus the mirror's 5-way equality predicate
+// is stronger than this production check; the mirror does not prove the
+// entire admission call chain.
+// Regenerate this file when the mirrored production fields or decision
+// conditions change. Names and signatures in the mirror detect only
+// the structural drift actually represented here.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -67,8 +62,8 @@ pub struct SpecRunAdmission {
     pub artifact_digest: SpecWorkflowDigest,
 }
 
-/// Mirror of the strict-policy INV-002 check at
-/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113`:
+/// Mirror of the artifact/request condition in `verify_admission_digest`
+/// at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:156-165`:
 ///
 /// ```ignore
 /// if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
@@ -92,8 +87,8 @@ pub fn production_artifact_digest_eq_header(
     artifact.digest.0 == header_digest.0 || artifact.source_digest.0 == header_digest.0
 }
 
-/// Mirror of the strict-policy INV-003 check at
-/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122`:
+/// Mirror of the verification-digest condition in `verify_admission_digest`
+/// at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:166-173`:
 ///
 /// ```ignore
 /// if artifact.verification.digest != artifact.digest {
@@ -122,19 +117,13 @@ pub fn production_run_admission_artifact_digest(
     admission.artifact_digest
 }
 
-/// Mirror of the 5-digest chain post-condition enforced by the
-/// production strict-admission happy path
-/// (`crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122` for INV-002 and INV-003,
-/// and the `RunAdmission::with_idempotency_evidence` construction at
-/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:166-174` which sets `admission.artifact_digest` to
-/// `artifact.digest`).
-///
-/// Returns `true` iff every digest in the 5-element chain
-/// `{source, artifact, header, event, admission}` is equal to the
-/// single canonical envelope digest — the mathematical statement of
-/// the production post-condition that all 5 digest positions
-/// resolve to the same canonical envelope digest after successful
-/// strict admission.
+/// This mirror expresses a standalone 5-way equality predicate. Production's
+/// `verify_admission_digest` at
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:156-173`
+/// allows the request to match `source_digest` while `artifact.digest`
+/// differs, so successful production admission does not establish this
+/// predicate for all inputs. This mirror does not prove the complete
+/// admission call chain.
 #[verifier::external]
 pub fn production_digest_binding_total(
     source: SpecWorkflowDigest,

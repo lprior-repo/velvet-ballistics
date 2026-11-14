@@ -129,6 +129,7 @@ pub struct ResumableRecoveryProduct {
     boundary: RecoveredRunBoundary,
     retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     open_gates: Vec<crate::shard::types::OpenGate>,
+    bound_open_gates: Vec<crate::shard::types::BoundOpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     admission: crate::admission::RunAdmission,
@@ -136,6 +137,10 @@ pub struct ResumableRecoveryProduct {
     /// the run retained owned inputs. Rebuilt into the shard `RunState`
     /// instead of the default empty store.
     restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+    run_started_millis: Option<u64>,
+    recovered_action_attempts: Option<Box<[u16]>>,
+    recovered_journal_bytes_written: Option<u64>,
+    recovered_tenant: Option<vb_core::ids::TenantId>,
 }
 
 impl ResumableRecoveryProduct {
@@ -152,8 +157,13 @@ impl ResumableRecoveryProduct {
             boundary: parts.boundary,
             retry_checkpoint: parts.retry_checkpoint,
             open_gates: parts.open_gates,
+            bound_open_gates: parts.bound_open_gates,
             admission: parts.admission,
             restored_store: parts.restored_store,
+            run_started_millis: parts.run_started_millis,
+            recovered_action_attempts: parts.recovered_action_attempts,
+            recovered_journal_bytes_written: parts.recovered_journal_bytes_written,
+            recovered_tenant: parts.recovered_tenant,
         }
     }
 
@@ -184,8 +194,15 @@ impl ResumableRecoveryProduct {
             self.boundary,
         )
         .with_open_gates(self.open_gates)
+        .with_bound_open_gates(self.bound_open_gates)
         .with_validated_admission(self.admission)
-        .with_restored_store(self.restored_store);
+        .with_restored_store(self.restored_store)
+        .with_recovered_accounting(
+            self.run_started_millis,
+            self.recovered_action_attempts,
+            self.recovered_journal_bytes_written,
+        )
+        .with_recovered_tenant(self.recovered_tenant);
         match self.retry_checkpoint {
             Some(checkpoint) => command.with_retry_checkpoint(checkpoint),
             None => command,
@@ -205,10 +222,15 @@ pub(crate) struct ResumableRecoveryParts {
     pub(crate) boundary: RecoveredRunBoundary,
     pub(crate) retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     pub(crate) open_gates: Vec<crate::shard::types::OpenGate>,
+    pub(crate) bound_open_gates: Vec<crate::shard::types::BoundOpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     pub(crate) admission: crate::admission::RunAdmission,
     /// Restored cold value store for arena-handle resolution, present when
     /// the run retained owned inputs.
     pub(crate) restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+    pub(crate) run_started_millis: Option<u64>,
+    pub(crate) recovered_action_attempts: Option<Box<[u16]>>,
+    pub(crate) recovered_journal_bytes_written: Option<u64>,
+    pub(crate) recovered_tenant: Option<vb_core::ids::TenantId>,
 }

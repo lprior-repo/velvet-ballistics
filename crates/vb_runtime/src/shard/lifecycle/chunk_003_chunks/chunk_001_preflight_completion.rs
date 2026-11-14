@@ -1,15 +1,15 @@
-use vb_core::ValueStore;
 use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionOutcome, ActionOutputReady, ActionTicket,
     RetryPolicy as VbCoreRetryPolicy,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
-use vb_core::value::{SlotValue, Taint, join_taint};
+use vb_core::value::{join_taint, SlotValue, Taint};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::ValueStore;
 
 use crate::engine::{
-    EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
+    drive_deterministic_full, EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal,
 };
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -64,24 +64,10 @@ pub(crate) fn preflight_action_completion(
     crate::shard::helpers::validate_action_completion(state, ticket)?;
     reject_invalid_ticket_key(ticket)?;
     let contract = resolve_completion_contract(state, ticket.action)?;
-    let input = do_input_slot(state, ticket)?;
-    let expected_output = do_output_slot(state, ticket)?;
-    if output.output_slot != expected_output {
-        return Err(RuntimeError::InvalidActionCompletion);
-    }
-    reject_taint_downgrade(state, input, contract, output.taint)?;
-    let encoded_value =
-        postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
-    let encoded_len = encoded_len_u32(encoded_value.len(), contract.max_output_bytes)?;
-    reject_encoded_len_mismatch(output.encoded_len, encoded_len)?;
-    reject_absolute_output_size(encoded_len)?;
-    reject_contract_output_size(encoded_len, contract.max_output_bytes)?;
-    reject_resource_output_size(
-        encoded_len,
-        state.workflow.resource_contract().max_blob_bytes,
-    )?;
-    vb_core::action::validate_action_outcome(contract, &ActionOutcome::Ready(output))
-        .map_err(runtime_error_from_action_error)?;
+    validate_completion_output(state, ticket, contract, output)?;
+    let encoded_value = encode_completion_value(&output)?;
+    let encoded_len = encoded_completion_len(state, contract, output, encoded_value.len())?;
+    validate_completion_outcome(contract, output)?;
     Ok(ActionCompletionPreflight {
         ticket,
         output_slot: output.output_slot,
@@ -93,9 +79,55 @@ pub(crate) fn preflight_action_completion(
     })
 }
 
+fn validate_completion_output(
+    state: &RunState,
+    ticket: ActionTicket,
+    contract: &ActionContract,
+    output: ActionOutputReady,
+) -> RuntimeResult<()> {
+    let input = do_input_slot(state, ticket)?;
+    if output.output_slot != do_output_slot(state, ticket)? {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    reject_taint_downgrade(state, input, contract, output.taint)
+}
+
+fn encode_completion_value(output: &ActionOutputReady) -> RuntimeResult<Vec<u8>> {
+    postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)
+}
+
+fn encoded_completion_len(
+    state: &RunState,
+    contract: &ActionContract,
+    output: ActionOutputReady,
+    actual_len: usize,
+) -> RuntimeResult<u32> {
+    let encoded_len = encoded_len_u32(actual_len, contract.max_output_bytes)?;
+    reject_encoded_len_mismatch(output.encoded_len, encoded_len)?;
+    reject_absolute_output_size(encoded_len)?;
+    reject_contract_output_size(encoded_len, contract.max_output_bytes)?;
+    reject_resource_output_size(
+        encoded_len,
+        state.workflow.resource_contract().max_blob_bytes,
+    )?;
+    Ok(encoded_len)
+}
+
+fn validate_completion_outcome(
+    contract: &ActionContract,
+    output: ActionOutputReady,
+) -> RuntimeResult<()> {
+    vb_core::action::validate_action_outcome(contract, &ActionOutcome::Ready(output))
+        .map_err(runtime_error_from_action_error)
+}
+
 fn reject_invalid_ticket_key(ticket: ActionTicket) -> RuntimeResult<()> {
-    let expected =
-        crate::engine::action::compute_idempotency_key(ticket.run, ticket.run_attempt, ticket.seq, ticket.action);
+    let expected = crate::engine::action::compute_idempotency_key(
+        ticket.run,
+        ticket.run_attempt,
+        ticket.seq,
+        ticket.action,
+    );
     if ticket.idempotency_key == expected {
         Ok(())
     } else {

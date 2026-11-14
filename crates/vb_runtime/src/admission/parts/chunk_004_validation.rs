@@ -44,39 +44,38 @@ fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionError 
             AdmissionError::ArtifactNotFound { digest }
         }
         ArtifactEnvelopeError::PostcardDecodeFailed => AdmissionError::ArtifactEnvelopeDecodeFailed,
-        ArtifactEnvelopeError::ArtifactEvidenceInvalid => {
-            AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" }
+        ArtifactEnvelopeError::ArtifactEvidenceInvalid
+        | ArtifactEnvelopeError::MissingRequiredProofFlagBounded
+        | ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe
+        | ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe
+        | ArtifactEnvelopeError::MissingRequiredProofFlagDurable
+        | ArtifactEnvelopeError::MissingRequiredProofFlagReplayable
+        | ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified
+        | ArtifactEnvelopeError::MissingIdempotencyAttestation { .. } => {
+            map_artifact_proof_error(source)
         }
         ArtifactEnvelopeError::InvalidGateCount { found, required } => {
             AdmissionError::ArtifactInvalidGateCount { found, required }
-        }
-        ArtifactEnvelopeError::MissingRequiredProofFlagBounded => {
-            AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" }
-        }
-        ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe => {
-            AdmissionError::ArtifactInvalidProofFlag { flag: "taint_safe" }
-        }
-        ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe => {
-            AdmissionError::ArtifactInvalidProofFlag { flag: "retry_safe" }
-        }
-        ArtifactEnvelopeError::MissingRequiredProofFlagDurable => {
-            AdmissionError::ArtifactInvalidProofFlag { flag: "durable" }
-        }
-        ArtifactEnvelopeError::MissingRequiredProofFlagReplayable => {
-            AdmissionError::ArtifactInvalidProofFlag { flag: "replayable" }
-        }
-        ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified => {
-            AdmissionError::ArtifactInvalidProofFlag {
-                flag: "idempotency_verified",
-            }
-        }
-        ArtifactEnvelopeError::MissingIdempotencyAttestation { .. } => {
-            AdmissionError::ArtifactInvalidProofFlag {
-                flag: "idempotency_attested",
-            }
         }
         ArtifactEnvelopeError::ArtifactDigestMismatch { requested, found } => {
             AdmissionError::ArtifactDigestMismatch { requested, found }
         }
     }
+}
+
+fn map_artifact_proof_error(source: ArtifactEnvelopeError) -> AdmissionError {
+    let flag = match source {
+        ArtifactEnvelopeError::ArtifactEvidenceInvalid => "evidence",
+        ArtifactEnvelopeError::MissingRequiredProofFlagBounded => "bounded",
+        ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe => "taint_safe",
+        ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe => "retry_safe",
+        ArtifactEnvelopeError::MissingRequiredProofFlagDurable => "durable",
+        ArtifactEnvelopeError::MissingRequiredProofFlagReplayable => "replayable",
+        ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified => {
+            "idempotency_verified"
+        }
+        ArtifactEnvelopeError::MissingIdempotencyAttestation { .. } => "idempotency_attested",
+        _ => "evidence",
+    };
+    AdmissionError::ArtifactInvalidProofFlag { flag }
 }

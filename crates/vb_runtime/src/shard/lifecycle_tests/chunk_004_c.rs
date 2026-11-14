@@ -90,8 +90,8 @@ fn next_journal_seq(
 
 #[test]
 fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<(), String> {
-    const QUEUE_CAPACITY: usize = 4;
-    const QUEUE_BATCH_SIZE: usize = 4;
+    const QUEUE_CAPACITY: usize = 5;
+    const QUEUE_BATCH_SIZE: usize = 5;
     let (journal, queue, adapter, shared) = queued_journal_fixture(
         "vb-runtime-submit-drive-rollback-",
         QUEUE_CAPACITY,
@@ -99,7 +99,16 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     )?;
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(50_100);
-    let workflow = require_workflow("suspended", suspended_workflow())?;
+    let workflow = honest_digest_workflow(require_workflow("suspended", suspended_workflow())?)?;
+    let contracts = strict_submit_contracts();
+    vb_storage::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        vb_core::policy::RuntimePolicy::Journaled,
+        &contracts,
+    )
+    .map_err(|error| error.to_string())?;
+    shard.policy = vb_core::policy::RuntimePolicy::Journaled;
     let filler_run = RunId::new(50_101);
     queue
         .enqueue_journaled(vb_storage::JournalEvent::RunCancelled {
@@ -121,10 +130,8 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: workflow.clone(),
-            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
-                0
-            )),
+            caps: strict_submit_caps(),
+            action_contracts: contracts.clone(),
             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
@@ -148,7 +155,7 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     assert_eq!(shard.terminal_runs_contains(run), false);
     assert_eq!(
         shard.journal_sequences.get(&run).copied(),
-        Some(vb_storage::EventSeq::new(2))
+        Some(vb_storage::EventSeq::new(4))
     );
     assert_eq!(
         shard.counters().snapshot(),
@@ -170,15 +177,15 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
             .pending_profile_counts()
             .map_err(|error| error.to_string())?
             .journaled,
-        3
+        5
     );
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
 
     let header_flush = adapter
         .flush_batch()
         .map_err(|error| format!("{error:?}"))?;
-    assert_eq!(header_flush.drained, 3);
-    assert_eq!(header_flush.written, 3);
+    assert_eq!(header_flush.drained, 5);
+    assert_eq!(header_flush.written, 5);
     let durable_filler = journal
         .events_for_run(filler_run)
         .map_err(|error| error.to_string())?;
@@ -193,8 +200,12 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
         [
             vb_storage::JournalEvent::RunAccepted { seq, .. },
             vb_storage::JournalEvent::RunAdmissionBudget { seq: admission_seq, .. },
+            vb_storage::JournalEvent::CompatibilityDecisionEvent { seq: compatibility_seq, .. },
+            vb_storage::JournalEvent::RunBudgetOriginEvent { seq: origin_seq, .. },
         ] if *seq == vb_storage::EventSeq::new(0)
             && *admission_seq == vb_storage::EventSeq::new(1)
+            && *compatibility_seq == vb_storage::EventSeq::new(2)
+            && *origin_seq == vb_storage::EventSeq::new(3)
     ));
     assert_eq!(
         durable_header.iter().any(|event| matches!(
@@ -210,10 +221,8 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
-            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
-                0
-            )),
+            caps: strict_submit_caps(),
+            action_contracts: contracts,
             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
@@ -231,7 +240,7 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     );
     assert_eq!(
         shard.journal_sequences.get(&run).copied(),
-        Some(vb_storage::EventSeq::new(5))
+        Some(vb_storage::EventSeq::new(7))
     );
 
     let resume_flush = adapter
@@ -250,6 +259,8 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
         vec![
             vb_storage::RecordKind::RunAccepted,
             vb_storage::RecordKind::RunAdmissionBudget,
+            vb_storage::RecordKind::CompatibilityDecision,
+            vb_storage::RecordKind::RunBudgetOrigin,
             vb_storage::RecordKind::RunResumed,
             vb_storage::RecordKind::StepStarted,
             vb_storage::RecordKind::ActionScheduledTicket,
@@ -260,7 +271,7 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
             .iter()
             .map(vb_storage::JournalEvent::seq)
             .collect::<Vec<_>>(),
-        (0..5).map(vb_storage::EventSeq::new).collect::<Vec<_>>()
+        (0..7).map(vb_storage::EventSeq::new).collect::<Vec<_>>()
     );
     assert_eq!(
         durable_after_resume

@@ -16,54 +16,36 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let run = ticket.run;
         self.require_pending_action_ownership(ticket)?;
-        let (preflight, action_abi_digest) = {
-            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-            let pf = preflight_action_completion(state, ticket, output)?;
-            let abi = schedule_action_abi_digest(state, ticket.action)?;
-            (pf, abi)
-        };
-        if self.append_command_journal_events(
-            run,
-            [RuntimeJournalEvent::ActionCompletedEnvelope {
-                ticket: preflight.ticket,
-                output: preflight.output_slot,
-                value: preflight.encoded_value.clone(),
-                encoded_len: preflight.encoded_len,
-                taint: preflight.taint,
-                value_digest: preflight.value_digest,
-                action_abi_digest,
-            }],
-        )? {
-            let _removed_ticket = self.pending_action_remove(run);
-            return self.fail_command_run_on_journal_budget(run);
+        let (preflight, action_abi_digest) =
+            self.prepare_completion_preflight(run, ticket, output)?;
+        if self.append_completion_journal(run, &preflight, action_abi_digest)? {
+            return self.fail_completion_journal_budget(run);
         }
-        let state = self
-            .run_state_get_mut(run)
-            .ok_or(RuntimeError::RunNotFound)?;
-        state
-            .frame
-            .write_slot_with_taint(preflight.output_slot, preflight.value, preflight.taint)
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        state
-            .frame
-            .mark_succeeded(preflight.ticket.step)
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        crate::shard::helpers::advance_after_action_completion(state, preflight.ticket.step)?;
-        state
-            .frame
-            .increment_executed()
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        let _removed_ticket = self.pending_action_remove(run);
+        self.finish_action_completion(run, preflight)
+    }
+
+    fn apply_action_completion_frame(
+        &mut self,
+        run: RunId,
+        preflight: ActionCompletionPreflight,
+    ) -> RuntimeResult<(SlotIdx, StepIdx, Vec<u8>)> {
+        self.write_action_completion_frame(run, preflight)
+    }
+
+    fn trace_action_completion(
+        &mut self,
+        run: RunId,
+        slot: SlotIdx,
+        step: StepIdx,
+        encoded_value: Vec<u8>,
+    ) {
         self.trace_ring.push(TraceEvent::SlotWritten {
             run,
-            slot: preflight.output_slot,
-            value: preflight.encoded_value,
+            slot,
+            value: encoded_value,
         });
-        self.trace_ring.push(TraceEvent::ActionCompleted {
-            run,
-            step: preflight.ticket.step,
-        });
-        self.drive_run(run)
+        self.trace_ring
+            .push(TraceEvent::ActionCompleted { run, step });
     }
 
     pub(crate) fn handle_legacy_action_completion(
@@ -73,15 +55,29 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let ticket = self.require_legacy_pending_action_ownership(run, step)?;
         self.reject_unregistered_completion(ticket)?;
-        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-        state
+        self.validate_legacy_action_state(ticket)?;
+        if self.append_legacy_action_event(run, ticket)? {
+            let _removed_ticket = self.pending_action_remove(run);
+            return self.fail_command_run_on_journal_budget(run);
+        }
+        self.finish_legacy_action_success(run, ticket)
+    }
+
+    fn validate_legacy_action_state(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+        self.run_state_get(ticket.run)
+            .ok_or(RuntimeError::RunNotFound)?
             .frame
             .step_state(ticket.step)
-            .map_err(|_| RuntimeError::RunNotFound)?;
-        // Evidence chain: emit StepSucceeded for legacy action completion.
-        // Legacy path has no output slot information.
-        // Journal append FIRST so a journal failure does not diverge frame and journal.
-        if self.append_command_journal_events(
+            .map(|_| ())
+            .map_err(|_| RuntimeError::RunNotFound)
+    }
+
+    fn append_legacy_action_event(
+        &mut self,
+        run: RunId,
+        ticket: ActionTicket,
+    ) -> RuntimeResult<bool> {
+        self.append_command_journal_events(
             run,
             [RuntimeJournalEvent::StepSucceeded {
                 run,
@@ -89,10 +85,14 @@ impl Shard {
                 output: SlotIdx::ZERO,
                 attempt: ticket.attempt,
             }],
-        )? {
-            let _removed_ticket = self.pending_action_remove(run);
-            return self.fail_command_run_on_journal_budget(run);
-        }
+        )
+    }
+
+    fn finish_legacy_action_success(
+        &mut self,
+        run: RunId,
+        ticket: ActionTicket,
+    ) -> RuntimeResult<()> {
         let state = self
             .run_state_get_mut(run)
             .ok_or(RuntimeError::RunNotFound)?;
@@ -123,89 +123,68 @@ impl Shard {
         let code = failure.code;
         self.require_pending_action_ownership(ticket)?;
         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
-        // 1. Preflight (read-only): validate and decide the failure outcome.
-        //    No mutation has occurred yet, so a journal append failure
-        //    below cannot diverge memory-only state from durable evidence.
         let preflight = {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
             preflight_action_failure(state, ticket, &failure)?
         };
-        // 1b. Retry durability gate: a RetryNow proceeds only when every
-        // event emitted for the run is durable, flushing the queued prefix
-        // on demand. Runs before any journal append so a full journal still
-        // surfaces QueueFull from the append with state preserved, and a
-        // blocked retry mutates nothing at all.
         if preflight.outcome == ActionFailureOutcome::RetryNow {
             self.can_retry(run)?;
         }
         let retry_timer = self.prepare_retry_timer(run, &preflight)?;
-        // 2. Journal append FIRST. FailRun needs both ActionFailed and
-        //    RunFailed to append as one same-run batch before any pending
-        //    action, trace, frame, counter, or terminal-state mutation. If
-        //    the batch is rejected by a bounded queued journal, no partial
-        //    ActionFailed prefix can consume the last queue slot.
-        let action_failed_event = RuntimeJournalEvent::ActionFailed {
-            run,
-            step: preflight.ticket.step,
-            action: preflight.ticket.action,
-            attempt: preflight.ticket.attempt,
-        };
-        let budget_exceeded = if preflight.outcome == ActionFailureOutcome::FailRun {
-            let attempt = self
-                .run_state_get(run)
-                .map(|state| state.run_attempt.get())
-                .ok_or(RuntimeError::RunNotFound)?;
-            if self.append_command_journal_events(
-                run,
-                [
-                    action_failed_event,
-                    RuntimeJournalEvent::RunFailed { run, attempt },
-                ],
-            )? {
-                self.record_command_journal_events(
-                    run,
-                    [RuntimeJournalEvent::RunFailed { run, attempt }],
-                )?;
-            }
-            false
-        } else if let Some(plan) = retry_timer.as_ref() {
-            self.append_command_journal_events(run, [action_failed_event, plan.event.clone()])?
-        } else {
-            self.append_command_journal_events(run, [action_failed_event])?
-        };
-        // 3. Apply preflight mutations to the run frame / action_attempts.
-        //    Held in a narrow scope so `pending_action_remove` and
-        //    `trace_ring.push` can borrow `self` after the mutable
-        //    state borrow ends.
-        {
-            let state = self
-                .run_state_get_mut(run)
-                .ok_or(RuntimeError::RunNotFound)?;
-            apply_action_failure_preflight(state, &preflight)?;
+        let budget_exceeded =
+            self.append_action_failure_events(run, &preflight, retry_timer.as_ref())?;
+        self.apply_action_failure_frame(run, &preflight)?;
+        self.record_action_failure(run, &preflight, code);
+        self.finish_action_failure(run, preflight, retry_timer, budget_exceeded)
+    }
+
+    fn append_action_failure_events(
+        &mut self,
+        run: RunId,
+        preflight: &ActionFailurePreflight,
+        retry_timer: Option<&RetryTimerPlan>,
+    ) -> RuntimeResult<bool> {
+        if preflight.outcome == ActionFailureOutcome::FailRun {
+            return self.append_terminal_action_failure(run, preflight);
         }
+        self.append_retryable_action_failure(run, preflight, retry_timer)
+    }
+
+    fn apply_action_failure_frame(
+        &mut self,
+        run: RunId,
+        preflight: &ActionFailurePreflight,
+    ) -> RuntimeResult<()> {
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        apply_action_failure_preflight(state, preflight)
+    }
+
+    fn record_action_failure(
+        &mut self,
+        run: RunId,
+        preflight: &ActionFailurePreflight,
+        code: vb_core::ActionFailureCode,
+    ) {
         let _removed_ticket = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::ActionFailed {
             run,
             step: preflight.ticket.step,
             code,
         });
+    }
+
+    fn finish_action_failure(
+        &mut self,
+        run: RunId,
+        preflight: ActionFailurePreflight,
+        retry_timer: Option<RetryTimerPlan>,
+        budget_exceeded: bool,
+    ) -> RuntimeResult<()> {
         if let Some(plan) = retry_timer {
-            let timer = plan.timer;
-            if budget_exceeded {
-                return self.fail_command_run_on_journal_budget(run);
-            }
-            let state = self
-                .run_state_get_mut(run)
-                .ok_or(RuntimeError::RunNotFound)?;
-            state
-                .frame
-                .mark_waiting(timer.step)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            self.pending_timer_insert(run, timer)?;
-            self.apply(run, RuntimeEvent::AwaitTimer)?;
-            return Ok(());
+            return self.finish_delayed_action_retry(run, plan.timer, budget_exceeded);
         }
-        // 4. Drive the run state machine forward using the preflighted outcome.
         match preflight.outcome {
             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
                 if budget_exceeded {
@@ -219,4 +198,26 @@ impl Shard {
             }
         }
     }
+
+    fn finish_delayed_action_retry(
+        &mut self,
+        run: RunId,
+        timer: PendingTimer,
+        budget_exceeded: bool,
+    ) -> RuntimeResult<()> {
+        if budget_exceeded {
+            return self.fail_command_run_on_journal_budget(run);
+        }
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .mark_waiting(timer.step)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+        self.pending_timer_insert(run, timer)?;
+        self.apply(run, RuntimeEvent::AwaitTimer)
+    }
 }
+
+include!("completion_helpers.rs");

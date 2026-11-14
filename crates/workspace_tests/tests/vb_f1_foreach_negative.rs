@@ -38,7 +38,8 @@ steps:
 "#;
 
 #[test]
-fn for_each_at_once_must_be_one() -> Result<(), String> {
+fn for_each_at_once_requires_positive_bound_and_allows_checked_parallel_cap() -> Result<(), String>
+{
     for n in [0, 2] {
         let src = SOURCE.replace("at_once: 1", &format!("at_once: {n}"));
         if n == 0 {
@@ -51,7 +52,7 @@ fn for_each_at_once_must_be_one() -> Result<(), String> {
                 },
             )?;
         } else {
-            extras::assert_serial_cap(&src)?;
+            extras::assert_concurrent_cap(&src, 3, 2)?;
         }
     }
     Ok(())

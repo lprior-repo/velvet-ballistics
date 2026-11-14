@@ -34,16 +34,26 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
         let mut budget = Self::transition_tick_budget(state, step_budget_per_tick)?;
+        let signal = Self::drive_with_granted_capabilities(state, &mut budget, evidence)?;
+        Self::check_drive_signal_budgets(state, manual_open_gates, &signal)?;
+        Ok(signal)
+    }
+
+    fn drive_with_granted_capabilities(
+        state: &mut RunState,
+        budget: &mut vb_core::StepBudget,
+        evidence: &mut EvidenceCollector,
+    ) -> RuntimeEngineResult<RuntimeSignal> {
         let empty_caps = CapabilitySet::empty();
         let granted = state
             .admission
             .as_ref()
-            .map(|a| a.granted_capabilities())
+            .map(|admission| admission.granted_capabilities())
             .unwrap_or(&empty_caps);
-        let signal = drive_deterministic_full(
+        drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
-            &mut budget,
+            budget,
             &mut state.store,
             &state.action_contracts,
             RetryPolicy::NEVER,
@@ -51,9 +61,7 @@ impl Shard {
             &mut state.collect_states,
             granted,
             state.run_attempt.get(),
-        )?;
-        Self::check_drive_signal_budgets(state, manual_open_gates, &signal)?;
-        Ok(signal)
+        )
     }
 
     fn check_drive_signal_budgets(
@@ -110,14 +118,11 @@ impl Shard {
             }
             Ok(RuntimeSignal::Finished(_)) => self.apply_terminal_finished(run, state, evidence),
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
-                if evidence.is_empty() && self.pending_action_get(run) == Some(ticket) {
-                    self.keep_run(run, state)
-                        .map_err(DriveApplyFailure::AfterCommit)?;
-                    return self
-                        .apply(run, RuntimeEvent::AwaitAction)
-                        .map_err(DriveApplyFailure::AfterCommit);
+                if let Some(state) = self.keep_duplicate_action(run, state, ticket, evidence)? {
+                    self.apply_awaiting_action(run, state, ticket, evidence)
+                } else {
+                    Ok(())
                 }
-                self.apply_awaiting_action(run, state, ticket, evidence)
             }
             Ok(RuntimeSignal::AwaitingWait) => {
                 self.apply_awaiting_timer(run, state, PendingTimerKind::Wait, evidence)
@@ -144,7 +149,8 @@ impl Shard {
         let (journal_events, trace_events) = self
             .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+        if !self
+            .charge_drive_journal_bytes(&mut state, &journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?
         {
             return self.fail_run_on_journal_budget(run, state, trace_events);
@@ -156,5 +162,21 @@ impl Shard {
             .map_err(DriveApplyFailure::AfterCommit)?;
         self.apply(run, RuntimeEvent::DriveContinue)
             .map_err(DriveApplyFailure::AfterCommit)
+    }
+    fn keep_duplicate_action(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        ticket: ActionTicket,
+        evidence: &EvidenceCollector,
+    ) -> Result<Option<RunState>, DriveApplyFailure> {
+        if !evidence.is_empty() || self.pending_action_get(run) != Some(ticket) {
+            return Ok(Some(state));
+        }
+        self.keep_run(run, state)
+            .map_err(DriveApplyFailure::AfterCommit)?;
+        self.apply(run, RuntimeEvent::AwaitAction)
+            .map_err(DriveApplyFailure::AfterCommit)?;
+        Ok(None)
     }
 }

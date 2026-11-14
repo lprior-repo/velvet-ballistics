@@ -5,6 +5,8 @@ use vb_core::engine::EngineError;
 use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
+mod nested;
+use self::nested::validate_nested_completion;
 
 fn invalid(reason: &'static str) -> RuntimeEngineError {
     RuntimeEngineError::Core(EngineError::InvalidCompiledWorkflow { reason })
@@ -68,115 +70,6 @@ fn preflight(
     validate_nested_completion(plan, run, body, control)
 }
 
-fn validate_nested_completion(
-    plan: &CompiledWorkflow,
-    run: &RunFrame,
-    body: StepIdx,
-    control: StepIdx,
-) -> RuntimeEngineResult<()> {
-    for raw in 0..plan.node_count() {
-        let id = StepIdx::new(raw);
-        let Some(region) = plan.loop_region(id) else {
-            continue;
-        };
-        if region.start() < body || region.control() >= control {
-            continue;
-        }
-        let start = run
-            .step_state(region.start())
-            .map_err(RuntimeEngineError::Core)?;
-        if matches!(start, StepState::Succeeded | StepState::Failed)
-            && recovered_exit(plan, run, control, region.start(), region.control())?
-        {
-            continue;
-        }
-        let latch = run
-            .step_state(region.control())
-            .map_err(RuntimeEngineError::Core)?;
-        let untouched = (region.body().get()..=region.control().get())
-            .map(StepIdx::new)
-            .try_fold(true, |pending, step| {
-                run.step_state(step)
-                    .map(|state| pending && state == StepState::Pending)
-                    .map_err(RuntimeEngineError::Core)
-            })?;
-        let valid = match start {
-            StepState::Pending => untouched,
-            StepState::Succeeded => {
-                let done = run
-                    .step_state(region.done())
-                    .map_err(RuntimeEngineError::Core)?;
-                let may_skip = plan.node(region.start()).is_some_and(|node| {
-                    matches!(
-                        node.kind,
-                        CompiledNodeKind::ForEachStart { .. }
-                            | CompiledNodeKind::CollectStart { .. }
-                            | CompiledNodeKind::ReduceStart { .. }
-                    )
-                });
-                done == StepState::Succeeded
-                    && (latch == StepState::Succeeded || (may_skip && untouched))
-            }
-            _ => false,
-        };
-        if !valid {
-            return Err(invalid("nested loop region not consistently completed"));
-        }
-    }
-    for raw in body.get()..control.get() {
-        let id = StepIdx::new(raw);
-        let node = plan
-            .node(id)
-            .ok_or_else(|| invalid("nested node missing"))?;
-        if let CompiledNodeKind::TogetherStart { ref branches, join } = node.kind {
-            let start = run.step_state(id).map_err(RuntimeEngineError::Core)?;
-            if matches!(start, StepState::Succeeded | StepState::Failed)
-                && recovered_exit(plan, run, control, id, join)?
-            {
-                continue;
-            }
-            let expected = if start == StepState::Succeeded {
-                StepState::Succeeded
-            } else {
-                StepState::Pending
-            };
-            if run.step_state(join).map_err(RuntimeEngineError::Core)? != expected {
-                return Err(invalid("nested together join not consistently completed"));
-            }
-            for branch in branches {
-                if run.step_state(*branch).map_err(RuntimeEngineError::Core)? != expected {
-                    return Err(invalid("nested together branch not consistently completed"));
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn recovered_exit(
-    plan: &CompiledWorkflow,
-    run: &RunFrame,
-    control: StepIdx,
-    start: StepIdx,
-    end: StepIdx,
-) -> RuntimeEngineResult<bool> {
-    for raw in start.get()..=end.get() {
-        let failed = StepIdx::new(raw);
-        if run.step_state(failed).map_err(RuntimeEngineError::Core)? == StepState::Failed
-            && plan
-                .node(failed)
-                .and_then(|node| node.routing.error.handler())
-                .is_some_and(|handler| handler > end)
-            && run
-                .validate_handled_failure_rearm(plan, control, failed)
-                .is_ok()
-        {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
 fn reset_completed(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
@@ -220,25 +113,54 @@ pub(super) fn loop_body_rearm(
     reset_completed(plan, run, body, control)
 }
 
+/// Activation validation that can accept a step whose `StepStarted` is already
+/// durable. `allow_running` is set only for a journal-authorized handler entry
+/// (see `transitions::resumes_journaled_handler`); every other structural check
+/// still applies.
 pub(super) fn validate_activation(
     plan: &CompiledWorkflow,
     node: &CompiledNode,
     run: &RunFrame,
+    allow_running: bool,
 ) -> RuntimeEngineResult<()> {
-    // Verify current node's step state
+    validate_running_state(run, node, allow_running)?;
+    validate_containing_loop_starts(plan, node.id, run)?;
+    match plan.nested_activation_blocked(node.id) {
+        Some(true) | Some(false) => {}
+        None if requires_activation_metadata(&node.kind) => {
+            return Err(invalid("loop activation metadata missing"));
+        }
+        None => {}
+    }
+    if let Some(body) = super::transitions::loop_body_target(node)
+        && body < node.id
+    {
+        check_region(plan, node.id, body)?;
+    }
+    Ok(())
+}
+fn validate_running_state(
+    run: &RunFrame,
+    node: &CompiledNode,
+    allow_running: bool,
+) -> RuntimeEngineResult<()> {
     let state = run.step_state(node.id).map_err(RuntimeEngineError::Core)?;
-    if state == StepState::Running {
+    if state == StepState::Running && !allow_running {
         return Err(invalid("node already running"));
     }
+    Ok(())
+}
 
-    // Validate every containing loop region start has Succeeded.
-    // For nodes in a region's body/control interval, the region's start
-    // must have completed before that node can be entered.
+fn validate_containing_loop_starts(
+    plan: &CompiledWorkflow,
+    node_id: StepIdx,
+    run: &RunFrame,
+) -> RuntimeEngineResult<()> {
     for raw in 0..plan.node_count() {
         let control = StepIdx::new(raw);
         if let Some(region) = plan.loop_region(control)
-            && region.body() <= node.id
-            && node.id <= region.control()
+            && region.body() <= node_id
+            && node_id <= region.control()
         {
             let start_state = run
                 .step_state(region.start())
@@ -248,26 +170,6 @@ pub(super) fn validate_activation(
             }
         }
     }
-
-    // Original validation for region structure and metadata
-    match plan.nested_activation_blocked(node.id) {
-        Some(true) => {
-            // Blocked nodes are only valid if all containing starts succeeded,
-            // which we've already checked above.
-        }
-        Some(false) => {}
-        None if requires_activation_metadata(&node.kind) => {
-            return Err(invalid("loop activation metadata missing"));
-        }
-        None => {}
-    }
-
-    if let Some(body) = super::transitions::loop_body_target(node)
-        && body < node.id
-    {
-        check_region(plan, node.id, body)?;
-    }
-
     Ok(())
 }
 

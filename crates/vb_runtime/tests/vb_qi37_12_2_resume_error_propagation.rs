@@ -112,6 +112,10 @@ impl SourceFailingRuntimeJournal {
 }
 
 impl RuntimeJournal for SourceFailingRuntimeJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        self.inner.durability_profile()
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
         if FailAt::Resumed.matches(&event) {
             return Err(self.source.clone());
@@ -161,6 +165,10 @@ impl FailingRuntimeJournal {
 }
 
 impl RuntimeJournal for FailingRuntimeJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        self.inner.durability_profile()
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
         if self.fail_at.matches(&event) {
             return Err(self.failure());

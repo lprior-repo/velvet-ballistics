@@ -1,0 +1,11 @@
+include!("resource_depth_regressions/tenant_depth.rs");
+include!("resource_depth_regressions/quota_lifecycle.rs");
+include!("resource_depth_regressions/lifetime_owned.rs");
+include!("resource_depth_regressions/lifetime_owned_corruption.rs");
+include!("resource_depth_regressions/lifetime_owned_origin_validation.rs");
+include!("resource_depth_regressions/lifetime_origin_recovery.rs");
+include!("resource_depth_regressions/lifetime_origin_recovery/tests.rs");
+include!("resource_depth_regressions/cap_route_review.rs");
+include!("resource_depth_regressions/active_cap_review.rs");
+include!("resource_depth_regressions/cap_submit_matrix.rs");
+include!("resource_depth_regressions/cap_authority_review.rs");

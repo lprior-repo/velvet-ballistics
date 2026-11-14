@@ -103,7 +103,7 @@ pub(crate) fn run_strengthen_case(label: &str, path: &str) -> bool {
         .and_then(|()| {
             fixture.write(
                 path,
-                "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 4);\n    assert_ne!(2 + 2, 5);\n}\n",
+                "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 4);\n    assert_ne!(2 + 2, 5);\n    assert!((2 + 2).checked_sub(4).is_some());\n}\n",
             )
         });
     if let Err(error) = setup {
@@ -121,6 +121,37 @@ pub(crate) fn run_strengthen_case(label: &str, path: &str) -> bool {
     let findings_ok = expect_findings(label, &findings, &expected);
     println!("SelfTest:{label}: exit expected=0 actual={exit}");
     findings_ok && exit == 0
+}
+
+pub(crate) fn run_replaced_oracle_case(label: &str, path: &str) -> bool {
+    let fixture = match Fixture::new(label) {
+        Ok(fixture) => fixture,
+        Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
+    };
+    let setup = fixture
+        .write(path, BASE_TEXT)
+        .and_then(|()| fixture.commit_base())
+        .and_then(|()| {
+            fixture.write(
+                path,
+                "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 5);\n    assert!((2 + 2).checked_sub(4).is_some());\n}\n",
+            )
+        });
+    if let Err(error) = setup {
+        return report_failure(label, &format!("setup: {error}"));
+    }
+    let findings = match fixture.collect() {
+        Ok(findings) => findings,
+        Err(error) => return report_failure(label, &format!("collect: {error}")),
+    };
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => return report_failure(label, &format!("check: {error}")),
+    };
+    let expected = [("WeakenedAssertion", path)];
+    let findings_ok = expect_findings(label, &findings, &expected);
+    println!("SelfTest:{label}: exit expected=1 actual={exit}");
+    findings_ok && exit == 1
 }
 
 pub(crate) fn run_silent_return_case(label: &str, path: &str) -> bool {

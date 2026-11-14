@@ -21,12 +21,28 @@ fn action_recovery_test_contract()
 }
 
 fn action_recovery_contract_store(
+    workflow: &vb_core::workflow::CompiledWorkflow,
+    contract: &vb_core::action::ActionContract,
+) -> Result<
+    (
+        vb_core::ids::WorkflowDigest,
+        crate::admission::SharedAcceptedArtifactStore,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        workflow,
+        vb_core::policy::RuntimePolicy::Relaxed,
+        std::slice::from_ref(contract),
+    )?;
+    Ok((artifact.digest, action_recovery_artifact_store(artifact)))
+}
+
+fn action_recovery_artifact_store(
     artifact: vb_storage::admission::AcceptedArtifact,
 ) -> crate::admission::SharedAcceptedArtifactStore {
     #[derive(Debug)]
-    struct ActionRecoveryContractStore {
-        artifact: vb_storage::admission::AcceptedArtifact,
-    }
+    struct ActionRecoveryContractStore(vb_storage::admission::AcceptedArtifact);
 
     impl crate::admission::AcceptedArtifactStore for ActionRecoveryContractStore {
         fn load_accepted_artifact(
@@ -34,16 +50,91 @@ fn action_recovery_contract_store(
             artifact_digest: vb_core::ids::WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, crate::admission::ArtifactEnvelopeError>
         {
-            if artifact_digest != self.artifact.digest {
+            if artifact_digest != self.0.digest {
                 return Err(crate::admission::ArtifactEnvelopeError::ArtifactNotFound {
                     digest: artifact_digest,
                 });
             }
-            Ok(self.artifact.clone())
+            Ok(self.0.clone())
         }
     }
 
-    std::sync::Arc::new(ActionRecoveryContractStore { artifact })
+    std::sync::Arc::new(ActionRecoveryContractStore(artifact))
+}
+
+fn action_recovery_current_admission(
+    run: vb_core::ids::RunId,
+    workflow: &vb_core::workflow::CompiledWorkflow,
+    artifact: &vb_storage::admission::AcceptedArtifact,
+    policy: vb_core::policy::RuntimePolicy,
+) -> Result<crate::admission::RunAdmission, Box<dyn std::error::Error>> {
+    let inputs = [(
+        vb_core::ids::SlotIdx::ZERO,
+        vb_core::value::SlotValue::I64(0),
+    )];
+    let budget = vb_core::AggregateResourceBudget::from_workflow(workflow)?;
+    let digest = vb_storage::inputs::compute_input_digest(&inputs)?;
+    Ok(crate::admission::RunAdmission::with_budget(
+        artifact.digest,
+        run,
+        vb_core::CapabilitySet::from_grants(artifact.required_capabilities.clone()),
+        policy,
+        budget,
+    )
+    .with_input_digest(vb_storage::RunInputBinding::Digest(digest))
+    .with_policy_pin(vb_storage::RunPolicyPin::Pinned(artifact.policy_digest)))
+}
+
+fn current_recovery_header_accounting(
+    run: vb_core::ids::RunId,
+    workflow: &vb_core::workflow::CompiledWorkflow,
+    admission: &crate::admission::RunAdmission,
+    started_millis: u64,
+) -> Result<(vb_storage::EventSeq, Box<[u16]>, u64), Box<dyn std::error::Error>> {
+    let mut events = vec![
+        vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq: vb_storage::EventSeq::ZERO,
+            workflow: workflow.digest(),
+        },
+        vb_storage::JournalEvent::RunAdmissionBudget {
+            run,
+            seq: vb_storage::EventSeq::new(1),
+            artifact_digest: admission.artifact_digest(),
+            input_digest: admission.input_digest().clone(),
+            policy_pin: admission.policy_pin(),
+            granted_capabilities: admission.granted_capabilities().clone(),
+            policy: admission.policy(),
+            budget: admission
+                .budget()
+                .ok_or("current admission budget missing")?,
+        },
+    ];
+    let mut next_seq = 2u64;
+    if let Some(decision) = admission.ir_compat_decision() {
+        events.push(vb_storage::JournalEvent::CompatibilityDecisionEvent {
+            run,
+            seq: vb_storage::EventSeq::new(next_seq),
+            decision,
+        });
+        next_seq = next_seq.checked_add(1).ok_or("header sequence overflow")?;
+    }
+    events.push(vb_storage::JournalEvent::RunBudgetOriginEvent {
+        run,
+        seq: vb_storage::EventSeq::new(next_seq),
+        started_millis,
+    });
+    next_seq = next_seq.checked_add(1).ok_or("header sequence overflow")?;
+    let journal_bytes = events.iter().try_fold(0u64, |total, event| {
+        total
+            .checked_add(crate::journal::storage_event_bytes(event)?)
+            .ok_or(crate::RuntimeError::EncodeFailed)
+    })?;
+    Ok((
+        vb_storage::EventSeq::new(next_seq),
+        crate::shard::helpers::new_action_attempts(workflow.node_count()),
+        journal_bytes,
+    ))
 }
 
 #[test]
@@ -51,13 +142,28 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
 -> Result<(), Box<dyn std::error::Error>> {
     let run_id = vb_core::ids::RunId::new(1);
 
-    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
-    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
+    let do_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        vb_core::workflow::CompiledNodeKind::Do {
+            action: vb_core::ids::ActionId::new(0),
+            input: vb_core::ids::SlotIdx::new(0),
+        },
+        Some(vb_core::ids::SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let finish_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::new(1),
+        },
+        None,
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
         name: Box::from("recovery-test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([do_node, finish_node]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -74,20 +180,23 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         }]),
     };
 
-    let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?;
-    let workflow = honest_digest_workflow(workflow)?;
-    let workflow_digest = workflow.digest();
-
     let contract = action_recovery_test_contract()?;
-    let artifact = vb_storage::admission::prepare_compiled_artifact(
-        &workflow,
-        vb_core::policy::RuntimePolicy::Relaxed,
-        &[contract],
-    )?;
-    let artifact_digest = artifact.digest;
-    // Artifact identity (content hash of the prepared artifact) differs from
-    // workflow identity (semantic hash of the workflow).
+    let workflow =
+        honest_digest_workflow(vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?)?;
+    let workflow_digest = workflow.digest();
+    let (artifact_digest, store) = action_recovery_contract_store(&workflow, &contract)?;
     assert_ne!(artifact_digest, workflow_digest);
+    let accepted_artifact = store.load_accepted_artifact(artifact_digest)?;
+    let admission = action_recovery_current_admission(
+        run_id,
+        &workflow,
+        &accepted_artifact,
+        vb_core::policy::RuntimePolicy::Relaxed,
+    )?;
+    let started_millis =
+        crate::shard::helpers::wall_clock_millis_since_epoch().ok_or("clock unavailable")?;
+    let (next_seq, action_attempts, journal_bytes) =
+        current_recovery_header_accounting(run_id, &workflow, &admission, started_millis)?;
 
     let config = crate::shard::ShardConfig {
         command_queue_capacity: 64,
@@ -97,7 +206,6 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let store = action_recovery_contract_store(artifact.clone());
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
     let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
@@ -117,9 +225,15 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         frame,
         artifact_digest,
         workflow_digest,
-        vb_storage::types::EventSeq::new(1),
+        next_seq,
         crate::primitives::collect::CollectStates::new(),
         RecoveredRunBoundary::none(),
+    )
+    .with_validated_admission(admission)
+    .with_recovered_accounting(
+        Some(started_millis),
+        Some(action_attempts),
+        Some(journal_bytes),
     );
 
     // Phase 1: Drive recovery — restores action contracts and schedules Do
@@ -135,14 +249,12 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         "recovered run action_contracts must exactly match artifact"
     );
 
-    // vb-peb9u: Raw 7-argument recovery cannot gain a verified policy pin.
-    // The Unverified admission record is built from the accepted artifact's
-    // required capabilities and current runtime policy, but the pin remains
-    // Unverified. This must never promote to Pinned.
+    // The explicit historical receipt carries the exact admitted input,
+    // artifact, policy pin, and workflow-derived budget into recovery.
     let admission = state
         .admission
         .as_ref()
-        .ok_or("raw recovery must build an Unverified admission from the accepted artifact")?;
+        .ok_or("recovery must preserve current historical admission")?;
     assert_eq!(
         admission.run_id(),
         run_id,
@@ -155,8 +267,8 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     );
     assert_eq!(
         admission.policy_pin(),
-        vb_storage::RunPolicyPin::Unverified,
-        "raw 7-argument recovery must remain Unverified; cannot gain policy pin"
+        vb_storage::RunPolicyPin::Pinned(accepted_artifact.policy_digest),
+        "recovery must preserve the pinned accepted artifact policy"
     );
     assert_eq!(
         admission.policy(),
@@ -169,7 +281,6 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         "recovered admission must grant exactly the artifact's required capabilities"
     );
 
-    // vb-peb9u: Raw 7-argument recovery produces Unverified admission (no policy pin).
     // Now prove that when a genuine failed-state checkpoint IS supplied via the
     // public .with_retry_checkpoint() builder, and the checkpoint carries a
     // different policy pin than the artifact, the shard rejects it with the
@@ -181,6 +292,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         original_state_clone,
         &journal,
         artifact_digest,
+        &accepted_artifact,
     )?;
 
     // Verify the Do action was scheduled with the correct ticket fields
@@ -313,6 +425,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     original: crate::shard::types::RunState,
     journal: &VolatileRuntimeJournal,
     artifact_digest: vb_core::ids::WorkflowDigest,
+    accepted_artifact: &vb_storage::admission::AcceptedArtifact,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let run_id = original.frame.run_id();
 
@@ -366,15 +479,28 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         retry_frame,
         artifact_digest,
         original.workflow.digest(),
-        vb_storage::types::EventSeq::new(2),
+        shard
+            .journal_seq_get(run_id)
+            .ok_or("recovered run must retain its next journal sequence")?,
         crate::primitives::collect::CollectStates::new(),
         crate::recovery::RecoveredRunBoundary::none(),
+    )
+    .with_validated_admission(
+        failed
+            .admission
+            .clone()
+            .ok_or("failed checkpoint must retain current admission")?,
+    )
+    .with_recovered_accounting(
+        original.run_started_millis,
+        Some(original.action_attempts.clone()),
+        Some(original.journal_bytes_written),
     )
     .with_retry_checkpoint(checkpoint);
 
     // The shard must reject this because the checkpoint's policy pin (forged to
     // [44u8;32]) does not match the artifact's actual policy digest (derived
-    // from the prepared artifact's workflow).
+    // from [43u8;32]).
     let result = shard.handle_recover(command);
     assert_eq!(
         result,
@@ -404,7 +530,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     );
 
     // Second probe: admission policy mismatch (Strict configured vs Relaxed
-    // actual shard policy) with a valid Unverified historical pin. The pin check
+    // actual shard policy) with a valid pinned receipt. The pin check
     // passes, but the configured policy in the admission record does not match
     // the shard's actual runtime policy. This should be rejected with
     // admission_policy_mismatch.
@@ -415,18 +541,12 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         .frame
         .mark_failed(vb_core::ids::StepIdx::ZERO)?;
 
-    let strict_admission = crate::admission::RunAdmission::new(
-        artifact_digest,
+    let strict_admission = action_recovery_current_admission(
         run_id,
-        original
-            .admission
-            .as_ref()
-            .ok_or("original must carry admission record")?
-            .granted_capabilities()
-            .clone(),
+        &original.workflow,
+        &accepted_artifact,
         vb_core::policy::RuntimePolicy::Strict,
-    )
-    .with_policy_pin(vb_storage::RunPolicyPin::Unverified);
+    )?;
     failed_policy.admission = Some(strict_admission);
 
     let policy_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
@@ -447,9 +567,22 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         policy_retry_frame,
         artifact_digest,
         original.workflow.digest(),
-        vb_storage::types::EventSeq::new(2),
+        shard
+            .journal_seq_get(run_id)
+            .ok_or("recovered run must retain its next journal sequence")?,
         crate::primitives::collect::CollectStates::new(),
         crate::recovery::RecoveredRunBoundary::none(),
+    )
+    .with_validated_admission(
+        failed_policy
+            .admission
+            .clone()
+            .ok_or("policy checkpoint must retain current admission")?,
+    )
+    .with_recovered_accounting(
+        original.run_started_millis,
+        Some(original.action_attempts.clone()),
+        Some(original.journal_bytes_written),
     )
     .with_retry_checkpoint(policy_checkpoint);
 
@@ -474,8 +607,8 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     let fresh_journal_snapshot = fresh_journal.snapshot()?;
 
     // The fresh shard must reject because the admission's configured policy (Strict)
-    // differs from the actual shard policy (Relaxed), even though the pin is
-    // Unverified (historical) and therefore passes the pin check.
+    // differs from the actual shard policy (Relaxed), while the pinned artifact
+    // digest remains valid.
     let policy_result = fresh_shard.handle_recover(policy_command);
     assert_eq!(
         policy_result,
@@ -528,6 +661,10 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     valid_failed
         .frame
         .mark_failed(vb_core::ids::StepIdx::ZERO)?;
+    let valid_admission = valid_failed
+        .admission
+        .clone()
+        .ok_or("positive control admission")?;
 
     let valid_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
         run_id,
@@ -547,9 +684,17 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         valid_retry_frame,
         artifact_digest,
         original.workflow.digest(),
-        vb_storage::types::EventSeq::new(2),
+        shard
+            .journal_seq_get(run_id)
+            .ok_or("recovered run must retain its next journal sequence")?,
         crate::primitives::collect::CollectStates::new(),
         crate::recovery::RecoveredRunBoundary::none(),
+    )
+    .with_validated_admission(valid_admission)
+    .with_recovered_accounting(
+        original.run_started_millis,
+        Some(original.action_attempts.clone()),
+        Some(original.journal_bytes_written),
     )
     .with_retry_checkpoint(valid_checkpoint);
 
@@ -581,8 +726,8 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
 
     // Admission restored exactly from the valid checkpoint.
     assert_eq!(
-        restored.admission, original.admission,
-        "positive control: admission must match original (Unverified, correct run/artifact/policy)"
+        restored.admission, valid_failed.admission,
+        "positive control: admission must match the valid budgeted checkpoint"
     );
 
     assert_eq!(
@@ -656,10 +801,7 @@ fn recovery_test_gate(run: vb_core::ids::RunId, id: u64) -> vb_core::manual_gate
     }
 }
 
-fn recovery_test_open_gate(
-    run: vb_core::ids::RunId,
-    id: u64,
-) -> crate::shard::types::OpenGate {
+fn recovery_test_open_gate(run: vb_core::ids::RunId, id: u64) -> crate::shard::types::OpenGate {
     crate::shard::types::OpenGate {
         gate: recovery_test_gate(run, id),
         opened_at_ms: 0,
@@ -705,7 +847,14 @@ impl RecoveryGateJournal {
 }
 
 impl crate::journal::RuntimeJournal for RecoveryGateJournal {
-    fn append(&self, _event: crate::journal::RuntimeJournalEvent) -> crate::error::RuntimeResult<()> {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
+    fn append(
+        &self,
+        _event: crate::journal::RuntimeJournalEvent,
+    ) -> crate::error::RuntimeResult<()> {
         Ok(())
     }
 
@@ -754,17 +903,37 @@ fn recovery_gate_shard() -> Result<
         vb_core::ids::RunId,
         vb_core::ids::WorkflowDigest,
         vb_core::ids::WorkflowDigest,
+        crate::admission::RunAdmission,
+        vb_storage::EventSeq,
+        u64,
+        Box<[u16]>,
+        u64,
     ),
     Box<dyn std::error::Error>,
 > {
     let run_id = vb_core::ids::RunId::new(1);
-    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
-    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
+    let do_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        vb_core::workflow::CompiledNodeKind::Do {
+            action: vb_core::ids::ActionId::new(0),
+            input: vb_core::ids::SlotIdx::new(0),
+        },
+        Some(vb_core::ids::SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let finish_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::new(1),
+        },
+        None,
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
         name: Box::from("recovery-test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([do_node, finish_node]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -780,16 +949,22 @@ fn recovery_gate_shard() -> Result<
             constraint: vb_core::CompiledInputConstraint::required(),
         }]),
     };
-    let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?;
-    let workflow = honest_digest_workflow(workflow)?;
-    let workflow_digest = workflow.digest();
     let contract = action_recovery_test_contract()?;
-    let artifact = vb_storage::admission::prepare_compiled_artifact(
+    let workflow =
+        honest_digest_workflow(vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?)?;
+    let workflow_digest = workflow.digest();
+    let (artifact_digest, store) = action_recovery_contract_store(&workflow, &contract)?;
+    let artifact = store.load_accepted_artifact(artifact_digest)?;
+    let admission = action_recovery_current_admission(
+        run_id,
         &workflow,
+        &artifact,
         vb_core::policy::RuntimePolicy::Relaxed,
-        &[contract],
     )?;
-    let artifact_digest = artifact.digest;
+    let started_millis =
+        crate::shard::helpers::wall_clock_millis_since_epoch().ok_or("clock unavailable")?;
+    let (next_seq, action_attempts, journal_bytes) =
+        current_recovery_header_accounting(run_id, &workflow, &admission, started_millis)?;
     let config = crate::shard::ShardConfig {
         command_queue_capacity: 64,
         trace_capacity: 64,
@@ -798,14 +973,21 @@ fn recovery_gate_shard() -> Result<
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let store = action_recovery_contract_store(artifact);
     let journal = RecoveryGateJournal::shared();
-    let shard = crate::shard::Shard::new_with_journal_and_artifact_store(
-        config,
-        journal.clone(),
-        store,
-    );
-    Ok((shard, journal, run_id, artifact_digest, workflow_digest))
+    let shard =
+        crate::shard::Shard::new_with_journal_and_artifact_store(config, journal.clone(), store);
+    Ok((
+        shard,
+        journal,
+        run_id,
+        artifact_digest,
+        workflow_digest,
+        admission,
+        next_seq,
+        started_millis,
+        action_attempts,
+        journal_bytes,
+    ))
 }
 
 fn recovery_gate_frame(
@@ -823,6 +1005,11 @@ fn recovery_gate_command(
     run_id: vb_core::ids::RunId,
     artifact_digest: vb_core::ids::WorkflowDigest,
     workflow_digest: vb_core::ids::WorkflowDigest,
+    admission: crate::admission::RunAdmission,
+    next_seq: vb_storage::EventSeq,
+    started_millis: u64,
+    action_attempts: Box<[u16]>,
+    journal_bytes: u64,
     boundary: RecoveredRunBoundary,
     open_gates: Vec<crate::shard::types::OpenGate>,
 ) -> Result<RecoverRunCommand, Box<dyn std::error::Error>> {
@@ -831,9 +1018,15 @@ fn recovery_gate_command(
         recovery_gate_frame(run_id)?,
         artifact_digest,
         workflow_digest,
-        vb_storage::types::EventSeq::new(1),
+        next_seq,
         crate::primitives::collect::CollectStates::new(),
         boundary,
+    )
+    .with_validated_admission(admission)
+    .with_recovered_accounting(
+        Some(started_millis),
+        Some(action_attempts),
+        Some(journal_bytes),
     )
     .with_open_gates(open_gates))
 }
@@ -841,13 +1034,28 @@ fn recovery_gate_command(
 #[test]
 fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (mut shard, journal, run_id, artifact_digest, workflow_digest) =
-        recovery_gate_shard()?;
+    let (
+        mut shard,
+        journal,
+        run_id,
+        artifact_digest,
+        workflow_digest,
+        admission,
+        next_seq,
+        started_millis,
+        action_attempts,
+        journal_bytes,
+    ) = recovery_gate_shard()?;
     let gate = recovery_test_gate(run_id, 7);
     let command = recovery_gate_command(
         run_id,
         artifact_digest,
         workflow_digest,
+        admission,
+        next_seq,
+        started_millis,
+        action_attempts,
+        journal_bytes,
         RecoveredRunBoundary::none(),
         vec![recovery_test_open_gate(run_id, 7)],
     )?;
@@ -906,10 +1114,19 @@ fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
 }
 
 #[test]
-fn recover_rejects_open_gate_with_suspended_boundary()
--> Result<(), Box<dyn std::error::Error>> {
-    let (mut shard, _journal, run_id, artifact_digest, workflow_digest) =
-        recovery_gate_shard()?;
+fn recover_rejects_open_gate_with_suspended_boundary() -> Result<(), Box<dyn std::error::Error>> {
+    let (
+        mut shard,
+        _journal,
+        run_id,
+        artifact_digest,
+        workflow_digest,
+        admission,
+        next_seq,
+        started_millis,
+        action_attempts,
+        journal_bytes,
+    ) = recovery_gate_shard()?;
     let ask = crate::recovery::RecoveredOpenAsk::new(
         vb_core::ids::StepIdx::ZERO,
         vb_storage::EventSeq::new(1),
@@ -918,6 +1135,11 @@ fn recover_rejects_open_gate_with_suspended_boundary()
         run_id,
         artifact_digest,
         workflow_digest,
+        admission,
+        next_seq,
+        started_millis,
+        action_attempts,
+        journal_bytes,
         RecoveredRunBoundary::from_open_ask(ask),
         vec![recovery_test_open_gate(run_id, 7)],
     )?;

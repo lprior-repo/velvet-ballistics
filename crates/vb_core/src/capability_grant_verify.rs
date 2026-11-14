@@ -7,7 +7,7 @@ use super::{
 };
 use crate::action::action_ticket_has_valid_key;
 use crate::action_pack::CapabilityScopeSpec;
-use crate::manual_gate::GateDigest;
+use crate::manual_gate::{BoundApprovalReceipt, GateDecision, GateDigest};
 use crate::{ActionTicket, WorkflowDigest};
 
 /// Typed grant lifecycle failures. Rejections happen before any effect.
@@ -53,6 +53,9 @@ pub enum GrantError {
     /// Approval receipt digest is missing (zero).
     #[error("grant approval receipt is missing")]
     MissingApprovalReceipt,
+    /// Bound receipt does not match the grant's run, action, artifact, or digest.
+    #[error("bound approval receipt does not match grant issuance")]
+    GateReceiptMismatch,
     /// Delegated issuance chain; this wedge allows direct issuance only.
     #[error("grant delegation violation")]
     DelegationViolation,
@@ -71,6 +74,9 @@ pub enum GrantError {
     /// Revocation view exceeds the bounded scan capacity.
     #[error("revocation view is too large")]
     TooManyRevokedIds,
+    /// Grant authority was lost during serialization or otherwise untrusted.
+    #[error("grant authority is untrusted")]
+    UntrustedAuthority,
 }
 
 /// Pure §77.10 admission decision over scope sets, compared
@@ -100,7 +106,13 @@ pub(crate) fn grant_scope_admits(
 }
 
 impl ScopedGrant {
-    /// Trusted issuance: validates bindings and records lifecycle facts.
+    /// Returns the immutable issuance origin. Deserialization produces `Untrusted`.
+    #[must_use]
+    pub const fn authority(&self) -> super::ScopedGrantAuthority {
+        self.authority
+    }
+
+    /// Trusted non-gate host issuance: validates bindings and records lifecycle facts.
     pub fn issue(
         params: ScopedGrantParams,
         artifact: WorkflowDigest,
@@ -150,7 +162,39 @@ impl ScopedGrant {
             break_glass: params.break_glass,
             approval_receipt: params.approval_receipt,
             signature: params.signature,
+            authority: super::ScopedGrantAuthority::TrustedNonGate,
         })
+    }
+
+    /// Gate-bound issuance requires the concrete approval being bound to this ticket.
+    pub fn issue_for_bound_gate(
+        params: ScopedGrantParams,
+        artifact: WorkflowDigest,
+        ticket: ActionTicket,
+        approval: &BoundApprovalReceipt,
+    ) -> Result<Self, GrantError> {
+        let approved = matches!(
+            approval.receipt.decision,
+            GateDecision::Approve | GateDecision::BreakGlass
+        );
+        let break_glass_matches =
+            (approval.receipt.decision == GateDecision::BreakGlass) == params.break_glass;
+        if !approved
+            || !break_glass_matches
+            || approval.receipt.run != ticket.run
+            || approval.action != ticket.action
+            || approval.binding.artifact_digest.as_bytes() != artifact.as_bytes()
+            || approval.binding.attempt != ticket.run_attempt
+            || !approval.binding.is_valid()
+            || approval.digest != params.approval_receipt
+        {
+            return Err(GrantError::GateReceiptMismatch);
+        }
+        let mut grant = Self::issue(params, artifact, ticket)?;
+        grant.authority = super::ScopedGrantAuthority::BoundGate {
+            receipt_digest: approval.digest,
+        };
+        Ok(grant)
     }
 
     /// Identity bindings against the live invocation. No clock read.
@@ -219,6 +263,9 @@ impl ScopedGrant {
         }
         if revoked_ids.contains(&self.id) {
             return Err(GrantError::Revoked);
+        }
+        if self.authority == super::ScopedGrantAuthority::Untrusted {
+            return Err(GrantError::UntrustedAuthority);
         }
         Ok(())
     }

@@ -87,7 +87,7 @@ fn prepare_records(
     let artifact = prepare_compiled_artifact(compiled, submission_policy(durability), &[])?;
     let run = vb_core::RunId::new(generate_submit_run_id());
     let source_record = source_record(source);
-    let header = submission_header(run, compiled.digest());
+    let header = submission_header(run, compiled.digest())?;
     let admission =
         if compiled
             .input_slots()
@@ -160,18 +160,37 @@ fn source_record(source: Vec<u8>) -> vb_storage::WorkflowSourceRecord {
 fn submission_header(
     run: vb_core::RunId,
     compiled_digest: vb_core::WorkflowDigest,
-) -> vb_storage::RunHeaderRecord {
-    let accepted_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => u64::try_from(duration.as_millis()).map_or(0, |value| value),
-        Err(_) => 0,
-    };
-    vb_storage::RunHeaderRecord {
+) -> Result<vb_storage::RunHeaderRecord, vb_storage::JournalError> {
+    submission_header_at(
+        run,
+        compiled_digest,
+        SystemTime::now().duration_since(UNIX_EPOCH).ok(),
+    )
+}
+
+fn submission_header_at(
+    run: vb_core::RunId,
+    compiled_digest: vb_core::WorkflowDigest,
+    accepted_at: Option<std::time::Duration>,
+) -> Result<vb_storage::RunHeaderRecord, vb_storage::JournalError> {
+    let accepted_at_ms = accepted_at_millis(accepted_at)?;
+    Ok(vb_storage::RunHeaderRecord {
         run,
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest,
         status: vb_storage::records::RunHeaderStatus::PENDING.as_byte(),
         accepted_at_ms,
-    }
+    })
+}
+
+fn accepted_at_millis(
+    duration: Option<std::time::Duration>,
+) -> Result<u64, vb_storage::JournalError> {
+    let duration = duration.ok_or(vb_storage::JournalError::ClockUnavailable)?;
+    u64::try_from(duration.as_millis()).map_err(|_| vb_storage::JournalError::InvalidConfig {
+        field: "accepted_at_ms",
+        reason: "clock_overflow",
+    })
 }
 
 fn commit_submission(
@@ -246,5 +265,27 @@ pub(crate) fn generate_submit_run_id() -> u64 {
     match u64::try_from(now.as_nanos()) {
         Ok(value) => value,
         Err(_) => now.as_secs(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::submission_header_at;
+
+    #[test]
+    fn submission_header_clock_failures_are_typed() {
+        let run = vb_core::RunId::new(1);
+        let digest = vb_core::WorkflowDigest::from_bytes([0; 32]);
+        assert!(matches!(
+            submission_header_at(run, digest, None),
+            Err(vb_storage::JournalError::ClockUnavailable)
+        ));
+        assert!(matches!(
+            submission_header_at(run, digest, Some(std::time::Duration::from_secs(u64::MAX))),
+            Err(vb_storage::JournalError::InvalidConfig {
+                field: "accepted_at_ms",
+                reason: "clock_overflow"
+            })
+        ));
     }
 }

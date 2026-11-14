@@ -10,7 +10,7 @@ use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
 use crate::{FjallJournal, JournalError, RecordKind, codec::EnforceKindParity};
 pub use digest::{RunInputBinding, RunPolicyPin, compute_input_digest};
 pub use owned::{OwnedInputError, OwnedRunInputsRecordV1, RetainedRunInputs};
-pub use submission::RunSubmission;
+pub use submission::{ExecutorCatalogSubmissionContext, RunSubmission};
 use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
 
 /// Validate scalar admission values and fill defaults before any run effects.
@@ -86,21 +86,11 @@ impl RunInputsRecord {
     /// Checks the normative admission receipt before using retained inputs for recovery.
     pub fn validate_admission(&self, event: &crate::JournalEvent) -> Result<(), JournalError> {
         match event {
-            crate::JournalEvent::RunAdmission {
-                run,
-                artifact_digest,
-                input_digest: RunInputBinding::Digest(input_digest),
-                ..
-            } if *run == self.run
-                && *artifact_digest == self.artifact_digest
-                && *input_digest == self.input_digest =>
-            {
-                Ok(())
-            }
             crate::JournalEvent::RunAdmissionBudget {
                 run,
                 artifact_digest,
                 input_digest: RunInputBinding::Digest(input_digest),
+                policy_pin: RunPolicyPin::Pinned(_),
                 ..
             } if *run == self.run
                 && *artifact_digest == self.artifact_digest
@@ -121,6 +111,49 @@ impl RunInputsRecord {
         }
         validation::validate_inputs(workflow, &self.inputs)
     }
+}
+
+/// Validates retained input identity against the exact admission authority being committed.
+pub(crate) fn validate_admission_inputs(
+    events: &[crate::JournalEvent],
+    inputs: &RunInputsRecord,
+) -> Result<(), JournalError> {
+    let mut admission = None;
+    for event in events {
+        if event.run_id() != inputs.run() {
+            return Err(JournalError::InvalidEvent);
+        }
+        match event {
+            crate::JournalEvent::RunAccepted { workflow, .. }
+                if *workflow != inputs.workflow_digest() =>
+            {
+                return Err(JournalError::PayloadDigestMismatch);
+            }
+            crate::JournalEvent::RunAdmission { .. }
+            | crate::JournalEvent::RunAdmissionBudget { .. }
+                if admission.is_some() =>
+            {
+                return Err(JournalError::PayloadDigestMismatch);
+            }
+            crate::JournalEvent::RunAdmission { .. }
+            | crate::JournalEvent::RunAdmissionBudget { .. } => admission = Some(event),
+            _ => {}
+        }
+    }
+    let recomputed = compute_input_digest(inputs.inputs())?;
+    if recomputed != inputs.input_digest() {
+        return Err(JournalError::PayloadDigestMismatch);
+    }
+    let admission = admission.ok_or(JournalError::AdmissionRequired)?;
+    match admission {
+        crate::JournalEvent::RunAdmissionBudget {
+            input_digest: RunInputBinding::Digest(_),
+            policy_pin: RunPolicyPin::Pinned(_),
+            ..
+        } => {}
+        _ => return Err(JournalError::AdmissionRequired),
+    }
+    inputs.validate_admission(admission)
 }
 
 impl EnforceKindParity for RunInputsRecord {
@@ -167,6 +200,10 @@ impl FjallJournal {
     }
 }
 
+#[cfg(test)]
+mod atomic_admission_digest_tests;
+#[cfg(test)]
+mod atomic_admission_review_tests;
 #[cfg(test)]
 mod receipt_tests;
 #[cfg(test)]

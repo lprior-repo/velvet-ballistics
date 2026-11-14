@@ -1,3 +1,10 @@
+struct EvidenceContext<'a> {
+    run: RunId,
+    attempt: u16,
+    journal_events: &'a mut Vec<RuntimeJournalEvent>,
+    trace_events: &'a mut Vec<TraceEvent>,
+}
+
 impl Shard {
     /// Builds a fail-closed legacy timer-fired command without fabricating authority.
     #[must_use]
@@ -48,19 +55,19 @@ impl Shard {
 
     /// Takes the latest inspect response, if one is available.
     pub fn take_inspect_response(&mut self) -> Option<InspectResponse> {
-        self.inspect_response.take()
+        self.control.inspect_response.take()
     }
 
     /// Returns true if the shard is shutting down.
     #[must_use]
     pub const fn is_shutting_down(&self) -> bool {
-        self.shutting_down
+        self.control.shutting_down
     }
 
     /// Returns a read-only status snapshot without draining queues or mutating shard state.
     #[must_use]
     pub fn status(&self) -> ShardStatus {
-        let shutting_down = self.shutting_down;
+        let shutting_down = self.control.shutting_down;
         ShardStatus {
             health: if shutting_down {
                 ShardHealth::ShuttingDown
@@ -96,13 +103,13 @@ impl Shard {
         let mut trace_events = Vec::new();
         Self::reserve_drive_vec(&mut trace_events, event_count)?;
         for event in evidence.drain() {
-            Self::prepare_evidence_event(
+            let mut context = EvidenceContext {
                 run,
                 attempt,
-                event,
-                &mut journal_events,
-                &mut trace_events,
-            )?;
+                journal_events: &mut journal_events,
+                trace_events: &mut trace_events,
+            };
+            Self::prepare_evidence_event(event, &mut context)?;
         }
         Ok((journal_events, trace_events))
     }
@@ -123,52 +130,96 @@ impl Shard {
     }
 
     fn prepare_evidence_event(
-        run: RunId,
-        attempt: u16,
         event: EvidenceEvent,
-        journal_events: &mut Vec<RuntimeJournalEvent>,
-        trace_events: &mut Vec<TraceEvent>,
+        context: &mut EvidenceContext<'_>,
     ) -> RuntimeResult<()> {
         match event {
-            EvidenceEvent::StepStarted { step } => {
-                Self::push_drive_journal_event(
-                    journal_events,
-                    RuntimeJournalEvent::StepStarted { run, step, attempt },
-                )?;
-                trace_events.push(TraceEvent::StepStarted { run, step });
-                Ok(())
+            EvidenceEvent::StepStarted { step } => Self::prepare_started_evidence(context, step),
+            EvidenceEvent::StepFailed { step } => Self::prepare_failed_evidence(context, step),
+            EvidenceEvent::StepSucceeded { step, output } => {
+                Self::prepare_succeeded_evidence(context, step, output)
             }
-            EvidenceEvent::StepFailed { step } => Self::push_drive_journal_event(
-                journal_events,
-                RuntimeJournalEvent::StepFailed { run, step, attempt },
-            ),
-            EvidenceEvent::StepSucceeded { step, output } => Self::push_drive_journal_event(
-                journal_events,
-                RuntimeJournalEvent::StepSucceeded {
-                    run,
-                    step,
-                    output: match output {
-                        Some(slot) => slot,
-                        None => SlotIdx::ZERO,
-                    },
-                    attempt,
-                },
-            ),
             EvidenceEvent::SlotWritten {
                 slot,
                 value,
                 taint,
                 extra,
-            } => Self::prepare_slot_written_event(
-                run,
+            } => Self::prepare_slot_evidence_event(
+                context.run,
                 slot,
                 value,
                 taint,
                 extra,
-                journal_events,
-                trace_events,
+                context.journal_events,
+                context.trace_events,
             ),
         }
+    }
+
+    fn prepare_slot_evidence_event(
+        run: RunId,
+        slot: SlotIdx,
+        value: vb_core::value::SlotValue,
+        taint: vb_core::Taint,
+        extra: Option<crate::primitives::collect::CollectPaginationState>,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+        trace_events: &mut Vec<TraceEvent>,
+    ) -> RuntimeResult<()> {
+        Self::prepare_slot_written_event(
+            run,
+            slot,
+            value,
+            taint,
+            extra,
+            journal_events,
+            trace_events,
+        )
+    }
+
+    fn prepare_step_started_event(
+        run: RunId,
+        attempt: u16,
+        step: vb_core::ids::StepIdx,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+        trace_events: &mut Vec<TraceEvent>,
+    ) -> RuntimeResult<()> {
+        Self::push_drive_journal_event(
+            journal_events,
+            RuntimeJournalEvent::StepStarted { run, step, attempt },
+        )?;
+        trace_events.push(TraceEvent::StepStarted { run, step });
+        Ok(())
+    }
+
+    fn prepare_step_failed_event(
+        run: RunId,
+        attempt: u16,
+        step: vb_core::ids::StepIdx,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+    ) -> RuntimeResult<()> {
+        Self::push_drive_journal_event(
+            journal_events,
+            RuntimeJournalEvent::StepFailed { run, step, attempt },
+        )
+    }
+
+    fn prepare_step_succeeded_event(
+        run: RunId,
+        attempt: u16,
+        step: vb_core::ids::StepIdx,
+        output: Option<SlotIdx>,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+    ) -> RuntimeResult<()> {
+        let output = output.unwrap_or(SlotIdx::ZERO);
+        Self::push_drive_journal_event(
+            journal_events,
+            RuntimeJournalEvent::StepSucceeded {
+                run,
+                step,
+                output,
+                attempt,
+            },
+        )
     }
 
     fn prepare_slot_written_event(
@@ -180,11 +231,7 @@ impl Shard {
         journal_events: &mut Vec<RuntimeJournalEvent>,
         trace_events: &mut Vec<TraceEvent>,
     ) -> RuntimeResult<()> {
-        let encoded = postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
-        let encoded_extra = extra
-            .map(|state| postcard::to_allocvec(&state))
-            .transpose()
-            .map_err(|_| RuntimeError::EncodeFailed)?;
+        let (encoded, encoded_extra) = Self::encode_slot_written_payload(value, extra)?;
         trace_events.push(TraceEvent::SlotWritten {
             run,
             slot,
@@ -202,9 +249,23 @@ impl Shard {
         )
     }
 
+    fn encode_slot_written_payload(
+        value: vb_core::value::SlotValue,
+        extra: Option<crate::primitives::collect::CollectPaginationState>,
+    ) -> RuntimeResult<(Vec<u8>, Option<Vec<u8>>)> {
+        let encoded = postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
+        let encoded_extra = extra
+            .map(|state| postcard::to_allocvec(&state))
+            .transpose()
+            .map_err(|_| RuntimeError::EncodeFailed)?;
+        Ok((encoded, encoded_extra))
+    }
+
     pub(crate) fn push_trace_events(&mut self, trace_events: Vec<TraceEvent>) {
         for event in trace_events {
             self.trace_ring.push(event);
         }
     }
 }
+
+include!("inspect_evidence_helpers.rs");

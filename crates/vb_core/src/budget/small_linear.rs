@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Budget computation over one- and two-node simple control-flow graphs.
 
+use crate::budget::BoundednessPolicy;
 use crate::ids::StepIdx;
 use crate::workflow::{CompiledNodeKind, ResourceContract};
 
@@ -43,7 +44,7 @@ impl<'a> SmallLinearGraph<'a> {
             max_for_each_iterations: 0,
             max_together_branches: 0,
             max_repeat_attempts: 0,
-            max_run_time_seconds: metrics.steps,
+            max_run_time_seconds: BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds,
             max_result_bytes: contract.max_output_bytes,
             max_total_slots_written: u32::from(contract.max_slots),
             max_timer_entries: metrics.timers,

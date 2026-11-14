@@ -309,13 +309,14 @@ fn reduce_next_binds_first_remaining_item() {
 }
 
 #[test]
-fn reduce_next_jumps_to_done_when_remaining_empty() {
-    // Given a frame with empty remaining items
+fn reduce_next_rejects_empty_iterator_state() {
+    // Given a frame whose iterator handle is an empty list
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
     let done = StepIdx::new(3);
     list_in_slot(&mut run, &mut store, iterator_slot, vec![]);
+    let before = run.pc();
     // When calling reduce_next
     let result = reduce_next(
         &mut run,
@@ -326,9 +327,14 @@ fn reduce_next_jumps_to_done_when_remaining_empty() {
         done,
         Some(SlotIdx::new(2)),
     );
-    // Then it jumps to done
-    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    assert_eq!(run.pc(), done);
+    // Then the compact cursor handle is refused instead of silently terminating
+    assert_eq!(
+        result,
+        Err(EngineError::InternalInvariantViolation {
+            reason: "iterator state must be a 2-element list".into()
+        })
+    );
+    assert_eq!(run.pc(), before);
 }
 
 #[test]

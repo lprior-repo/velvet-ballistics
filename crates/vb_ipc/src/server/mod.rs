@@ -117,6 +117,26 @@ pub trait WorkflowResolver {
         &mut self,
         digest: vb_core::WorkflowDigest,
     ) -> Result<CompiledWorkflow, WorkflowResolutionError>;
+    /// Returns operator-trusted action contracts for this workflow.
+    ///
+    /// The default is empty: action-bearing workflows remain typed-refused
+    /// unless the host resolver supplies contracts. Clients cannot authorize
+    /// contracts through the IPC payload.
+    fn resolve_action_contracts(
+        &mut self,
+        _workflow: &CompiledWorkflow,
+    ) -> Box<[vb_core::action::ActionContract]> {
+        Box::from([])
+    }
+    /// Returns operator-trusted grants for this workflow; IPC payloads cannot provide authority.
+    ///
+    /// The default is empty so hosts that do not explicitly grant capabilities remain fail-closed.
+    fn resolve_capability_grants(
+        &mut self,
+        _workflow: &CompiledWorkflow,
+    ) -> vb_core::CapabilitySet {
+        vb_core::CapabilitySet::empty()
+    }
 
     /// Installs host-confirmed names before admission; runtime keeps admission authority.
     fn prepare_runtime(&mut self, _runtime: &mut Runtime, _workflow: &CompiledWorkflow) {}

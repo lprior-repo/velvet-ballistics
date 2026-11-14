@@ -262,4 +262,13 @@ pub enum WorkflowError {
         /// The unsupported referenced step.
         step: StepIdx,
     },
+    /// A concurrent lane contains a suspension node, which the checked
+    /// ConcurrentV3 profile does not support.
+    #[error("concurrent group {owner:?} lane step {step:?} cannot suspend")]
+    ConcurrentLaneSuspension {
+        /// The concurrent start step that owns the lane.
+        owner: StepIdx,
+        /// The suspension node inside the lane.
+        step: StepIdx,
+    },
 }

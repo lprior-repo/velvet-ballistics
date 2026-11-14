@@ -4,7 +4,9 @@ use crate::{
     AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
     RunHeaderRecord, WorkflowSourceRecord,
 };
-use vb_core::RuntimePolicy;
+use vb_core::{AggregateResourceBudget, CapabilitySet, RuntimePolicy};
+mod catalog;
+pub use catalog::ExecutorCatalogSubmissionContext;
 
 /// Complete prepared admission. Private members prevent partial publication.
 pub struct RunSubmission {
@@ -12,6 +14,9 @@ pub struct RunSubmission {
     artifact: AcceptedArtifact,
     inputs: SubmissionInputs,
     header: RunHeaderRecord,
+    budget: Option<AggregateResourceBudget>,
+    budget_origin_millis: Option<u64>,
+    granted_capabilities: CapabilitySet,
 }
 
 impl RunSubmission {
@@ -22,11 +27,18 @@ impl RunSubmission {
         inputs: RunInputsRecord,
         header: RunHeaderRecord,
     ) -> Result<Self, JournalError> {
+        let workflow = crate::admission::verify_accepted_artifact(&artifact)?;
+        let budget = AggregateResourceBudget::from_workflow(&workflow)
+            .map_err(|_| JournalError::ArtifactMalformed)?;
+        let budget_origin_millis = header.accepted_at_ms;
         let submission = Self {
             source,
             artifact,
             inputs: SubmissionInputs::Scalar(inputs),
             header,
+            budget: Some(budget),
+            budget_origin_millis: Some(budget_origin_millis),
+            granted_capabilities: CapabilitySet::empty(),
         };
         submission.validate_binding()?;
         Ok(submission)
@@ -39,11 +51,17 @@ impl RunSubmission {
         inputs: OwnedRunInputsRecordV1,
         header: RunHeaderRecord,
     ) -> Result<Self, JournalError> {
+        let workflow = crate::admission::verify_accepted_artifact(&artifact)?;
+        let budget = AggregateResourceBudget::from_workflow(&workflow)
+            .map_err(|_| JournalError::ArtifactMalformed)?;
         let submission = Self {
             source,
             artifact,
             inputs: SubmissionInputs::Owned(inputs),
+            budget: Some(budget),
+            budget_origin_millis: Some(header.accepted_at_ms),
             header,
+            granted_capabilities: CapabilitySet::empty(),
         };
         submission.validate_binding()?;
         Ok(submission)
@@ -53,8 +71,15 @@ impl RunSubmission {
         self.validate_identities()?;
         crate::journal::verify_content_digest(&self.source.source, &self.source.digest.as_bytes())?;
         let workflow = crate::admission::verify_accepted_artifact(&self.artifact)?;
-        self.inputs.validate_workflow(&workflow)?;
-        if crate::admission::compute_policy_digest(&workflow)? != self.artifact.policy_digest {
+        self.validate_workflow_binding(&workflow)
+    }
+
+    fn validate_workflow_binding(
+        &self,
+        workflow: &vb_core::CompiledWorkflow,
+    ) -> Result<(), JournalError> {
+        self.inputs.validate_workflow(workflow)?;
+        if crate::admission::compute_policy_digest(workflow)? != self.artifact.policy_digest {
             return Err(JournalError::PayloadDigestMismatch);
         }
         Ok(())
@@ -84,14 +109,20 @@ impl RunSubmission {
     }
 
     fn validate_policy(&self, policy: RuntimePolicy) -> Result<(), JournalError> {
+        self.validate_policy_requirements(policy)?;
+        if !self.artifact.required_capabilities.is_empty() {
+            return Err(JournalError::CapabilityDenied);
+        }
+        crate::admission::verify_accepted_artifact_for_policy(&self.artifact, policy)?;
+        Ok(())
+    }
+
+    fn validate_policy_requirements(&self, policy: RuntimePolicy) -> Result<(), JournalError> {
         if !matches!(
             policy,
             RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict
         ) {
             return Err(JournalError::AdmissionRequired);
-        }
-        if !self.artifact.required_capabilities.is_empty() {
-            return Err(JournalError::CapabilityDenied);
         }
         if policy != RuntimePolicy::Relaxed {
             let decision = self.ir_compat_decision();
@@ -103,7 +134,6 @@ impl RunSubmission {
                 });
             }
         }
-        crate::admission::verify_accepted_artifact_for_policy(&self.artifact, policy)?;
         Ok(())
     }
 
@@ -145,7 +175,15 @@ impl RunSubmission {
         }
         batch.append_event(&self.accepted_event())?;
         batch.append_event(&self.admission_event(policy))?;
-        batch.append_event(&self.compatibility_event())
+        batch.append_event(&self.compatibility_event())?;
+        if let Some(started_millis) = self.budget_origin_millis {
+            batch.append_event(&JournalEvent::RunBudgetOriginEvent {
+                run: self.header.run,
+                seq: EventSeq::new(3),
+                started_millis,
+            })?;
+        }
+        Ok(())
     }
 
     fn compatibility_event(&self) -> JournalEvent {
@@ -165,31 +203,54 @@ impl RunSubmission {
     }
 
     fn admission_event(&self, policy: RuntimePolicy) -> JournalEvent {
-        JournalEvent::RunAdmission {
-            input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
-            run: self.header.run,
-            seq: EventSeq::new(1),
-            artifact_digest: self.artifact.digest,
-            policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
-            granted_capabilities: vb_core::CapabilitySet::empty(),
-            policy,
+        match self.budget {
+            Some(budget) => JournalEvent::RunAdmissionBudget {
+                run: self.header.run,
+                seq: EventSeq::new(1),
+                artifact_digest: self.artifact.digest,
+                input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
+                policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
+                granted_capabilities: self.granted_capabilities.clone(),
+                policy,
+                budget,
+            },
+            None => JournalEvent::RunAdmission {
+                input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
+                run: self.header.run,
+                seq: EventSeq::new(1),
+                artifact_digest: self.artifact.digest,
+                policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
+                granted_capabilities: self.granted_capabilities.clone(),
+                policy,
+            },
         }
     }
 }
 
 impl FjallJournal {
-    /// Commits source, executable artifact, inputs, header and acceptance indexes atomically.
-    /// Strict returns only after SyncAll. Journaled/Relaxed retain a data-loss window.
     pub fn commit_run_submission(
         &self,
         submission: &RunSubmission,
         policy: RuntimePolicy,
     ) -> Result<(), JournalError> {
-        submission.validate_policy(policy)?;
+        self.commit_run_submission_validated(submission, policy, None)
+    }
+
+    fn commit_run_submission_validated(
+        &self,
+        submission: &RunSubmission,
+        policy: RuntimePolicy,
+        catalog: Option<&crate::executor::ExecutorCatalog>,
+    ) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
+        validate_submission_origin(submission)?;
+        match catalog {
+            Some(catalog) => submission.validate_policy_with_executor_catalog(policy, catalog)?,
+            None => submission.validate_policy(policy)?,
+        }
         if self.run_header(submission.header.run)?.is_some()
             || self
                 .run_inputs
@@ -200,4 +261,24 @@ impl FjallJournal {
         }
         submission.commit(self, policy)
     }
+}
+
+fn validate_submission_origin(submission: &RunSubmission) -> Result<(), JournalError> {
+    let Some(origin) = submission.budget_origin_millis else {
+        return Ok(());
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| JournalError::ClockUnavailable)?;
+    let now = u64::try_from(now.as_millis()).map_err(|_| JournalError::InvalidConfig {
+        field: "run_budget_origin",
+        reason: "clock_overflow",
+    })?;
+    if origin > now {
+        return Err(JournalError::InvalidConfig {
+            field: "run_budget_origin",
+            reason: "future",
+        });
+    }
+    Ok(())
 }

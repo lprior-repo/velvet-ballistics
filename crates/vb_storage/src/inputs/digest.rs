@@ -2,9 +2,10 @@ use crate::JournalError;
 use vb_core::{SlotIdx, SlotValue, WorkflowDigest};
 
 /// Historical receipts did not bind input values. New receipts always bind a digest.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum RunInputBinding {
     /// Explicit compatibility state for historical admission records only.
+    #[default]
     LegacyUnbound,
     /// BLAKE3 of canonical slot-sorted postcard typed input pairs.
     Digest(WorkflowDigest),

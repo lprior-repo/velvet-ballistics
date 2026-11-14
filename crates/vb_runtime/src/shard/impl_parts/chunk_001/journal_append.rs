@@ -32,6 +32,31 @@ impl Shard {
     }
 
     #[cfg(not(kani))]
+    pub(crate) fn append_admission_journal_event_batch(
+        &mut self,
+        events: &[RuntimeJournalEvent],
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        let Some(first) = events.first() else {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "empty_admission_journal_batch",
+            });
+        };
+        let run = first.run_id();
+        if run != inputs.run() || events.iter().any(|event| event.run_id() != run) {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "mixed_run_journal_batch",
+            });
+        }
+        let seq = self.journal_sequence_for(run);
+        let next = Self::journal_sequence_after(seq, events.len())?;
+        self.reserve_journal_sequence_slot(run)?;
+        self.journal.append_admission_batch(events, seq, inputs)?;
+        let _previous = self.journal_sequences.insert(run, next);
+        Ok(())
+    }
+
+    #[cfg(not(kani))]
     pub(crate) fn append_journal_events_atomically<const N: usize>(
         &mut self,
         events: [RuntimeJournalEvent; N],
@@ -55,6 +80,15 @@ impl Shard {
     pub(crate) fn append_journal_event_batch(
         &mut self,
         _events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    #[cfg(kani)]
+    pub(crate) fn append_admission_journal_event_batch(
+        &mut self,
+        _events: &[RuntimeJournalEvent],
+        _inputs: vb_storage::RunInputsRecord,
     ) -> RuntimeResult<()> {
         Ok(())
     }

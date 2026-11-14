@@ -109,7 +109,8 @@ fn foreach_at_once_hardened() -> Result<(), String> {
             })?;
         } else {
             let workflow = compile(&text)?;
-            assert_eq!(workflow.to_parts().nodes.len(), 9);
+            let expected = if at_once == "1" { 9 } else { 6 };
+            assert_eq!(workflow.to_parts().nodes.len(), expected);
         }
     }
     let nested = source(
@@ -125,7 +126,17 @@ fn foreach_at_once_hardened() -> Result<(), String> {
             _ => None,
         })
         .collect();
-    assert_eq!(limits, vec![FanoutLimit::new(4), FanoutLimit::new(4)]);
+    assert_eq!(limits, vec![FanoutLimit::new(4)]);
+    let concurrent_at_once: Vec<_> = nested_workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .filter_map(|node| match node.kind {
+            CompiledNodeKind::ForEachConcurrentStart { at_once, .. } => Some(at_once),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(concurrent_at_once, vec![BranchCount::new(3)]);
     let single = source(
         "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      at_once: 1\n      steps:\n        - id: leaf\n          set: {output: picked, value: '$entry'}\n",
     ) + finish_tail();

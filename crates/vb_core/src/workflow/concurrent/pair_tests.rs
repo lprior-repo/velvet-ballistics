@@ -201,6 +201,9 @@ fn pair_requires_forward_inbounds_continuation() -> Result<(), Box<dyn std::erro
 #[path = "pair_constructor_tests.rs"]
 mod constructors;
 
+#[path = "pair_constructor_runtime_tests.rs"]
+mod constructor_runtime;
+
 #[path = "lane_end_tests.rs"]
 mod lane_ends;
 

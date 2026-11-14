@@ -19,6 +19,7 @@ pub mod budget;
 mod budget_vb_8mdp_7_prop_tests;
 pub mod capability;
 pub mod capability_grant;
+mod capability_grant_authority;
 pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
@@ -141,7 +142,8 @@ pub use budget::{
 pub use capability::{Capability, CapabilitySet};
 pub use capability_grant::{
     GrantAdmissionMode, GrantDispatchContext, GrantError, GrantId, GrantSignature, GrantTimeMs,
-    MAX_REVOKED_IDS, RevocationEpoch, ScopedDispatch, ScopedGrant, ScopedGrantParams,
+    MAX_REVOKED_IDS, RevocationEpoch, ScopedDispatch, ScopedGrant, ScopedGrantAuthority,
+    ScopedGrantParams,
 };
 pub use diagnostic::{
     CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,

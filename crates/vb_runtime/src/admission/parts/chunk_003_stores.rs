@@ -34,7 +34,9 @@ impl ArtifactStore for AlwaysPresentArtifactStore {
 /// validation — not just existence — before admitting a run.
 pub trait AcceptedArtifactStore: Send + Sync {
     /// Checked built-in catalog, created only by executing registered scratch conformance.
-    fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> { None }
+    fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> {
+        None
+    }
 
     /// Loads and validates an accepted artifact by digest.
     ///
@@ -117,14 +119,20 @@ pub struct StorageArtifactStore {
 
 impl StorageArtifactStore {
     /// Attach checked executor authority explicitly; legacy constructors remain fail-closed.
-    pub fn with_catalog(journal: Arc<vb_storage::FjallJournal>, catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>) -> Self {
+    pub fn with_catalog(
+        journal: Arc<vb_storage::FjallJournal>,
+        catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>,
+    ) -> Self {
         Self { journal, catalog }
     }
 
     /// Creates a new storage-backed artifact store.
     #[must_use]
     pub fn new(journal: Arc<vb_storage::FjallJournal>) -> Self {
-        Self { journal, catalog: None }
+        Self {
+            journal,
+            catalog: None,
+        }
     }
 
     /// Creates a new shared storage-backed artifact store (legacy artifact-only view).
@@ -139,28 +147,11 @@ impl StorageArtifactStore {
         Arc::new(Self::new(journal))
     }
 }
-
-impl ArtifactStore for StorageArtifactStore {
-    fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
-        matches!(self.journal.compiled_ir(digest), Ok(Some(_)))
-            || matches!(
-                self.journal.compiled_ir_for_source_digest(digest),
-                Ok(Some(_))
-            )
-    }
-}
-
-impl AcceptedArtifactStore for StorageArtifactStore {
-    fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> { self.catalog.as_deref() }
-
-    fn load_accepted_artifact(
+impl StorageArtifactStore {
+    fn load_compiled_ir_payload(
         &self,
         artifact_digest: WorkflowDigest,
-    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-        // Load the compiled IR record from the journal. Accepted artifacts are
-        // stored by artifact digest, while runtime submissions commonly carry
-        // the workflow/source digest. Preserve the content-addressed key and
-        // fall back to a bounded source-digest lookup for that runtime path.
+    ) -> Result<Vec<u8>, ArtifactEnvelopeError> {
         let record = match self.journal.compiled_ir(artifact_digest) {
             Ok(Some(record)) => record,
             Ok(None) => self
@@ -178,9 +169,35 @@ impl AcceptedArtifactStore for StorageArtifactStore {
                 });
             }
         };
+        Ok(record.ir)
+    }
+}
 
-        // Decode the postcard payload as AcceptedArtifact.
-        let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&record.ir)
+impl ArtifactStore for StorageArtifactStore {
+    fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
+        matches!(self.journal.compiled_ir(digest), Ok(Some(_)))
+            || matches!(
+                self.journal.compiled_ir_for_source_digest(digest),
+                Ok(Some(_))
+            )
+    }
+}
+
+impl AcceptedArtifactStore for StorageArtifactStore {
+    fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> {
+        self.catalog.as_deref()
+    }
+
+    fn load_accepted_artifact(
+        &self,
+        artifact_digest: WorkflowDigest,
+    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+        // Load the compiled IR record from the journal. Accepted artifacts are
+        // stored by artifact digest, while runtime submissions commonly carry
+        // the workflow/source digest. Preserve the content-addressed key and
+        // fall back to a bounded source-digest lookup for that runtime path.
+        let payload = self.load_compiled_ir_payload(artifact_digest)?;
+        let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&payload)
             .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
 
         if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {

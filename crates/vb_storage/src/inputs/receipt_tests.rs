@@ -5,25 +5,49 @@ use vb_core::{CapabilitySet, RuntimePolicy};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn retained() -> Result<RunInputsRecord, Box<dyn std::error::Error>> {
+    let workflow = super::tests::workflow()?;
+    let artifact =
+        crate::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
     Ok(RunInputsRecord::new(
         RunId::new(7),
-        WorkflowDigest::from_bytes([1; 32]),
-        WorkflowDigest::from_bytes([2; 32]),
-        &super::tests::workflow()?,
+        artifact.digest,
+        WorkflowDigest::from_bytes(blake3::hash(b"retained scalar source").into()),
+        &workflow,
         Box::from([(SlotIdx::new(0), SlotValue::I64(9))]),
     )?)
 }
 
-fn receipt(record: &RunInputsRecord) -> JournalEvent {
-    JournalEvent::RunAdmission {
+fn receipt(record: &RunInputsRecord) -> Result<JournalEvent, Box<dyn std::error::Error>> {
+    let workflow = super::tests::workflow()?;
+    let artifact =
+        crate::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
+    Ok(JournalEvent::RunAdmissionBudget {
+        run: record.run(),
+        seq: EventSeq::new(1),
+        artifact_digest: record.artifact_digest(),
+        input_digest: RunInputBinding::Digest(record.input_digest()),
+        policy_pin: crate::RunPolicyPin::Pinned(artifact.policy_digest),
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Strict,
+        budget: vb_core::AggregateResourceBudget::from_workflow(&workflow)?,
+    })
+}
+
+fn unbudgeted_receipt(
+    record: &RunInputsRecord,
+) -> Result<JournalEvent, Box<dyn std::error::Error>> {
+    let workflow = super::tests::workflow()?;
+    let artifact =
+        crate::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
+    Ok(JournalEvent::RunAdmission {
         run: record.run(),
         seq: EventSeq::new(1),
         artifact_digest: record.artifact_digest(),
         input_digest: RunInputBinding::Digest(record.input_digest()),
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Strict,
-        policy_pin: crate::RunPolicyPin::Unverified,
-    }
+        policy_pin: crate::RunPolicyPin::Pinned(artifact.policy_digest),
+    })
 }
 
 #[test]
@@ -50,38 +74,47 @@ fn canonical_input_digest_binds_slots_values_and_types_without_order_dependency(
 #[test]
 fn retained_input_receipt_rejects_legacy_digest_artifact_and_run_mismatch() -> TestResult {
     let record = retained()?;
-    record.validate_admission(&receipt(&record))?;
-    let recovered = crate::recovery::replay::recover_run_admission_from_events(&[receipt(&record)])
+    let current = receipt(&record)?;
+    record.validate_admission(&current)?;
+    let recovered = crate::recovery::replay::recover_run_admission_from_events(&[current.clone()])
         .ok_or("missing admission summary")?;
     assert_eq!(
         recovered.input_digest,
         RunInputBinding::Digest(record.input_digest())
     );
-    let mut bad_digest = receipt(&record);
-    if let JournalEvent::RunAdmission { input_digest, .. } = &mut bad_digest {
+    let mut bad_digest = current.clone();
+    if let JournalEvent::RunAdmissionBudget { input_digest, .. } = &mut bad_digest {
         *input_digest = RunInputBinding::Digest(WorkflowDigest::from_bytes([9; 32]));
     }
-    let mut legacy = receipt(&record);
-    if let JournalEvent::RunAdmission { input_digest, .. } = &mut legacy {
+    let mut legacy = current.clone();
+    if let JournalEvent::RunAdmissionBudget { input_digest, .. } = &mut legacy {
         *input_digest = RunInputBinding::LegacyUnbound;
     }
-    let mut bad_artifact = receipt(&record);
-    if let JournalEvent::RunAdmission {
+    let mut unverified = current.clone();
+    if let JournalEvent::RunAdmissionBudget { policy_pin, .. } = &mut unverified {
+        *policy_pin = crate::RunPolicyPin::Unverified;
+    }
+    let mut bad_artifact = current.clone();
+    if let JournalEvent::RunAdmissionBudget {
         artifact_digest, ..
     } = &mut bad_artifact
     {
         *artifact_digest = WorkflowDigest::from_bytes([9; 32]);
     }
-    let mut bad_run = receipt(&record);
-    if let JournalEvent::RunAdmission { run, .. } = &mut bad_run {
+    let mut bad_run = current;
+    if let JournalEvent::RunAdmissionBudget { run, .. } = &mut bad_run {
         *run = RunId::new(8);
     }
-    for event in [bad_digest, legacy, bad_artifact, bad_run] {
+    for event in [bad_digest, legacy, unverified, bad_artifact, bad_run] {
         assert!(matches!(
             record.validate_admission(&event),
             Err(JournalError::PayloadDigestMismatch)
         ));
     }
+    assert!(matches!(
+        record.validate_admission(&unbudgeted_receipt(&record)?),
+        Err(JournalError::PayloadDigestMismatch)
+    ));
     Ok(())
 }
 
@@ -108,7 +141,7 @@ fn retained_value_tampering_with_recomputed_envelope_checksum_is_rejected() -> T
     let original = retained()?;
     record.input_digest = compute_input_digest(&record.inputs)?;
     assert!(matches!(
-        record.validate_admission(&receipt(&original)),
+        record.validate_admission(&receipt(&original)?),
         Err(JournalError::PayloadDigestMismatch)
     ));
     Ok(())

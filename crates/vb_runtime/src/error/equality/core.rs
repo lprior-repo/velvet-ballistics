@@ -15,6 +15,10 @@ pub(super) fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeEr
 }
 
 fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    runtime_error_queue_capacity_eq(left, right) || runtime_error_resource_capacity_eq(left, right)
+}
+
+fn runtime_error_queue_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     match (left, right) {
         (
             RuntimeError::ActiveRunCapacityExceeded { capacity: a },
@@ -37,6 +41,19 @@ fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool 
                 max: d,
             },
         ) => a == c && b == d,
+        _ => false,
+    }
+}
+
+fn runtime_error_resource_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    runtime_error_queue_depth_eq(left, right)
+        || runtime_error_resource_quota_eq(left, right)
+        || runtime_error_accounting_underflow_eq(left, right)
+}
+
+fn runtime_error_queue_depth_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    matches!(
+        (left, right),
         (
             RuntimeError::PerRunQueueDepthExceeded {
                 run: a,
@@ -48,9 +65,36 @@ fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool 
                 pending: e,
                 limit: f,
             },
-        ) => a == d && b == e && c == f,
-        _ => false,
-    }
+        ) if a == d && b == e && c == f
+    )
+}
+
+fn runtime_error_resource_quota_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    matches!(
+        (left, right),
+        (
+            RuntimeError::ResourceQuotaExceeded {
+                resource: a,
+                requested: b,
+                available: c,
+            },
+            RuntimeError::ResourceQuotaExceeded {
+                resource: d,
+                requested: e,
+                available: f,
+            },
+        ) if a == d && b == e && c == f
+    )
+}
+
+fn runtime_error_accounting_underflow_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    matches!(
+        (left, right),
+        (
+            RuntimeError::ResourceAccountingUnderflow { resource: a },
+            RuntimeError::ResourceAccountingUnderflow { resource: b },
+        ) if a == b
+    )
 }
 
 fn runtime_error_operation_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
@@ -204,77 +248,6 @@ fn runtime_error_shard_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     )
 }
 
-fn runtime_error_gate_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
-    match (left, right) {
-        (RuntimeError::GateAlreadyOpen { gate: a }, RuntimeError::GateAlreadyOpen { gate: b }) => {
-            a == b
-        }
-        (RuntimeError::GateNotOpen { gate: a }, RuntimeError::GateNotOpen { gate: b }) => a == b,
-        (
-            RuntimeError::GateEvaluationFailed { source: a },
-            RuntimeError::GateEvaluationFailed { source: b },
-        ) => a == b,
-        (
-            RuntimeError::GateRunNotSuspendable { run: a, state: sa },
-            RuntimeError::GateRunNotSuspendable { run: b, state: sb },
-        ) => a == b && sa == sb,
-        (
-            RuntimeError::GateWrongDelegate {
-                gate: a,
-                expected: ea,
-                actual: aa,
-            },
-            RuntimeError::GateWrongDelegate {
-                gate: b,
-                expected: eb,
-                actual: ab,
-            },
-        ) => a == b && ea == eb && aa == ab,
-        (
-            RuntimeError::GateRunMismatch {
-                gate: ga,
-                expected: ea,
-                actual: aa,
-            },
-            RuntimeError::GateRunMismatch {
-                gate: gb,
-                expected: eb,
-                actual: ab,
-            },
-        ) => ga == gb && ea == eb && aa == ab,
-        (
-            RuntimeError::GateOpenBlocksResume { run: a, gate: ga },
-            RuntimeError::GateOpenBlocksResume { run: b, gate: gb },
-        ) => a == b && ga == gb,
-        _ => false,
-    }
-}
-
-fn runtime_error_recovery_and_contract_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
-    match (left, right) {
-        (RuntimeError::Recovery { error: a }, RuntimeError::Recovery { error: b }) => a == b,
-        (
-            RuntimeError::RuntimeInputSlotKindMismatch {
-                slot: a_slot,
-                expected: a_exp,
-                actual: a_act,
-            },
-            RuntimeError::RuntimeInputSlotKindMismatch {
-                slot: b_slot,
-                expected: b_exp,
-                actual: b_act,
-            },
-        ) => a_slot == b_slot && a_exp == b_exp && a_act == b_act,
-        (
-            RuntimeError::ContractValidationError {
-                action: a_act,
-                error: a_err,
-            },
-            RuntimeError::ContractValidationError {
-                action: b_act,
-                error: b_err,
-            },
-        ) => a_act == b_act && a_err == b_err,
-        _ => false,
-    }
-}
+#[path = "core_groups.rs"]
+mod core_groups;
+use self::core_groups::{runtime_error_gate_eq, runtime_error_recovery_and_contract_eq};

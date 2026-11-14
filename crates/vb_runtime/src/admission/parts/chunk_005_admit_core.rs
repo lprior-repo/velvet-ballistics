@@ -11,25 +11,9 @@ pub fn admit_run(
     run_id: RunId,
     caps: CapabilitySet,
 ) -> Result<RunAdmission, AdmissionError> {
-    let (admitted_digest, ir_compat_decision) = match policy {
+    let (admitted_digest, decision) = match policy {
         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
-            let artifact = store
-                .load_accepted_artifact(digest)
-                .map_err(map_artifact_envelope_error)?;
-            validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
-            verify_stored_artifact(store, &artifact, Some(policy)).map_err(
-                |_| AdmissionError::ArtifactInvalidProofFlag {
-                    flag: "admission_policy",
-                },
-            )?;
-            let ir_compat_decision = check_artifact_ir_version(&artifact)?;
-            if artifact.digest != digest && artifact.source_digest != digest {
-                return Err(AdmissionError::ArtifactDigestMismatch {
-                    requested: digest,
-                    found: artifact.digest,
-                });
-            }
-            (artifact.digest, Some(ir_compat_decision))
+            admit_run_artifact(store, policy, digest)?
         }
         RuntimePolicy::Relaxed => (digest, None),
         _ => {
@@ -39,10 +23,34 @@ pub fn admit_run(
         }
     };
     let mut admission = RunAdmission::new(admitted_digest, run_id, caps, policy);
-    if let Some(decision) = ir_compat_decision {
+    if let Some(decision) = decision {
         admission = admission.with_ir_compat_decision(decision);
     }
     Ok(admission)
+}
+
+fn admit_run_artifact(
+    store: &dyn AcceptedArtifactStore,
+    policy: RuntimePolicy,
+    digest: WorkflowDigest,
+) -> Result<(WorkflowDigest, Option<vb_storage::compat::CompatDecision>), AdmissionError> {
+    let artifact = store
+        .load_accepted_artifact(digest)
+        .map_err(map_artifact_envelope_error)?;
+    validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
+    verify_stored_artifact(store, &artifact, Some(policy)).map_err(|_| {
+        AdmissionError::ArtifactInvalidProofFlag {
+            flag: "admission_policy",
+        }
+    })?;
+    let decision = check_artifact_ir_version(&artifact)?;
+    if artifact.digest != digest && artifact.source_digest != digest {
+        return Err(AdmissionError::ArtifactDigestMismatch {
+            requested: digest,
+            found: artifact.digest,
+        });
+    }
+    Ok((artifact.digest, Some(decision)))
 }
 
 /// Performs full admission gate check with artifact validation before run creation.
@@ -89,101 +97,128 @@ pub fn admit_artifact_run_with_certificate_floor(
     required_at_least: EventSeq,
 ) -> Result<RunAdmission, AdmissionError> {
     match policy {
-        RuntimePolicy::Strict | RuntimePolicy::Journaled => {
-            // Load and validate the full artifact.
-            let artifact = store
-                .load_accepted_artifact(artifact_digest)
-                .map_err(map_artifact_envelope_error)?;
-            validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
-            verify_stored_artifact(store, &artifact, Some(policy)).map_err(
-                |_| AdmissionError::ArtifactInvalidProofFlag {
-                    flag: "admission_policy",
-                },
-            )?;
-            let ir_compat_decision = check_artifact_ir_version(&artifact)?;
-
-            // INV-002: digest binding must be total. The loaded artifact's digest
-            // must match the requested digest exactly — a crafted artifact with
-            // valid gates but wrong identity must not be admitted.
-            if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
-                return Err(AdmissionError::ArtifactDigestMismatch {
-                    requested: artifact_digest,
-                    found: artifact.digest,
-                });
-            }
-
-            // INV-003: proof digest must match artifact digest. The verification
-            // proof's digest field must bind to the artifact content exactly.
-            if artifact.verification.digest != artifact.digest {
-                return Err(AdmissionError::ArtifactDigestMismatch {
-                    requested: artifact_digest,
-                    found: artifact.verification.digest,
-                });
-            }
-
-            if artifact.accepted_at_seq < required_at_least {
-                return Err(AdmissionError::ArtifactCertificateStale {
-                    digest: artifact_digest,
-                    accepted_at_seq: artifact.accepted_at_seq,
-                    required_at_least,
-                });
-            }
-
-            // spec: VERUS-CARD-003 strict equality (cardinality-exact + membership-exact admission).
-            // F-001 fix: restore strict capability equality (VERUS-CARD-003).
-            //
-            // Strict admission requires that granted capabilities exactly match the
-            // artifact's declared required capabilities — same cardinality AND same
-            // membership. Subset grants with extras are rejected because the runtime
-            // re-checks `RunAdmission::granted_capabilities` per action in
-            // `engine::action::execute_do`; preserving extras would let an over-granted
-            // capability authorize actions the artifact never declared, violating
-            // least-privilege and contradicting the cardinality-exact Verus proof
-            // model (`verification/verus/capability_artifact_model.rs::exact_profile`).
-            //
-            // Order: per-required subset check runs first so under-grant reports the
-            // specific missing capability; only when every required is covered do we
-            // gate on cardinality to reject over-grants (extras / duplicates).
-            //
-            // RA-023 fix: when cardinality differs, surface a typed
-            // `CapabilityCountMismatch { required_count, granted_count }` instead of
-            // fabricating a `CapabilityDenied` that names a granted capability as the
-            // missing one. Honesty-preserving error variants matter for the operator
-            // diagnostic surface (admission_result / RuntimeError mapping).
-            for required_cap in artifact.required_capabilities.iter() {
-                check_capability(required_cap.action_id(), required_cap, &caps)?;
-            }
-            let required_count = artifact.required_capabilities.len();
-            let granted_count = caps.len();
-            if required_count != granted_count {
-                return Err(AdmissionError::CapabilityCountMismatch {
-                    required_count,
-                    granted_count,
-                });
-            }
-
-            let admitted_digest = artifact.digest;
-            Ok(RunAdmission::with_idempotency_evidence(
-                admitted_digest,
-                run_id,
-                caps,
-                policy,
-                artifact.verification.idempotency_attested,
-            )
-            .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest))
-            .with_ir_compat_decision(ir_compat_decision))
-        }
-        RuntimePolicy::Relaxed => {
-            // Relaxed: skip artifact loading and capability checking.
-            Ok(RunAdmission::new(
-                artifact_digest,
-                run_id,
-                caps,
-                policy,
-            ))
-        }
+        RuntimePolicy::Strict | RuntimePolicy::Journaled => admit_strict_artifact_run(
+            store,
+            run_id,
+            artifact_digest,
+            caps,
+            policy,
+            required_at_least,
+        ),
+        RuntimePolicy::Relaxed => Ok(RunAdmission::new(artifact_digest, run_id, caps, policy)),
         _ => Err(AdmissionError::ArtifactInvalidProofFlag {
             flag: "runtime_policy",
         }),
     }
+}
+
+fn admit_strict_artifact_run(
+    store: &dyn AcceptedArtifactStore,
+    run_id: RunId,
+    artifact_digest: WorkflowDigest,
+    caps: CapabilitySet,
+    policy: RuntimePolicy,
+    required_at_least: EventSeq,
+) -> Result<RunAdmission, AdmissionError> {
+    let (artifact, decision) = load_admission_artifact(store, artifact_digest, policy)?;
+    verify_admission_digest(&artifact, artifact_digest)?;
+    verify_certificate_floor(&artifact, artifact_digest, required_at_least)?;
+    verify_admission_capabilities(&artifact, &caps)?;
+    Ok(admission_from_artifact(
+        artifact, run_id, caps, policy, decision,
+    ))
+}
+
+fn load_admission_artifact(
+    store: &dyn AcceptedArtifactStore,
+    artifact_digest: WorkflowDigest,
+    policy: RuntimePolicy,
+) -> Result<
+    (
+        vb_storage::admission::AcceptedArtifact,
+        vb_storage::compat::CompatDecision,
+    ),
+    AdmissionError,
+> {
+    let artifact = store
+        .load_accepted_artifact(artifact_digest)
+        .map_err(map_artifact_envelope_error)?;
+    validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
+    verify_stored_artifact(store, &artifact, Some(policy)).map_err(|_| {
+        AdmissionError::ArtifactInvalidProofFlag {
+            flag: "admission_policy",
+        }
+    })?;
+    let decision = check_artifact_ir_version(&artifact)?;
+    Ok((artifact, decision))
+}
+
+fn verify_admission_digest(
+    artifact: &vb_storage::admission::AcceptedArtifact,
+    artifact_digest: WorkflowDigest,
+) -> Result<(), AdmissionError> {
+    if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
+        return Err(AdmissionError::ArtifactDigestMismatch {
+            requested: artifact_digest,
+            found: artifact.digest,
+        });
+    }
+    if artifact.verification.digest != artifact.digest {
+        return Err(AdmissionError::ArtifactDigestMismatch {
+            requested: artifact_digest,
+            found: artifact.verification.digest,
+        });
+    }
+    Ok(())
+}
+
+fn verify_certificate_floor(
+    artifact: &vb_storage::admission::AcceptedArtifact,
+    artifact_digest: WorkflowDigest,
+    required_at_least: EventSeq,
+) -> Result<(), AdmissionError> {
+    if artifact.accepted_at_seq < required_at_least {
+        return Err(AdmissionError::ArtifactCertificateStale {
+            digest: artifact_digest,
+            accepted_at_seq: artifact.accepted_at_seq,
+            required_at_least,
+        });
+    }
+    Ok(())
+}
+
+fn verify_admission_capabilities(
+    artifact: &vb_storage::admission::AcceptedArtifact,
+    caps: &CapabilitySet,
+) -> Result<(), AdmissionError> {
+    for required_cap in artifact.required_capabilities.iter() {
+        check_capability(required_cap.action_id(), required_cap, caps)?;
+    }
+    let required_count = artifact.required_capabilities.len();
+    let granted_count = caps.len();
+    if required_count != granted_count {
+        return Err(AdmissionError::CapabilityCountMismatch {
+            required_count,
+            granted_count,
+        });
+    }
+    Ok(())
+}
+
+fn admission_from_artifact(
+    artifact: vb_storage::admission::AcceptedArtifact,
+    run_id: RunId,
+    caps: CapabilitySet,
+    policy: RuntimePolicy,
+    decision: vb_storage::compat::CompatDecision,
+) -> RunAdmission {
+    RunAdmission::with_idempotency_evidence(
+        artifact.digest,
+        run_id,
+        caps,
+        policy,
+        artifact.verification.idempotency_attested,
+    )
+    .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest))
+    .with_ir_compat_decision(decision)
 }

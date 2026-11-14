@@ -12,13 +12,13 @@
 //
 //   - `crates/vb_runtime/src/ipc_refinement.rs`             (REFINE-IPC-003..005)
 //   - `crates/vb_runtime/src/shard/types/runtime_state.rs:4-67`      (RuntimeState, RuntimeEvent)
-//   - `crates/vb_runtime/src/shard/types/shard.rs:34-67`      (ShardStatus, ShardHealth)
+//   - `crates/vb_runtime/src/shard/types/shard.rs:63-96`      (ShardStatus, ShardHealth)
 //   - `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8`, `crates/vb_runtime/src/shard/types/command_queue.rs:2`, `crates/vb_runtime/src/shard/types/command_queue.rs:20-36` (PendingTimerKind,
 //                                                            ShardCommandQueue,
 //                                                            MAX_COMMAND_QUEUE_CAPACITY)
 //   - `crates/vb_runtime/src/shard/timer_wheel.rs:21-159`   (TimerEntry, TimerWheel)
 //   - `crates/vb_core/src/policy.rs:194-201`                (RuntimePolicy)
-//   - `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31` (RunAdmission)
+//   - `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34` (RunAdmission)
 //
 // The binding is via the companion extern surface
 // `verification/verus/extern_ipc_runtime_transitions.rs`, which declares
@@ -40,8 +40,8 @@
 //   - `MirrorRuntimeEvent::is_resumable()`             <- crates/vb_runtime/src/shard/types/runtime_state.rs:62-67
 //   - `MirrorRuntimeState` (5-variant enum)            <- crates/vb_runtime/src/shard/types/runtime_state.rs:4-15
 //   - `MirrorRuntimeState::is_resumable()`             <- crates/vb_runtime/src/shard/types/runtime_state.rs:20-22
-//   - `MirrorShardStatus` (11-field struct)            <- crates/vb_runtime/src/shard/types/shard.rs:34-57
-//   - `MirrorShardHealth` (2-variant enum)             <- crates/vb_runtime/src/shard/types/shard.rs:62-67
+//   - `MirrorShardStatus` (11-field struct)            <- crates/vb_runtime/src/shard/types/shard.rs:63-86
+//   - `MirrorShardHealth` (2-variant enum)             <- crates/vb_runtime/src/shard/types/shard.rs:91-96
 //   - `MirrorTimerWheel::len / get_kind / cancel / fire_expired`
 //                                                     <- crates/vb_runtime/src/shard/timer_wheel.rs:144, 150, 93, 109
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`            <- crates/vb_runtime/src/shard/types/command_queue.rs:2
@@ -165,12 +165,12 @@ pub const MIRROR_RUNTIME_STATE_FAILED_TAG: u8 = 4;
 // MirrorShardHealth — 2 variants
 // --------------------------------------------------------------------------
 /// Mirror of production `vb_runtime::shard::ShardHealth` at
-/// `crates/vb_runtime/src/shard/types/shard.rs:62-67`.
+/// `crates/vb_runtime/src/shard/types/shard.rs:91-96`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MirrorShardHealth {
-    /// Production variant 0: `ShardHealth::Running` (crates/vb_runtime/src/shard/types/shard.rs:64).
+    /// Production variant 0: `ShardHealth::Running` (crates/vb_runtime/src/shard/types/shard.rs:93).
     Running,
-    /// Production variant 1: `ShardHealth::ShuttingDown` (crates/vb_runtime/src/shard/types/shard.rs:66).
+    /// Production variant 1: `ShardHealth::ShuttingDown` (crates/vb_runtime/src/shard/types/shard.rs:95).
     ShuttingDown,
 }
 
@@ -178,29 +178,29 @@ pub enum MirrorShardHealth {
 // MirrorShardStatus — 11 fields
 // --------------------------------------------------------------------------
 /// Mirror of production `vb_runtime::shard::ShardStatus` at
-/// `crates/vb_runtime/src/shard/types/shard.rs:34-57`.
+/// `crates/vb_runtime/src/shard/types/shard.rs:63-86`.
 pub struct MirrorShardStatus {
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:36): health label.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:65): health label.
     pub health: MirrorShardHealth,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:38): shard can continue ticks.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:67): shard can continue ticks.
     pub running: bool,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:40): graceful shutdown has begun.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:69): graceful shutdown has begun.
     pub shutting_down: bool,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:42): command queue depth.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:71): command queue depth.
     pub command_queue_depth: usize,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:44): command queue capacity.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:73): command queue capacity.
     pub command_queue_capacity: usize,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:46): active runs owned by shard.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:75): active runs owned by shard.
     pub active_runs: usize,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:48): active-run ceiling.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:77): active-run ceiling.
     pub max_active_runs: usize,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:50): trace ring capacity.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:79): trace ring capacity.
     pub trace_capacity: usize,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:52): trace events dropped on overflow.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:81): trace events dropped on overflow.
     pub trace_dropped: u64,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:54): max steps attempted per tick.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:83): max steps attempted per tick.
     pub step_budget_per_tick: u64,
-    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:56): runtime admission policy.
+    /// Production field (crates/vb_runtime/src/shard/types/shard.rs:85): runtime admission policy.
     pub runtime_policy: u8,
 }
 
@@ -263,7 +263,7 @@ pub open spec fn timer_eligible(run_exists: bool, terminal: int, cancelled: bool
 /// Spec predicate: admission is open (not shutting down or closed).
 ///
 /// Production semantics (from `ShardStatus::shutting_down` at
-/// `crates/vb_runtime/src/shard/types/shard.rs:40`): when `shutting_down
+/// `crates/vb_runtime/src/shard/types/shard.rs:69`): when `shutting_down
 /// == true`, the shard stops accepting new submissions.
 pub open spec fn admission_open(state: int) -> bool {
     state == 0

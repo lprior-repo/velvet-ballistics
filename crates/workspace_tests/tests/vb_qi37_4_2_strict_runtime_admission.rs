@@ -853,7 +853,7 @@ fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capa
         max_for_each_iterations: 0,
         max_together_branches: 0,
         max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
+        max_run_time_seconds: 1,
         max_result_bytes: 0,
         max_total_slots_written: 0,
         max_timer_entries: 0,

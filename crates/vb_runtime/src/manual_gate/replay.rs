@@ -139,59 +139,77 @@ pub fn gate_opened_event(
 pub(crate) fn reconstruct_open_gates(
     events: &[vb_storage::JournalEvent],
 ) -> Result<Vec<OpenGate>, GateError> {
-    let open = events.iter().try_fold(
-        IndexMap::new(),
-        |mut open: IndexMap<vb_core::manual_gate::GateId, OpenGate>,
-         event: &vb_storage::JournalEvent| {
-            match event {
-                vb_storage::JournalEvent::GateOpenedEvent {
-                    gate,
-                    opened_at_ms,
-                    requester,
-                    ..
-                } => {
-                    if !gate.is_structurally_valid() || !requester.is_valid() {
-                        return Err(GateError::ReplayInvalidGate);
-                    }
-                    if open.contains_key(&gate.id) {
-                        return Err(GateError::ReplayDuplicateOpen {
-                            gate: gate.id.get(),
-                        });
-                    }
-                    open.insert(
-                        gate.id,
-                        OpenGate {
-                            gate: gate.clone(),
-                            opened_at_ms: *opened_at_ms,
-                            requester: requester.clone(),
-                            delegated_to: None,
-                        },
-                    );
-                    Ok(open)
-                }
-                vb_storage::JournalEvent::GateDecisionEvent { record, .. } => {
-                    if !record.is_structurally_valid() {
-                        return Err(GateError::InvalidRecord);
-                    }
-                    match record.outcome {
-                        GateOutcome::Approved
-                        | GateOutcome::Denied
-                        | GateOutcome::BreakGlassApproved
-                        | GateOutcome::Escalated => {
-                            open.shift_remove(&record.gate);
-                        }
-                        GateOutcome::Delegated => {
-                            if let Some(open_gate) = open.get_mut(&record.gate) {
-                                open_gate.delegated_to = record.delegated_to.clone();
-                            }
-                        }
-                        GateOutcome::MoreEvidenceRequested => {}
-                    }
-                    Ok(open)
-                }
-                _ => Ok(open),
-            }
+    events
+        .iter()
+        .try_fold(IndexMap::new(), apply_recovery_event)
+        .map(|open| open.into_values().collect())
+}
+
+fn apply_recovery_event(
+    mut open: IndexMap<vb_core::manual_gate::GateId, OpenGate>,
+    event: &vb_storage::JournalEvent,
+) -> Result<IndexMap<vb_core::manual_gate::GateId, OpenGate>, GateError> {
+    match event {
+        vb_storage::JournalEvent::GateOpenedEvent {
+            gate,
+            opened_at_ms,
+            requester,
+            ..
+        } => insert_open_gate(&mut open, gate, *opened_at_ms, requester)?,
+        vb_storage::JournalEvent::GateDecisionEvent { record, .. } => {
+            apply_recovery_decision(&mut open, record)?;
+        }
+        _ => {}
+    }
+    Ok(open)
+}
+
+fn insert_open_gate(
+    open: &mut IndexMap<vb_core::manual_gate::GateId, OpenGate>,
+    gate: &ManualGate,
+    opened_at_ms: u64,
+    requester: &ApproverId,
+) -> Result<(), GateError> {
+    if !gate.is_structurally_valid() || !requester.is_valid() {
+        return Err(GateError::ReplayInvalidGate);
+    }
+    if open.contains_key(&gate.id) {
+        return Err(GateError::ReplayDuplicateOpen {
+            gate: gate.id.get(),
+        });
+    }
+    open.insert(
+        gate.id,
+        OpenGate {
+            gate: gate.clone(),
+            opened_at_ms,
+            requester: requester.clone(),
+            delegated_to: None,
         },
-    )?;
-    Ok(open.into_values().collect())
+    );
+    Ok(())
+}
+
+fn apply_recovery_decision(
+    open: &mut IndexMap<vb_core::manual_gate::GateId, OpenGate>,
+    record: &GateOutcomeRecord,
+) -> Result<(), GateError> {
+    if !record.is_structurally_valid() {
+        return Err(GateError::InvalidRecord);
+    }
+    match record.outcome {
+        GateOutcome::Approved
+        | GateOutcome::Denied
+        | GateOutcome::BreakGlassApproved
+        | GateOutcome::Escalated => {
+            open.shift_remove(&record.gate);
+        }
+        GateOutcome::Delegated => {
+            if let Some(gate) = open.get_mut(&record.gate) {
+                gate.delegated_to = record.delegated_to.clone();
+            }
+        }
+        GateOutcome::MoreEvidenceRequested => {}
+    }
+    Ok(())
 }

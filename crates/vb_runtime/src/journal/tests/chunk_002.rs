@@ -251,7 +251,9 @@ fn queued_storage_resume_persists_run_resumed_not_run_failed() -> Result<(), Str
         Ok(())
     );
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
-    assert!(matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1));
+    assert!(
+        matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1)
+    );
 
     let events = journal
         .events_for_run(run)
@@ -274,9 +276,8 @@ fn queued_storage_resume_persists_run_resumed_not_run_failed() -> Result<(), Str
 }
 
 #[test]
-fn journaled_invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure(
-) -> Result<(), String>
-{
+fn journaled_invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure()
+-> Result<(), String> {
     let (_dir, journal) = temp_journal()?;
     let adapter = StorageRuntimeJournal::strict(journal.clone());
     let run = RunId::new(4_603);
@@ -305,8 +306,8 @@ fn resumed_runtime_event_maps_to_run_resumed_storage_event() -> Result<(), Strin
     let adapter = StorageRuntimeJournal::journaled(journal.clone());
     let run = RunId::new(4_601);
     let timestamp: u64 = 1_700_000_000;
-    let expected_seconds = i64::try_from(timestamp)
-        .map_err(|_| "test timestamp must fit in i64".to_owned())?;
+    let expected_seconds =
+        i64::try_from(timestamp).map_err(|_| "test timestamp must fit in i64".to_owned())?;
     let Some(expected_timestamp) =
         chrono::DateTime::<chrono::Utc>::from_timestamp(expected_seconds, 0)
     else {
@@ -341,8 +342,7 @@ fn resumed_runtime_event_maps_to_run_resumed_storage_event() -> Result<(), Strin
 }
 
 #[test]
-fn invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure() -> Result<(), String>
-{
+fn invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure() -> Result<(), String> {
     let (_dir, journal) = temp_journal()?;
     let adapter = StorageRuntimeJournal::journaled(journal.clone());
     let run = RunId::new(4_602);
@@ -458,7 +458,9 @@ fn queued_storage_runtime_journal_flushes_mapped_events_to_fjall() {
         adapter.append_sequenced(
             RuntimeJournalEvent::RunFinished {
                 run,
-                result: SlotIdx::new(3), attempt: 1},
+                result: SlotIdx::new(3),
+                attempt: 1
+            },
             EventSeq::new(2),
         ),
         Ok(())
@@ -545,7 +547,11 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
     .expect("journaled shared_journal already checked");
     assert_eq!(
         journaled.append_sequenced(
-            RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1},
+            RuntimeJournalEvent::RunCancelled {
+                run,
+                reason: None,
+                attempt: 1
+            },
             EventSeq::new(0),
         ),
         Ok(())
@@ -568,7 +574,10 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
     .expect("strict shared_journal already checked");
     assert_eq!(
         strict.append_sequenced(
-            RuntimeJournalEvent::RunFailed { run: strict_run, attempt: 1},
+            RuntimeJournalEvent::RunFailed {
+                run: strict_run,
+                attempt: 1
+            },
             EventSeq::new(0),
         ),
         Ok(())
@@ -608,8 +617,8 @@ fn shared_journal_returns_unsupported_durability_profile_error_for_future_varian
         .shared_journal(journal.clone(), queue.clone());
     assert!(result.is_ok(), "Journaled profile must still resolve");
 
-    let result = RuntimeJournalConfig::new(DurabilityProfile::Strict)
-        .shared_journal(journal.clone(), queue);
+    let result =
+        RuntimeJournalConfig::new(DurabilityProfile::Strict).shared_journal(journal.clone(), queue);
     assert!(result.is_ok(), "Strict profile must still resolve");
 
     let err = RuntimeError::UnsupportedDurabilityProfile {
@@ -798,10 +807,7 @@ fn storage_event_maps_budgeted_admission_to_budget_receipt() {
         seq,
     )
     .expect("plain admission maps");
-    assert!(matches!(
-        mapped,
-        JournalEvent::RunAdmission { .. }
-    ));
+    assert!(matches!(mapped, JournalEvent::RunAdmission { .. }));
 }
 
 #[test]
@@ -817,8 +823,7 @@ fn storage_event_maps_compat_decision_to_compat_decision_event() {
     let event = RuntimeJournalEvent::CompatibilityDecision { run, decision };
     assert_eq!(event.run_id(), run);
     assert_eq!(event.kind(), "CompatibilityDecision");
-    let mapped = StorageRuntimeJournal::storage_event(event, seq)
-        .expect("compat decision maps");
+    let mapped = StorageRuntimeJournal::storage_event(event, seq).expect("compat decision maps");
     assert!(matches!(
         mapped,
         JournalEvent::CompatibilityDecisionEvent {
@@ -910,4 +915,33 @@ fn tenant_admission_event_needs_tenant_and_budget() {
             cost_units: 42,
         })
     );
+}
+
+#[test]
+fn unbound_budget_origin_round_trips_but_does_not_hydrate() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = RunId::new(8_100);
+    adapter
+        .append_sequenced(
+            RuntimeJournalEvent::RunBudgetOrigin {
+                run,
+                started_millis: 1_700_000_000_123,
+            },
+            EventSeq::ZERO,
+        )
+        .map_err(|error| error.to_string())?;
+    let events = journal
+        .events_for_run_full(run)
+        .map_err(|error| error.to_string())?;
+    assert!(matches!(
+        events.as_slice(),
+        [JournalEvent::RunBudgetOriginEvent {
+            run: found,
+            seq,
+            started_millis: 1_700_000_000_123,
+        }] if *found == run && *seq == EventSeq::ZERO
+    ));
+    assert_eq!(crate::recovery::hydrate_run_budget_origin(&events), None);
+    Ok(())
 }

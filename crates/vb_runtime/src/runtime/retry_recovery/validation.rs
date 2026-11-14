@@ -1,5 +1,12 @@
 use super::*;
 
+#[path = "validation/retry_tail.rs"]
+mod retry_tail;
+use retry_tail::{
+    scheduled_retry_action, validate_rescheduled_action, validate_rescheduled_ticket,
+    validate_retry_tail,
+};
+
 pub(super) fn validate_checkpoint_binding(
     run: RunId,
     event: &JournalEvent,
@@ -7,6 +14,19 @@ pub(super) fn validate_checkpoint_binding(
     prefix: &RecoveryPrefixEvidence,
     recovered: &RecoveryArtifactWorkflow,
 ) -> RuntimeResult<()> {
+    let (schedule, timer) = retry_timer_schedule(event, run)?;
+    let admission = checkpoint
+        .admission
+        .as_ref()
+        .ok_or_else(|| invalid("admission missing"))?;
+    validate_checkpoint_admission(run, prefix, recovered, admission)?;
+    validate_checkpoint_schedule(checkpoint, run, schedule, timer, &recovered.workflow)
+}
+
+fn retry_timer_schedule(
+    event: &JournalEvent,
+    run: RunId,
+) -> RuntimeResult<((vb_storage::EventSeq, vb_core::StepIdx, u16), &RetryTimerV1)> {
     let JournalEvent::RetryTimerScheduled {
         run: event_run,
         seq,
@@ -20,17 +40,15 @@ pub(super) fn validate_checkpoint_binding(
     if *event_run != run {
         return Err(invalid("event run mismatch"));
     }
-    let (seq, step, attempt) = (*seq, *step, *attempt);
-    let ticket = timer.failed_ticket;
-    let node = recovered
-        .workflow
-        .node(step)
-        .ok_or_else(|| invalid("step missing"))?;
-    let policy = node.retry.ok_or_else(|| invalid("policy missing"))?;
-    let admission = checkpoint
-        .admission
-        .as_ref()
-        .ok_or_else(|| invalid("admission missing"))?;
+    Ok(((*seq, *step, *attempt), timer))
+}
+
+fn validate_checkpoint_admission(
+    run: RunId,
+    prefix: &RecoveryPrefixEvidence,
+    recovered: &RecoveryArtifactWorkflow,
+    admission: &crate::admission::RunAdmission,
+) -> RuntimeResult<()> {
     crate::recovery::validate_recovered_admission_evidence(
         crate::recovery::RecoveredAdmissionEvidence {
             context: crate::recovery::RecoveredAdmissionContext {
@@ -43,18 +61,22 @@ pub(super) fn validate_checkpoint_binding(
             workflow: &recovered.workflow,
         },
     )?;
+    validate_derived_admission(admission, &recovered.artifact)?;
+    validate_admission_matches_prefix(admission, &prefix.admission)
+}
+
+fn validate_derived_admission(
+    admission: &crate::admission::RunAdmission,
+    artifact: &vb_storage::AcceptedArtifact,
+) -> RuntimeResult<()> {
     if matches!(
         admission.policy(),
         vb_core::RuntimePolicy::Strict | vb_core::RuntimePolicy::Journaled
     ) && (admission.idempotency_attested()
-        != recovered
-            .artifact
-            .verification
-            .idempotency_attested
-            .as_ref()
+        != artifact.verification.idempotency_attested.as_ref()
         || admission.ir_compat_decision()
             != Some(
-                crate::admission::check_artifact_ir_version(&recovered.artifact)
+                crate::admission::check_artifact_ir_version(artifact)
                     .map_err(|_| invalid("artifact compatibility decision"))?,
             ))
     {
@@ -62,7 +84,13 @@ pub(super) fn validate_checkpoint_binding(
             "checkpoint derived admission authority differs from artifact",
         ));
     }
-    let recorded = &prefix.admission;
+    Ok(())
+}
+
+fn validate_admission_matches_prefix(
+    admission: &crate::admission::RunAdmission,
+    recorded: &crate::admission::RunAdmission,
+) -> RuntimeResult<()> {
     if admission.artifact_digest() != recorded.artifact_digest()
         || admission.policy() != recorded.policy()
         || admission.policy_pin() != recorded.policy_pin()
@@ -74,19 +102,48 @@ pub(super) fn validate_checkpoint_binding(
             "checkpoint admission differs from durable admission",
         ));
     }
-    if ticket.run != run
-        || ticket.step != step
-        || ticket.run_attempt != attempt
-        || checkpoint.run_id != run
-        || checkpoint.run_attempt.get() != attempt
-        || checkpoint.retry_step != step
-        || checkpoint.prior_seq.checked_add(1) != Some(seq.get())
-        || checkpoint.action_attempts.get(step.as_usize()).copied() != Some(timer.next_attempt)
-        || ticket.capacity != policy.max_attempts
+    Ok(())
+}
+
+fn validate_checkpoint_schedule(
+    checkpoint: &RunCheckpointV1,
+    run: RunId,
+    schedule: (vb_storage::EventSeq, vb_core::StepIdx, u16),
+    timer: &RetryTimerV1,
+    workflow: &CompiledWorkflow,
+) -> RuntimeResult<()> {
+    let (seq, step, attempt) = schedule;
+    let ticket = timer.failed_ticket;
+    let node = workflow.node(step).ok_or_else(|| invalid("step missing"))?;
+    let policy = node.retry.ok_or_else(|| invalid("policy missing"))?;
+    validate_checkpoint_ticket_fields(checkpoint, run, (seq, step, attempt), ticket, timer)?;
+    if ticket.capacity != policy.max_attempts
         || timer.next_attempt > policy.max_attempts
         || timer.deadline_unix_ms.checked_sub(timer.scheduled_unix_ms) != Some(policy.delay_ms)
         || timer.generation != seq.get()
         || !matches!(node.kind, vb_core::CompiledNodeKind::Do { action, .. } if action == ticket.action)
+    {
+        return Err(invalid("checkpoint/failure/policy identity mismatch"));
+    }
+    Ok(())
+}
+
+fn validate_checkpoint_ticket_fields(
+    checkpoint: &RunCheckpointV1,
+    run: RunId,
+    schedule: (vb_storage::EventSeq, vb_core::StepIdx, u16),
+    ticket: vb_core::ActionTicket,
+    timer: &RetryTimerV1,
+) -> RuntimeResult<()> {
+    let (seq, step, attempt) = schedule;
+    if checkpoint.run_id != run
+        || ticket.run != run
+        || ticket.step != step
+        || ticket.run_attempt != attempt
+        || checkpoint.run_attempt.get() != attempt
+        || checkpoint.retry_step != step
+        || checkpoint.prior_seq.checked_add(1) != Some(seq.get())
+        || checkpoint.action_attempts.get(step.as_usize()).copied() != Some(timer.next_attempt)
     {
         return Err(invalid("checkpoint/failure/policy identity mismatch"));
     }
@@ -101,6 +158,19 @@ pub(super) fn validate_failed_prefix(
     contracts: &[vb_core::action::ActionContract],
 ) -> RuntimeResult<()> {
     let ticket = timer.failed_ticket;
+    validate_failure_adjacency(events, index, ticket)?;
+    let schedule = failed_ticket_schedule(events, index, ticket)?;
+    let contract = contracts
+        .get(usize::from(ticket.action.get()))
+        .ok_or_else(|| invalid("action contract"))?;
+    validate_failed_schedule_identity(ticket, workflow, schedule, contract)
+}
+
+fn validate_failure_adjacency(
+    events: &[JournalEvent],
+    index: usize,
+    ticket: vb_core::ActionTicket,
+) -> RuntimeResult<()> {
     let before = index
         .checked_sub(1)
         .and_then(|index| events.get(index))
@@ -110,26 +180,32 @@ pub(super) fn validate_failed_prefix(
     {
         return Err(invalid("timer is not adjacent to the exact action failure"));
     }
+    Ok(())
+}
+
+fn failed_ticket_schedule(
+    events: &[JournalEvent],
+    index: usize,
+    ticket: vb_core::ActionTicket,
+) -> RuntimeResult<&JournalEvent> {
     let prefix = events
         .get(..index.saturating_sub(1))
         .ok_or_else(|| invalid("failure prefix"))?;
-    let schedule = prefix.iter().rev().find(|event| matches!(event, JournalEvent::ActionScheduledTicket { ticket: old, .. } if old.step == ticket.step));
-    let Some(JournalEvent::ActionScheduledTicket {
-        ticket: old,
-        input,
-        output,
-        action_abi_digest,
-        ..
-    }) = schedule
-    else {
-        return Err(invalid("missing failed ticket schedule"));
-    };
+    prefix.iter().rev()
+        .find(|event| matches!(event, JournalEvent::ActionScheduledTicket { ticket: old, .. } if old.step == ticket.step))
+        .ok_or_else(|| invalid("missing failed ticket schedule"))
+}
+
+fn validate_failed_schedule_identity(
+    ticket: vb_core::ActionTicket,
+    workflow: &CompiledWorkflow,
+    schedule: &JournalEvent,
+    contract: &vb_core::action::ActionContract,
+) -> RuntimeResult<()> {
+    let (old, input, output, action_abi_digest) = scheduled_failure_fields(schedule)?;
     let node = workflow
         .node(ticket.step)
         .ok_or_else(|| invalid("action node"))?;
-    let contract = contracts
-        .get(usize::from(ticket.action.get()))
-        .ok_or_else(|| invalid("action contract"))?;
     let digest = crate::recovery::action_contract_abi_digest(contract)?;
     if old != &ticket
         || node.output.slot() != Some(*output)
@@ -141,6 +217,26 @@ pub(super) fn validate_failed_prefix(
     Ok(())
 }
 
+fn scheduled_failure_fields(
+    schedule: &JournalEvent,
+) -> RuntimeResult<(
+    &vb_core::ActionTicket,
+    &vb_core::SlotIdx,
+    &vb_core::SlotIdx,
+    &vb_core::WorkflowDigest,
+)> {
+    match schedule {
+        JournalEvent::ActionScheduledTicket {
+            ticket,
+            input,
+            output,
+            action_abi_digest,
+            ..
+        } => Ok((ticket, input, output, action_abi_digest)),
+        _ => Err(invalid("missing failed ticket schedule")),
+    }
+}
+
 pub(super) fn retry_action_boundary(
     tail: &[JournalEvent],
     timer: &RetryTimerV1,
@@ -148,124 +244,22 @@ pub(super) fn retry_action_boundary(
     contracts: &[vb_core::action::ActionContract],
 ) -> RuntimeResult<Option<(RecoveredRunBoundary, u64)>> {
     let ticket = timer.failed_ticket;
-    let Some(JournalEvent::ActionScheduledTicket {
-        ticket: next,
-        seq,
-        input,
-        output,
-        action_abi_digest,
-        ..
-    }) = tail.last()
-    else {
+    let Some(action) = scheduled_retry_action(tail, ticket)? else {
         return Ok(None);
     };
-    if next.step != ticket.step {
-        return Ok(None);
-    }
-    if tail.len() != 3 {
-        return Err(invalid("rescheduled action tail length"));
-    }
-    let mut charge = 0u64;
-    let mut expected_seq = timer.generation;
-    let mut started = false;
-    let mut resolved = false;
-    for event in tail {
-        expected_seq = expected_seq
-            .checked_add(1)
-            .ok_or_else(|| invalid("tail sequence overflow"))?;
-        if event.run_id() != ticket.run || event.seq().get() != expected_seq {
-            return Err(invalid("tail sequence/run mismatch"));
-        }
-        charge = charge
-            .checked_add(retry_tail_charge(event)?)
-            .ok_or_else(|| invalid("tail charge overflow"))?;
-        match event {
-            JournalEvent::StepStarted { step, attempt, .. }
-                if *step == ticket.step
-                    && *attempt == ticket.run_attempt
-                    && !started
-                    && !resolved =>
-            {
-                started = true
-            }
-            JournalEvent::WaitResolvedEvent { step, attempt, .. }
-                if *step == ticket.step
-                    && *attempt == ticket.run_attempt
-                    && started
-                    && !resolved =>
-            {
-                resolved = true
-            }
-            JournalEvent::ActionScheduledTicket {
-                ticket: scheduled, ..
-            } if scheduled == next && started && resolved => {}
-            _ => return Err(invalid("rescheduled action tail is inconsistent")),
-        }
-    }
-    if !resolved
-        || next.run != ticket.run
-        || next.action != ticket.action
-        || next.run_attempt != ticket.run_attempt
-        || next.attempt != timer.next_attempt
-        || next.capacity != ticket.capacity
-        || next.idempotency_key != ticket.idempotency_key
-        || !vb_core::action::action_ticket_has_valid_key(*next)
-    {
-        return Err(invalid("rescheduled action authority mismatch"));
-    }
-    let contract = contracts
-        .get(usize::from(next.action.get()))
-        .ok_or_else(|| invalid("next action contract"))?;
-    let node = workflow
-        .node(next.step)
-        .ok_or_else(|| invalid("next action node"))?;
-    if *action_abi_digest != crate::recovery::action_contract_abi_digest(contract)?
-        || node.output.slot() != Some(*output)
-        || !matches!(node.kind, vb_core::CompiledNodeKind::Do { input: expected, .. } if expected == *input)
-    {
-        return Err(invalid("rescheduled action ABI mismatch"));
-    }
+    let charge = validate_retry_tail(tail, ticket, action.ticket, timer.generation)?;
+    validate_rescheduled_ticket(ticket, action.ticket, timer)?;
+    validate_rescheduled_action(&action, workflow, contracts)?;
     Ok(Some((
         RecoveredRunBoundary::from_pending_action(
             crate::recovery::RecoveredPendingActionTicket::new(
-                *seq,
-                *next,
-                *input,
-                *output,
-                *action_abi_digest,
+                action.seq,
+                action.ticket,
+                action.input,
+                action.output,
+                action.action_abi_digest,
             ),
         ),
         charge,
     )))
-}
-
-fn retry_tail_charge(event: &JournalEvent) -> RuntimeResult<u64> {
-    use crate::journal::RuntimeJournalEvent as Event;
-    let runtime = match event {
-        JournalEvent::StepStarted {
-            run, step, attempt, ..
-        } => Event::StepStarted {
-            run: *run,
-            step: *step,
-            attempt: *attempt,
-        },
-        JournalEvent::WaitResolvedEvent { run, step, .. } => Event::WaitResolved {
-            run: *run,
-            step: *step,
-        },
-        JournalEvent::ActionScheduledTicket {
-            ticket,
-            input,
-            output,
-            action_abi_digest,
-            ..
-        } => Event::ActionScheduledTicket {
-            ticket: *ticket,
-            input: *input,
-            output: *output,
-            action_abi_digest: *action_abi_digest,
-        },
-        _ => return Err(invalid("unsupported tail charge")),
-    };
-    crate::shard::Shard::journal_event_bytes(&runtime)
 }

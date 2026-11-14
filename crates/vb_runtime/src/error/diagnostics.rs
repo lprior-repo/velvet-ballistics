@@ -1,6 +1,9 @@
 use super::RuntimeError;
 use vb_core::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
 
+#[path = "diagnostics/runtime_code.rs"]
+mod runtime_code;
+
 impl RuntimeError {
     pub const SECRET_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x2026);
     pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
@@ -55,30 +58,60 @@ impl RuntimeError {
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
+        self.diagnostic_code_capacity()
+            .or_else(|| self.diagnostic_code_action_completion())
+            .or_else(|| self.diagnostic_code_admission())
+            .or_else(|| self.diagnostic_code_persistence())
+            .or_else(|| self.diagnostic_code_recovery())
+            .unwrap_or_else(|| self.diagnostic_code_other())
+    }
+
+    fn diagnostic_code_persistence(&self) -> Option<DiagnosticCode> {
         match self {
-            Self::SecretUnavailable => Self::SECRET_UNAVAILABLE_CODE,
-            Self::QueueFull => Self::QUEUE_FULL_CODE,
-            Self::PerRunQueueDepthExceeded { .. } => Self::PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE,
-            Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
-            Self::ActiveRunCapacityExceeded { .. } => Self::ACTIVE_RUN_CAPACITY_EXCEEDED_CODE,
-            Self::OpenGateCapacityExceeded { .. } => Self::OPEN_GATE_CAPACITY_EXCEEDED_CODE,
-            Self::OpenGateCapacityZero => Self::OPEN_GATE_CAPACITY_ZERO_CODE,
-            Self::RunAlreadyExists => Self::RUN_ALREADY_EXISTS_CODE,
-            Self::UnsupportedOperation { .. } => Self::UNSUPPORTED_OPERATION_CODE,
-            Self::ShutdownInProgress => Self::SHUTDOWN_IN_PROGRESS_CODE,
-            Self::JournalPoisoned => Self::JOURNAL_POISONED_CODE,
-            Self::JournalFull { .. } => Self::JOURNAL_FULL_CODE,
-            Self::StorageJournalAppend { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
-            Self::RollbackFailed { .. } => Self::ROLLBACK_FAILED_CODE,
-            Self::AdmissionHeaderPersistenceFailed { .. } => {
-                Self::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE
-            }
-            Self::Core { source } => match source.as_ref() {
+            Self::JournalPoisoned => Some(Self::JOURNAL_POISONED_CODE),
+            Self::StorageJournalAppend { .. } => Some(Self::STORAGE_JOURNAL_APPEND_FAILED_CODE),
+            Self::RollbackFailed { .. } => Some(Self::ROLLBACK_FAILED_CODE),
+            Self::UnsupportedAsyncStrictAck => Some(Self::UNSUPPORTED_ASYNC_STRICT_ACK_CODE),
+            Self::Core { source } => Some(match source.as_ref() {
                 vb_core::errors::CoreError::QueueFull => Self::QUEUE_FULL_CODE,
                 _ => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
-            },
-            Self::UnsupportedAsyncStrictAck => Self::UNSUPPORTED_ASYNC_STRICT_ACK_CODE,
-            Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
+            }),
+            Self::Recovery { .. } => Some(Self::STORAGE_JOURNAL_APPEND_FAILED_CODE),
+            _ => None,
+        }
+    }
+
+    fn diagnostic_code_recovery(&self) -> Option<DiagnosticCode> {
+        match self {
+            Self::UnsupportedFullRecoveryHydration => {
+                Some(Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE)
+            }
+            Self::InvalidRecoveryHydration
+            | Self::RecoveryNotAvailable
+            | Self::RecoveryCannotResume { .. } => Some(Self::INVALID_RECOVERY_HYDRATION_CODE),
+            _ => None,
+        }
+    }
+
+    fn diagnostic_code_capacity(&self) -> Option<DiagnosticCode> {
+        match self {
+            Self::QueueFull => Some(Self::QUEUE_FULL_CODE),
+            Self::PerRunQueueDepthExceeded { .. } => Some(Self::PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE),
+            Self::ActiveRunCapacityExceeded { .. } => Some(Self::ACTIVE_RUN_CAPACITY_EXCEEDED_CODE),
+            Self::OpenGateCapacityExceeded { .. } => Some(Self::OPEN_GATE_CAPACITY_EXCEEDED_CODE),
+            Self::OpenGateCapacityZero => Some(Self::OPEN_GATE_CAPACITY_ZERO_CODE),
+            Self::JournalFull { .. } => Some(Self::JOURNAL_FULL_CODE),
+            Self::CommandQueueCapacityExceeded { .. } => {
+                Some(Self::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE)
+            }
+            Self::ActiveRunCapacityZero => Some(Self::ACTIVE_RUN_CAPACITY_ZERO_CODE),
+            Self::FramePoolUnavailable => Some(Self::FRAME_POOL_UNAVAILABLE_CODE),
+            _ => None,
+        }
+    }
+
+    fn diagnostic_code_action_completion(&self) -> Option<DiagnosticCode> {
+        match self {
             Self::InvalidActionCompletion
             | Self::InvalidGateDecisionRecord
             | Self::InvalidGateOpenedRecord
@@ -95,140 +128,67 @@ impl RuntimeError {
             | Self::ActionOutputLengthMismatch { .. }
             | Self::ActionOutputTooLarge { .. }
             | Self::ActionOutputBlobTooLarge { .. }
-            | Self::ActionTaintDowngrade { .. } => Self::INVALID_ACTION_COMPLETION_CODE,
-            Self::InvalidTimerFire => Self::INVALID_TIMER_FIRE_CODE,
-            Self::UnsupportedFullRecoveryHydration => {
-                Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE
+            | Self::ActionTaintDowngrade { .. } => Some(Self::INVALID_ACTION_COMPLETION_CODE),
+            Self::InvalidTimerFire => Some(Self::INVALID_TIMER_FIRE_CODE),
+            Self::EngineDriveFailed { .. } => Some(Self::ENGINE_DRIVE_FAILED_CODE),
+            _ => None,
+        }
+    }
+
+    fn diagnostic_code_admission(&self) -> Option<DiagnosticCode> {
+        match self {
+            Self::AdmissionArtifactNotFound { .. } => Some(Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE),
+            Self::AdmissionArtifactInvalid { .. } => Some(Self::ADMISSION_ARTIFACT_INVALID_CODE),
+            Self::ResourceQuotaExceeded { .. } | Self::ResourceAccountingUnderflow { .. } => {
+                Some(vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE)
             }
-            Self::InvalidRecoveryHydration => Self::INVALID_RECOVERY_HYDRATION_CODE,
-            Self::CommandQueueCapacityExceeded { .. } => Self::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE,
-            Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
-            Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
-            Self::AdmissionArtifactInvalid { .. } => Self::ADMISSION_ARTIFACT_INVALID_CODE,
             Self::AdmissionArtifactDigestMismatch { .. } => {
-                Self::ADMISSION_ARTIFACT_DIGEST_MISMATCH_CODE
+                Some(Self::ADMISSION_ARTIFACT_DIGEST_MISMATCH_CODE)
             }
-            Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
+            Self::AdmissionCapabilityDenied { .. } => Some(Self::ADMISSION_CAPABILITY_DENIED_CODE),
             Self::AdmissionCapabilityCountMismatch { .. } => {
-                Self::ADMISSION_CAPABILITY_COUNT_MISMATCH_CODE
+                Some(Self::ADMISSION_CAPABILITY_COUNT_MISMATCH_CODE)
             }
             Self::AdmissionActionRegistryMismatch { .. } => {
-                Self::ADMISSION_ACTION_REGISTRY_MISMATCH_CODE
+                Some(Self::ADMISSION_ACTION_REGISTRY_MISMATCH_CODE)
             }
             Self::AdmissionActionAbiDigestMismatch { .. } => {
-                Self::ADMISSION_ACTION_ABI_DIGEST_MISMATCH_CODE
+                Some(Self::ADMISSION_ACTION_ABI_DIGEST_MISMATCH_CODE)
             }
-            Self::AdmissionArtifactStale { .. } => Self::ADMISSION_ARTIFACT_STALE_CODE,
-            Self::AdmissionDigestMismatch { .. } => Self::ADMISSION_DIGEST_MISMATCH_CODE,
-            Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
-            Self::UnsupportedRuntimeJournalEventMapping { .. }
-            | Self::RuntimeJournalTimestampOutOfRange { .. } => {
-                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
+            Self::AdmissionArtifactStale { .. } => Some(Self::ADMISSION_ARTIFACT_STALE_CODE),
+            Self::AdmissionDigestMismatch { .. } => Some(Self::ADMISSION_DIGEST_MISMATCH_CODE),
+            Self::AdmissionHeaderPersistenceFailed { .. } => {
+                Some(Self::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE)
             }
+            Self::ContractValidationError { .. } => Some(Self::ADMISSION_CAPABILITY_DENIED_CODE),
+            Self::EncodeFailed => Some(Self::ENCODE_FAILED_CODE),
+            _ => None,
+        }
+    }
+
+    fn diagnostic_code_other(&self) -> DiagnosticCode {
+        match self {
+            Self::SecretUnavailable => Self::SECRET_UNAVAILABLE_CODE,
+            Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
+            Self::RunAlreadyExists => Self::RUN_ALREADY_EXISTS_CODE,
+            Self::UnsupportedOperation { .. } => Self::UNSUPPORTED_OPERATION_CODE,
+            Self::ShutdownInProgress => Self::SHUTDOWN_IN_PROGRESS_CODE,
             Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
             Self::IpcPayloadSizeExceeded { .. } => Self::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
-            Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
-            Self::CompatGateBlocked { .. } => Self::COMPAT_GATE_BLOCKED_CODE,
+            Self::UnsupportedRuntimeJournalEventMapping { .. }
+            | Self::RuntimeJournalTimestampOutOfRange { .. }
+            | Self::UnsupportedDurabilityProfile { .. } => {
+                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
+            }
             Self::RetryBlockedOnUndrainedJournal { .. } => {
                 Self::RETRY_BLOCKED_ON_UNDRAINED_JOURNAL_CODE
             }
             Self::ShardNotFound { .. } => Self::SHARD_NOT_FOUND_CODE,
             Self::MigrateSelf => Self::MIGRATE_SELF_CODE,
             Self::IntrospectionEpochExhausted => Self::INTROSPECTION_EPOCH_EXHAUSTED_CODE,
-            Self::RecoveryNotAvailable => Self::INVALID_RECOVERY_HYDRATION_CODE,
-            Self::RecoveryCannotResume { .. } => Self::INVALID_RECOVERY_HYDRATION_CODE,
-            Self::Recovery { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
-            // VB-NOORE: typed profile-mismatch error. No dedicated
-            // diagnostic code; routed to INTERNAL_INVARIANT.
-            Self::UnsupportedDurabilityProfile { .. } => {
-                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
-            }
             Self::RuntimeInputSlotKindMismatch { .. } => Self::UNSUPPORTED_OPERATION_CODE,
-            Self::ContractValidationError { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
-        }
-    }
-
-    #[must_use]
-    pub fn runtime_code(&self) -> Option<&'static str> {
-        match self {
-            Self::QueueFull
-            | Self::PerRunQueueDepthExceeded { .. }
-            | Self::ActiveRunCapacityExceeded { .. }
-            | Self::OpenGateCapacityExceeded { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
-            Self::JournalFull { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
-            Self::JournalPoisoned | Self::UnsupportedAsyncStrictAck => {
-                Some(Self::STORAGE_ERROR_RUNTIME_CODE)
-            }
-            Self::StorageJournalAppend { .. } => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
-            Self::RollbackFailed { primary, .. } => primary.runtime_code(),
-            Self::AdmissionHeaderPersistenceFailed { .. } => {
-                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
-            }
-            Self::AdmissionArtifactDigestMismatch { .. } => {
-                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
-            }
-            Self::AdmissionArtifactStale { .. } => {
-                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
-            }
-            Self::AdmissionDigestMismatch { .. } => {
-                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
-            }
-            Self::Core { source } => match source.as_ref() {
-                vb_core::errors::CoreError::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
-                _ => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
-            },
-            Self::InvalidActionCompletion
-            | Self::InvalidGateDecisionRecord
-            | Self::InvalidGateOpenedRecord
-            | Self::GateAlreadyOpen { .. }
-            | Self::GateNotOpen { .. }
-            | Self::GateEvaluationFailed { .. }
-            | Self::GateRunNotSuspendable { .. }
-            | Self::GateWrongDelegate { .. }
-            | Self::GateRunMismatch { .. }
-            | Self::GateOpenBlocksResume { .. }
-            | Self::StaleAttempt { .. }
-            | Self::StaleFencingToken { .. }
-            | Self::AttemptBeyondMax { .. }
-            | Self::ActionOutputLengthMismatch { .. }
-            | Self::ActionOutputTooLarge { .. }
-            | Self::ActionOutputBlobTooLarge { .. }
-            | Self::ActionTaintDowngrade { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
-            Self::EngineDriveFailed { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
-            Self::RetryBlockedOnUndrainedJournal { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
-            Self::CompatGateBlocked { .. } => None,
-            Self::RunNotFound
-            | Self::SecretUnavailable
-            | Self::RunAlreadyExists
-            | Self::UnsupportedOperation { .. }
-            | Self::ShutdownInProgress
-            | Self::FramePoolUnavailable
-            | Self::InvalidTimerFire
-            | Self::UnsupportedFullRecoveryHydration
-            | Self::InvalidRecoveryHydration
-            | Self::CommandQueueCapacityExceeded { .. }
-            | Self::ActiveRunCapacityZero
-            | Self::OpenGateCapacityZero
-            | Self::AdmissionArtifactNotFound { .. }
-            | Self::AdmissionArtifactInvalid { .. }
-            | Self::AdmissionCapabilityDenied { .. }
-            | Self::AdmissionCapabilityCountMismatch { .. }
-            | Self::AdmissionActionRegistryMismatch { .. }
-            | Self::AdmissionActionAbiDigestMismatch { .. }
-            | Self::EncodeFailed
-            | Self::UnsupportedRuntimeJournalEventMapping { .. }
-            | Self::RuntimeJournalTimestampOutOfRange { .. }
-            | Self::SecretResultNotAllowed
-            | Self::IpcPayloadSizeExceeded { .. }
-            | Self::ShardNotFound { .. }
-            | Self::MigrateSelf
-            | Self::IntrospectionEpochExhausted
-            | Self::UnsupportedDurabilityProfile { .. }
-            | Self::RecoveryNotAvailable
-            | Self::RecoveryCannotResume { .. }
-            | Self::Recovery { .. }
-            | Self::ContractValidationError { .. } => None,
-            Self::RuntimeInputSlotKindMismatch { .. } => None,
+            Self::CompatGateBlocked { .. } => Self::COMPAT_GATE_BLOCKED_CODE,
+            _ => vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE,
         }
     }
 

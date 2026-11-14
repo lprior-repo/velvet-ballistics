@@ -16,17 +16,7 @@ pub(super) fn load(
     else {
         return Err(super::identity::mismatch());
     };
-    let record =
-        journal
-            .compiled_ir(*artifact_digest)?
-            .ok_or(RuntimeError::AdmissionArtifactNotFound {
-                digest: *artifact_digest,
-            })?;
-    let (artifact, rest): (AcceptedArtifact, _) = postcard::take_from_bytes(&record.ir)
-        .map_err(vb_storage::JournalError::PostcardDecodeFailed)?;
-    if !rest.is_empty() || artifact.digest != *artifact_digest {
-        return Err(super::identity::mismatch());
-    }
+    let artifact = load_compiled_artifact(journal, *artifact_digest)?;
     let independent = shard
         .artifact_store
         .load_accepted_artifact(*artifact_digest)
@@ -34,6 +24,21 @@ pub(super) fn load(
             digest: *artifact_digest,
         })?;
     if independent != artifact {
+        return Err(super::identity::mismatch());
+    }
+    Ok(artifact)
+}
+
+fn load_compiled_artifact(
+    journal: &FjallJournal,
+    digest: vb_core::ids::WorkflowDigest,
+) -> RuntimeResult<AcceptedArtifact> {
+    let record = journal
+        .compiled_ir(digest)?
+        .ok_or(RuntimeError::AdmissionArtifactNotFound { digest })?;
+    let (artifact, rest): (AcceptedArtifact, _) = postcard::take_from_bytes(&record.ir)
+        .map_err(vb_storage::JournalError::PostcardDecodeFailed)?;
+    if !rest.is_empty() || artifact.digest != digest {
         return Err(super::identity::mismatch());
     }
     Ok(artifact)

@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 pub struct GateDigest([u8; 32]);
 
 impl GateDigest {
+    /// Placeholder used only until a receipt digest is computed. Never a
+    /// valid evidence, prompt, artifact, policy, or input binding.
+    pub const ZERO: Self = Self([0; 32]);
+
     /// Creates a digest from verified bytes.
     #[must_use]
     pub const fn from_bytes(bytes: [u8; 32]) -> Self {

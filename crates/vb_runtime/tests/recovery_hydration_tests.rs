@@ -2556,7 +2556,7 @@ fn budgeted_admission_hydrates_with_budget() {
         run,
         seq: EventSeq::new(1),
         artifact_digest: test_digest(5),
-        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+        input_digest: vb_storage::RunInputBinding::Digest(test_digest(7)),
         policy_pin: vb_storage::RunPolicyPin::Pinned(test_digest(6)),
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Strict,
@@ -2573,7 +2573,8 @@ fn budgeted_admission_hydrates_with_budget() {
         vb_storage::RunPolicyPin::Pinned(test_digest(6))
     );
     let plain = vec![test_admission_event(run, EventSeq::new(1), test_digest(5))];
-    let admission = vb_runtime::recovery::hydrate_run_admission_from_events(&plain)
-        .expect("plain admission hydrates");
-    assert_eq!(admission.budget(), None);
+    assert!(
+        vb_runtime::recovery::hydrate_run_admission_from_events(&plain).is_none(),
+        "current-only recovery must refuse an unbudgeted admission"
+    );
 }

@@ -42,6 +42,19 @@ fn handler_preserves_possible_partial_overwrite_types() -> Result<(), WorkflowEr
     assert_error(partial()?, 3, None, SlotFlowFailure::IncompatibleType);
     Ok(())
 }
+
+#[test]
+fn checked_constructor_rejects_recovery_wait_fixture() -> Result<(), WorkflowError> {
+    let parts = partial()?;
+    assert_eq!(
+        CompiledWorkflow::try_from_concurrent_parts(parts).map(|_| ()),
+        Err(WorkflowError::ConcurrentLaneSuspension {
+            owner: StepIdx::new(0),
+            step: StepIdx::new(3),
+        })
+    );
+    Ok(())
+}
 #[test]
 fn child_overwrite_preserves_original_parent_kind() -> Result<(), SlotFlowError> {
     let mut p = f::fixed(false, 0);

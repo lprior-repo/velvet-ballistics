@@ -8,6 +8,10 @@ fn handle_action_completion_journal_first() -> Result<(), String> {
     // durable evidence.
     struct EnvelopeFailsJournal;
     impl crate::journal::RuntimeJournal for EnvelopeFailsJournal {
+        fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+            Some(vb_storage::DurabilityProfile::Volatile)
+        }
+
         fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
             self.append_sequenced(event, vb_storage::EventSeq::ZERO)
         }
@@ -158,6 +162,10 @@ fn handle_action_failure_journal_first() {
     // must not be persisted to memory without durable evidence.
     struct ActionFailedFailsJournal;
     impl crate::journal::RuntimeJournal for ActionFailedFailsJournal {
+        fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+            Some(vb_storage::DurabilityProfile::Volatile)
+        }
+
         fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
             self.append_sequenced(event, vb_storage::EventSeq::ZERO)
         }
@@ -299,6 +307,10 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
         failed: std::sync::atomic::AtomicBool,
     }
     impl crate::journal::RuntimeJournal for ActionFailedFailsOnce {
+        fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+            Some(vb_storage::DurabilityProfile::Volatile)
+        }
+
         fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
             self.append_sequenced(event, vb_storage::EventSeq::ZERO)
         }

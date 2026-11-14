@@ -53,7 +53,7 @@ impl Shard {
         let command_count = self.command_queue.len();
         let mut processed = 0usize;
         for _ in 0..command_count {
-            if self.command_queue.is_empty() || self.shutting_down {
+            if self.command_queue.is_empty() || self.control.shutting_down {
                 break;
             }
             let continuing = self.tick()?;
@@ -62,7 +62,7 @@ impl Shard {
                 break;
             }
         }
-        self.shutting_down = true;
+        self.control.shutting_down = true;
         Ok(processed)
     }
 

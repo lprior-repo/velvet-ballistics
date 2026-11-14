@@ -14,9 +14,8 @@ use vb_core::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
     Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
-use vb_core::budget::AggregateResourceBudget;
 use vb_core::capability::CapabilitySet;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, TenantId, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
@@ -129,40 +128,69 @@ fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
     })
 }
 
-/// Test-local DTO with the same serde layout as RunAdmission, allowing
-/// construction of a forged policy pin for tampered checkpoint tests.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct ForgedRunAdmission {
-    artifact_digest: WorkflowDigest,
-    run_id: RunId,
-    granted_capabilities: CapabilitySet,
-    policy: RuntimePolicy,
-    policy_pin: RunPolicyPin,
-    budget: Option<AggregateResourceBudget>,
-    tenant: Option<TenantId>,
-    idempotency_attested: Box<[ActionId]>,
-    ir_compat_decision: Option<vb_storage::compat::CompatDecision>,
-}
-
+/// Forges a RunAdmission with a tampered policy pin by decoding the
+/// genuine admission through its production codec, replacing only the
+/// policy pin field with a forged digest, and re-serializing. Every
+/// non-pin field — input_digest, budget, tenant, idempotency evidence,
+/// and IR compatibility decision — is preserved through the original
+/// RunAdmission object.
 fn forge_admission_with_pin(
     original: &RunAdmission,
     forged_pin: WorkflowDigest,
 ) -> Result<RunAdmission, String> {
-    let dto = ForgedRunAdmission {
-        artifact_digest: original.artifact_digest(),
-        run_id: original.run_id(),
-        granted_capabilities: original.granted_capabilities().clone(),
-        policy: original.policy(),
-        policy_pin: RunPolicyPin::Pinned(forged_pin),
-        budget: original.budget(),
-        tenant: original.tenant(),
-        idempotency_attested: original.idempotency_attested().to_vec().into_boxed_slice(),
-        ir_compat_decision: original.ir_compat_decision(),
-    };
-    let bytes = postcard::to_allocvec(&dto)
-        .map_err(|e| format!("forged admission serialization failed: {e}"))?;
-    postcard::from_bytes::<RunAdmission>(&bytes)
-        .map_err(|e| format!("forged admission deserialization failed: {e}"))
+    let admission_bytes = postcard::to_allocvec(original)
+        .map_err(|e| format!("original admission serialization failed: {e}"))?;
+
+    // Decode the genuine prefix (fields 1-4) to know where the pin starts.
+    let mut rest = admission_bytes.as_slice();
+    let _prefix_digest: WorkflowDigest = postcard::take_from_bytes(rest)
+        .map(|(d, r)| {
+            rest = r;
+            d
+        })
+        .map_err(|e| format!("prefix digest decode failed: {e}"))?;
+    let _prefix_run_id: RunId = postcard::take_from_bytes(rest)
+        .map(|(r, r2)| {
+            rest = r2;
+            r
+        })
+        .map_err(|e| format!("prefix run_id decode failed: {e}"))?;
+    let _prefix_caps: CapabilitySet = postcard::take_from_bytes(rest)
+        .map(|(c, r)| {
+            rest = r;
+            c
+        })
+        .map_err(|e| format!("prefix capabilities decode failed: {e}"))?;
+    let _prefix_policy: RuntimePolicy = postcard::take_from_bytes(rest)
+        .map(|(p, r)| {
+            rest = r;
+            p
+        })
+        .map_err(|e| format!("prefix policy decode failed: {e}"))?;
+
+    // Determine prefix byte length (fields 1-4) from original bytes.
+    let prefix_len = admission_bytes.len() - rest.len();
+
+    // Decode and discard the genuine pin to find the suffix start.
+    let _pin: RunPolicyPin = postcard::take_from_bytes(rest)
+        .map(|(p, r)| {
+            rest = r;
+            p
+        })
+        .map_err(|e| format!("original pin decode failed: {e}"))?;
+    let suffix = rest;
+
+    // Reconstruct: prefix + forged pin + genuine suffix.
+    let forged_pin_value = RunPolicyPin::Pinned(forged_pin);
+    let forged_pin_bytes = postcard::to_allocvec(&forged_pin_value)
+        .map_err(|e| format!("forged pin encode failed: {e}"))?;
+    let mut forged_bytes = Vec::new();
+    forged_bytes.extend_from_slice(&admission_bytes[..prefix_len]);
+    forged_bytes.extend_from_slice(&forged_pin_bytes);
+    forged_bytes.extend_from_slice(suffix);
+
+    postcard::from_bytes::<RunAdmission>(&forged_bytes)
+        .map_err(|e| format!("forged admission decode failed: {e}"))
 }
 
 fn shard_config_for(policy: RuntimePolicy) -> ShardConfig {

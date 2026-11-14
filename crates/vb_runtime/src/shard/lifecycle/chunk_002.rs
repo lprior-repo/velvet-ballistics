@@ -74,27 +74,35 @@ impl Shard {
             postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.append_command_journal_events(
             run,
-            [
-                RuntimeJournalEvent::SlotWritten {
-                    run,
-                    slot: answer.answer_slot,
-                    value: encoded_answer_value,
-                    taint: answer.taint,
-                    extra: None,
-                },
-                RuntimeJournalEvent::AskAnswered {
-                    run,
-                    step: answer.ticket.ask_step,
-                    slot: answer.answer_slot,
-                },
-                RuntimeJournalEvent::StepSucceeded {
-                    run,
-                    step: answer.ticket.ask_step,
-                    output: answer.answer_slot,
-                    attempt: 1,
-                },
-            ],
+            Self::ask_answer_journal_events(run, answer, encoded_answer_value),
         )
+    }
+
+    fn ask_answer_journal_events(
+        run: RunId,
+        answer: AskAnswer,
+        encoded_answer_value: Vec<u8>,
+    ) -> [RuntimeJournalEvent; 3] {
+        [
+            RuntimeJournalEvent::SlotWritten {
+                run,
+                slot: answer.answer_slot,
+                value: encoded_answer_value,
+                taint: answer.taint,
+                extra: None,
+            },
+            RuntimeJournalEvent::AskAnswered {
+                run,
+                step: answer.ticket.ask_step,
+                slot: answer.answer_slot,
+            },
+            RuntimeJournalEvent::StepSucceeded {
+                run,
+                step: answer.ticket.ask_step,
+                output: answer.answer_slot,
+                attempt: 1,
+            },
+        ]
     }
 
     fn apply_ask_answer_to_run(&mut self, run: RunId, answer: AskAnswer) -> RuntimeResult<()> {
@@ -139,7 +147,11 @@ impl Shard {
         if budget_exceeded {
             return self.fail_command_run_on_journal_budget(run);
         }
-        let mut state = self.take_run_state(run)?;
+        let state = self.take_run_state(run)?;
+        self.drive_resolved_timer(run, state)
+    }
+
+    fn drive_resolved_timer(&mut self, run: RunId, mut state: RunState) -> RuntimeResult<()> {
         let timer = match self.pending_timer_remove(run) {
             Some(timer) => timer,
             None => {
@@ -165,32 +177,38 @@ impl Shard {
         run: RunId,
         reason: Option<String>,
     ) -> RuntimeResult<()> {
-        // C2: Reject missing runs with a typed error.
         if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
         if self.run_state_contains(run) {
-            self.reserve_cancel_kill_terminalization(run)?;
-            let attempt = self
-                .run_state_get(run)
-                .map(|state| state.run_attempt.get())
-                .ok_or(RuntimeError::RunNotFound)?;
-            self.append_cancel_terminal_events(run, reason, attempt)?;
-            self.checked_out_run_insert(run)?;
-            self.clear_pending_ask_authority(run);
-            let _removed_timer = self.pending_timer_remove(run);
-            let Some(state) = self.run_state_remove(run) else {
-                self.checked_out_run_remove(run);
-                return Err(RuntimeError::RunNotFound);
-            };
-            self.release_frame(state.frame);
-            self.terminal_runs_insert(run)?;
-            self.runtime_state_remove(run);
-            self.counters.inc_failed();
-            self.trace_ring.push(TraceEvent::RunCancelled { run });
-            self.clear_executed_step_accounting(run);
+            self.cancel_live_run(run, reason)?;
         }
         self.discard_journal_sequence(run);
+        Ok(())
+    }
+
+    fn cancel_live_run(&mut self, run: RunId, reason: Option<String>) -> RuntimeResult<()> {
+        self.reserve_cancel_kill_terminalization(run)?;
+        let attempt = self
+            .run_state_get(run)
+            .map(|state| state.run_attempt.get())
+            .ok_or(RuntimeError::RunNotFound)?;
+        self.append_cancel_terminal_events(run, reason, attempt)?;
+        self.checked_out_run_insert(run)?;
+        self.clear_pending_ask_authority(run);
+        self.retire_run_gates(run);
+        let _removed_timer = self.pending_timer_remove(run);
+        let Some(state) = self.run_state_remove(run) else {
+            self.checked_out_run_remove(run);
+            return Err(RuntimeError::RunNotFound);
+        };
+        self.release_state_quota(run)?;
+        self.release_frame(state.frame);
+        self.terminal_runs_insert(run)?;
+        self.runtime_state_remove(run);
+        self.counters.inc_failed();
+        self.trace_ring.push(TraceEvent::RunCancelled { run });
+        self.clear_executed_step_accounting(run);
         Ok(())
     }
 
@@ -208,9 +226,11 @@ impl Shard {
             self.append_kill_terminal_events(run, attempt)?;
             self.checked_out_run_insert(run)?;
             self.clear_pending_ask_authority(run);
+            self.retire_run_gates(run);
             let _removed_timer = self.pending_timer_remove(run);
         }
         if let Some(state) = self.run_state_remove(run) {
+            self.release_state_quota(run)?;
             self.release_frame(state.frame);
             self.terminal_runs_insert(run)?;
             self.runtime_state_remove(run);
@@ -223,7 +243,7 @@ impl Shard {
     }
 
     pub(crate) fn handle_inspect(&mut self, run: RunId, correlation: u64) {
-        self.inspect_response = Some(self.snapshot_run(run, correlation));
+        self.control.inspect_response = Some(self.snapshot_run(run, correlation));
     }
 
     fn drive_run(&mut self, run: RunId) -> RuntimeResult<()> {

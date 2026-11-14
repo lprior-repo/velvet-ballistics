@@ -19,18 +19,22 @@
 //     shape exists only in the AlwaysPresentArtifactStore fixture
 //     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91).
 //   - RunAdmission struct mirrors `vb_runtime::admission::RunAdmission`
-//     at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31.
+//     at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34.
 //   - RunAdmission::new mirrors
 //     `vb_runtime::admission::RunAdmission::new` at
-//     crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66.
+//     crates/vb_runtime/src/admission/parts/chunk_002_records.rs:51-69;
+//     the artifact_digest accessor is at lines 161-165.
 //   - `vb_storage::admission::submit_artifact_with_contracts` at
+//     (unproved call-chain context; no submit body is mirrored here)
 //     crates/vb_storage/src/admission.rs:96-105 performs no gate/flag
-//     validation; `verify_accepted_artifact`
+//     validation; it prepares then calls private submit_prepared_artifact
+//     (crates/vb_storage/src/admission.rs:114-136), which owns the Strict tag
+//     check, sequence issuance and readback. `verify_accepted_artifact`
 //     (crates/vb_storage/src/admission/verification.rs:60-90) enforces the
-//     prepared shape by recompute-and-compare, any deviation returned to admission callers as
-//     ArtifactEvidenceInvalid
+//     prepared shape by recompute-and-compare, any deviation returned to
+//     admission callers as ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
-//     Recovery's private detailed path at
+//     Recovery's detailed path at
 //     crates/vb_runtime/src/admission/registered_verification.rs:24-49
 //     remains unproved call-chain context.
 //   - `vb_storage::admission::PayloadTag`, `classify_accepted_artifact`,
@@ -48,7 +52,8 @@ mod production;
 // ============================================================
 // Production decision fn: is_strict_accepted_artifact_tag mirrors the
 // strict admission tag check at
-// vb_storage::admission::submit_artifact_with_contracts strict branch.
+// vb_storage::admission::submit_prepared_artifact at
+// crates/vb_storage/src/admission.rs:114-136; the submit body remains unproved.
 pub fn is_strict_accepted_artifact_tag(tag: production::PayloadTag) -> bool {
     production::is_strict_accepted_artifact_tag(tag)
 }

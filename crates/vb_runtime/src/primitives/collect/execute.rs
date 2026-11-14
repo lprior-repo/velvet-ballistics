@@ -13,28 +13,16 @@ pub fn collect_start(
     output: Option<SlotIdx>,
     time_limit_ms: Option<u64>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let mut plan = build_collect_start_plan(run, store, source, output, limit, page_size)?;
-    if plan.page.is_empty() {
-        return finish_empty_collect_start(
-            run,
-            store,
-            states,
-            plan.collector,
-            plan.source_taint,
-            done,
-        );
-    }
-    let page = core::mem::take(&mut plan.page);
-    let current_page = write_collected_page_with_taint(
-        run,
-        store,
-        plan.collector,
-        page,
-        plan.source_taint,
-        plan.list_id,
-        0,
-    )?;
-    finish_collect_start_page(run, states, plan, current_page, time_limit_ms, body, done)
+    let request = CollectStartRequest {
+        source,
+        output,
+        limit,
+        page_size,
+        time_limit_ms,
+        body,
+        done,
+    };
+    collect_start_with_request(run, store, states, request)
 }
 
 /// Executes CollectPage: reads current page from collector slot
@@ -62,34 +50,52 @@ struct CollectStartPlan {
     limit: usize,
 }
 
-fn build_collect_start_plan(
-    run: &RunFrame,
-    store: &ValueStore,
+struct CollectStartRequest {
     source: SlotIdx,
     output: Option<SlotIdx>,
     limit: u32,
     page_size: u32,
+    time_limit_ms: Option<u64>,
+    body: StepIdx,
+    done: StepIdx,
+}
+
+struct CollectStartFinishRequest {
+    time_limit_ms: Option<u64>,
+    body: StepIdx,
+    done: StepIdx,
+}
+
+fn collect_start_with_request(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    states: &mut CollectStates,
+    request: CollectStartRequest,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    let plan = build_collect_start_plan(run, store, &request)?;
+    finish_collect_start(
+        run,
+        store,
+        states,
+        plan,
+        CollectStartFinishRequest {
+            time_limit_ms: request.time_limit_ms,
+            body: request.body,
+            done: request.done,
+        },
+    )
+}
+
+fn build_collect_start_plan(
+    run: &RunFrame,
+    store: &ValueStore,
+    request: &CollectStartRequest,
 ) -> Result<CollectStartPlan, EngineError> {
-    let list_id = expect_list(*run.read_slot(source)?)?;
-    let ps = page_size_from(page_size)?;
-    validate_page_bound(ps, limit)?;
-    let items = store.list(list_id)?;
-    validate_item_limit(items.len(), limit)?;
-    let page = copy_prefix(items, ps)?;
-    let collector = match output {
-        Some(slot) => slot,
-        None => source,
-    };
-    Ok(CollectStartPlan {
-        list_id,
-        source_taint: run.read_taint(source)?,
-        page_len: page.len(),
-        item_count: items.len(),
-        collector,
-        page_size: ps,
-        limit: usize::try_from(limit).map_err(|_| EngineError::CollectItemLimitExceeded)?,
-        page,
-    })
+    let prepared =
+        prepare_collect_source(run, store, request.source, request.limit, request.page_size)?;
+    let collector = request.output.unwrap_or(request.source);
+    let source_taint = run.read_taint(request.source)?;
+    assemble_collect_start_plan(prepared, collector, source_taint, request.limit)
 }
 
 fn finish_empty_collect_start(
@@ -157,25 +163,17 @@ pub(crate) fn collect_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
         return accept_empty_collect_page(run, states, collector_slot, current_id, done);
     }
     let plan = build_collect_next_plan(run, store, states, collector_slot, current_id)?;
-    let Some((state, page, page_len)) = plan else {
-        return finish_collect_terminal(run, states, collector_slot, done);
-    };
-    let current_page = write_collected_page_with_taint(
+    finish_collect_next_plan::<P>(
         run,
         store,
-        collector_slot,
-        page,
-        run.read_taint(collector_slot)?,
-        state.source,
-        state.cursor,
-    )?;
-    let cursor = checked_add_usize(state.cursor, page_len, "collect cursor overflow")?;
-    states.upsert(CollectPaginationState {
-        current_page,
-        cursor,
-        ..state
-    })?;
-    P::jump(run, body)
+        states,
+        CollectNextFinishRequest {
+            collector_slot,
+            plan,
+            body,
+            done,
+        },
+    )
 }
 
 /// Legacy entry-only state reset; this API does not validate a complete region.
@@ -217,6 +215,12 @@ fn accept_empty_collect_page(
 }
 
 type CollectNextPlan = Option<(CollectPaginationState, Box<[SlotValue]>, usize)>;
+struct CollectNextFinishRequest {
+    collector_slot: SlotIdx,
+    plan: CollectNextPlan,
+    body: StepIdx,
+    done: StepIdx,
+}
 
 fn build_collect_next_plan(
     run: &RunFrame,
@@ -283,3 +287,9 @@ pub fn collect_finish(
     states.remove(run.run_id(), collector_slot);
     jump_to_next(run, next, step)
 }
+#[path = "execute_helpers.rs"]
+mod execute_helpers;
+use execute_helpers::{
+    assemble_collect_start_plan, finish_collect_next_plan, finish_collect_start,
+    prepare_collect_source,
+};

@@ -9,15 +9,7 @@ pub fn find_error_handler_for_failure(
     workflow: &CompiledWorkflow,
     failed: StepIdx,
 ) -> Option<(StepIdx, Option<SlotIdx>)> {
-    if let Some(node) = workflow.node(failed)
-        && let vb_core::workflow::ErrorRouting::Handler {
-            handler,
-            error_slot,
-        } = node.routing.error
-    {
-        return Some((handler, error_slot));
-    }
-    if let Some(result) = error_handler_on_node(workflow, failed, failed) {
+    if let Some(result) = direct_error_handler(workflow, failed) {
         return Some(result);
     }
 
@@ -28,18 +20,37 @@ pub fn find_error_handler_for_failure(
         }
     }
 
+    first_error_handler(workflow, failed)
+}
+
+fn direct_error_handler(
+    workflow: &CompiledWorkflow,
+    failed: StepIdx,
+) -> Option<(StepIdx, Option<SlotIdx>)> {
+    if let Some(node) = workflow.node(failed)
+        && let vb_core::workflow::ErrorRouting::Handler {
+            handler,
+            error_slot,
+        } = node.routing.error
+    {
+        return Some((handler, error_slot));
+    }
+    error_handler_on_node(workflow, failed, failed)
+}
+
+fn first_error_handler(
+    workflow: &CompiledWorkflow,
+    failed: StepIdx,
+) -> Option<(StepIdx, Option<SlotIdx>)> {
     let mut index = 0usize;
     let count = usize::from(workflow.node_count());
     while index < count {
-        let Ok(raw) = u16::try_from(index) else {
-            return None;
-        };
+        let raw = u16::try_from(index).ok()?;
         if let Some(result) = error_handler_on_node(workflow, StepIdx::new(raw), failed) {
             return Some(result);
         }
         index = index.checked_add(1)?;
     }
-
     None
 }
 

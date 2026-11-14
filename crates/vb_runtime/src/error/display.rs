@@ -11,6 +11,12 @@ impl std::fmt::Display for RuntimeError {
 }
 
 fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
+    static_runtime_message_primary(error)
+        .or_else(|| static_runtime_message_admission(error))
+        .or_else(|| static_runtime_message_recovery(error))
+}
+
+fn static_runtime_message_primary(error: &RuntimeError) -> Option<&'static str> {
     match error {
         RuntimeError::SecretUnavailable => {
             Some("SECRET_UNAVAILABLE: secret requirement unavailable")
@@ -33,18 +39,20 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         }
         RuntimeError::InvalidGateOpenedRecord => Some("gate opened record is structurally invalid"),
         RuntimeError::InvalidTimerFire => Some("invalid timer fire"),
-        RuntimeError::UnsupportedFullRecoveryHydration => {
-            Some("full run frame recovery hydration is unsupported")
-        }
-        RuntimeError::InvalidRecoveryHydration => Some("invalid recovery frame hydration"),
-        RuntimeError::ActiveRunCapacityZero => Some("active run capacity cannot be zero"),
-        RuntimeError::OpenGateCapacityZero => Some("open gate capacity cannot be zero"),
+        _ => None,
+    }
+}
+
+fn static_runtime_message_admission(error: &RuntimeError) -> Option<&'static str> {
+    match error {
         RuntimeError::AdmissionArtifactNotFound { .. } => {
             Some("admission rejected: artifact not found")
         }
         RuntimeError::AdmissionArtifactInvalid { .. } => {
             Some("admission rejected: artifact invalid")
         }
+        RuntimeError::ResourceQuotaExceeded { .. } => Some("resource quota exceeded at admission"),
+        RuntimeError::ResourceAccountingUnderflow { .. } => Some("resource quota ledger underflow"),
         RuntimeError::AdmissionArtifactDigestMismatch { .. } => {
             Some("admission rejected: artifact digest mismatch")
         }
@@ -69,6 +77,18 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionHeaderPersistenceFailed { .. } => {
             Some("admission durability failed: header persistence failed")
         }
+        _ => None,
+    }
+}
+
+fn static_runtime_message_recovery(error: &RuntimeError) -> Option<&'static str> {
+    match error {
+        RuntimeError::OpenGateCapacityZero => Some("open gate capacity cannot be zero"),
+        RuntimeError::UnsupportedFullRecoveryHydration => {
+            Some("full run frame recovery hydration is unsupported")
+        }
+        RuntimeError::InvalidRecoveryHydration => Some("invalid recovery frame hydration"),
+        RuntimeError::ActiveRunCapacityZero => Some("active run capacity cannot be zero"),
         RuntimeError::EncodeFailed => Some("slot value encoding failed"),
         RuntimeError::SecretResultNotAllowed => {
             Some("secret-tainted answer payload is not allowed by resource contract")
@@ -85,170 +105,8 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
     }
 }
 
-fn write_runtime_error_dynamic(
-    error: &RuntimeError,
-    f: &mut std::fmt::Formatter<'_>,
-) -> std::fmt::Result {
-    match error {
-        RuntimeError::ActiveRunCapacityExceeded { capacity } => {
-            write!(f, "active run capacity exceeded: {capacity}")
-        }
-        RuntimeError::OpenGateCapacityExceeded { capacity } => {
-            write!(f, "open gate capacity exceeded: {capacity}")
-        }
-        RuntimeError::JournalFull { capacity } => {
-            write!(f, "runtime journal capacity exhausted: {capacity}")
-        }
-        RuntimeError::UnsupportedOperation { operation } => {
-            write!(f, "unsupported runtime operation: {operation}")
-        }
-        RuntimeError::RecoveryCannotResume { reason } => {
-            write!(f, "recovery cannot resume: {reason}")
-        }
-        RuntimeError::Core { source } => write!(f, "runtime core error: {source}"),
-        RuntimeError::StorageJournalAppend { source } => {
-            write!(f, "storage journal append failed: {source}")
-        }
-        RuntimeError::RollbackFailed {
-            operation,
-            primary,
-            rollback,
-        } => write!(
-            f,
-            "rollback failed during {operation}: primary={primary}; rollback={rollback}"
-        ),
-        RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
-            write!(f, "admission header persistence failed: {source}")
-        }
-        RuntimeError::AdmissionArtifactStale { digest } => {
-            write!(
-                f,
-                "admission rejected: artifact certificate is stale: {digest:?}"
-            )
-        }
-        RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
-            write!(f, "command queue capacity {capacity} exceeds maximum {max}")
-        }
-        RuntimeError::PerRunQueueDepthExceeded {
-            run,
-            pending,
-            limit,
-        } => {
-            write!(
-                f,
-                "per-run queue depth exceeded for run {run:?}: {pending} pending, limit {limit}"
-            )
-        }
-        RuntimeError::StaleAttempt { incoming, current } => {
-            write!(
-                f,
-                "stale action attempt: incoming {incoming}, current {current}"
-            )
-        }
-        RuntimeError::AttemptBeyondMax { attempt, max } => {
-            write!(f, "action attempt {attempt} exceeds max attempts {max}")
-        }
-        RuntimeError::IpcPayloadSizeExceeded { size, max } => {
-            write!(f, "IPC payload size {size} exceeds maximum {max}")
-        }
-        RuntimeError::ActionOutputLengthMismatch { declared, actual } => write!(
-            f,
-            "action output declared encoded length {declared} does not match actual {actual}"
-        ),
-        RuntimeError::ActionOutputTooLarge { size, max } => {
-            write!(f, "action output size {size} exceeds maximum {max}")
-        }
-        RuntimeError::ActionOutputBlobTooLarge { size, max } => {
-            write!(f, "action output blob size {size} exceeds maximum {max}")
-        }
-        RuntimeError::ActionTaintDowngrade { required, supplied } => write!(
-            f,
-            "action output taint {supplied:?} is below required {required:?}"
-        ),
-        RuntimeError::UnsupportedRuntimeJournalEventMapping { event_kind } => {
-            write!(f, "unsupported runtime journal event mapping: {event_kind}")
-        }
-        RuntimeError::RuntimeJournalTimestampOutOfRange {
-            event_kind,
-            timestamp,
-        } => write!(
-            f,
-            "runtime journal timestamp out of range for {event_kind}: {timestamp}"
-        ),
-        RuntimeError::EngineDriveFailed { run, source } => {
-            write!(f, "engine drive failed for run {run:?}: {source}")
-        }
-        RuntimeError::GateAlreadyOpen { gate } => {
-            write!(f, "manual gate {gate:?} is already open")
-        }
-        RuntimeError::GateNotOpen { gate } => {
-            write!(f, "manual gate {gate:?} is not open")
-        }
-        RuntimeError::GateEvaluationFailed { source } => {
-            write!(f, "manual gate evaluation failed: {source}")
-        }
-        RuntimeError::GateRunNotSuspendable { run, state } => {
-            write!(
-                f,
-                "run {run:?} cannot be suspended by a manual gate while {state:?}"
-            )
-        }
-        RuntimeError::GateWrongDelegate {
-            gate,
-            expected,
-            actual,
-        } => {
-            write!(
-                f,
-                "manual gate {gate:?} was delegated to {:?}, not {:?}",
-                expected.value(),
-                actual.value()
-            )
-        }
-        RuntimeError::GateRunMismatch {
-            gate,
-            expected,
-            actual,
-        } => {
-            write!(
-                f,
-                "manual gate {gate:?} belongs to run {expected:?}, not run {actual:?}"
-            )
-        }
-        RuntimeError::GateOpenBlocksResume { run, gate } => {
-            write!(
-                f,
-                "run {run:?} cannot resume while manual gate {gate:?} is open"
-            )
-        }
-        RuntimeError::CompatGateBlocked { run, source } => {
-            write!(
-                f,
-                "compatibility gate blocked run {run:?} from starting live effects: {source}"
-            )
-        }
-        RuntimeError::RetryBlockedOnUndrainedJournal { run } => {
-            write!(
-                f,
-                "retry blocked for run {run:?}: journal events not yet durable"
-            )
-        }
-        RuntimeError::ShardNotFound { shard } => {
-            write!(f, "shard {shard} not found")
-        }
-        RuntimeError::RuntimeInputSlotKindMismatch {
-            slot,
-            expected,
-            actual,
-        } => {
-            write!(
-                f,
-                "runtime input slot {slot:?} kind mismatch: expected {expected:?}, got {actual:?}"
-            )
-        }
-        _ => Ok(()),
-    }
-}
+mod dynamic;
+use self::dynamic::write_runtime_error_dynamic;
 
 impl std::error::Error for RuntimeError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {

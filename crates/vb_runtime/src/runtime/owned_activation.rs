@@ -1,7 +1,6 @@
 //! Identity-only public transport for a pristine strict owned submission.
 
 use super::Runtime;
-use crate::shard::ShardCommand;
 use crate::{RuntimeError, RuntimeResult};
 use vb_core::{RunId, RuntimePolicy, WorkflowDigest};
 
@@ -33,11 +32,8 @@ impl Runtime {
             Err(error) => return Err(error),
         }
         let shard = self.shard_for(run)?;
-        shard.preflight_owned_activation(run, expected_source_digest)?;
-        shard.enqueue(ShardCommand::ActivateOwnedSubmission {
-            run,
-            expected_source_digest,
-        })
+        let verified = shard.preflight_owned_activation(run, expected_source_digest)?;
+        shard.enqueue_owned_activation(run, expected_source_digest, verified)
     }
 }
 

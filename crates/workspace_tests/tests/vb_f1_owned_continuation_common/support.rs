@@ -60,6 +60,7 @@ pub(super) struct Fixture {
     pub(super) expected: ContinuationExpected,
     pub(super) source: WorkflowSourceRecord,
     pub(super) input: SlotIdx,
+    pub(super) started_millis: u64,
 }
 
 impl Fixture {
@@ -69,7 +70,8 @@ impl Fixture {
             &self.admission,
             &self.artifact,
             self.expected,
-        )?)
+        )?
+        .with_run_started_millis(self.started_millis))
     }
 
     pub(super) fn output(&self, step: StepIdx) -> TestResult<SlotIdx> {
@@ -121,6 +123,7 @@ fn finish_fixture(
         expected: receipt.expected,
         source,
         input,
+        started_millis: receipt.started_millis,
     })
 }
 
@@ -196,7 +199,7 @@ fn initial_state(
         workflow,
         store,
         admission: Some(admission),
-        run_started_millis: None,
+        run_started_millis: Some(receipt.started_millis),
         collect_states: CollectStates::new(),
         journal_bytes_written: 0,
         action_contracts: receipt.artifact.action_contracts.clone(),

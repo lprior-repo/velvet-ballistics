@@ -67,22 +67,61 @@ fn explicit_identity_and_admission_bindings_are_mandatory() -> TestResult {
 fn actual_complete_admission_digest_is_required() -> TestResult {
     let f = fixture(7, Taint::DerivedFromSecret, Taint::Secret)?;
     let bytes = encode(&fixture_wire(&f)?, RecordKind::RunOwnedInputs)?;
-    let wrong = WorkflowDigest::from_bytes([99; 32]);
     let record = decode(&f, &bytes)?;
-    let event = JournalEvent::RunAdmission {
+    let event = JournalEvent::RunAdmissionBudget {
         run: f.run,
         seq: vb_storage::EventSeq::new(1),
         artifact_digest: f.artifact.digest,
-        input_digest: vb_storage::RunInputBinding::Digest(wrong),
+        input_digest: vb_storage::RunInputBinding::Digest(record.input_digest()),
+        policy_pin: vb_storage::RunPolicyPin::Pinned(f.artifact.policy_digest),
+        granted_capabilities: vb_core::CapabilitySet::empty(),
+        policy: vb_core::RuntimePolicy::Strict,
+        budget: vb_core::AggregateResourceBudget::from_workflow(&f.workflow)?,
+    };
+    record.validate_admission(&event)?;
+
+    let mut wrong_digest = event.clone();
+    if let JournalEvent::RunAdmissionBudget { input_digest, .. } = &mut wrong_digest {
+        *input_digest = vb_storage::RunInputBinding::Digest(WorkflowDigest::from_bytes([99; 32]));
+    }
+    assert!(matches!(
+        record.validate_admission(&wrong_digest),
+        Err(JournalError::OwnedInputs(
+            OwnedInputError::AdmissionMismatch
+        ))
+    ));
+
+    let legacy = JournalEvent::RunAdmission {
+        run: f.run,
+        seq: vb_storage::EventSeq::new(1),
+        artifact_digest: f.artifact.digest,
+        input_digest: vb_storage::RunInputBinding::Digest(record.input_digest()),
         policy_pin: vb_storage::RunPolicyPin::Pinned(f.artifact.policy_digest),
         granted_capabilities: vb_core::CapabilitySet::empty(),
         policy: vb_core::RuntimePolicy::Strict,
     };
     assert!(matches!(
-        record.validate_admission(&event),
+        record.validate_admission(&legacy),
         Err(JournalError::OwnedInputs(
             OwnedInputError::AdmissionMismatch
         ))
     ));
+
+    let mut unbound = event.clone();
+    if let JournalEvent::RunAdmissionBudget { input_digest, .. } = &mut unbound {
+        *input_digest = vb_storage::RunInputBinding::LegacyUnbound;
+    }
+    let mut unverified = event;
+    if let JournalEvent::RunAdmissionBudget { policy_pin, .. } = &mut unverified {
+        *policy_pin = vb_storage::RunPolicyPin::Unverified;
+    }
+    for deficient in [unbound, unverified] {
+        assert!(matches!(
+            record.validate_admission(&deficient),
+            Err(JournalError::OwnedInputs(
+                OwnedInputError::AdmissionMismatch
+            ))
+        ));
+    }
     Ok(())
 }

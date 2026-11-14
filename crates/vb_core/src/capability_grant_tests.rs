@@ -173,11 +173,11 @@ fn issue_rejects_bad_ticket() {
 #[test]
 fn execute_ok_inside_window_and_at_issue_bound() {
     let grant = grant();
-    assert!(grant.verify_for_execute(&ctx(), &[]).is_ok());
+    assert_eq!(grant.verify_for_execute(&ctx(), &[]), Ok(()));
 
     let mut at_issue = ctx();
     at_issue.now_ms = GrantTimeMs::new(1_000);
-    assert!(grant.verify_for_execute(&at_issue, &[]).is_ok());
+    assert_eq!(grant.verify_for_execute(&at_issue, &[]), Ok(()));
 }
 
 #[test]
@@ -288,11 +288,29 @@ fn reconcile_ignores_expiry_and_revocation() {
 }
 
 #[test]
-fn grant_postcard_roundtrip_is_stable() {
+fn grant_postcard_roundtrip_is_stable() -> Result<(), Box<dyn std::error::Error>> {
     let grant = grant();
-    let bytes = postcard::to_allocvec(&grant).unwrap();
-    let decoded: ScopedGrant = postcard::from_bytes(&bytes).unwrap();
-    assert_eq!(decoded, grant);
+    assert_eq!(grant.clone().authority(), grant.authority());
+    assert_eq!(grant.verify_for_execute(&ctx(), &[]), Ok(()));
+    let bytes = postcard::to_allocvec(&grant)?;
+    let decoded: ScopedGrant = postcard::from_bytes(&bytes)?;
+    assert_eq!(postcard::to_allocvec(&decoded)?, bytes);
+    assert_eq!(decoded.authority(), super::ScopedGrantAuthority::Untrusted);
+    assert_eq!(decoded.id, grant.id);
+    assert_eq!(decoded.ticket, grant.ticket);
+    assert_eq!(decoded.scope, grant.scope);
+    assert_eq!(
+        decoded.verify_for_execute(&ctx(), &[]),
+        Err(GrantError::UntrustedAuthority)
+    );
+
+    let mut expired = ctx();
+    expired.now_ms = GrantTimeMs::new(2_000);
+    assert_eq!(
+        decoded.verify_for_execute(&expired, &[]),
+        Err(GrantError::Expired)
+    );
+    Ok(())
 }
 
 fn grant_with_mode(mode: GrantAdmissionMode) -> ScopedGrant {

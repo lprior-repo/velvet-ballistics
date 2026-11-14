@@ -5,10 +5,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
-use vb_core::workflow::node;
 use vb_core::{
-    CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract, RunId,
-    RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+    CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
     proof_kernels::vb_kyyf_normalization::{
         DeterminismError, DigestStatus, PublicObservation, TaintStatus, TerminalResult,
         compare_cross_run, compare_generated_ir, compare_replay, normalize_observation,
@@ -338,40 +336,11 @@ fn scenario_fixture(
     }
 }
 
-fn deterministic_finish_workflow(digest_byte: u8) -> Result<CompiledWorkflow, String> {
-    let set_const = node(
-        StepIdx::ZERO,
-        CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-        Some(SlotIdx::new(0)),
-        Some(StepIdx::new(1)),
-    );
-    let finish = node(
-        StepIdx::new(1),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        None,
-        None,
-    );
-    let parts = WorkflowParts {
-        semantic_source_identity: None,
-        source_metadata: None,
-        input_slots: Box::new([]),
-        name: Box::from("vb-kyyf-deterministic-finish"),
-        digest: WorkflowDigest::from_bytes([digest_byte; 32]),
-        nodes: Box::from([set_const, finish]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([ConstValue::I64(42)]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
+fn deterministic_finish_workflow(_digest_byte: u8) -> Result<CompiledWorkflow, String> {
+    vb_compile::compile_workflow(
+        b"version: velvet-ballistics/v1\nname: vb_kyyf_deterministic_finish\nwhen: {manual: {}}\ninputs: {answer: {is: number}}\nsteps:\n  - id: done\n    finish: {result: '$input.answer'}\n",
+    )
+    .map_err(|error| error.to_string())
 }
 
 fn runtime_config() -> ShardConfig {
@@ -381,7 +350,7 @@ fn runtime_config() -> ShardConfig {
         step_budget_per_tick: 8,
         max_active_runs: 4,
         max_open_gates: 1024,
-        policy: RuntimePolicy::Relaxed,
+        policy: RuntimePolicy::Strict,
     }
 }
 
@@ -396,14 +365,14 @@ fn durable_runtime_public_surface(
             scenario_id,
             public_surface: "tempfile isolated durable runtime store",
         })?;
-    let journal = vb_storage::open_store(temp.path()).map_err(|_| {
+    let journal = Arc::new(vb_storage::open_store(temp.path()).map_err(|_| {
         VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,
             scenario_id,
             public_surface: "vb_storage::open_store isolated durable runtime store",
         }
-    })?;
-    let shared = vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::new(journal));
+    })?);
+    let shared = vb_runtime::journal::StorageRuntimeJournal::shared_strict(journal.clone());
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return Err(VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,
@@ -418,13 +387,28 @@ fn durable_runtime_public_surface(
             public_surface: "vb_core::CompiledWorkflow public constructor",
         }
     })?;
+    vb_storage::admission::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &[],
+    )
+    .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
+        bead_id: BEAD_ID,
+        scenario_id,
+        public_surface: "vb_storage accepted artifact for strict runtime admission",
+    })?;
     let mut runtime = Runtime::new(shard_count, runtime_config(), shared);
     runtime
-        .submit_compiled_with_inputs(run, workflow, Box::from([]))
+        .submit_compiled_with_inputs(
+            run,
+            workflow,
+            Box::from([(SlotIdx::ZERO, vb_core::SlotValue::I64(42))]),
+        )
         .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,
             scenario_id,
-            public_surface: "vb_runtime::Runtime::submit_compiled_with_inputs durable journal",
+            public_surface: "vb_runtime::Runtime::submit_compiled durable journal",
         })?;
     runtime
         .tick_all()
@@ -434,6 +418,7 @@ fn durable_runtime_public_surface(
             public_surface: "vb_runtime::Runtime::tick_all durable journal",
         })?;
     drop(runtime);
+    drop(journal);
     let reopened = vb_storage::open_store(temp.path()).map_err(|_| {
         VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,

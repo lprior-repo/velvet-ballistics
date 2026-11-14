@@ -34,6 +34,7 @@ pub struct ContinuationAuthority {
     pub(super) input_digest: WorkflowDigest,
     pub(super) admission: RunAdmission,
     pub(super) contracts: Box<[vb_core::action::ActionContract]>,
+    pub(super) run_started_millis: Option<u64>,
 }
 
 impl ContinuationAuthority {
@@ -52,18 +53,7 @@ impl ContinuationAuthority {
             vb_storage::admission::verify_accepted_artifact_for_policy(artifact, expected.policy)?;
         record.validate_admission(durable_admission)?;
         let original = record.restore(&workflow)?;
-        let admission = hydrate_run_admission_from_events(std::slice::from_ref(durable_admission))
-            .ok_or(RunContinuationError::Admission)?;
-        validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
-            context: RecoveredAdmissionContext {
-                run: expected.run,
-                expected_workflow: workflow.digest(),
-                runtime_policy: expected.policy,
-            },
-            admission: &admission,
-            artifact,
-            workflow: &workflow,
-        })?;
+        let admission = validated_admission(durable_admission, artifact, expected, &workflow)?;
         Ok(Self {
             expected,
             workflow,
@@ -71,8 +61,37 @@ impl ContinuationAuthority {
             input_digest: record.input_digest(),
             admission,
             contracts: artifact.action_contracts.clone(),
+            run_started_millis: None,
         })
     }
+
+    /// Binds the durable wall-clock origin recovered from the same prefix.
+    #[must_use]
+    pub fn with_run_started_millis(mut self, started_millis: u64) -> Self {
+        self.run_started_millis = Some(started_millis);
+        self
+    }
+}
+
+fn validated_admission(
+    durable_admission: &JournalEvent,
+    artifact: &AcceptedArtifact,
+    expected: ContinuationExpected,
+    workflow: &CompiledWorkflow,
+) -> Result<RunAdmission, RunContinuationError> {
+    let admission = hydrate_run_admission_from_events(std::slice::from_ref(durable_admission))
+        .ok_or(RunContinuationError::Admission)?;
+    validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
+        context: RecoveredAdmissionContext {
+            run: expected.run,
+            expected_workflow: workflow.digest(),
+            runtime_policy: expected.policy,
+        },
+        admission: &admission,
+        artifact,
+        workflow,
+    })?;
+    Ok(admission)
 }
 
 fn validate_identities(

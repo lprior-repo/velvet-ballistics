@@ -62,30 +62,60 @@ pub(super) fn handle_do(
     node_id: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let seq = SeqNo::new(ctx.run.executed());
+    execute_context_action(ctx, action, input, node_id, seq)
+}
+
+fn execute_context_action(
+    ctx: &ActionDispatchContext<'_>,
+    action: ActionId,
+    input: SlotIdx,
+    node_id: StepIdx,
+    seq: SeqNo,
+) -> RuntimeEngineResult<RuntimeSignal> {
     if ctx.contracts.is_empty() {
-        execute_do_without_contract(
-            ctx.run,
-            node_id,
-            action,
-            input,
-            seq,
-            ctx.granted,
-            ctx.retry_policy,
-        )
+        execute_without_contract(ctx, action, input, node_id, seq)
     } else {
-        execute_do(
-            ctx.run,
-            node_id,
-            action,
-            input,
-            seq,
-            resolve_contract(action, ctx.contracts)?,
-            ctx.contracts,
-            ctx.granted,
-            ctx.retry_policy,
-            ctx.state_run_attempt,
-        )
+        execute_with_contract(ctx, action, input, node_id, seq)
     }
+}
+
+fn execute_without_contract(
+    ctx: &ActionDispatchContext<'_>,
+    action: ActionId,
+    input: SlotIdx,
+    node_id: StepIdx,
+    seq: SeqNo,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    execute_do_without_contract(
+        ctx.run,
+        node_id,
+        action,
+        input,
+        seq,
+        ctx.granted,
+        ctx.retry_policy,
+    )
+}
+
+fn execute_with_contract(
+    ctx: &ActionDispatchContext<'_>,
+    action: ActionId,
+    input: SlotIdx,
+    node_id: StepIdx,
+    seq: SeqNo,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    execute_do(
+        ctx.run,
+        node_id,
+        action,
+        input,
+        seq,
+        resolve_contract(action, ctx.contracts)?,
+        ctx.contracts,
+        ctx.granted,
+        ctx.retry_policy,
+        ctx.state_run_attempt,
+    )
 }
 
 // ── ErrorHandler handler ─────────────────────────────────────────

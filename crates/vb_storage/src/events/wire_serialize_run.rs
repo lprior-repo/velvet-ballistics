@@ -2,8 +2,9 @@
 
 use super::super::super::JournalEvent;
 use super::super::tags::{
-    TAG_RETRY_CHECKPOINT, TAG_RUN_ACCEPTED, TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED,
-    TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED, TAG_TENANT_ADMISSION,
+    TAG_RETRY_CHECKPOINT, TAG_RUN_ACCEPTED, TAG_RUN_ANSWERED, TAG_RUN_BUDGET_ORIGIN,
+    TAG_RUN_CANCELLED, TAG_RUN_FAILED, TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED,
+    TAG_RUN_RETRIED, TAG_TENANT_ADMISSION,
 };
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use serde::Serializer;
@@ -20,6 +21,7 @@ where
             super::admission::serialize_budget_admission(event, serializer)
         }
         JournalEvent::TenantAdmissionEvent { .. } => serialize_tenant_admission(event, serializer),
+        JournalEvent::RunBudgetOriginEvent { .. } => serialize_budget_origin(event, serializer),
         JournalEvent::RunAccepted { .. } => serialize_accepted(event, serializer),
         JournalEvent::RetryCheckpoint { .. } => serialize_retry_checkpoint(event, serializer),
         JournalEvent::RunCancelled { .. } => serialize_cancelled(event, serializer),
@@ -48,6 +50,25 @@ where
             TAG_TENANT_ADMISSION,
             "TenantAdmissionEvent",
             &(run, seq, tenant, cost_units),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_budget_origin<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunBudgetOriginEvent {
+            run,
+            seq,
+            started_millis,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_BUDGET_ORIGIN,
+            "RunBudgetOriginEvent",
+            &(run, seq, started_millis),
         ),
         _ => serialize_routing_error::<S>(),
     }

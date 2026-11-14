@@ -1,6 +1,6 @@
 use std::{fs, path::Path, process::Command};
 use vb_core::{RunId, SlotValue, Taint};
-use vb_storage::{AcceptedArtifact, FjallJournal};
+use vb_storage::{AcceptedArtifact, EventSeq, FjallJournal, JournalEvent};
 
 const INPUT_FINISH: &str = "version: velvet-ballistics/v1\nname: retained_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: done\n    finish:\n      result: $input.count\n";
 
@@ -96,12 +96,62 @@ fn submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir() -> Te
                 if mode == "none" {
                     assert!(events.is_empty());
                 } else {
-                    let admission = events
-                        .iter()
-                        .find(|event| {
-                            matches!(event, vb_storage::JournalEvent::RunAdmission { .. })
-                        })
-                        .ok_or("missing admission")?;
+                    let header = journal.run_header(run)?.ok_or("missing run header")?;
+                    let artifact_record = journal
+                        .compiled_ir(retained.artifact_digest())?
+                        .ok_or("missing accepted artifact")?;
+                    let artifact: AcceptedArtifact = postcard::from_bytes(&artifact_record.ir)?;
+                    let compiled = vb_storage::admission::verify_accepted_artifact(&artifact)?;
+                    let policy = if mode == "strict" {
+                        vb_core::RuntimePolicy::Strict
+                    } else {
+                        vb_core::RuntimePolicy::Journaled
+                    };
+                    assert_eq!(
+                        events,
+                        vec![
+                            JournalEvent::RunAccepted {
+                                run,
+                                seq: EventSeq::new(0),
+                                workflow: retained.workflow_digest(),
+                            },
+                            JournalEvent::RunAdmissionBudget {
+                                run,
+                                seq: EventSeq::new(1),
+                                artifact_digest: retained.artifact_digest(),
+                                input_digest: vb_storage::RunInputBinding::Digest(
+                                    retained.input_digest(),
+                                ),
+                                policy_pin: vb_storage::RunPolicyPin::Pinned(
+                                    artifact.policy_digest,
+                                ),
+                                granted_capabilities: vb_core::CapabilitySet::empty(),
+                                policy,
+                                budget: vb_core::AggregateResourceBudget::from_workflow(&compiled,)?,
+                            },
+                            JournalEvent::CompatibilityDecisionEvent {
+                                run,
+                                seq: EventSeq::new(2),
+                                decision: vb_storage::compat::decide_boundary(
+                                    vb_storage::compat::artifact_ir_version_inputs(
+                                        artifact.artifact_version,
+                                    ),
+                                    vb_storage::compat::schema_version_digest(
+                                        artifact.artifact_version,
+                                    ),
+                                    vb_storage::compat::schema_version_digest(
+                                        vb_storage::compat::CURRENT_IR_VERSION,
+                                    ),
+                                ),
+                            },
+                            JournalEvent::RunBudgetOriginEvent {
+                                run,
+                                seq: EventSeq::new(3),
+                                started_millis: header.accepted_at_ms,
+                            },
+                        ]
+                    );
+                    let admission = events.get(1).ok_or("missing admission")?;
                     retained.validate_admission(admission)?;
                 }
                 assert_eq!(

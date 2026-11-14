@@ -21,13 +21,7 @@ pub(super) fn inspect<'a>(
     }
     header(&mut cursor, authority, op)?;
     frame(&mut cursor, authority, op)?;
-    let resource = authority.workflow.resource_contract();
-    let shape = CheckpointShape {
-        arena_entries: usize::from(resource.max_slots),
-        blob_bytes: usize::try_from(resource.max_blob_bytes)
-            .map_err(|_| Error::Overflow)?
-            .min(vb_core::limits::MAX_BLOB_BYTES_PER_VALUE),
-    };
+    let shape = checkpoint_shape(authority)?;
     preflight_checkpoint(&mut cursor, &mut op.budget, shape)?;
     attempts(&mut cursor, authority, op)?;
     cursor.matching(op.known(&authority.admission)?)?;
@@ -42,6 +36,18 @@ pub(super) fn inspect<'a>(
     cursor.matching(op.known(&authority.contracts)?)?;
     integrity(bytes, &mut cursor)?;
     Ok(Witness { bytes, authority })
+}
+
+fn checkpoint_shape(
+    authority: &ContinuationAuthority,
+) -> Result<CheckpointShape, TransportFailure> {
+    let resource = authority.workflow.resource_contract();
+    Ok(CheckpointShape {
+        arena_entries: usize::from(resource.max_slots),
+        blob_bytes: usize::try_from(resource.max_blob_bytes)
+            .map_err(|_| Error::Overflow)?
+            .min(vb_core::limits::MAX_BLOB_BYTES_PER_VALUE),
+    })
 }
 
 fn frame(
@@ -59,6 +65,15 @@ fn frame(
     let nodes = usize::from(authority.workflow.node_count());
     let slots = usize::from(authority.workflow.slot_count());
     states(cursor, nodes, op)?;
+    frame_slots(cursor, slots, op)?;
+    Ok(())
+}
+
+fn frame_slots(
+    cursor: &mut Cursor<'_>,
+    slots: usize,
+    op: &mut Operation,
+) -> Result<(), TransportFailure> {
     exact_count(cursor, slots, "frame_slots")?;
     op.budget.reserve(slots, 256)?;
     op.budget.work(slots)?;

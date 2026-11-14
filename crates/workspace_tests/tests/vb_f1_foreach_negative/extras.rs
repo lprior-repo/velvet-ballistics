@@ -189,10 +189,27 @@ pub(super) fn assert_bound(
     Ok(())
 }
 
-pub(super) fn assert_serial_cap(source: &str) -> Result<(), String> {
-    let plan = compile_workflow(source.as_bytes()).map_err(|error| error.to_string())?;
-    let serial = compile_workflow(SOURCE.as_bytes()).map_err(|error| error.to_string())?;
-    assert_eq!(plan.to_parts().nodes, serial.to_parts().nodes);
-    assert_eq!(plan.to_parts().expressions, serial.to_parts().expressions);
+pub(super) fn assert_concurrent_cap(
+    source: &str,
+    expected_limit: u32,
+    expected_cap: u16,
+) -> Result<(), String> {
+    let workflow = compile_workflow(source.as_bytes()).map_err(|error| error.to_string())?;
+    assert_eq!(
+        workflow.ir_profile(),
+        vb_core::workflow::WorkflowIrProfile::ConcurrentV3
+    );
+    let starts = workflow
+        .to_parts()
+        .nodes
+        .into_iter()
+        .filter_map(|node| match node.kind {
+            vb_core::CompiledNodeKind::ForEachConcurrentStart { limit, at_once, .. } => {
+                Some((limit.get(), at_once.get()))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(starts, [(expected_limit, expected_cap)]);
     super::execute_typed_list(&source.replace("of: any", "of: number"))
 }

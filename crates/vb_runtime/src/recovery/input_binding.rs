@@ -67,14 +67,33 @@ pub fn validate_input_record_artifact(
     Ok(())
 }
 
-/// Checks if the admission event is new-bound (has input digest) or legacy unbound.
+/// Checks if the event carries the current budgeted and bound admission shape.
 pub fn admission_is_new_bound(event: &JournalEvent) -> bool {
-    match event {
-        JournalEvent::RunAdmission { input_digest, .. }
-        | JournalEvent::RunAdmissionBudget { input_digest, .. } => {
-            matches!(input_digest, vb_storage::RunInputBinding::Digest(_))
+    matches!(
+        event,
+        JournalEvent::RunAdmissionBudget {
+            input_digest: vb_storage::RunInputBinding::Digest(_),
+            policy_pin: vb_storage::RunPolicyPin::Pinned(_),
+            ..
         }
-        _ => false,
+    )
+}
+
+pub(crate) fn current_admission_event(events: &[JournalEvent]) -> Option<&JournalEvent> {
+    let mut admissions = events.iter().filter(|event| {
+        matches!(
+            event,
+            JournalEvent::RunAdmission { .. } | JournalEvent::RunAdmissionBudget { .. }
+        )
+    });
+    let admission = admissions.next()?;
+    if admissions.next().is_some() {
+        return None;
+    }
+    if admission_is_new_bound(admission) {
+        Some(admission)
+    } else {
+        None
     }
 }
 
@@ -90,7 +109,8 @@ pub(crate) struct RecoveredRetainedInputs {
 }
 
 impl RecoveredRetainedInputs {
-    /// Empty retained inputs for legacy unbound admissions.
+    /// Empty input state for recovery tests and runs with no input slots.
+    #[cfg(test)]
     pub(crate) fn empty() -> Self {
         Self {
             initial_inputs: Vec::new(),
@@ -117,10 +137,9 @@ impl RecoveredRetainedInputs {
 
 /// Loads and validates retained typed inputs for cold startup recovery.
 ///
-/// Legacy unbound admissions carry no retained inputs. New-bound admissions
-/// require the retained record: scalar records seed plain slot values, owned
-/// records additionally restore the value-store arenas that recovered
-/// `List`/`Object`/`Blob` handles point into.
+/// Current admissions require their retained record: scalar records seed plain
+/// slot values, owned records additionally restore the value-store arenas that
+/// recovered `List`/`Object`/`Blob` handles point into.
 pub(crate) fn load_retained_inputs_for_recovery(
     events: &[JournalEvent],
     journal: &FjallJournal,
@@ -128,34 +147,12 @@ pub(crate) fn load_retained_inputs_for_recovery(
     workflow: &CompiledWorkflow,
     run: RunId,
 ) -> RuntimeResult<RecoveredRetainedInputs> {
-    // Check if this admission is new-bound (has input digest) or legacy
-    let admission_event = events
-        .iter()
-        .find(|event| {
-            matches!(
-                event,
-                JournalEvent::RunAdmission { .. } | JournalEvent::RunAdmissionBudget { .. }
-            )
-        })
-        .ok_or(RuntimeError::Recovery {
-            error: "recovery: admission event not found in journal events".to_string(),
-        })?;
-
-    if !admission_is_new_bound(admission_event) {
-        // Legacy unbound admission - no retained inputs expected
-        return Ok(RecoveredRetainedInputs::empty());
-    }
-
-    // New-bound admission - retained inputs required. The authored source
-    // digest is not known out-of-band at recovery; the record's embedded
-    // source digest is covered by the tamper-evident input digest the
-    // admission event below binds.
+    let admission_event = current_admission_for_run(events, run)?;
     let retained = journal
         .admitted_run_inputs(run, artifact.digest, workflow, admission_event)?
         .ok_or(RuntimeError::Recovery {
             error: format!("recovery: retained input record missing for new-bound run {run:?}"),
         })?;
-
     match retained {
         RetainedRunInputs::Scalar(record) => {
             scalar_retained_inputs(&record, run, admission_event, artifact.digest, workflow)
@@ -164,6 +161,19 @@ pub(crate) fn load_retained_inputs_for_recovery(
             owned_retained_inputs(&record, workflow, run, admission_event)
         }
     }
+}
+
+fn current_admission_for_run(events: &[JournalEvent], run: RunId) -> RuntimeResult<&JournalEvent> {
+    let admission_event =
+        current_admission_event(events).ok_or(RuntimeError::RecoveryCannotResume {
+            reason: String::from("current_admission_missing_or_invalid"),
+        })?;
+    if admission_event.run_id() != run {
+        return Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("admission_run_mismatch"),
+        });
+    }
+    Ok(admission_event)
 }
 
 fn scalar_retained_inputs(
@@ -213,6 +223,13 @@ fn scalar_roots(
     record: &vb_storage::RunInputsRecord,
     workflow: &vb_core::CompiledWorkflow,
 ) -> RuntimeResult<Vec<(SlotIdx, SlotValue, Taint)>> {
+    let taints = declared_input_taints(workflow)?;
+    roots_with_taints(record, &taints)
+}
+
+fn declared_input_taints(
+    workflow: &vb_core::CompiledWorkflow,
+) -> RuntimeResult<Vec<Option<Taint>>> {
     let mut taints = Vec::new();
     let slots = usize::from(workflow.slot_count());
     taints
@@ -230,6 +247,13 @@ fn scalar_roots(
         });
         Ok::<(), RuntimeError>(())
     })?;
+    Ok(taints)
+}
+
+fn roots_with_taints(
+    record: &vb_storage::RunInputsRecord,
+    taints: &[Option<Taint>],
+) -> RuntimeResult<Vec<(SlotIdx, SlotValue, Taint)>> {
     let mut roots = Vec::new();
     roots
         .try_reserve_exact(record.inputs().len())

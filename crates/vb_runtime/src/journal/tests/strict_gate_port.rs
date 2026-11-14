@@ -50,7 +50,8 @@ fn fixture_record(run: RunId) -> GateOutcomeRecord {
         break_glass_justification: None,
         decided_at_ms: 500,
     };
-    evaluate_decision(&fixture_gate(run), 0, &input).unwrap()
+    let requester = ApproverId::new("bob".to_string()).unwrap();
+    evaluate_decision(&fixture_gate(run), 0, &requester, &input).unwrap()
 }
 
 fn setup_queued_test() -> Result<
@@ -143,10 +144,7 @@ fn storage_adapter_persists_full_gate_decision_event() -> Result<(), Box<dyn std
         seq: EventSeq::new(0),
         record: Box::new(record.clone()),
     }];
-    assert_eq!(
-        actual, expected,
-        "full durable GateDecisionEvent roundtrip"
-    );
+    assert_eq!(actual, expected, "full durable GateDecisionEvent roundtrip");
     Ok(())
 }
 
@@ -289,8 +287,7 @@ fn noop_and_volatile_adapters_fail_closed() {
     );
 
     let volatile = VolatileRuntimeJournal::shared();
-    let result =
-        volatile.append_gate_opened_strict(gate, 100, requester, EventSeq::new(0));
+    let result = volatile.append_gate_opened_strict(gate, 100, requester, EventSeq::new(0));
     assert!(
         matches!(
             result,

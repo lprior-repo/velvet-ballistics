@@ -128,8 +128,12 @@ impl BoundedActionCompletionQueue {
         inner.items.push_back(ticket);
 
         let depth = inner.items.len();
+        (Ok(()), self.backpressure_warning_outcome(depth))
+    }
+
+    fn backpressure_warning_outcome(&self, depth: usize) -> BackpressureWarningOutcome {
         let threshold = backpressure_threshold(self.capacity);
-        let outcome = if depth >= threshold {
+        if depth >= threshold {
             match self.backpressure_tx {
                 Some(ref tx) => match tx.try_send(BackpressureWarning {
                     depth,
@@ -145,9 +149,7 @@ impl BoundedActionCompletionQueue {
             }
         } else {
             BackpressureWarningOutcome::NotSent
-        };
-
-        (Ok(()), outcome)
+        }
     }
 
     /// Dequeues an action ticket in FIFO order.

@@ -13,11 +13,15 @@ use crate::shard::types::{
     PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard,
 };
 
+include!("transitions/timer_registration.rs");
+
 #[derive(Debug)]
 pub(crate) enum TransitionOutcome {
     Applied,
     JournalBudgetExceeded(Box<RunState>),
 }
+
+include!("transitions/timer_methods.rs");
 
 impl Shard {
     /// Applies a RuntimeEvent to mutate runtime_states.
@@ -102,7 +106,7 @@ impl Shard {
             result,
             attempt: state.run_attempt.get(),
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }
@@ -125,18 +129,7 @@ impl Shard {
     ) -> RuntimeResult<TransitionOutcome> {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
-        let capacity = match crate::shard::helpers::retry_policy_after_action(&state, ticket.step) {
-            Ok(policy) => policy.max_attempts,
-            Err(RuntimeError::UnsupportedOperation {
-                operation: "retry_metadata_missing",
-            }) => ticket.capacity,
-            Err(error) => return Err(error),
-        };
-        let ticket = crate::shard::helpers::normalize_scheduled_ticket(
-            &state,
-            ActionTicket { capacity, ..ticket },
-        )?;
-        crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
+        let ticket = normalize_action_ticket(&mut state, ticket)?;
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
         let action_abi_digest = self.action_abi_digest_for_run_action(run, ticket.action)?;
@@ -146,7 +139,17 @@ impl Shard {
             output,
             action_abi_digest,
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        self.apply_action_schedule(run, state, ticket, step, event)
+    }
+    fn apply_action_schedule(
+        &mut self,
+        run: RunId,
+        mut state: RunState,
+        ticket: ActionTicket,
+        step: vb_core::ids::StepIdx,
+        event: RuntimeJournalEvent,
+    ) -> RuntimeResult<TransitionOutcome> {
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }
@@ -165,66 +168,6 @@ impl Shard {
         Ok(TransitionOutcome::Applied)
     }
 
-    /// Transitions a run to awaiting a timer (wait or ask timeout).
-    pub(crate) fn await_timer(
-        &mut self,
-        run: RunId,
-        mut state: RunState,
-        kind: PendingTimerKind,
-    ) -> RuntimeResult<TransitionOutcome> {
-        self.add_executed_step_delta(run, state.frame.executed());
-        let step = state.frame.pc();
-        let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
-        let ask_boundary_seq = if kind == PendingTimerKind::Ask {
-            self.reserve_pending_ask_authority_slot(run)?;
-            Some(self.journal_sequence_for(run))
-        } else {
-            None
-        };
-        if register_timer {
-            self.reserve_pending_timer_slot(run)?;
-        }
-        if register_timer || kind == PendingTimerKind::Ask {
-            let event = match kind {
-                PendingTimerKind::Wait => RuntimeJournalEvent::WaitScheduled { run, step },
-                PendingTimerKind::Ask => RuntimeJournalEvent::AskScheduled { run, step },
-            };
-            let projected =
-                Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
-            if Self::journal_bytes_exceeds_budget(&state, projected) {
-                return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
-            }
-            if let Err(error) = self.append_journal_event(event) {
-                self.run_state_insert(run, state)?;
-                return Err(error);
-            }
-            state.journal_bytes_written = projected;
-        }
-        if register_timer {
-            let generation = match self.next_pending_timer_generation(run) {
-                Some(generation) => generation,
-                None => {
-                    self.run_state_insert(run, state)?;
-                    return Err(RuntimeError::InvalidTimerFire);
-                }
-            };
-            self.pending_timer_insert(
-                run,
-                PendingTimer {
-                    step,
-                    kind,
-                    generation,
-                    deadline: Instant::now(),
-                },
-            )?;
-        }
-        if let Some(boundary_seq) = ask_boundary_seq {
-            self.record_pending_ask_authority(run, step, boundary_seq);
-        }
-        self.run_state_insert(run, state)?;
-        Ok(TransitionOutcome::Applied)
-    }
-
     /// Marks a run as failed, releases its frame, and updates counters.
     /// Runtime state mutation is applied after the durable failure event is persisted.
     pub(crate) fn fail_run_state(
@@ -236,7 +179,7 @@ impl Shard {
             run,
             attempt: state.run_attempt.get(),
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }
@@ -250,4 +193,22 @@ impl Shard {
         self.fail_run_state_with_retry_checkpoint(run, retry_step, state)?;
         Ok(TransitionOutcome::Applied)
     }
+}
+fn normalize_action_ticket(
+    state: &mut RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<ActionTicket> {
+    let capacity = match crate::shard::helpers::retry_policy_after_action(state, ticket.step) {
+        Ok(policy) => policy.max_attempts,
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        }) => ticket.capacity,
+        Err(error) => return Err(error),
+    };
+    let ticket = crate::shard::helpers::normalize_scheduled_ticket(
+        state,
+        ActionTicket { capacity, ..ticket },
+    )?;
+    crate::shard::helpers::record_scheduled_attempt(state, ticket);
+    Ok(ticket)
 }

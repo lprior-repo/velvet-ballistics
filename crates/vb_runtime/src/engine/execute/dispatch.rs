@@ -34,25 +34,26 @@
 
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
+use vb_core::engine::StepBudget;
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
-use crate::engine::execute::handlers_compound::{
-    handle_for_each_join, handle_for_each_next, handle_for_each_start, handle_together_branch,
-    handle_together_join, handle_together_start,
-};
+use crate::engine::drive::DriveState;
+
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 use crate::primitives::body_entry::{BodyEntryPolicy, DeferredOwned, LegacyEntry};
 use crate::primitives::collect::CollectStates;
 
 pub(super) mod action_signal;
 mod compound;
+mod iteration;
 
 use self::action_signal::ActionDispatchContext;
 use self::action_signal::dispatch_action_and_signal;
 use self::compound::{dispatch_collect, dispatch_reduce, dispatch_repeat};
+use self::iteration::{dispatch_for_each, dispatch_together};
 
 /// Crate-private dispatch context carrying all node-execution inputs.
 /// Fields are `pub(crate)` so family dispatchers can read them; the
@@ -67,6 +68,13 @@ pub(crate) struct NodeDispatchContext<'a> {
     pub(crate) collect_states: &'a mut CollectStates,
     pub(crate) granted: &'a CapabilitySet,
     pub(crate) state_run_attempt: u16,
+    /// Drive-step budget; `None` on direct node execution outside the drive
+    /// loop, where concurrent scheduling is not available.
+    pub(crate) budget: Option<&'a mut StepBudget>,
+    /// Step evidence collector for per-lane accounting.
+    pub(crate) evidence: Option<&'a mut crate::engine::types::EvidenceCollector>,
+    /// Drive-state for slot-evidence gaps.
+    pub(crate) drive_state: Option<&'a mut DriveState>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -81,7 +89,7 @@ pub fn execute_node_full(
     granted: &CapabilitySet,
     state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    let ctx = NodeDispatchContext {
+    execute_node_with_policy::<LegacyEntry>(NodeDispatchContext {
         plan,
         run,
         store,
@@ -91,8 +99,10 @@ pub fn execute_node_full(
         collect_states,
         granted,
         state_run_attempt,
-    };
-    execute_node_with_policy::<LegacyEntry>(ctx)
+        budget: None,
+        evidence: None,
+        drive_state: None,
+    })
 }
 
 pub(crate) fn execute_node_deferred(
@@ -104,52 +114,100 @@ pub(crate) fn execute_node_deferred(
 fn execute_node_with_policy<P: BodyEntryPolicy>(
     mut ctx: NodeDispatchContext<'_>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    let result = match &ctx.node.kind {
+    let family = dispatch_family(&ctx.node.kind);
+    let result = dispatch_kind::<P>(&mut ctx, family);
+    if family == DispatchFamily::ActionSignal && !routes_action_error(&ctx.node.kind) {
+        return result;
+    }
+    route_dispatch_error(&mut ctx, result)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DispatchFamily {
+    ForEach,
+    Together,
+    Collect,
+    Reduce,
+    Repeat,
+    Concurrent,
+    ActionSignal,
+}
+
+fn dispatch_family(kind: &CompiledNodeKind) -> DispatchFamily {
+    match kind {
         CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
-        | CompiledNodeKind::ForEachJoin { .. } => dispatch_for_each::<P>(&mut ctx),
+        | CompiledNodeKind::ForEachJoin { .. } => DispatchFamily::ForEach,
         CompiledNodeKind::TogetherStart { .. }
         | CompiledNodeKind::TogetherBranch { .. }
-        | CompiledNodeKind::TogetherJoin { .. } => dispatch_together(&mut ctx),
+        | CompiledNodeKind::TogetherJoin { .. } => DispatchFamily::Together,
         CompiledNodeKind::CollectStart { .. }
         | CompiledNodeKind::CollectPage { .. }
         | CompiledNodeKind::CollectNext { .. }
-        | CompiledNodeKind::CollectFinish { .. } => {
-            dispatch_collect::<P>(ctx.run, ctx.store, ctx.collect_states, ctx.node)
-        }
+        | CompiledNodeKind::CollectFinish { .. } => DispatchFamily::Collect,
         CompiledNodeKind::ReduceStart { .. }
         | CompiledNodeKind::ReduceNext { .. }
-        | CompiledNodeKind::ReduceFinish { .. } => {
-            dispatch_reduce::<P>(ctx.plan, ctx.run, ctx.store, ctx.node)
-        }
+        | CompiledNodeKind::ReduceFinish { .. } => DispatchFamily::Reduce,
         CompiledNodeKind::RepeatStart { .. }
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::RepeatCheck { .. }
-        | CompiledNodeKind::RepeatFinish { .. } => dispatch_repeat::<P>(ctx.run, ctx.node),
-        _ => {
-            let mut actx = ActionDispatchContext {
-                plan: ctx.plan,
-                run: ctx.run,
-                store: ctx.store,
-                node: ctx.node,
-                contracts: ctx.contracts,
-                retry_policy: ctx.retry_policy,
-                granted: ctx.granted,
-                state_run_attempt: ctx.state_run_attempt,
-            };
-            let result = dispatch_action_and_signal(&mut actx);
-            if !matches!(
-                ctx.node.kind,
-                CompiledNodeKind::WaitUntil { .. }
-                    | CompiledNodeKind::WaitEvent { .. }
-                    | CompiledNodeKind::Ask { .. }
-                    | CompiledNodeKind::AskResume { .. }
-            ) {
-                return result;
-            }
-            result
+        | CompiledNodeKind::RepeatFinish { .. } => DispatchFamily::Repeat,
+        CompiledNodeKind::ForEachConcurrentStart { .. }
+        | CompiledNodeKind::TogetherConcurrentStart { .. }
+        | CompiledNodeKind::FirstSuccessStart { .. }
+        | CompiledNodeKind::ConcurrentLaneEnd { .. }
+        | CompiledNodeKind::ConcurrentGroupJoin { .. } => DispatchFamily::Concurrent,
+        _ => DispatchFamily::ActionSignal,
+    }
+}
+
+fn dispatch_kind<P: BodyEntryPolicy>(
+    ctx: &mut NodeDispatchContext<'_>,
+    family: DispatchFamily,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    match family {
+        DispatchFamily::ForEach => dispatch_for_each::<P>(ctx),
+        DispatchFamily::Together => dispatch_together(ctx),
+        DispatchFamily::Collect => {
+            dispatch_collect::<P>(ctx.run, ctx.store, ctx.collect_states, ctx.node)
         }
+        DispatchFamily::Reduce => dispatch_reduce::<P>(ctx.plan, ctx.run, ctx.store, ctx.node),
+        DispatchFamily::Repeat => dispatch_repeat::<P>(ctx.run, ctx.node),
+        DispatchFamily::Concurrent => {
+            crate::engine::execute::handlers_concurrent::dispatch_concurrent(ctx)
+        }
+        DispatchFamily::ActionSignal => dispatch_action_signal(ctx),
+    }
+}
+
+fn dispatch_action_signal(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<RuntimeSignal> {
+    let mut action = ActionDispatchContext {
+        plan: ctx.plan,
+        run: ctx.run,
+        store: ctx.store,
+        node: ctx.node,
+        contracts: ctx.contracts,
+        retry_policy: ctx.retry_policy,
+        granted: ctx.granted,
+        state_run_attempt: ctx.state_run_attempt,
     };
+    dispatch_action_and_signal(&mut action)
+}
+
+fn routes_action_error(kind: &CompiledNodeKind) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::WaitUntil { .. }
+            | CompiledNodeKind::WaitEvent { .. }
+            | CompiledNodeKind::Ask { .. }
+            | CompiledNodeKind::AskResume { .. }
+    )
+}
+
+fn route_dispatch_error(
+    ctx: &mut NodeDispatchContext<'_>,
+    result: RuntimeEngineResult<RuntimeSignal>,
+) -> RuntimeEngineResult<RuntimeSignal> {
     match result {
         Err(RuntimeEngineError::Core(error)) => {
             ctx.run.mark_failed(ctx.node.id)?;
@@ -160,84 +218,6 @@ fn execute_node_with_policy<P: BodyEntryPolicy>(
             }
         }
         other => other,
-    }
-}
-
-fn dispatch_for_each<P: BodyEntryPolicy>(
-    ctx: &mut NodeDispatchContext<'_>,
-) -> RuntimeEngineResult<RuntimeSignal> {
-    match &ctx.node.kind {
-        CompiledNodeKind::ForEachStart {
-            input,
-            item_slot,
-            limit,
-            body,
-            done,
-        } => handle_for_each_start(
-            ctx.run,
-            ctx.store,
-            *input,
-            *item_slot,
-            limit.get(),
-            *body,
-            *done,
-            ctx.node.output.slot(),
-        ),
-        CompiledNodeKind::ForEachNext {
-            iterator_slot,
-            body,
-            done,
-        } => handle_for_each_next::<P>(
-            ctx.run,
-            ctx.store,
-            *iterator_slot,
-            *body,
-            *done,
-            ctx.node.output.slot(),
-        ),
-        CompiledNodeKind::ForEachJoin { output } => handle_for_each_join(
-            ctx.run,
-            *output,
-            ctx.node.output.slot(),
-            ctx.node.routing.next.step(),
-            ctx.node.id,
-        ),
-        _ => Err(family_invariant()),
-    }
-}
-
-fn dispatch_together(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<RuntimeSignal> {
-    match &ctx.node.kind {
-        CompiledNodeKind::TogetherStart { branches, join } => {
-            handle_together_start(ctx.run, ctx.store, branches, *join, ctx.node.output.slot())
-        }
-        CompiledNodeKind::TogetherBranch {
-            branch,
-            entry,
-            join,
-            accumulator,
-        } => handle_together_branch(
-            ctx.run,
-            ctx.store,
-            branch.get(),
-            *entry,
-            *join,
-            *accumulator,
-            ctx.node.output.slot(),
-        ),
-        CompiledNodeKind::TogetherJoin {
-            branch_count,
-            accumulator,
-        } => handle_together_join(
-            ctx.run,
-            ctx.store,
-            branch_count.get(),
-            *accumulator,
-            ctx.node.output.slot(),
-            ctx.node.routing.next.step(),
-            ctx.node.id,
-        ),
-        _ => Err(family_invariant()),
     }
 }
 

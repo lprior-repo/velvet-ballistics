@@ -1,13 +1,19 @@
 use crate::{
+    RecordKind,
     codec::{decode_journal_event, encode_record},
-    constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
+    constants::{
+        MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        MAX_RUN_INPUT_BYTES,
+    },
     error::JournalError,
     events::JournalEvent,
+    inputs::RunInputsRecord,
     journal::FjallJournal,
-    keys::run_event_key,
+    keys::{run_event_key, run_header_key},
 };
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use vb_core::RunId;
 
 /// Stages one queued event into the supplied `OwnedWriteBatch`.
 ///
@@ -69,5 +75,47 @@ pub(super) fn stage_queued_event(
     )?;
     journal.stage_recovery_index_ops(owned_batch, event)?;
     owned_batch.insert(&journal.events, key, value);
+    Ok(())
+}
+
+pub(super) fn stage_queued_inputs<'a>(
+    owned_batch: &mut fjall::OwnedWriteBatch,
+    journal: &FjallJournal,
+    inputs: &'a RunInputsRecord,
+    staged_inputs: &mut HashMap<RunId, &'a RunInputsRecord>,
+) -> Result<(), JournalError> {
+    if let Some(staged) = staged_inputs.get(&inputs.run()) {
+        return if *staged == inputs {
+            Ok(())
+        } else {
+            Err(JournalError::PayloadDigestMismatch)
+        };
+    }
+    stage_queued_input_row(owned_batch, journal, inputs)?;
+    staged_inputs.insert(inputs.run(), inputs);
+    Ok(())
+}
+
+fn stage_queued_input_row(
+    owned_batch: &mut fjall::OwnedWriteBatch,
+    journal: &FjallJournal,
+    inputs: &RunInputsRecord,
+) -> Result<(), JournalError> {
+    if let Some(existing) = journal.run_inputs(inputs.run())? {
+        return if existing == *inputs {
+            Ok(())
+        } else {
+            Err(JournalError::PayloadDigestMismatch)
+        };
+    }
+    let key = run_header_key(inputs.run())?;
+    let value = encode_record(
+        MAGIC_INDEX_RECORD,
+        RecordKind::RunInputs,
+        inputs.run().get(),
+        inputs,
+        MAX_RUN_INPUT_BYTES,
+    )?;
+    owned_batch.insert(&journal.run_inputs, key, value);
     Ok(())
 }

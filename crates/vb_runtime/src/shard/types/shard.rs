@@ -10,23 +10,52 @@ pub struct Shard {
     pub(crate) pending_ask_authorities: IndexMap<RunId, PendingAskAuthority>,
     /// Operator-opened manual gates awaiting a decision, keyed by gate id.
     pub(crate) open_gates: IndexMap<GateId, OpenGate>,
+    /// Bound operator-opened gates, keyed by gate id. Kept separate so a
+    /// legacy gate can never be approved through the bound path.
+    pub(crate) bound_open_gates: IndexMap<GateId, BoundOpenGate>,
     /// Last frame executed count already reflected in shard counters by run.
     pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
     pub(crate) counters: ShardCounters,
+    /// Runtime-wide admitted-cost ledger shared by every shard in a runtime.
+    pub(crate) quota: crate::quota::SharedQuotaLedger,
+    /// Queue reservation transferred atomically when its submit is handled.
+    pub(crate) pending_quota_reservation: Option<(RunId, PendingQuotaReservation)>,
+    /// Exact admitted cost charged per live run, for idempotent release.
+    pub(crate) charged_quotas: IndexMap<RunId, (Option<vb_core::ids::TenantId>, u64)>,
     pub(crate) step_budget_per_tick: u64,
     pub(crate) max_active_runs: usize,
     pub(crate) max_open_gates: usize,
     pub(crate) policy: vb_core::policy::RuntimePolicy,
     pub(crate) artifact_store: crate::admission::SharedAcceptedArtifactStore,
-    pub(crate) inspect_response: Option<InspectResponse>,
-    pub(crate) shutting_down: bool,
-    pub(crate) current_tick: TimerTick,
+    pub(crate) control: ShardControlState,
     pub(crate) journal: SharedRuntimeJournal,
-    pub(crate) completion_capture: crate::runtime::completion_observation::CompletionCapture,
     /// Fencing tokens for live action invocations, keyed by run.
     pub(crate) fencing_tokens: super::fencing::FencingTokens,
+}
+
+/// Shard-local tick and shutdown state with the latest observations.
+pub(crate) struct ShardControlState {
+    pub(super) inspect_response: Option<InspectResponse>,
+    pub(super) shutting_down: bool,
+    pub(super) current_tick: TimerTick,
+    pub(crate) completion_capture: crate::runtime::completion_observation::CompletionCapture,
+    /// Last successful wall-clock expiry, observed by deterministic tests.
+    pub(super) last_lifetime_expiry: Option<(RunId, u64)>,
+}
+
+impl ShardControlState {
+    pub(super) fn new() -> Self {
+        Self {
+            inspect_response: None,
+            shutting_down: false,
+            current_tick: TimerTick::new(0),
+            completion_capture: crate::runtime::completion_observation::CompletionCapture::default(
+            ),
+            last_lifetime_expiry: None,
+        }
+    }
 }
 
 /// Read-only shard health snapshot for operator status reporting.

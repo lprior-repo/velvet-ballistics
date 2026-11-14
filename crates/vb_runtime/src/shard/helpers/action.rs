@@ -56,26 +56,9 @@ fn validate_ticket_attempt(
     state: &crate::shard::types::RunState,
     ticket: ActionTicket,
 ) -> RuntimeResult<()> {
-    // Run attempt authority: ticket must match current run attempt.
-    let expected = state.run_attempt.get();
-    if ticket.run_attempt != expected {
-        return Err(RuntimeError::StaleAttempt {
-            incoming: ticket.run_attempt,
-            current: expected,
-        });
-    }
-    // Per-action attempt bounds.
-    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
-        return Err(RuntimeError::AttemptBeyondMax {
-            attempt: ticket.attempt,
-            max: ticket.capacity,
-        });
-    }
-    let current = state
-        .action_attempts
-        .get(ticket.step.as_usize())
-        .copied()
-        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    validate_run_attempt(state, ticket)?;
+    validate_ticket_bounds(ticket)?;
+    let current = current_action_attempt(state, ticket)?;
     if ticket.attempt < current {
         return Err(RuntimeError::StaleAttempt {
             incoming: ticket.attempt,
@@ -87,6 +70,41 @@ fn validate_ticket_attempt(
         return Err(RuntimeError::InvalidActionCompletion);
     }
     Ok(())
+}
+
+fn validate_run_attempt(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<()> {
+    let expected = state.run_attempt.get();
+    if ticket.run_attempt != expected {
+        return Err(RuntimeError::StaleAttempt {
+            incoming: ticket.run_attempt,
+            current: expected,
+        });
+    }
+    Ok(())
+}
+
+fn validate_ticket_bounds(ticket: ActionTicket) -> RuntimeResult<()> {
+    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt: ticket.attempt,
+            max: ticket.capacity,
+        });
+    }
+    Ok(())
+}
+
+fn current_action_attempt(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<u16> {
+    state
+        .action_attempts
+        .get(ticket.step.as_usize())
+        .copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)
 }
 
 /// Promotes an engine-issued ticket to the live per-step attempt counter.

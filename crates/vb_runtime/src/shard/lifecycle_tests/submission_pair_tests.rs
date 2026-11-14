@@ -1,11 +1,70 @@
-fn submit_pair_fixture(shard: &mut Shard, run: RunId) -> crate::RuntimeResult<()> {
+struct PreparedSubmissionPair {
+    workflow: vb_core::workflow::CompiledWorkflow,
+    contracts: Box<[vb_core::action::ActionContract]>,
+    inputs: [(SlotIdx, SlotValue); 1],
+    caps: vb_core::capability::CapabilitySet,
+    artifact: vb_storage::admission::AcceptedArtifact,
+    admission: crate::admission::RunAdmission,
+}
+
+fn prepare_submission_pair_fixture(
+    shard: &mut Shard,
+    run: RunId,
+) -> crate::RuntimeResult<PreparedSubmissionPair> {
     let workflow = suspended_workflow().ok_or(RuntimeError::InvalidActionCompletion)?;
+    let workflow =
+        honest_digest_workflow(workflow).map_err(|_| RuntimeError::InvalidActionCompletion)?;
+    let contracts = strict_submit_contracts();
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        &workflow,
+        vb_core::policy::RuntimePolicy::Strict,
+        &contracts,
+    )?;
+    let artifact = if let Some(journal) =
+        crate::journal::RuntimeJournal::storage_journal(shard.journal.as_ref())
+    {
+        let accepted = vb_storage::submit_artifact_with_contracts(
+            journal.as_ref(),
+            &workflow,
+            vb_core::policy::RuntimePolicy::Journaled,
+            &contracts,
+        )?;
+        shard.policy = vb_core::policy::RuntimePolicy::Journaled;
+        shard.artifact_store = crate::admission::StorageArtifactStore::shared(journal);
+        accepted
+    } else {
+        shard.policy = vb_core::policy::RuntimePolicy::Strict;
+        shard.artifact_store = std::sync::Arc::new(PreparedArtifactStore {
+            artifact: artifact.clone(),
+        });
+        artifact
+    };
+    let inputs = [(SlotIdx::ZERO, SlotValue::I64(0))];
+    let input_digest =
+        vb_storage::inputs::compute_input_digest(&inputs).map_err(RuntimeError::from)?;
+    let caps = strict_submit_caps();
+    let admission = shard
+        .build_admission_with_budget(run, &workflow, caps.clone(), None)?
+        .ok_or(RuntimeError::InvalidActionCompletion)?
+        .with_input_digest(vb_storage::RunInputBinding::Digest(input_digest));
+    Ok(PreparedSubmissionPair {
+        workflow,
+        contracts,
+        inputs,
+        caps,
+        artifact,
+        admission,
+    })
+}
+
+fn submit_pair_fixture(shard: &mut Shard, run: RunId) -> crate::RuntimeResult<()> {
+    let prepared = prepare_submission_pair_fixture(shard, run)?;
     shard.handle_submit_with_inputs_and_contracts(
         run,
-        workflow,
-        &[(SlotIdx::ZERO, SlotValue::I64(0))],
-        crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
-        &crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+        prepared.workflow,
+        &prepared.inputs,
+        prepared.caps,
+        &prepared.contracts,
     )
 }
 
@@ -66,11 +125,7 @@ fn submission_pair_one_free_queue_slot_publishes_neither_event() -> Result<(), S
     let (journal, queue, adapter, shared) =
         queued_journal_fixture("vb-submission-pair-refusal-", 2, 1)?;
     fill_queue_to_one_free_slot(&queue, 2, 60_100)?;
-    let mut shard = Shard::new_with_journal_and_artifact_store(
-        small_config(),
-        shared,
-        crate::admission::AlwaysPresentArtifactStore::shared(),
-    );
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(60_101);
     shard
         .seed_journal_sequence(run, vb_storage::EventSeq::new(7))
@@ -111,40 +166,80 @@ fn submission_pair_one_free_queue_slot_publishes_neither_event() -> Result<(), S
 #[test]
 fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String> {
     let (journal, queue, adapter, shared) =
-        queued_journal_fixture("vb-submission-pair-flush-", 2, 1)?;
-    let mut shard = Shard::new_with_journal_and_artifact_store(
-        small_config(),
-        shared,
-        crate::admission::AlwaysPresentArtifactStore::shared(),
-    );
+        queued_journal_fixture("vb-submission-pair-flush-", 4, 1)?;
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(60_102);
-    let workflow = require_workflow("submission pair", suspended_workflow())?;
-    let expected_admission = shard
-        .build_admission_with_budget(
+    let prepared =
+        prepare_submission_pair_fixture(&mut shard, run).map_err(|error| error.to_string())?;
+    let workflow = prepared.workflow.clone();
+    let expected_input_digest = vb_storage::inputs::compute_input_digest(&prepared.inputs)
+        .map_err(|error| error.to_string())?;
+    let expected_budget = vb_core::AggregateResourceBudget::from_workflow(&workflow)
+        .map_err(|error| format!("budget fixture failed: {error:?}"))?;
+    assert_eq!(
+        prepared.admission.artifact_digest(),
+        prepared.artifact.digest
+    );
+    assert_eq!(prepared.admission.run_id(), run);
+    assert_eq!(prepared.admission.granted_capabilities(), &prepared.caps);
+    assert_eq!(
+        prepared.admission.policy(),
+        vb_core::policy::RuntimePolicy::Journaled
+    );
+    assert_eq!(
+        prepared.admission.input_digest(),
+        vb_storage::RunInputBinding::Digest(expected_input_digest)
+    );
+    assert_eq!(
+        prepared.admission.policy_pin(),
+        vb_storage::RunPolicyPin::Pinned(prepared.artifact.policy_digest)
+    );
+    assert_eq!(prepared.admission.budget(), Some(expected_budget));
+    let expected_admission = crate::journal::RuntimeJournal::convert_to_storage_event(
+        shard.journal.as_ref(),
+        RuntimeJournalEvent::RunAdmission {
+            admission: prepared.admission.clone(),
+        },
+        vb_storage::EventSeq::new(1),
+    )
+    .map_err(|error| error.to_string())?;
+    let expected_compatibility = crate::journal::RuntimeJournal::convert_to_storage_event(
+        shard.journal.as_ref(),
+        RuntimeJournalEvent::CompatibilityDecision {
             run,
-            &workflow,
-            crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
-        )
-        .map_err(|error| error.to_string())?
-        .ok_or("missing admission fixture")?;
-    let result = submit_pair_fixture(&mut shard, run);
+            decision: prepared
+                .admission
+                .ir_compat_decision()
+                .ok_or_else(|| String::from("current admission compatibility decision missing"))?,
+        },
+        vb_storage::EventSeq::new(2),
+    )
+    .map_err(|error| error.to_string())?;
+    let result = shard.handle_submit_with_inputs_and_contracts(
+        run,
+        prepared.workflow,
+        &prepared.inputs,
+        prepared.caps,
+        &prepared.contracts,
+    );
     assert!(matches!(
         result,
         Err(RuntimeError::StorageJournalAppend { source })
+            | Err(RuntimeError::AdmissionHeaderPersistenceFailed { source })
             if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
     ));
     assert_eq!(shard.active_run_count(), 1);
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(
         shard.journal_sequence_for(run),
-        vb_storage::EventSeq::new(2)
+        vb_storage::EventSeq::new(4)
     );
     assert_eq!(
         queue
             .pending_profile_counts()
             .map_err(|error| error.to_string())?
             .journaled,
-        2
+        4
     );
     assert!(
         journal
@@ -152,28 +247,46 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
             .map_err(|error| error.to_string())?
             .is_empty()
     );
-    let report = adapter.flush_batch().map_err(|error| error.to_string())?;
-    assert_eq!((report.drained, report.written), (2, 2));
-    let expected_admission = crate::journal::RuntimeJournal::convert_to_storage_event(
-        adapter.as_ref(),
-        RuntimeJournalEvent::RunAdmission {
-            admission: expected_admission,
+    let state = shard
+        .run_state_get(run)
+        .ok_or("run state missing after current admission submission")?;
+    assert_eq!(state.frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(0)));
+    assert_eq!(state.admission.as_ref(), Some(&prepared.admission));
+    let expected_started = state
+        .run_started_millis
+        .ok_or("missing recorded run origin")?;
+    let events_before_flush = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert!(events_before_flush.is_empty());
+    assert_eq!(
+        queue
+            .pending_profile_counts()
+            .map_err(|error| error.to_string())?
+            .journaled,
+        4
+    );
+    let expected_events = vec![
+        vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq: vb_storage::EventSeq::ZERO,
+            workflow: workflow.digest(),
         },
-        vb_storage::EventSeq::new(1),
-    )
-    .map_err(|error| error.to_string())?;
+        expected_admission,
+        expected_compatibility,
+        vb_storage::JournalEvent::RunBudgetOriginEvent {
+            run,
+            seq: vb_storage::EventSeq::new(3),
+            started_millis: expected_started,
+        },
+    ];
+    let report = adapter.flush_batch().map_err(|error| error.to_string())?;
+    assert_eq!((report.drained, report.written), (4, 4));
     assert_eq!(
         journal
             .events_for_run(run)
             .map_err(|error| error.to_string())?,
-        vec![
-            vb_storage::JournalEvent::RunAccepted {
-                run,
-                seq: vb_storage::EventSeq::ZERO,
-                workflow: workflow.digest(),
-            },
-            expected_admission,
-        ]
+        expected_events
     );
     shard
         .append_journal_event(RuntimeJournalEvent::RunCancelled {
@@ -184,18 +297,18 @@ fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String
         .map_err(|error| error.to_string())?;
     assert_eq!(
         shard.journal_sequence_for(run),
-        vb_storage::EventSeq::new(3)
+        vb_storage::EventSeq::new(5)
     );
     let report = adapter.flush_batch().map_err(|error| error.to_string())?;
     assert_eq!((report.drained, report.written), (1, 1));
     let events = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 5);
     assert!(matches!(
         events.last(),
         Some(vb_storage::JournalEvent::RunCancelled { run: found, seq, .. })
-            if *found == run && *seq == vb_storage::EventSeq::new(2)
+            if *found == run && *seq == vb_storage::EventSeq::new(4)
     ));
     Ok(())
 }
@@ -206,6 +319,10 @@ struct SubmissionSingletonJournal {
 }
 
 impl crate::journal::RuntimeJournal for SubmissionSingletonJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Ok(())
@@ -244,6 +361,10 @@ struct SubmissionRejectingBatchJournal {
 }
 
 impl crate::journal::RuntimeJournal for SubmissionRejectingBatchJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         self.singleton_calls
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);

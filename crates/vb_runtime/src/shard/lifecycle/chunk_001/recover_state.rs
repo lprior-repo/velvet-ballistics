@@ -1,0 +1,126 @@
+use crate::recovery::RecoveredRunBoundaryKind;
+use crate::run_checkpoint::RunCheckpointV1;
+
+impl VerifiedWorkflow {
+    fn restore(
+        self,
+        shard: &mut Shard,
+        mut command: RecoverRunCommand,
+        origin: Option<u64>,
+        store: Option<ValueStore>,
+    ) -> RuntimeResult<RunState> {
+        if let Some(checkpoint) = command.retry_checkpoint.take() {
+            let mut state = self.retry_state(checkpoint, command.run, command.artifact_digest)?;
+            state.registered_execution = execution_mode(command.boundary);
+            shard.restore_retry_boundary_frame(&mut state, command.boundary)?;
+            state.run_started_millis = origin;
+            shard.prepare_run_slots(command.run)?;
+            Ok(state)
+        } else {
+            let store = restore_frame_store(store, &self.workflow)?;
+            shard.prepare_run_slots(command.run)?;
+            self.frame_state(command, origin, store)
+        }
+    }
+
+    fn retry_state(
+        self,
+        checkpoint: RunCheckpointV1,
+        run: RunId,
+        digest: WorkflowDigest,
+    ) -> RuntimeResult<RunState> {
+        let (state, _, _, _) = checkpoint
+            .restore(self.workflow, digest, &self.artifact.action_contracts)
+            .map_err(|error| RuntimeError::Recovery {
+                error: format!("retry checkpoint validation failed: {error}"),
+            })?;
+        if state.frame.run_id() != run {
+            return Err(RuntimeError::Recovery {
+                error: "retry checkpoint run identity mismatch".to_string(),
+            });
+        }
+        Ok(state)
+    }
+
+    fn frame_state(
+        self,
+        command: RecoverRunCommand,
+        origin: Option<u64>,
+        store: ValueStore,
+    ) -> RuntimeResult<RunState> {
+        let authority = FrameAuthority::restore(
+            command.admission,
+            command.recovered_action_attempts,
+            command.recovered_journal_bytes_written,
+            command.frame.step_count(),
+        )?;
+        Ok(RunState {
+            registered_execution: execution_mode(command.boundary),
+            frame: command.frame,
+            run_attempt: core::num::NonZeroU16::MIN,
+            workflow: self.workflow,
+            store,
+            action_attempts: authority.action_attempts,
+            admission: Some(authority.admission),
+            run_started_millis: origin,
+            collect_states: command.collect_states,
+            journal_bytes_written: authority.journal_bytes_written,
+            action_contracts: self.artifact.action_contracts,
+        })
+    }
+}
+
+struct FrameAuthority {
+    admission: crate::admission::RunAdmission,
+    action_attempts: Box<[u16]>,
+    journal_bytes_written: u64,
+}
+
+impl FrameAuthority {
+    fn restore(
+        admission: RecoveredAdmissionKind,
+        attempts: Option<Box<[u16]>>,
+        bytes: Option<u64>,
+        step_count: u16,
+    ) -> RuntimeResult<Self> {
+        let RecoveredAdmissionKind::Historical(admission) = admission else {
+            return Err(RuntimeError::RecoveryCannotResume {
+                reason: String::from("admission_unverified"),
+            });
+        };
+        let (action_attempts, journal_bytes_written) =
+            crate::recovery::recover_admission_accounting(
+                Some(&admission),
+                attempts,
+                bytes,
+                step_count,
+            )?;
+        Ok(Self {
+            admission: *admission,
+            action_attempts,
+            journal_bytes_written,
+        })
+    }
+}
+
+fn execution_mode(boundary: RecoveredRunBoundary) -> RegisteredExecutionMode {
+    if boundary.kind() == RecoveredRunBoundaryKind::PendingAction {
+        RegisteredExecutionMode::ReconcileOnly
+    } else {
+        RegisteredExecutionMode::Live
+    }
+}
+
+fn restore_frame_store(
+    restored: Option<ValueStore>,
+    workflow: &CompiledWorkflow,
+) -> RuntimeResult<ValueStore> {
+    if let Some(store) = restored {
+        return Ok(store);
+    }
+    let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
+    if let Some(metadata) = workflow.source_metadata() {
+        vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
+    }
+    Ok(store)
+}

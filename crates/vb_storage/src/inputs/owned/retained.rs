@@ -136,12 +136,10 @@ impl FjallJournal {
                 });
             }
         };
-        let source = match &record {
-            RetainedRunInputs::Scalar(record) => record.source_digest(),
-            RetainedRunInputs::Owned(record) => record.source_digest(),
-        };
-        self.workflow_source(source)?
-            .ok_or(super::OwnedInputError::IdentityMismatch)?;
+        if let RetainedRunInputs::Owned(record) = &record {
+            self.workflow_source(record.source_digest())?
+                .ok_or(super::OwnedInputError::IdentityMismatch)?;
+        }
         Ok(Some(record))
     }
 

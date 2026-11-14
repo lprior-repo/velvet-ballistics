@@ -17,6 +17,16 @@ fn validate_hydrated_identity(
     collector_slot: SlotIdx,
     event_seq: Option<EventSeq>,
 ) -> Result<(), EngineError> {
+    validate_hydrated_run(state, run_id, collector_slot, event_seq)?;
+    validate_hydrated_slot(state, run_id, collector_slot, event_seq)
+}
+
+fn validate_hydrated_run(
+    state: &CollectPaginationState,
+    run_id: RunId,
+    collector_slot: SlotIdx,
+    event_seq: Option<EventSeq>,
+) -> Result<(), EngineError> {
     if state.run_id != run_id {
         return Err(EngineError::CollectExtraHydrationFailed {
             kind: CollectExtraHydrationFailureKind::RunMismatch {
@@ -28,6 +38,15 @@ fn validate_hydrated_identity(
             event_seq,
         });
     }
+    Ok(())
+}
+
+fn validate_hydrated_slot(
+    state: &CollectPaginationState,
+    run_id: RunId,
+    collector_slot: SlotIdx,
+    event_seq: Option<EventSeq>,
+) -> Result<(), EngineError> {
     if state.collector_slot != collector_slot {
         return Err(EngineError::CollectExtraHydrationFailed {
             kind: CollectExtraHydrationFailureKind::SlotMismatch {

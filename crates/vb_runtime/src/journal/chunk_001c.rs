@@ -52,6 +52,22 @@ impl VolatileRuntimeJournal {
     }
 }
 
+fn reserve_batch(
+    stored: &mut Vec<RuntimeJournalEvent>,
+    events: &[RuntimeJournalEvent],
+    capacity: usize,
+) -> RuntimeResult<()> {
+    let available = capacity
+        .checked_sub(stored.len())
+        .ok_or(RuntimeError::JournalFull { capacity })?;
+    if events.len() > available {
+        return Err(RuntimeError::JournalFull { capacity });
+    }
+    stored
+        .try_reserve(events.len())
+        .map_err(|_| RuntimeError::JournalFull { capacity })
+}
+
 impl Default for VolatileRuntimeJournal {
     fn default() -> Self {
         Self::new()
@@ -126,6 +142,10 @@ impl RuntimeJournalConfig {
 }
 
 impl RuntimeJournal for VolatileRuntimeJournal {
+    fn durability_profile(&self) -> Option<DurabilityProfile> {
+        Some(DurabilityProfile::Volatile)
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         let mut events = self
             .events
@@ -150,22 +170,7 @@ impl RuntimeJournal for VolatileRuntimeJournal {
             .events
             .lock()
             .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
-        let available =
-            self.capacity
-                .checked_sub(stored.len())
-                .ok_or(RuntimeError::JournalFull {
-                    capacity: self.capacity,
-                })?;
-        if events.len() > available {
-            return Err(RuntimeError::JournalFull {
-                capacity: self.capacity,
-            });
-        }
-        stored
-            .try_reserve(events.len())
-            .map_err(|_| RuntimeError::JournalFull {
-                capacity: self.capacity,
-            })?;
+        reserve_batch(&mut stored, events, self.capacity)?;
         stored.extend(events.iter().cloned());
         Ok(())
     }
@@ -185,4 +190,43 @@ pub struct StorageRuntimeJournal {
     catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>,
     journal: Arc<FjallJournal>,
     profile: DurabilityProfile,
+}
+/// Journal implementation that intentionally drops all events.
+#[derive(Debug, Default)]
+pub struct NoopRuntimeJournal;
+
+impl NoopRuntimeJournal {
+    /// Creates a shared noop journal for explicitly non-durable tests or benchmarks.
+    #[must_use]
+    pub fn shared_for_tests_and_benchmarks() -> SharedRuntimeJournal {
+        Arc::new(Self)
+    }
+
+    /// Creates a shared noop journal for callers that explicitly select no durability.
+    #[must_use]
+    pub fn shared() -> SharedRuntimeJournal {
+        Self::shared_for_tests_and_benchmarks()
+    }
+}
+
+impl RuntimeJournal for NoopRuntimeJournal {
+    fn durability_profile(&self) -> Option<DurabilityProfile> {
+        Some(DurabilityProfile::Volatile)
+    }
+
+    fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    fn append_sequenced_batch(
+        &self,
+        _events: &[RuntimeJournalEvent],
+        _start_seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    fn probe(&self) -> RuntimeResult<()> {
+        Ok(())
+    }
 }

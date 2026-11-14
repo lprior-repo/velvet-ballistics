@@ -62,7 +62,7 @@ pub(super) fn finalize_compiled_workflow(
         accessors: builder.accessors.into_boxed_slice(),
         constants: builder.constants.into_boxed_slice(),
         entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
+        resource_contract: builder.resource_contract,
         step_names: step_names.into_boxed_slice(),
         input_slots: builder.input_slots.into_boxed_slice(),
     };
@@ -71,6 +71,6 @@ pub(super) fn finalize_compiled_workflow(
     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
     vb_validate::shared::validate(&parts)
         .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, layout)]))?;
-    CompiledWorkflow::try_from_parts(parts)
+    crate::mod_compile_lowering::checked_workflow(parts)
         .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, layout)]))
 }

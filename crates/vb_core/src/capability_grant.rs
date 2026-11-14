@@ -16,7 +16,8 @@
 
 use crate::action_pack::CapabilityScopeSpec;
 use crate::capability::Capability;
-use crate::manual_gate::{ApproverId, GateDigest};
+pub use crate::capability_grant_authority::ScopedGrantAuthority;
+use crate::manual_gate::{ApproverId, BoundApprovalReceipt, GateDigest};
 use crate::{ActionTicket, WorkflowDigest};
 use serde::{Deserialize, Serialize};
 
@@ -173,6 +174,10 @@ pub struct ScopedGrant {
     pub approval_receipt: GateDigest,
     /// Opted-in profile signature; recorded only in this wedge.
     pub signature: Option<GrantSignature>,
+    /// Issuance authority is process-local and omitted from the wire payload.
+    /// Deserialized grants default to untrusted and cannot authorize dispatch.
+    #[serde(skip)]
+    authority: ScopedGrantAuthority,
 }
 
 /// Single constructor bundle for issuance (never N primitive arguments).
@@ -240,6 +245,10 @@ pub struct ScopedDispatch<'a> {
     pub dispatch: &'a GrantDispatchContext,
     /// Caller-owned revocation list, bounded by [`MAX_REVOKED_IDS`].
     pub revoked_ids: &'a [GrantId],
+    /// Bound manual-gate approval presented for this dispatch, when the
+    /// capability was authorized by a gate. `None` preserves callers that
+    /// issue grants through another authority path.
+    pub gate_approval: Option<&'a BoundApprovalReceipt>,
 }
 
 impl<'a> ScopedDispatch<'a> {
@@ -254,36 +263,20 @@ impl<'a> ScopedDispatch<'a> {
             scoped,
             dispatch,
             revoked_ids,
+            gate_approval: None,
         }
+    }
+
+    /// Attaches the durable bound approval authorizing this grant.
+    #[must_use]
+    pub const fn with_gate_approval(mut self, approval: &'a BoundApprovalReceipt) -> Self {
+        self.gate_approval = Some(approval);
+        self
     }
 }
 
-impl GrantDispatchContext {
-    /// Bundles the expected bindings with caller-owned time/revocation.
-    #[allow(clippy::too_many_arguments)]
-    #[must_use]
-    pub fn new(
-        artifact: WorkflowDigest,
-        ticket: ActionTicket,
-        declared_scope: CapabilityScopeSpec,
-        expected_issuer: ApproverId,
-        expected_subject: ApproverId,
-        now_ms: GrantTimeMs,
-        min_epoch: RevocationEpoch,
-        can_suspend_at_missing_grant_gates: bool,
-    ) -> Self {
-        Self {
-            artifact,
-            ticket,
-            declared_scope,
-            expected_issuer,
-            expected_subject,
-            now_ms,
-            min_epoch,
-            can_suspend_at_missing_grant_gates,
-        }
-    }
-}
+#[path = "capability_grant/dispatch_context.rs"]
+mod dispatch_context;
 
 #[cfg(test)]
 #[path = "capability_grant_tests.rs"]

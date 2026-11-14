@@ -217,7 +217,7 @@ fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
                             seq: EventSeq::new(0),
                             workflow: compiled.digest()
                         },
-                        vb_storage::JournalEvent::RunAdmission {
+                        vb_storage::JournalEvent::RunAdmissionBudget {
                             input_digest: vb_storage::RunInputBinding::Digest(
                                 retained.input_digest()
                             ),
@@ -231,6 +231,7 @@ fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
                             } else {
                                 vb_core::RuntimePolicy::Journaled
                             },
+                            budget: vb_core::AggregateResourceBudget::from_workflow(&compiled)?,
                         },
                         vb_storage::JournalEvent::CompatibilityDecisionEvent {
                             run: header.run,
@@ -246,7 +247,12 @@ fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
                                     vb_storage::compat::CURRENT_IR_VERSION,
                                 ),
                             ),
-                        }
+                        },
+                        vb_storage::JournalEvent::RunBudgetOriginEvent {
+                            run: header.run,
+                            seq: EventSeq::new(3),
+                            started_millis: header.accepted_at_ms,
+                        },
                     ]
                 );
             }

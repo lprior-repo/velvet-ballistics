@@ -11,6 +11,26 @@ fn asks_suspend_each_item_until_its_answer_before_advancing() -> TestResult {
             "- id: loop\n  for_each:\n    variable: entry\n    input: $vars.xs\n    at_once: {cap}\n    steps:\n      - id: question\n        ask: {{prompt: '$entry'}}\n- id: checked\n  set: {{output: checked, value: 'count($step.loop) == 3 and $step.loop.0 == 73 and $step.loop.1 == 74 and $step.loop.2 == 75'}}\n"
         );
         let yaml = source("vars: {xs: [3, 1, 2]}\n", &body, "$step.checked");
+        let plan = vb_compile::compile_workflow(yaml.as_bytes())?;
+        assert_eq!(
+            plan.ir_profile(),
+            vb_core::workflow::WorkflowIrProfile::LegacyV2
+        );
+        let parts = plan.to_parts();
+        assert_eq!(
+            parts
+                .nodes
+                .iter()
+                .filter(|node| matches!(node.kind, K::ForEachStart { .. }))
+                .count(),
+            1
+        );
+        assert!(
+            !parts
+                .nodes
+                .iter()
+                .any(|node| matches!(node.kind, K::ForEachConcurrentStart { .. }))
+        );
         for quantum in [1, 64] {
             let outcome = execute(&yaml, quantum, None)?;
             assert_eq!(outcome.value, SlotValue::Bool(true));

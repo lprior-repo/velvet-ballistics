@@ -45,6 +45,10 @@ impl RecordingJournal {
 }
 
 impl RuntimeJournal for RecordingJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
         Ok(())
     }
@@ -136,7 +140,7 @@ fn test_input(decision: GateDecision) -> GateDecisionInput {
 }
 
 fn test_record(run: RunId, decision: GateDecision) -> GateOutcomeRecord {
-    evaluate_decision(&test_gate(run), 0, &test_input(decision)).unwrap()
+    evaluate_decision(&test_gate(run), 0, &person("bob"), &test_input(decision)).unwrap()
 }
 
 fn test_escalation(run: RunId) -> GateOutcomeRecord {
@@ -251,10 +255,7 @@ fn typed_strict_gate_port_failure() -> Result<(), Box<dyn std::error::Error>> {
     let calls = journal.strict_calls()?;
     assert_eq!(
         calls,
-        vec![(
-            test_record(run, GateDecision::Approve),
-            seq_before
-        )],
+        vec![(test_record(run, GateDecision::Approve), seq_before)],
         "journal must record exact decision at seq before"
     );
 

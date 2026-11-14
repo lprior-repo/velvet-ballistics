@@ -44,32 +44,8 @@ pub(crate) fn decode_iterator_state(items: &[SlotValue]) -> Result<(ListId, usiz
             reason: "iterator state must be a 2-element list".into(),
         });
     }
-    let source_token = match items.first().copied() {
-        Some(SlotValue::I64(v)) => v,
-        Some(_) => {
-            return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state source token must be I64".into(),
-            });
-        }
-        None => {
-            return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state must be a 2-element list".into(),
-            });
-        }
-    };
-    let cursor_token = match items.get(1).copied() {
-        Some(SlotValue::I64(v)) => v,
-        Some(_) => {
-            return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state cursor must be I64".into(),
-            });
-        }
-        None => {
-            return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state must be a 2-element list".into(),
-            });
-        }
-    };
+    let source_token = iterator_state_token(items, 0, "iterator state source token must be I64")?;
+    let cursor_token = iterator_state_token(items, 1, "iterator state cursor must be I64")?;
     let source_id_value =
         u32::try_from(source_token).map_err(|_| EngineError::InternalInvariantViolation {
             reason: "iterator state source token out of u32 range".into(),
@@ -79,6 +55,22 @@ pub(crate) fn decode_iterator_state(items: &[SlotValue]) -> Result<(ListId, usiz
             reason: "iterator state cursor out of usize range".into(),
         })?;
     Ok((ListId::new(source_id_value), cursor_value))
+}
+
+fn iterator_state_token(
+    items: &[SlotValue],
+    index: usize,
+    reason: &'static str,
+) -> Result<i64, EngineError> {
+    match items.get(index).copied() {
+        Some(SlotValue::I64(value)) => Ok(value),
+        Some(_) => Err(EngineError::InternalInvariantViolation {
+            reason: reason.into(),
+        }),
+        None => Err(EngineError::InternalInvariantViolation {
+            reason: "iterator state must be a 2-element list".into(),
+        }),
+    }
 }
 
 pub(crate) fn preflight_slot_writes(

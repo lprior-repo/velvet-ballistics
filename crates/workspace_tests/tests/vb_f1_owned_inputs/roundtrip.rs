@@ -58,11 +58,26 @@ fn strict_owned_submission_reopens_with_exact_arenas_roots_taints_and_receipt() 
     assert_eq!(loaded.checkpoint(), expected.checkpoint());
     assert_owned_graph(&loaded, &workflow)?;
     let events = journal.events_for_run(f.run)?;
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 4);
     let admission = events
         .iter()
-        .find(|e| matches!(e, JournalEvent::RunAdmission { .. }))
+        .find(|event| matches!(event, JournalEvent::RunAdmissionBudget { .. }))
         .ok_or("admission missing")?;
+    assert!(matches!(
+        admission,
+        JournalEvent::RunAdmissionBudget {
+            run,
+            artifact_digest,
+            input_digest: vb_storage::RunInputBinding::Digest(input_digest),
+            policy_pin: vb_storage::RunPolicyPin::Pinned(policy_digest),
+            budget,
+            ..
+        } if *run == f.run
+            && *artifact_digest == artifact.digest
+            && *input_digest == loaded.input_digest()
+            && *policy_digest == artifact.policy_digest
+            && *budget == vb_core::AggregateResourceBudget::from_workflow(&workflow)?
+    ));
     loaded.validate_admission(admission)?;
     assert!(journal.run_header(f.run)?.is_some());
     assert!(matches!(

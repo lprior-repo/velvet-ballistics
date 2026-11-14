@@ -184,22 +184,7 @@ impl EvidenceCollector {
         extra: Option<CollectPaginationState>,
     ) -> Result<(), EngineError> {
         if self.events.len() >= self.capacity {
-            return Err(match extra {
-                Some(state) => EngineError::CollectEvidenceCapacityExceeded {
-                    run_id: state.run_id,
-                    slot,
-                    capacity: self.capacity,
-                    len: self.events.len(),
-                    required: REQUIRED_COLLECT_SLOT_EXTRA,
-                },
-                None => EngineError::EvidenceCapacityExceeded {
-                    step: StepIdx::ZERO,
-                    slot,
-                    capacity: self.capacity,
-                    len: self.events.len(),
-                    required: REQUIRED_SLOT_WRITTEN,
-                },
-            });
+            return Err(self.slot_written_capacity_error(slot, extra));
         }
         self.events.push(EvidenceEvent::SlotWritten {
             slot,
@@ -208,6 +193,29 @@ impl EvidenceCollector {
             extra,
         });
         Ok(())
+    }
+
+    fn slot_written_capacity_error(
+        &self,
+        slot: SlotIdx,
+        extra: Option<CollectPaginationState>,
+    ) -> EngineError {
+        match extra {
+            Some(state) => EngineError::CollectEvidenceCapacityExceeded {
+                run_id: state.run_id,
+                slot,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: REQUIRED_COLLECT_SLOT_EXTRA,
+            },
+            None => EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::ZERO,
+                slot,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: REQUIRED_SLOT_WRITTEN,
+            },
+        }
     }
 
     /// Drains all collected events, returning them for processing.

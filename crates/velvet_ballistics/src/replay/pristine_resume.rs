@@ -33,7 +33,7 @@ pub(super) fn select_pristine_resume(
                 seq: first,
                 ..
             },
-            JournalEvent::RunAdmission {
+            JournalEvent::RunAdmissionBudget {
                 run: admitted,
                 seq: second,
                 policy: vb_core::RuntimePolicy::Strict,
@@ -56,16 +56,23 @@ pub(super) fn select_pristine_resume(
 
 fn pristine_tail(run: vb_core::RunId, events: &[vb_storage::JournalEvent]) -> bool {
     match events {
-        [] => true,
         [
             vb_storage::JournalEvent::CompatibilityDecisionEvent {
                 run: owner,
                 seq,
                 decision,
             },
+            vb_storage::JournalEvent::RunBudgetOriginEvent {
+                run: origin_owner,
+                seq: origin_seq,
+                started_millis,
+            },
         ] => {
             *owner == run
                 && seq.get() == 2
+                && *origin_owner == run
+                && origin_seq.get() == 3
+                && *started_millis > 0
                 && decision.boundary == vb_storage::compat::CompatBoundary::IrVersion
                 && decision.authorize_live_effect().is_ok()
         }

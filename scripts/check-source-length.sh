@@ -93,6 +93,7 @@ declare -A exception_categories=()
 
 # Glob of files whose "very hot" function-length policy is enforced.
 hot_files() {
+  local rg_status=0
   rg --files \
     -g 'crates/vb_*/src/engine.rs' \
     -g 'crates/vb_*/src/engine/**' \
@@ -112,7 +113,8 @@ hot_files() {
     -g '!crates/vb_runtime/src/verification/**' \
     -g '!target/**' \
     -g '!vb-*/**' \
-    -g '!arch-drift-*/**'
+    -g '!arch-drift-*/**' || rg_status=$?
+  [[ "$rg_status" -eq 0 || "$rg_status" -eq 1 ]]
 }
 
 # cargo-mutants residue scan. Unchanged from the previous gate.
@@ -138,53 +140,11 @@ check_mutants_residue() {
   fi
 }
 
-# Hot-function length policy. Unchanged from the previous gate.
-check_file() {
-  local file="$1"
-
-  awk -v limit="$limit" -v file="$file" '
-    function logical(line) {
-      line = trim(line)
-      return line != "" && line !~ /^\/\// && line != "{" && line != "}"
-    }
-
-    function trim(text) {
-      sub(/^[[:space:]]+/, "", text)
-      sub(/[[:space:]]+$/, "", text)
-      return text
-    }
-
-    function braces(text,   idx, ch, delta) {
-      delta = 0
-      for (idx = 1; idx <= length(text); idx += 1) {
-        ch = substr(text, idx, 1)
-        if (ch == "{") delta += 1
-        if (ch == "}") delta -= 1
-      }
-      return delta
-    }
-
-    /^[[:space:]]*(pub([[:space:]]*\([^)]*\))?[[:space:]]+)?(const[[:space:]]+)?(async[[:space:]]+)?fn[[:space:]]+/ {
-      in_fn = 1
-      start = NR
-      count = 0
-      depth = 0
-    }
-
-    in_fn {
-      if (logical($0)) count += 1
-      depth += braces($0)
-      if (depth <= 0 && index($0, "{") > 0) {
-        if (count > limit) {
-          printf "%s:%d hot function has %d logical lines (limit %d)\n", file, start, count, limit > "/dev/stderr"
-          failed = 1
-        }
-        in_fn = 0
-      }
-    }
-
-    END { exit failed ? 1 : 0 }
-  ' "$file" || status=1
+check_hot_functions() {
+  mkdir -p target/gate-tools
+  rustc +nightly-2026-04-28 --edition=2024 "$SCRIPT_DIR/source_length_hot_functions.rs" \
+    -o target/gate-tools/source-length-hot-functions || { status=1; return; }
+  hot_files | target/gate-tools/source-length-hot-functions || status=1
 }
 
 # Path predicates
@@ -204,7 +164,17 @@ is_excluded_source_path() {
 # or ripgrep scanning (last resort). Tests are NOT filtered out at this
 # stage — they are categorized separately by lib-source-length.sh.
 tracked_rust_files() {
-  if command -v git >/dev/null 2>&1 && \
+  if [[ -n "${GATE_REPO_ROOT:-}" ]]; then
+    rg --files -g '*.rs' \
+      -g '!target/**' \
+      -g '!.jj/**' \
+      -g '!.beads/**' \
+      -g '!.evidence/**' \
+      -g '!.cargo_temp/**' \
+      -g '!cargo-home/**' \
+      -g '!cargo_home/**' \
+      -g '!.cargo/registry/**'
+  elif command -v git >/dev/null 2>&1 && \
       git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     git -C "$REPO_ROOT" ls-files '*.rs'
   elif command -v jj >/dev/null 2>&1 && jj root >/dev/null 2>&1; then
@@ -470,10 +440,7 @@ check_compile_split_sources() {
   done
 }
 
-while IFS= read -r file; do
-  [[ -z "$file" ]] && continue
-  check_file "$file"
-done < <(hot_files)
+check_hot_functions
 
 check_source_line_limit
 check_mutants_residue

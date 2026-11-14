@@ -342,7 +342,9 @@ pub struct AcceptedArtifact {
 // and wraps the rebuilt evidence as `Verified` (Legacy profile; the
 // Registered profile wraps as `Packed` instead).
 // `submit_artifact_with_contracts` (admission.rs:96-105) performs no
-// gate-count or proof-flag validation of its own; the shape is
+// gate-count or proof-flag validation; it delegates to private
+// `submit_prepared_artifact` (admission.rs:114-136) which owns the Strict
+// tag check, issuance and readback. The shape is
 // enforced by `verify_accepted_artifact` at
 // `crates/vb_storage/src/admission/verification.rs:60-90`, which
 // recomputes the expected artifact and rejects any deviation with

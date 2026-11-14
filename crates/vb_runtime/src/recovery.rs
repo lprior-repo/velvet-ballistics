@@ -20,10 +20,10 @@ pub use full::{
 pub(crate) use full::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, RecoveredPendingActionTicket,
     RecoveredRetryTimer, ResumableRecoveryParts, action_abi_digests_from_contracts,
-    action_contract_abi_digest, classify_full_recovery_resume,
+    action_contract_abi_digest, classify_full_recovery_resume, handler_route_for_failure,
     hydrate_frame_for_full_recovery_with_inputs, pending_action_ticket_from_events,
-    recovered_run_boundary_from_seed, run_is_currently_terminal,
-    validate_recovered_admission_evidence,
+    recovered_run_boundary_from_seed, restore_routed_action_failure, run_is_currently_terminal,
+    validate_recovered_admission_evidence, validate_replayed_action_abi_events,
 };
 
 pub(crate) use input_binding::{RecoveredRetainedInputs, load_retained_inputs_for_recovery};
@@ -35,30 +35,50 @@ pub use input_binding::{
 use crate::{RuntimeError, RuntimeResult};
 use product::DurableFrameRecoveryProduct;
 
+mod accounting;
+pub(crate) use accounting::{
+    hydrate_run_tenant, recover_action_attempts, recover_admission_accounting,
+    recover_journal_bytes_written, recover_run_budget_origin, resolve_run_started_millis,
+    validate_lifetime_budget, validate_recovered_lifetime_at_wall_clock,
+};
+
+#[cfg(test)]
+pub(crate) use accounting::{hydrate_run_budget_origin, validate_recovered_lifetime};
+#[cfg(test)]
+pub(crate) use full::validate_current_admission;
+
 /// Hydrates the latest run admission metadata from durable storage events.
 #[must_use]
 pub fn hydrate_run_admission_from_events(
     events: &[vb_storage::JournalEvent],
 ) -> Option<crate::admission::RunAdmission> {
-    vb_storage::recovery::replay::summary::recover_run_admission_from_events(events).map(
-        |admission| {
-            let base = match admission.budget {
-                Some(budget) => crate::admission::RunAdmission::with_budget(
-                    admission.artifact_digest,
-                    admission.run_id,
-                    admission.granted_capabilities,
-                    admission.policy,
-                    budget,
-                ),
-                None => crate::admission::RunAdmission::new(
-                    admission.artifact_digest,
-                    admission.run_id,
-                    admission.granted_capabilities,
-                    admission.policy,
-                ),
-            };
-            base.with_policy_pin(admission.policy_pin)
-        },
+    budgeted_admission(input_binding::current_admission_event(events)?)
+}
+
+fn budgeted_admission(event: &vb_storage::JournalEvent) -> Option<crate::admission::RunAdmission> {
+    let vb_storage::JournalEvent::RunAdmissionBudget {
+        run,
+        artifact_digest,
+        input_digest: vb_storage::RunInputBinding::Digest(input_digest),
+        policy_pin: vb_storage::RunPolicyPin::Pinned(policy_pin),
+        granted_capabilities,
+        policy,
+        budget,
+        ..
+    } = event
+    else {
+        return None;
+    };
+    Some(
+        crate::admission::RunAdmission::with_budget(
+            *artifact_digest,
+            *run,
+            granted_capabilities.clone(),
+            *policy,
+            *budget,
+        )
+        .with_policy_pin(vb_storage::RunPolicyPin::Pinned(*policy_pin))
+        .with_input_digest(vb_storage::RunInputBinding::Digest(*input_digest)),
     )
 }
 

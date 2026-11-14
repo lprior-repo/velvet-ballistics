@@ -7,6 +7,29 @@ use vb_storage::recovery::RecoveredPendingAction;
 use super::RecoveredPendingActionTicket;
 use crate::{RuntimeError, RuntimeResult};
 
+pub(crate) fn validate_replayed_action_abi_events(
+    events: &[vb_storage::JournalEvent],
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> RuntimeResult<()> {
+    for event in events {
+        let (action, found) = match event {
+            vb_storage::JournalEvent::ActionScheduledTicket {
+                ticket,
+                action_abi_digest,
+                ..
+            }
+            | vb_storage::JournalEvent::ActionCompletedEnvelope {
+                ticket,
+                action_abi_digest,
+                ..
+            } => (ticket.action, *action_abi_digest),
+            _ => continue,
+        };
+        validate_pending_action_abi(action, found, expected_action_abi_digests)?;
+    }
+    Ok(())
+}
+
 /// Returns the single durable pending-action ticket needed by live recovery.
 pub(crate) fn pending_action_ticket_from_events(
     seed: &vb_storage::recovery::RecoveryFrameSeed,
@@ -100,6 +123,14 @@ fn scheduled_ticket_event_for_entry(
     entry: &RecoveredPendingAction,
     event: &vb_storage::JournalEvent,
 ) -> Option<(vb_storage::EventSeq, PendingActionTicketEvent)> {
+    let (seq, ticket_event) = scheduled_ticket_record(event)?;
+    (ticket_event.ticket.step == entry.step && ticket_event.ticket.action == entry.action)
+        .then_some((seq, ticket_event))
+}
+
+fn scheduled_ticket_record(
+    event: &vb_storage::JournalEvent,
+) -> Option<(vb_storage::EventSeq, PendingActionTicketEvent)> {
     let vb_storage::JournalEvent::ActionScheduledTicket {
         run,
         seq,
@@ -111,9 +142,6 @@ fn scheduled_ticket_event_for_entry(
     else {
         return None;
     };
-    if ticket.step != entry.step || ticket.action != entry.action {
-        return None;
-    }
     Some((
         *seq,
         PendingActionTicketEvent {

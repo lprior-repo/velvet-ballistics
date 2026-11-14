@@ -1,3 +1,5 @@
+#[path = "states_helpers.rs"]
+mod helpers;
 impl CollectStates {
     /// Cold transport may borrow an empty terminal table without cloning it.
     pub(crate) fn transport_tables_empty(&self) -> bool {
@@ -26,33 +28,32 @@ impl CollectStates {
     /// Insert or replace the state for the given key.
     pub fn upsert(&mut self, state: CollectPaginationState) -> Result<(), EngineError> {
         let key = (state.run_id, state.collector_slot);
-        let previous = self.entries.get(&key).map_or(0, |prior| prior.cursor);
-        let delivered = state.cursor.saturating_sub(previous);
-        let total = self
-            .total_items_consumed
-            .checked_add(u64::try_from(delivered).map_err(|_| {
-                EngineError::InternalInvariantViolation {
-                    reason: "collect item counter overflow".into(),
-                }
-            })?)
-            .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect item counter overflow".into(),
-            })?;
-        let pages_delivered = match self.entries.get(&key) {
-            None => 1,
-            Some(prior) => u64::from(prior.current_page != state.current_page),
-        };
-        let pages_total = self
-            .total_pages_delivered
-            .checked_add(pages_delivered)
-            .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect page counter overflow".into(),
-            })?;
+        let (total, pages_total) = self.updated_totals(key, &state)?;
         self.record_lineage(key, state.current_page)?;
         self.entries.insert(key, state);
         self.total_items_consumed = total;
         self.total_pages_delivered = pages_total;
         Ok(())
+    }
+
+    fn updated_totals(
+        &self,
+        key: (RunId, SlotIdx),
+        state: &CollectPaginationState,
+    ) -> Result<(u64, u64), EngineError> {
+        let previous = self.entries.get(&key).map_or(0, |prior| prior.cursor);
+        let delivered = state.cursor.saturating_sub(previous);
+        let items =
+            u64::try_from(delivered).map_err(|_| EngineError::InternalInvariantViolation {
+                reason: "collect item counter overflow".into(),
+            })?;
+        let total = self.total_items_consumed.checked_add(items).ok_or(
+            EngineError::InternalInvariantViolation {
+                reason: "collect item counter overflow".into(),
+            },
+        )?;
+        let pages_total = helpers::updated_pages_total(self, key, state)?;
+        Ok((total, pages_total))
     }
 
     fn record_lineage(
@@ -184,6 +185,20 @@ impl CollectStates {
         expected_page: Option<ListId>,
         extra: &[u8],
     ) -> Result<(), EngineError> {
+        let state = Self::decode_hydrated_state(run_id, collector_slot, event_seq, extra)?;
+        validate_hydrated_identity(&state, run_id, collector_slot, event_seq)?;
+        if let Some(expected) = expected_page {
+            validate_hydrated_page(&state, run_id, collector_slot, event_seq, expected)?;
+        }
+        self.upsert(state)
+    }
+
+    fn decode_hydrated_state(
+        run_id: RunId,
+        collector_slot: SlotIdx,
+        event_seq: Option<EventSeq>,
+        extra: &[u8],
+    ) -> Result<CollectPaginationState, EngineError> {
         if extra.is_empty() {
             return Err(EngineError::CollectExtraHydrationFailed {
                 kind: CollectExtraHydrationFailureKind::EmptyExtra,
@@ -192,18 +207,12 @@ impl CollectStates {
                 event_seq,
             });
         }
-        let state: CollectPaginationState =
-            postcard::from_bytes(extra).map_err(|_| EngineError::CollectExtraHydrationFailed {
-                kind: CollectExtraHydrationFailureKind::DecodeFailed,
-                run_id,
-                collector_slot,
-                event_seq,
-            })?;
-        validate_hydrated_identity(&state, run_id, collector_slot, event_seq)?;
-        if let Some(expected) = expected_page {
-            validate_hydrated_page(&state, run_id, collector_slot, event_seq, expected)?;
-        }
-        self.upsert(state)
+        postcard::from_bytes(extra).map_err(|_| EngineError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::DecodeFailed,
+            run_id,
+            collector_slot,
+            event_seq,
+        })
     }
 
     /// Hydrate durable pagination extras carried by slot-write journal events.

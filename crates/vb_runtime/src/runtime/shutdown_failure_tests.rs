@@ -19,6 +19,10 @@ struct FailShutdownPortOnce {
 }
 
 impl RuntimeJournal for FailShutdownPortOnce {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        self.inner.durability_profile()
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         self.inner.append(event)
     }
@@ -31,6 +35,14 @@ impl RuntimeJournal for FailShutdownPortOnce {
         seq: EventSeq,
     ) -> RuntimeResult<()> {
         self.inner.append_sequenced_batch(events, seq)
+    }
+    fn append_admission_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        self.inner.append_admission_batch(events, seq, inputs)
     }
     fn probe(&self) -> RuntimeResult<()> {
         self.inner.probe()
@@ -63,12 +75,14 @@ fn journal_port_failure_preserves_timer_then_retry_drains_actual_fjall_queue() -
         fail: AtomicBool::new(true),
     });
     let config = crate::shard::ShardConfig {
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Journaled,
         ..Default::default()
     };
     let mut runtime = Runtime::new(NonZeroUsize::MIN, config, port);
     let run = RunId::new(740);
-    runtime.submit_direct(run, waiting_workflow()?)?;
+    let workflow = waiting_workflow()?;
+    accept_workflow(&journal, &workflow, &[])?;
+    runtime.submit_direct(run, workflow)?;
     assert!(runtime.tick_all()?);
     let before = runtime.pending_boundary_snapshot(64);
     let queued = queue.pending_profile_counts()?.journaled;
@@ -110,7 +124,9 @@ fn full_journal_queue_is_durably_drained_after_nonwriting_command() -> TestResul
     let (_dir, journal, queue) = storage()?;
     let mut runtime = runtime(&journal, &queue);
     let run = RunId::new(750);
-    runtime.submit_direct(run, waiting_workflow()?)?;
+    let workflow = waiting_workflow()?;
+    accept_workflow(&journal, &workflow, &[])?;
+    runtime.submit_direct(run, workflow)?;
     assert!(runtime.tick_all()?);
     for seq in 0..128 {
         let event = JournalEvent::RunAccepted {
@@ -146,7 +162,7 @@ fn full_journal_queue_is_durably_drained_after_nonwriting_command() -> TestResul
 fn shard_failure_reports_completed_prefix_and_keeps_other_timer_authorities() -> TestResult {
     let (_dir, journal, queue) = storage()?;
     let config = crate::shard::ShardConfig {
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Journaled,
         ..Default::default()
     };
     let mut runtime = Runtime::new(
@@ -157,7 +173,9 @@ fn shard_failure_reports_completed_prefix_and_keeps_other_timer_authorities() ->
             queue.clone(),
         )),
     );
-    runtime.submit_direct(RunId::new(760), waiting_workflow()?)?;
+    let workflow = waiting_workflow()?;
+    accept_workflow(&journal, &workflow, &[])?;
+    runtime.submit_direct(RunId::new(760), workflow)?;
     assert!(runtime.tick_all()?);
     runtime.resume_run(RunId::new(761))?;
     let failure = match runtime.shutdown_graceful() {

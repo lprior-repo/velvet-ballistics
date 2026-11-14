@@ -4,6 +4,10 @@ use vb_core::frame::{CheckpointStepState, RunFrameCheckpointV1};
 use vb_core::workflow::NodeContinuation;
 use vb_core::{CompiledNodeKind, SlotIdx, SlotValue, StepIdx, Taint};
 
+#[path = "boundary/candidate.rs"]
+mod candidate_cut;
+use candidate_cut::candidate;
+
 type Result<T> = core::result::Result<T, RunContinuationError>;
 
 pub(super) fn locate(
@@ -22,42 +26,6 @@ pub(super) fn locate(
     found.ok_or(RunContinuationError::UnsupportedBoundary)
 }
 
-fn candidate(
-    frame: &RunFrameCheckpointV1,
-    control: StepIdx,
-    authority: &ContinuationAuthority,
-) -> Result<Option<Boundary>> {
-    let Some(region) = authority.workflow.loop_region(control) else {
-        return Ok(None);
-    };
-    let finish = region.done();
-    let node = authority
-        .workflow
-        .node(finish)
-        .ok_or(RunContinuationError::BoundaryState)?;
-    if !matches!(node.kind, CompiledNodeKind::CollectFinish { .. }) {
-        return Ok(None);
-    }
-    let exit = node
-        .routing
-        .next
-        .step()
-        .ok_or(RunContinuationError::BoundaryState)?;
-    let cut = if frame.pc == finish {
-        ContinuationCut::BeforeCollectFinish
-    } else if frame.pc == exit {
-        ContinuationCut::AfterCollectFinish
-    } else {
-        return Ok(None);
-    };
-    Ok(Some(Boundary {
-        cut,
-        control,
-        finish,
-        exit,
-    }))
-}
-
 pub(super) fn validate(body: &Body, authority: &ContinuationAuthority) -> Result<()> {
     let boundary = body.boundary;
     let (source, collector, output) = shape(boundary, authority)?;
@@ -72,28 +40,44 @@ pub(super) fn validate(body: &Body, authority: &ContinuationAuthority) -> Result
     {
         return Err(RunContinuationError::BoundaryState);
     }
-    equal_slot(&body.frame, collector, expected)?;
-    completed_region(&body.frame, boundary, authority)?;
-    state(
-        &body.frame,
-        boundary.control,
-        CheckpointStepState::Succeeded,
-    )?;
-    state(&body.frame, boundary.exit, CheckpointStepState::Pending)?;
+    validate_completed_boundary(&body.frame, boundary, authority, collector, expected)?;
+    validate_cut_output(&body.frame, boundary, output, expected)
+}
+
+fn validate_completed_boundary(
+    frame: &RunFrameCheckpointV1,
+    boundary: Boundary,
+    authority: &ContinuationAuthority,
+    collector: SlotIdx,
+    expected: (SlotValue, Taint),
+) -> Result<()> {
+    equal_slot(frame, collector, expected)?;
+    completed_region(frame, boundary, authority)?;
+    state(frame, boundary.control, CheckpointStepState::Succeeded)?;
+    state(frame, boundary.exit, CheckpointStepState::Pending)
+}
+
+fn validate_cut_output(
+    frame: &RunFrameCheckpointV1,
+    boundary: Boundary,
+    output: SlotIdx,
+    expected: (SlotValue, Taint),
+) -> Result<()> {
     match boundary.cut {
         ContinuationCut::BeforeCollectFinish => {
-            state(&body.frame, boundary.finish, CheckpointStepState::Pending)?;
-            if body.frame.slots.get(usize::from(output.get())) != Some(&None) {
+            state(frame, boundary.finish, CheckpointStepState::Pending)?;
+            if frame.slots.get(usize::from(output.get())) != Some(&None) {
                 return Err(RunContinuationError::BoundaryState);
             }
         }
         ContinuationCut::AfterCollectFinish => {
-            state(&body.frame, boundary.finish, CheckpointStepState::Succeeded)?;
-            equal_slot(&body.frame, output, expected)?;
+            state(frame, boundary.finish, CheckpointStepState::Succeeded)?;
+            equal_slot(frame, output, expected)?;
         }
     }
     Ok(())
 }
+
 fn shape(
     boundary: Boundary,
     authority: &ContinuationAuthority,
@@ -116,7 +100,20 @@ fn shape(
         .output
         .slot()
         .ok_or(RunContinuationError::BoundaryState)?;
-    let source = match start.kind {
+    let source = collect_source(boundary, authority)?;
+    edges(boundary, authority, collector, output)?;
+    Ok((source, collector, output))
+}
+
+fn collect_source(boundary: Boundary, authority: &ContinuationAuthority) -> Result<SlotIdx> {
+    let workflow = &authority.workflow;
+    let region = workflow
+        .loop_region(boundary.control)
+        .ok_or(RunContinuationError::BoundaryState)?;
+    let start = workflow
+        .node(region.start())
+        .ok_or(RunContinuationError::BoundaryState)?;
+    match start.kind {
         CompiledNodeKind::CollectStart {
             source,
             limit,
@@ -125,12 +122,10 @@ fn shape(
             done,
         } if body == region.body() && done == region.done() => {
             source_bounds(authority, source, limit.get(), page_size)?;
-            source
+            Ok(source)
         }
-        _ => return Err(RunContinuationError::BoundaryState),
-    };
-    edges(boundary, authority, collector, output)?;
-    Ok((source, collector, output))
+        _ => Err(RunContinuationError::BoundaryState),
+    }
 }
 
 fn edges(
@@ -139,6 +134,16 @@ fn edges(
     collector: SlotIdx,
     output: SlotIdx,
 ) -> Result<()> {
+    validate_collect_next_kind(boundary, authority, collector)?;
+    validate_finish_exit_kinds(boundary, authority, collector, output)?;
+    validate_region_edges(boundary, authority)
+}
+
+fn validate_collect_next_kind(
+    boundary: Boundary,
+    authority: &ContinuationAuthority,
+    collector: SlotIdx,
+) -> Result<()> {
     let workflow = &authority.workflow;
     let region = workflow
         .loop_region(boundary.control)
@@ -146,17 +151,44 @@ fn edges(
     let control = workflow
         .node(boundary.control)
         .ok_or(RunContinuationError::BoundaryState)?;
+    if !matches!(control.kind, CompiledNodeKind::CollectNext { collector_slot, body, done }
+        if collector_slot == collector && body == region.body() && done == boundary.finish)
+    {
+        return Err(RunContinuationError::BoundaryState);
+    }
+    Ok(())
+}
+
+fn validate_finish_exit_kinds(
+    boundary: Boundary,
+    authority: &ContinuationAuthority,
+    collector: SlotIdx,
+    output: SlotIdx,
+) -> Result<()> {
+    let workflow = &authority.workflow;
     let finish = workflow
         .node(boundary.finish)
         .ok_or(RunContinuationError::BoundaryState)?;
     let exit = workflow
         .node(boundary.exit)
         .ok_or(RunContinuationError::BoundaryState)?;
-    if !matches!(control.kind, CompiledNodeKind::CollectNext { collector_slot, body, done }
-        if collector_slot == collector && body == region.body() && done == boundary.finish)
-        || !matches!(finish.kind, CompiledNodeKind::CollectFinish { collector_slot } if collector_slot == collector)
+    if !matches!(finish.kind, CompiledNodeKind::CollectFinish { collector_slot } if collector_slot == collector)
         || !matches!(exit.kind, CompiledNodeKind::Finish { result } if result == output)
-        || region.control() != boundary.control
+    {
+        return Err(RunContinuationError::BoundaryState);
+    }
+    Ok(())
+}
+
+fn validate_region_edges(boundary: Boundary, authority: &ContinuationAuthority) -> Result<()> {
+    let workflow = &authority.workflow;
+    let region = workflow
+        .loop_region(boundary.control)
+        .ok_or(RunContinuationError::BoundaryState)?;
+    let finish = workflow
+        .node(boundary.finish)
+        .ok_or(RunContinuationError::BoundaryState)?;
+    if region.control() != boundary.control
         || region.done() != boundary.finish
         || finish.routing.next != NodeContinuation::Step(boundary.exit)
     {

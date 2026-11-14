@@ -153,12 +153,12 @@ fn no_foreign_capture_rejected() -> Result<(), String> {
 
 #[test]
 fn at_once_preserved_and_zero_rejected() -> Result<(), String> {
-    for at_once in ["1", "2", "4294967295"] {
+    for (at_once, expected) in [("1", 9), ("2", 6), ("4294967295", 6)] {
         let text = source(&format!(
             "  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      at_once: {at_once}\n      steps:\n        - id: leaf\n          set: {{output: picked, value: '$entry'}}\n"
         )) + finish_tail();
         let wf = compile(&text)?;
-        assert_eq!(wf.to_parts().nodes.len(), 9);
+        assert_eq!(wf.to_parts().nodes.len(), expected);
     }
     let zero = source(
         "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      at_once: 0\n      steps:\n        - id: leaf\n          set: {output: picked, value: '$entry'}\n",

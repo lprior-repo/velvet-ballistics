@@ -72,6 +72,7 @@ fn fixture(perform: bool) -> TestResult<Fixture> {
         expected: receipt.expected,
         source,
         input,
+        started_millis: receipt.started_millis,
     })
 }
 

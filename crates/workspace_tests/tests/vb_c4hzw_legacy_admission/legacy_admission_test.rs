@@ -4,19 +4,17 @@ use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, Side
 use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
-use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
+use vb_core::policy::{
+    DecisionCode, PinnedAdmissionPolicy, PolicyDigest, PolicyRule, RuntimePolicy,
+};
 use vb_core::value::SlotValue;
 use vb_runtime::journal::StorageRuntimeJournal;
-use vb_runtime::recovery::{RecoveredRunBoundaryKind, RuntimeRecoveryProduct};
 use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
 use vb_storage::executor::{ExecutorCatalog, FjallRegister};
 use vb_storage::{FjallConfig, FjallJournal, JournalEvent, RunInputBinding, RunPolicyPin};
 
 use crate::legacy_workflow::legacy_ask_action_workflow;
-use crate::policy_dispatch::{
-    admission_pin_unverified, compute_expected_input_digest, current_live_configured,
-    make_expected_decision,
-};
+use crate::policy_dispatch::{compute_expected_input_digest, current_live_configured};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -71,10 +69,9 @@ pub(super) fn append_events(
 }
 
 #[test]
-fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
+fn legacy_unverified_admission_is_rejected_before_resume() -> TestResult {
     let action = ActionId::new(0);
     let run = RunId::new(4_420);
-    let allowed_digest = PolicyDigest::from_bytes([0x41u8; 32]);
     let temp = tempfile::tempdir()?;
 
     let catalog = ExecutorCatalog::run_registered_conformance()?;
@@ -129,42 +126,74 @@ fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
 
-    let recovery = recovered
-        .recover_product(run)
-        .map_err(|err| err.to_string())?;
-    match recovery {
-        RuntimeRecoveryProduct::Resumable(product) => {
-            assert_eq!(product.boundary_kind(), RecoveredRunBoundaryKind::OpenAsk);
-        }
-        other => {
-            return Err(format!("expected open-ask resumable product, got {other:?}").into());
-        }
-    }
-    recovered
-        .recover_and_resume(run)
-        .map_err(|err| err.to_string())?;
-    recovered.tick_all().map_err(|err| err.to_string())?;
+    let events_before = vb_storage::read_run_events(&journal, run)?;
+    let pending_before = recovered.pending_boundary_snapshot(8);
+    let register_path = temp.path().join("register");
+    let register = FjallRegister::open(&register_path, 8)?;
+    assert_eq!(register.effect_count()?, 0);
+    assert_eq!(register.value(scope())?, None);
+    assert_eq!(
+        recovered.recover_and_resume(run),
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("admission_missing")
+        })
+    );
+    assert_eq!(vb_storage::read_run_events(&journal, run)?, events_before);
+    assert_eq!(recovered.pending_boundary_snapshot(8), pending_before);
+    assert_eq!(register.effect_count()?, 0);
+    assert_eq!(register.value(scope())?, None);
+    drop(register);
+    drop(recovered);
+    Ok(())
+}
 
-    let ask_ticket = recovered
+#[test]
+fn current_valid_admission_denies_live_effect_without_mutation() -> TestResult {
+    let action = ActionId::new(0);
+    let run = RunId::new(4_423);
+    let live_digest = PolicyDigest::from_bytes([0x42u8; 32]);
+    let temp = tempfile::tempdir()?;
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let workflow = legacy_ask_action_workflow(action)?;
+    let contract = external_contract(action)?;
+    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+    let journal = open_journal(temp.path())?;
+    let artifact = catalog.submit_artifact(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &[contract.clone()],
+        &[pack],
+    )?;
+    let shared = StorageRuntimeJournal::shared_strict_with_catalog(
+        journal.clone(),
+        Arc::new(catalog.clone()),
+    );
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    runtime.submit_direct_with_inputs_grants_and_contracts(
+        run,
+        workflow,
+        Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+        action_grants(action),
+        Box::from([contract]),
+    )?;
+    runtime.tick_all()?;
+    let ask_ticket = runtime
         .lookup_pending_ask_ticket(run, StepIdx::ZERO)
-        .ok_or("recovered open ask must issue its persisted ticket")?;
-    recovered
-        .answer_ask(vb_runtime::shard::AskAnswer::with_encoded_len(
-            ask_ticket,
-            SlotIdx::new(1),
-            SlotValue::I64(99),
-            vb_core::value::Taint::Clean,
-            1,
-        ))
-        .map_err(|err| err.to_string())?;
-    recovered.tick_all().map_err(|err| err.to_string())?;
-
-    let action_ticket = recovered
+        .ok_or("current submission must issue its ask ticket")?;
+    runtime.answer_ask(vb_runtime::shard::AskAnswer::with_encoded_len(
+        ask_ticket,
+        SlotIdx::new(1),
+        SlotValue::I64(99),
+        vb_core::value::Taint::Clean,
+        1,
+    ))?;
+    runtime.tick_all()?;
+    let action_ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::new(2).get()))
-        .ok_or("recovered Do action must issue its ticket")?;
-
+        .ok_or("current submission must issue its action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, action_ticket, scope())?;
     let (scoped, dispatch) = crate::scoped_grant_fixture::issue_scoped(
         &catalog,
@@ -174,20 +203,17 @@ fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
         scope(),
         24,
     )?;
-
-    recovered.configure_live_policy(
-        allowed_digest,
+    runtime.configure_live_policy(
+        live_digest,
         PolicyRule {
             action,
-            code: DecisionCode::Allowed,
+            code: DecisionCode::Denied,
         },
     )?;
-
     let register_path = temp.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
-
-    let pending_before = recovered.pending_boundary_snapshot(8);
-    let result = recovered.execute_registered_action(
+    let pending_before = runtime.pending_boundary_snapshot(8);
+    let result = runtime.execute_registered_action(
         &mut adapter,
         run,
         u64::from(StepIdx::new(2).get()),
@@ -195,75 +221,38 @@ fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
         vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
     );
     let decision = match result {
-        Err(RegisteredExecutionError::PolicyDenied(dec)) => *dec,
-        other => {
-            return Err(format!("expected PolicyDenied, got: {other:?}").into());
-        }
+        Err(RegisteredExecutionError::PolicyDenied(decision)) => *decision,
+        other => return Err(format!("expected PolicyDenied, got {other:?}").into()),
     };
-    assert_eq!(recovered.pending_boundary_snapshot(8), pending_before);
-
-    assert_eq!(decision.outcome, DecisionCode::Denied);
-    assert_eq!(decision.layer, vb_core::policy::PolicyLayer::Admission);
-    assert_eq!(decision.admission, admission_pin_unverified());
-    assert_eq!(
-        decision.current_live,
-        current_live_configured(allowed_digest.as_bytes())
-    );
-    assert_eq!(decision.ticket.run, run);
-    assert_eq!(decision.ticket.step, StepIdx::new(2));
-
-    let expected_digest =
+    let admission_pin = PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(
+        artifact.policy_digest.as_bytes(),
+    ));
+    let expected_input =
         compute_expected_input_digest(99, vb_core::value::Taint::Clean, &action_ticket)?;
-    assert_eq!(decision.input_digest, expected_digest);
-
-    let expected_decision = make_expected_decision(
-        action_ticket,
-        admission_pin_unverified(),
-        current_live_configured(allowed_digest.as_bytes()),
-        expected_digest,
-        DecisionCode::Denied,
-    );
+    let expected_decision = vb_core::policy::DecisionRecord {
+        ticket: action_ticket,
+        admission: admission_pin,
+        current_live: current_live_configured(live_digest.as_bytes()),
+        input_digest: expected_input,
+        taint: vb_core::value::Taint::Clean,
+        outcome: DecisionCode::Denied,
+        layer: vb_core::policy::PolicyLayer::Live,
+        emergency_influence: vb_core::policy::InfluenceState::Inactive,
+        compat_influence: vb_core::policy::InfluenceState::NotEvaluated,
+    };
     assert_eq!(decision, expected_decision);
-
+    assert_eq!(runtime.pending_boundary_snapshot(8), pending_before);
     assert_eq!(adapter.effect_count()?, 0);
-    assert_eq!(
-        adapter.value(scope())?,
-        None,
-        "target value must remain unset after admission denial"
-    );
-
-    let after_ticket = recovered
-        .lookup_pending_action_ticket(run, u64::from(StepIdx::new(2).get()))
-        .ok_or("pending ticket must remain after admission denial")?;
-    assert_eq!(after_ticket, action_ticket);
-
-    let snapshot = recovered.pending_boundary_snapshot(8);
-    let shards = snapshot.shards();
-    let pending_actions: Vec<_> = shards
-        .iter()
-        .flat_map(|s| s.pending_actions())
-        .cloned()
-        .collect();
-    assert_eq!(
-        pending_actions.len(),
-        1,
-        "exactly one pending action after ask answer"
-    );
-    let first_pending = pending_actions
-        .first()
-        .ok_or("expected at least one pending action")?;
-    assert_eq!(first_pending.ticket(), action_ticket);
-
-    let stored = vb_storage::read_run_events(&journal, run)?;
-    let decisions: Vec<_> = stored
-        .iter()
-        .filter_map(|e| match e {
-            JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision.clone()),
-            _ => None,
+    assert_eq!(adapter.value(scope())?, None);
+    let events = vb_storage::read_run_events(&journal, run)?;
+    assert!(matches!(
+        events.get(1),
+        Some(JournalEvent::RunAdmissionBudget {
+            input_digest: RunInputBinding::Digest(_),
+            policy_pin: RunPolicyPin::Pinned(_),
+            ..
         })
-        .collect();
-    assert_eq!(decisions, vec![expected_decision]);
-
-    drop(recovered);
+    ));
+    drop(runtime);
     Ok(())
 }

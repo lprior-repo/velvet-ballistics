@@ -22,7 +22,7 @@ pub use authority::{ContinuationAuthority, ContinuationExpected};
 pub use error::RunContinuationError;
 pub use payload::ContinuationCut;
 
-use crate::primitives::collect::CollectStates;
+use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
 use crate::shard::types::{RegisteredExecutionMode, RunState};
 use payload::{Body, Wire};
 use vb_core::{RunFrame, ValueStore, WorkflowDigest};
@@ -76,25 +76,7 @@ impl RunContinuationV1 {
         authority: ContinuationAuthority,
     ) -> Result<RunState, RunContinuationError> {
         self.validate_against(&authority)?;
-        let body = self.data.body;
-        let frame =
-            RunFrame::from_checkpoint_v1(body.frame).map_err(RunContinuationError::Frame)?;
-        let store = ValueStore::from_checkpoint_v1(body.value_store)?;
-        let collect_states = CollectStates::from_checkpoint_v1(body.collect_states)
-            .map_err(RunContinuationError::CollectCheckpoint)?;
-        Ok(RunState {
-            registered_execution: RegisteredExecutionMode::ReconcileOnly,
-            frame,
-            run_attempt: body.expected.run_attempt,
-            workflow: authority.workflow,
-            store,
-            action_attempts: body.action_attempts,
-            admission: Some(body.admission),
-            run_started_millis: None,
-            collect_states,
-            journal_bytes_written: 0,
-            action_contracts: body.action_contracts,
-        })
+        restore_state(self.data.body, authority)
     }
 
     /// Exact continuation content digest, excluding the digest field itself.
@@ -106,4 +88,56 @@ impl RunContinuationV1 {
     pub const fn cut(&self) -> ContinuationCut {
         self.data.body.boundary.cut
     }
+}
+
+fn restore_state(
+    body: Body,
+    authority: ContinuationAuthority,
+) -> Result<RunState, RunContinuationError> {
+    let (frame, store, collect_states, run_started_millis, admission) = restore_components(
+        body.frame,
+        body.value_store,
+        body.collect_states,
+        body.admission,
+        authority.run_started_millis,
+    )?;
+    Ok(RunState {
+        registered_execution: RegisteredExecutionMode::ReconcileOnly,
+        frame,
+        run_attempt: body.expected.run_attempt,
+        workflow: authority.workflow,
+        store,
+        action_attempts: body.action_attempts,
+        admission: Some(admission),
+        run_started_millis,
+        collect_states,
+        journal_bytes_written: 0,
+        action_contracts: body.action_contracts,
+    })
+}
+
+fn restore_components(
+    frame: vb_core::frame::RunFrameCheckpointV1,
+    value_store: vb_core::value_store::ValueStoreCheckpointV1,
+    collect_states: CollectStatesCheckpointV1,
+    admission: crate::admission::RunAdmission,
+    run_started_millis: Option<u64>,
+) -> Result<
+    (
+        RunFrame,
+        ValueStore,
+        CollectStates,
+        Option<u64>,
+        crate::admission::RunAdmission,
+    ),
+    RunContinuationError,
+> {
+    let frame = RunFrame::from_checkpoint_v1(frame).map_err(RunContinuationError::Frame)?;
+    let store = ValueStore::from_checkpoint_v1(value_store)?;
+    let collect_states = CollectStates::from_checkpoint_v1(collect_states)
+        .map_err(RunContinuationError::CollectCheckpoint)?;
+    let run_started_millis =
+        crate::recovery::resolve_run_started_millis(Some(&admission), run_started_millis)
+            .map_err(|_| RunContinuationError::Admission)?;
+    Ok((frame, store, collect_states, run_started_millis, admission))
 }

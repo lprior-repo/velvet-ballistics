@@ -43,9 +43,6 @@ pub(crate) fn contract() -> TestResult<ActionContract> {
         required_capabilities: Box::new([]),
     })
 }
-pub(crate) fn runtime(journal: SharedRuntimeJournal) -> TestResult<Runtime> {
-    runtime_with_policy(journal, vb_core::policy::RuntimePolicy::Relaxed)
-}
 pub(crate) fn runtime_with_policy(
     journal: SharedRuntimeJournal,
     policy: vb_core::policy::RuntimePolicy,
@@ -66,7 +63,10 @@ pub(crate) fn runtime_with_policy(
 pub(crate) fn durable() -> TestResult<(tempfile::TempDir, Arc<FjallJournal>, Runtime)> {
     let directory = tempfile::tempdir()?;
     let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
-    let runtime = runtime(StorageRuntimeJournal::shared_journaled(journal.clone()))?;
+    let runtime = runtime_with_policy(
+        StorageRuntimeJournal::shared_journaled(journal.clone()),
+        vb_core::policy::RuntimePolicy::Journaled,
+    )?;
     Ok((directory, journal, runtime))
 }
 pub(crate) fn submit(runtime: &mut Runtime, workflow: CompiledWorkflow) -> TestResult {

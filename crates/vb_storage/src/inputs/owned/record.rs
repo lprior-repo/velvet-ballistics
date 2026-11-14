@@ -149,21 +149,11 @@ impl OwnedRunInputsRecordV1 {
     pub fn validate_admission(&self, event: &JournalEvent) -> Result<(), JournalError> {
         self.data.validate_integrity()?;
         match event {
-            JournalEvent::RunAdmission {
-                run,
-                artifact_digest,
-                input_digest: RunInputBinding::Digest(digest),
-                ..
-            } if *run == self.run()
-                && *artifact_digest == self.artifact_digest()
-                && *digest == self.input_digest() =>
-            {
-                Ok(())
-            }
             JournalEvent::RunAdmissionBudget {
                 run,
                 artifact_digest,
                 input_digest: RunInputBinding::Digest(digest),
+                policy_pin: crate::RunPolicyPin::Pinned(_),
                 ..
             } if *run == self.run()
                 && *artifact_digest == self.artifact_digest()

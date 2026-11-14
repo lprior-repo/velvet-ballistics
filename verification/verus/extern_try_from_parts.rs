@@ -34,9 +34,9 @@
 //   - `validate_budget_result` budget error collapse
 //     <- crates/vb_core/src/workflow/validate.rs:121-130
 //   - `WholeWorkflowBudget` field set
-//     <- crates/vb_core/src/budget/compute.rs:20-96
+//     <- crates/vb_core/src/budget/compute.rs:21-97
 //   - `WholeWorkflowBudget::compute`
-//     <- crates/vb_core/src/budget/compute.rs:103-109
+//     <- crates/vb_core/src/budget/compute.rs:104-110
 //   - `BoundednessPolicy` field set
 //     <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::DEFAULT`
@@ -85,6 +85,8 @@
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:247-257
 //   - `validate_repeat_start`
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:259-267
+//   - `validate_optional_step_continuation`
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:269-273
 //   - `validate_slot_choose`
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:276-287
 //   - `validate_expr_choose`
@@ -144,11 +146,11 @@
 //   - `push_loop_span`
 //     <- crates/vb_core/src/workflow/forward_edges.rs:197-244
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
-//     <- crates/vb_core/src/engine/validate.rs:119-172
+//     <- crates/vb_core/src/engine/validate/nested_together.rs:15-30
 //   - `walk_contains_together_start`
-//     <- crates/vb_core/src/engine/validate.rs:177-205
+//     <- crates/vb_core/src/engine/validate/nested_together.rs:114-138
 //   - `find_inner_together_start`
-//     <- crates/vb_core/src/engine/validate.rs:209-237
+//     <- crates/vb_core/src/engine/validate/nested_together.rs:140-165
 //   - `validate` (repeat_counter_ownership)
 //     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:6-12
 //   - `identify_counter_owners`
@@ -2289,7 +2291,7 @@ pub fn reachability_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError
 }
 
 /// Pure projection of `walk_contains_together_start`
-/// (engine/validate.rs:177-205): follows the routing `next`
+/// (engine/validate/nested_together.rs:114-138): follows the routing `next`
 /// chain from `start_idx`, stopping at `stop_idx` (exclusive),
 /// and reports whether any node on the chain is a
 /// `TogetherStart` distinct from `outer`. Membership is read
@@ -2339,7 +2341,7 @@ fn walk_contains_together_start(
 }
 
 /// Pure projection of `validate_no_nested_together`
-/// (engine/validate.rs:119-172): a `TogetherStart` whose branch
+/// (engine/validate/nested_together.rs:15-30): a `TogetherStart` whose branch
 /// body contains another `TogetherStart` is rejected. Branch
 /// entries and the join read the caller-supplied
 /// `kind_targets` inventory (branch entries then join for
@@ -2663,7 +2665,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if let Some(err) = repeat_counter_ownership_error(parts) {
         return SpecValidationResult::Err(err);
     }
-    // validate_no_nested_together (engine/validate.rs:119-172) —
+    // validate_no_nested_together (engine/validate/nested_together.rs:15-30) —
     // no `TogetherStart` may be reachable from another
     // `TogetherStart`'s branch body.
     if let Some(err) = nested_together_error(parts) {
