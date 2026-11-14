@@ -56,7 +56,7 @@ impl Shard {
         let artifact = self.load_recovery_artifact(artifact_digest)?;
 
         // Step 2: Deserialize and compile workflow from artifact IR
-        let workflow = crate::admission::verify_stored_artifact(
+        let workflow = crate::admission::verify_stored_artifact_detailed(
             self.artifact_store.as_ref(),
             &artifact,
             Some(self.policy),
