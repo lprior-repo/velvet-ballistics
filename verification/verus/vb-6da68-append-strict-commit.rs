@@ -108,12 +108,14 @@
 //
 //   (2) error[E0433]: cannot find module or crate `fjall` in this scope
 //        --> crates/vb_storage/src/journal/append.rs:118:31
-//         118 |     self.database.persist(fjall::PersistMode::SyncAll)?;
+//        118 |     self.database.persist(fjall::PersistMode::SyncAll)?;
 //            |                               ^^^^^ use of unresolved
 //            |                                   module or unlinked crate
 //       (Line re-verified against live main: the persist call moved
-//       86 -> 90 when vb-o6qcf.3 added the cfg(test) hook above it;
-//       the quoted diagnostic is otherwise verbatim from the probe.)
+//       86 -> 90 when vb-o6qcf.3 added the cfg(test) hook above it,
+//       then 90 -> 118 when d04f3c07 added append_runtime_admission_batch
+//       above persist_strict; the quoted diagnostic is otherwise verbatim
+//       from the probe.)
 //       The `fjall::PersistMode` / `fjall::OwnedWriteBatch` / `fjall::Error`
 //       references in the production append_strict call graph require
 //       `extern crate fjall;` with a compiled `--extern fjall` rlib —
@@ -367,7 +369,7 @@ pub open spec fn spec_fjall_commit_atomic_on_err(
 //   Err(InvalidEvent)         append.rs:43-45  !event.valid
 //   Err(KeyCapacity)          append.rs:52     !event.key_ok && event.valid
 //   Err(Fjall)                append.rs:53 OR  event.valid && event.key_ok &&
-//                            60                  && !contains_before && !commit_ok
+//                            61                  && !contains_before && !commit_ok
 //                                              && events_unchanged (TRUSTED)
 //   Err(DuplicateEvent)       append.rs:53-57  event.valid && event.key_ok &&
 //                                              && contains_before
@@ -395,7 +397,7 @@ pub assume_specification[ production::SpecFjallJournal::append_strict ](
             },
             Err(SpecJournalError::Fjall) => {
                 // REACHABLE from BOTH the pre-check I/O failure
-                // (append.rs:52 contains_key returns Err) AND the
+                // (append.rs:53 contains_key returns Err) AND the
                 // commit failure (append.rs:61 commit returns Err).
                 // The bridge folds both into a single arm: the
                 // post-state is identical (events keyspace

@@ -34,9 +34,9 @@
 //   - `validate_budget_result` budget error collapse
 //     <- crates/vb_core/src/workflow/validate.rs:121-130
 //   - `WholeWorkflowBudget` field set
-//     <- crates/vb_core/src/budget/compute.rs:22-98
+//     <- crates/vb_core/src/budget/compute.rs:21-97
 //   - `WholeWorkflowBudget::compute`
-//     <- crates/vb_core/src/budget/compute.rs:105-111
+//     <- crates/vb_core/src/budget/compute.rs:104-110
 //   - `BoundednessPolicy` field set
 //     <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::DEFAULT`

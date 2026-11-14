@@ -12,7 +12,7 @@
 //      mirror of the production enum shapes (SpecRuntimePolicy,
 //      SpecWitnessKind) and a pure projection
 //      `strict_admission_witness_decision` that captures the strict-policy
-//      branch of `admit_artifact_run_with_certificate_floor` (chunk_005_admit_core.rs:99-112)
+//      branch of `admit_artifact_run_with_certificate_floor` (chunk_005_admit_core.rs:115-130)
 //      plus the `validate_accepted_artifact_envelope` gate validation
 //      (chunk_004_validation.rs:1-12). See extern_strict_admission_witness.rs for
 //      the binding ledger and the trust boundary.
@@ -28,12 +28,12 @@
 //   - REQUIRED_GATE_COUNT mirrors `vb_runtime::admission::REQUIRED_GATE_COUNT`
 //     at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2 (u8 = 15).
 //   - SpecRuntimePolicy mirrors `vb_core::policy::RuntimePolicy` referenced
-//     by the production strict-admission dispatch at chunk_005_admit_core.rs:99-112.
+//     by the production strict-admission dispatch at chunk_005_admit_core.rs:91-113.
 //   - SpecWitnessKind mirrors the four-witness taxonomy used by the
 //     production storage-backend surface at chunk_003_stores.rs:1-213.
 //   - strict_admission_witness_decision mirrors the strict-policy branch
 //     of `admit_artifact_run_with_certificate_floor` at
-//     crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:99-112, plus the gate validation
+//     crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:115-130, plus the gate validation
 //     in `validate_accepted_artifact_envelope` at chunk_004_validation.rs:1-12.
 //
 // ============================================================================
@@ -80,7 +80,7 @@ pub const REQUIRED_GATE_COUNT: u8 = 15;
 // Spec predicates (mathematical model used by proofs)
 // ============================================================================
 /// Spec predicate: a `SpecRuntimePolicy` is strict-like iff it is `Strict`
-/// or `Journaled`. Mirrors the production dispatch at chunk_005_admit_core.rs:99-112
+/// or `Journaled`. Mirrors the production dispatch at chunk_005_admit_core.rs:91-113
 /// where these two variants share the artifact-validation branch while
 /// `Relaxed` skips it.
 pub open spec fn strict_like(policy: SpecRuntimePolicy) -> bool {
@@ -287,7 +287,7 @@ pub proof fn proof_strict_requires_storage(witness: SpecWitnessKind)
 
 // Non-vacuous proof 2: Journaled-policy requires a storage-backed witness.
 // Same obligation as Strict — Strict and Journaled share the
-// artifact-validation branch at chunk_005_admit_core.rs:99-112.
+// artifact-validation branch at chunk_005_admit_core.rs:115-130.
 pub proof fn proof_journaled_requires_storage(witness: SpecWitnessKind)
     requires
         valid_admission_witness(SpecRuntimePolicy::Journaled, witness),

@@ -158,17 +158,20 @@ pub open spec fn spec_max_total_slots_from_contract(
     budget.max_total_slots as int == contract.max_slots as int
 }
 
-/// Production `BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds`
-/// mirror (production at `crates/vb_core/src/budget/validate.rs:67 = 2_592_000`).
-#[allow(non_upper_case_globals)]
-pub const SPEC_DEFAULT_ABSOLUTE_MAX_RUN_TIME_SECONDS: u64 = 2_592_000;
+/// Mirror of `BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds`
+/// (`crates/vb_core/src/budget/validate.rs:67`).
+pub const SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS: u64 = 2_592_000;
 
-/// Spec predicate: `max_run_time_seconds` is the production default
-/// absolute maximum. Mirrors the production body at
-/// `crates/vb_core/src/budget/compute.rs:180`:
-/// `let max_run_time_seconds = BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;`
-pub open spec fn spec_run_time_equals_default_absolute_max(b: WholeWorkflowBudget) -> bool {
-    b.max_run_time_seconds as int == SPEC_DEFAULT_ABSOLUTE_MAX_RUN_TIME_SECONDS as int
+/// Spec predicate: `max_run_time_seconds` equals the boundedness-policy
+/// absolute maximum on the sequential routes, or equals `max_total_steps`
+/// on the concurrent route. The main traversal route sets the policy
+/// maximum (`crates/vb_core/src/budget/compute.rs:180`), the small-linear
+/// route sets it too (`crates/vb_core/src/budget/small_linear.rs:47`),
+/// and the concurrent route sets both fields from the step count
+/// (`crates/vb_core/src/budget/concurrent/output.rs:61`).
+pub open spec fn spec_run_time_equals_policy_max(b: WholeWorkflowBudget) -> bool {
+    b.max_run_time_seconds as int == SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS as int
+        || b.max_run_time_seconds as int == b.max_total_steps as int
 }
 
 // ============================================================================
@@ -181,7 +184,7 @@ pub open spec fn spec_run_time_equals_default_absolute_max(b: WholeWorkflowBudge
 // discharge the contracts via the production-bound exec wrappers.
 /// Bridge 1+2: `WholeWorkflowBudget::compute` Ok-branch satisfies the
 /// production field-shape contracts (`max_total_slots_from_contract` and
-/// `run_time_equals_default_absolute_max`, mirroring production bodies at
+/// `run_time_equals_policy_max`, mirroring production bodies at
 /// `crates/vb_core/src/budget/compute.rs:178` and `:180`) AND the production
 /// field-bounds contract (`spec_budget_in_bounds`, mirroring the
 /// production overflow handling at `crates/vb_core/src/budget/loop_body.rs:43`
@@ -197,7 +200,7 @@ pub assume_specification[ production::whole_workflow_budget_compute ](
             Ok(budget) => spec_budget_in_bounds(budget) && spec_max_total_slots_from_contract(
                 *contract,
                 budget,
-            ) && spec_run_time_equals_default_absolute_max(budget),
+            ) && spec_run_time_equals_policy_max(budget),
             Err(_) => true,
         },
 ;
@@ -225,7 +228,7 @@ pub exec fn exec_compute_and_discharge_contracts(
             Ok(budget) => spec_budget_in_bounds(budget) && spec_max_total_slots_from_contract(
                 *contract,
                 budget,
-            ) && spec_run_time_equals_default_absolute_max(budget),
+            ) && spec_run_time_equals_policy_max(budget),
             Err(_) => true,
         },
 {
@@ -235,7 +238,7 @@ pub exec fn exec_compute_and_discharge_contracts(
     match &result {
         Ok(b) => {
             assert(spec_max_total_slots_from_contract(*contract, *b));
-            assert(spec_run_time_equals_default_absolute_max(*b));
+            assert(spec_run_time_equals_policy_max(*b));
             assert(spec_budget_in_bounds(*b));
         },
         Err(_) => {},
@@ -280,24 +283,29 @@ pub proof fn proof_max_total_slots_from_contract(b: WholeWorkflowBudget, contrac
     assert(spec_max_total_slots_from_contract(contract, b));
 }
 
-/// VERUS-INV-005 / Bridge 1 (run_time_equals_default_absolute_max):
+/// VERUS-INV-005 / Bridge 1 (run_time_equals_policy_max):
 /// When `WholeWorkflowBudget::compute` returns Ok, the resulting
-/// `max_run_time_seconds` field is the production default absolute
-/// maximum. Mirrors the production body at
-/// `crates/vb_core/src/budget/compute.rs:180`:
-/// `let max_run_time_seconds = BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;`
-pub proof fn proof_run_time_equals_default_absolute_max(b: WholeWorkflowBudget)
+/// `max_run_time_seconds` field equals
+/// `BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds` on the
+/// sequential routes, or equals `max_total_steps` on the concurrent
+/// route. The `compute.rs:180` body covers the main traversal route
+/// only; the concurrent route sets the field from the step count
+/// (`crates/vb_core/src/budget/concurrent/output.rs:61`).
+pub proof fn proof_run_time_equals_policy_max(b: WholeWorkflowBudget)
     requires
-// Production premise: b is a budget produced by compute(). The
-// production body at line 180 unconditionally sets max_run_time_seconds
-// to BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds, so this
-// is satisfied by every Ok-branch budget.
+// Production premise: b is a budget produced by compute(). The main
+// traversal route sets max_run_time_seconds to the policy maximum
+// (compute.rs:180), the small-linear route does the same
+// (small_linear.rs:47), and the concurrent route sets it to the step
+// count, which is also max_total_steps (concurrent/output.rs:61), so
+// the disjunction is satisfied by every Ok-branch budget.
 
-        b.max_run_time_seconds == SPEC_DEFAULT_ABSOLUTE_MAX_RUN_TIME_SECONDS,
+        b.max_run_time_seconds == SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS || b.max_run_time_seconds
+            == b.max_total_steps,
     ensures
-        spec_run_time_equals_default_absolute_max(b),
+        spec_run_time_equals_policy_max(b),
 {
-    assert(spec_run_time_equals_default_absolute_max(b));
+    assert(spec_run_time_equals_policy_max(b));
 }
 
 /// VERUS-INV-005 / Bridge 2 (spec_budget_in_bounds):

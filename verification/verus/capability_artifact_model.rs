@@ -16,7 +16,7 @@
 // Binding mechanism: `#[path = "extern_capability_artifact_model.rs"]` imports
 // the thin extern surface, which inlines a pure decision projection of the
 // production cardinality-exact branch (chunk_005_admit_core.rs:190-206) plus the policy
-// dispatch (chunk_005_admit_core.rs:99-112). The spec file attaches an exec contract
+// dispatch (chunk_005_admit_core.rs:91-113). The spec file attaches an exec contract
 // to that projection via `assume_specification` and discharges the cardinality-
 // exact obligation through proof fns that reason about the spec-side mirror
 // `spec_admit_decision`. The production-bound exec wrapper
@@ -139,7 +139,7 @@ pub open spec fn gate12_schema_valid(
 /// Spec-side decision fn mirroring the production
 /// `admit_artifact_run_with_certificate_floor` cardinality-exact
 /// branch (chunk_005_admit_core.rs:190-206) plus the policy dispatch
-/// (chunk_005_admit_core.rs:99-112). This is the mathematical model the bridge
+/// (chunk_005_admit_core.rs:91-113). This is the mathematical model the bridge
 /// below guarantees the production projection implements.
 pub open spec fn spec_admit_decision(
     policy: SpecRuntimePolicy,

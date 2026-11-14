@@ -43,7 +43,7 @@
 //     `RuntimePolicy` (mirror of crates/vb_core/src/policy.rs:194-201)
 //                                               <- extern_admission_artifact_model.rs
 //   - `PREPARED_EVIDENCE_VERSION = 3`           (defined in this file;
-//                                               mirror of the evidence schema version
+//                                               mirror of the evidence schema version (`EVIDENCE_VERSION`)
 //                                               at
 //                                               crates/vb_storage/src/admission/verification.rs:11)
 //   - `AcceptedArtifact`                       <- extern_admission_artifact_model.rs

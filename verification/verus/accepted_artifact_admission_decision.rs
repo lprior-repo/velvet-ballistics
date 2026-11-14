@@ -100,7 +100,7 @@ pub use production::{
 /// Spec predicate: maps a production `ArtifactEnvelopeError` variant to
 /// its corresponding `SpecAdmissionError` class. Mirrors the production
 /// `map_artifact_envelope_error` function at
-/// `crates/vb_runtime/src/admission/parts/chunk_004_validation.rs:41-81`, collapsed so the 9
+/// `crates/vb_runtime/src/admission/parts/chunk_004_validation.rs:41-64`, collapsed so the 9
 /// "InvalidProofFlag" variants (6 `MissingRequiredProofFlag*` +
 /// `MissingIdempotencyAttestation` + the InvalidGateCount projection +
 /// `ArtifactEvidenceInvalid`) all map to `InvalidVerificationProof`.
@@ -175,8 +175,10 @@ pub open spec fn spec_outcome_run_state_inserted(err: SpecArtifactEnvelopeError)
 
 /// Spec predicate: the success branch (no envelope error) admits the
 /// run, acknowledges it, and inserts run state. Mirrors the production
-/// `Ok(RunAdmission::with_idempotency_evidence(...))` branch at
-/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:215-221`.
+/// `RunAdmission::with_idempotency_evidence(...)` construction in
+/// `admission_from_artifact` at
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:215-221`,
+/// returned as `Ok(...)` by `admit_strict_artifact_run`.
 pub open spec fn spec_outcome_admitted_ok() -> bool {
     true
 }

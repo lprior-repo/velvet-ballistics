@@ -25,8 +25,8 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_bounded_production.rs)
 // ============================================================================
-//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:18-94
-//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:101-107
+//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:21-97
+//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:104-110
 //   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
 //   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
@@ -107,7 +107,7 @@ fn prod_methods_drift_check(
     let policy = production_inner::BoundednessPolicy::DEFAULT;
 
     // Reference every field of WholeWorkflowBudget to surface any
-    // rename in budget/compute.rs:18-94.
+    // rename in budget/compute.rs:21-97.
     let budget = production_inner::WholeWorkflowBudget {
         max_total_steps: 0,
         max_total_slots: 0,

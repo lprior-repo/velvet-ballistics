@@ -394,7 +394,7 @@ pub fn proof_matches_prepared_shape(proof: &VerificationProof) -> bool {
 // rejects `Unverified`, `Packed`, and any `Verified` evidence at a
 // stale schema version before `verify_accepted_artifact` recomputes
 // the expected artifact. The `3` below is the `EVIDENCE_VERSION`
-// constant at `crates/vb_storage/src/admission/verification.rs:10`,
+// constant at `crates/vb_storage/src/admission/verification.rs:11`,
 // spelled as a literal because a `const` in this `#[path]` mirror
 // module trips a Verus internal error (erasure context); the spec
 // file carries the same value as `PREPARED_EVIDENCE_VERSION`.

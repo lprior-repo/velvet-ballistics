@@ -2476,7 +2476,7 @@ pub open spec fn spec_reachability_error(parts: &SpecWorkflowParts) -> Option<Sp
 }
 
 /// Spec mirror of one `next`-chain step in
-/// `find_inner_together_start` (crates/vb_core/src/engine/validate/nested_together.rs:140-166):
+/// `find_inner_together_start` (crates/vb_core/src/engine/validate/nested_together.rs:140-165):
 /// the first `TogetherStart` (discriminant 12) distinct from
 /// `outer` reachable from `idx` by following routing `next`
 /// steps, stopping at `stop` (exclusive). `fuel` bounds the
@@ -2508,7 +2508,7 @@ pub open spec fn spec_walk_inner(
 
 /// Spec mirror of one outer `TogetherStart`'s branch scan in
 /// `validate_no_nested_together`
-/// (crates/vb_core/src/engine/validate/nested_together.rs:63-85): the branch entries are every
+/// (crates/vb_core/src/engine/validate/nested_together.rs:63-84): the branch entries are every
 /// `kind_targets` position but the last (the join); a branch
 /// whose entry or join is out of range is skipped, matching
 /// production.
