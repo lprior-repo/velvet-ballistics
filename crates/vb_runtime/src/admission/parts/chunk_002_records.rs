@@ -46,40 +46,67 @@ impl serde::Serialize for RunAdmission {
         S: serde::Serializer,
     {
         if serializer.is_human_readable() {
-            // Human-readable: serialize all ten fields by name so the
-            // representation is complete and inspectable. Historical
-            // named maps with an absent input_digest default to
-            // LegacyUnbound via the deserializer path.
-            #[derive(Serialize)]
-            struct Human<'a> {
-                artifact_digest: &'a WorkflowDigest,
-                run_id: &'a RunId,
-                granted_capabilities: &'a CapabilitySet,
-                policy: &'a RuntimePolicy,
-                policy_pin: &'a RunPolicyPin,
-                input_digest: &'a RunInputBinding,
-                budget: &'a Option<AggregateResourceBudget>,
-                tenant: &'a Option<TenantId>,
-                idempotency_attested: &'a Box<[ActionId]>,
-                ir_compat_decision: &'a Option<Box<CompatDecision>>,
+            // Human-readable: for bound admissions serialize all ten fields;
+            // for unbound admissions omit input_digest to preserve the old
+            // nine-field named-map shape. Deserialization defaults a missing
+            // input_digest to LegacyUnbound.
+            if matches!(self.input_digest, RunInputBinding::Digest(_)) {
+                #[derive(Serialize)]
+                struct HumanBound<'a> {
+                    artifact_digest: &'a WorkflowDigest,
+                    run_id: &'a RunId,
+                    granted_capabilities: &'a CapabilitySet,
+                    policy: &'a RuntimePolicy,
+                    policy_pin: &'a RunPolicyPin,
+                    input_digest: &'a RunInputBinding,
+                    budget: &'a Option<AggregateResourceBudget>,
+                    tenant: &'a Option<TenantId>,
+                    idempotency_attested: &'a Box<[ActionId]>,
+                    ir_compat_decision: &'a Option<Box<CompatDecision>>,
+                }
+                HumanBound {
+                    artifact_digest: &self.artifact_digest,
+                    run_id: &self.run_id,
+                    granted_capabilities: &self.granted_capabilities,
+                    policy: &self.policy,
+                    policy_pin: &self.policy_pin,
+                    input_digest: &self.input_digest,
+                    budget: &self.budget,
+                    tenant: &self.tenant,
+                    idempotency_attested: &self.idempotency_attested,
+                    ir_compat_decision: &self.ir_compat_decision,
+                }
+                .serialize(serializer)
+            } else {
+                #[derive(Serialize)]
+                struct HumanUnbound<'a> {
+                    artifact_digest: &'a WorkflowDigest,
+                    run_id: &'a RunId,
+                    granted_capabilities: &'a CapabilitySet,
+                    policy: &'a RuntimePolicy,
+                    policy_pin: &'a RunPolicyPin,
+                    budget: &'a Option<AggregateResourceBudget>,
+                    tenant: &'a Option<TenantId>,
+                    idempotency_attested: &'a Box<[ActionId]>,
+                    ir_compat_decision: &'a Option<Box<CompatDecision>>,
+                }
+                HumanUnbound {
+                    artifact_digest: &self.artifact_digest,
+                    run_id: &self.run_id,
+                    granted_capabilities: &self.granted_capabilities,
+                    policy: &self.policy,
+                    policy_pin: &self.policy_pin,
+                    budget: &self.budget,
+                    tenant: &self.tenant,
+                    idempotency_attested: &self.idempotency_attested,
+                    ir_compat_decision: &self.ir_compat_decision,
+                }
+                .serialize(serializer)
             }
-            Human {
-                artifact_digest: &self.artifact_digest,
-                run_id: &self.run_id,
-                granted_capabilities: &self.granted_capabilities,
-                policy: &self.policy,
-                policy_pin: &self.policy_pin,
-                input_digest: &self.input_digest,
-                budget: &self.budget,
-                tenant: &self.tenant,
-                idempotency_attested: &self.idempotency_attested,
-                ir_compat_decision: &self.ir_compat_decision,
-            }
-            .serialize(serializer)
         } else {
             // Binary: use the 9-position compatibility layout that
             // preserves old Postcard bytes for historical records.
-            serialize_admission(self, serializer)
+            compat_codec::serialize_admission(self, serializer)
         }
     }
 }
@@ -102,7 +129,6 @@ impl<'de> serde::Deserialize<'de> for RunAdmission {
                 budget: Option<AggregateResourceBudget>,
                 #[serde(default)]
                 tenant: Option<TenantId>,
-                #[serde(default)]
                 idempotency_attested: Box<[ActionId]>,
                 #[serde(default)]
                 ir_compat_decision: Option<Box<CompatDecision>>,
@@ -124,7 +150,7 @@ impl<'de> serde::Deserialize<'de> for RunAdmission {
             // Binary: decode the 9-position compatibility layout, which
             // handles both old historical records and new bound
             // admissions via the carrier discriminant.
-            deserialize_admission(deserializer)
+            compat_codec::deserialize_admission(deserializer)
         }
     }
 }

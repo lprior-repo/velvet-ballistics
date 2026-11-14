@@ -222,7 +222,9 @@ pub fn check_capability(
     }
 }
 
-include!("admission/parts/compat_codec.rs");
+#[path = "admission/parts/compat_codec.rs"]
+mod compat_codec;
+
 include!("admission/parts/chunk_001_types_errors_traits.rs");
 include!("admission/parts/chunk_002_records.rs");
 include!("admission/parts/chunk_003_stores.rs");
