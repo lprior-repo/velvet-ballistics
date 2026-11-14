@@ -24,14 +24,22 @@ mod default_binding {
             ),
             node(
                 StepIdx::new(1),
+                CompiledNodeKind::SetConst {
+                    value: vb_core::ids::ConstIdx::new(0),
+                },
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
                 CompiledNodeKind::Finish {
-                    result: SlotIdx::ZERO,
+                    result: SlotIdx::new(1),
                 },
                 None,
                 None,
             ),
         ]);
-        parts.constants = Box::from([]);
+        parts.slot_count = 2;
         parts.input_slots = Box::from([CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: InputSlotKind::I64,
