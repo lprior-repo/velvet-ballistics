@@ -137,7 +137,7 @@ pub open spec fn spec_budget_non_decreasing(
 /// claim that the Ok branch of `compute` never overflows u64 / u16.
 /// Production sources for these bounds:
 ///   - `max_total_steps <= u64::MAX`     <- budget/loop_body.rs:43 (checked_add)
-///   - `max_total_slots <= u64::MAX`     <- crates/vb_core/src/budget/compute.rs:171-171   (u64::from)
+///   - `max_total_slots <= u64::MAX`     <- crates/vb_core/src/budget/compute.rs:178-178   (u64::from)
 ///   - `max_fanout <= u16::MAX`          <- budget/successors.rs:142-149 (branch_count_to_u16)
 ///   - `max_nesting_depth <= u16::MAX`   <- budget/depth.rs:79-84 (checked_add)
 pub open spec fn spec_budget_in_bounds(b: WholeWorkflowBudget) -> bool {
@@ -149,7 +149,7 @@ pub open spec fn spec_budget_in_bounds(b: WholeWorkflowBudget) -> bool {
 
 /// Spec predicate: `max_total_slots` is determined solely by
 /// `contract.max_slots`. Mirrors the production body at
-/// `crates/vb_core/src/budget/compute.rs:171`:
+/// `crates/vb_core/src/budget/compute.rs:178`:
 /// `let max_total_slots = u64::from(contract.max_slots);`
 pub open spec fn spec_max_total_slots_from_contract(
     contract: ResourceContract,
@@ -158,11 +158,16 @@ pub open spec fn spec_max_total_slots_from_contract(
     budget.max_total_slots as int == contract.max_slots as int
 }
 
-/// Spec predicate: `max_run_time_seconds` equals `max_total_steps`.
-/// Mirrors the production body at `crates/vb_core/src/budget/compute.rs:174-174`:
-/// `let max_run_time_seconds = max_total_steps;`
-pub open spec fn spec_run_time_equals_total_steps(b: WholeWorkflowBudget) -> bool {
-    b.max_run_time_seconds as int == b.max_total_steps as int
+/// Mirror of `BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds`
+/// (`crates/vb_core/src/budget/validate.rs:67`).
+pub const SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS: u64 = 2_592_000;
+
+/// Spec predicate: `max_run_time_seconds` equals the boundedness-policy
+/// absolute maximum. Mirrors the production body at
+/// `crates/vb_core/src/budget/compute.rs:180-180`:
+/// `let max_run_time_seconds = BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;`
+pub open spec fn spec_run_time_equals_policy_max(b: WholeWorkflowBudget) -> bool {
+    b.max_run_time_seconds as int == SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS as int
 }
 
 // ============================================================================
@@ -175,8 +180,8 @@ pub open spec fn spec_run_time_equals_total_steps(b: WholeWorkflowBudget) -> boo
 // discharge the contracts via the production-bound exec wrappers.
 /// Bridge 1+2: `WholeWorkflowBudget::compute` Ok-branch satisfies the
 /// production field-shape contracts (`max_total_slots_from_contract` and
-/// `run_time_equals_total_steps`, mirroring production bodies at
-/// `crates/vb_core/src/budget/compute.rs:171` and `:174`) AND the production
+/// `run_time_equals_policy_max`, mirroring production bodies at
+/// `crates/vb_core/src/budget/compute.rs:178` and `:180`) AND the production
 /// field-bounds contract (`spec_budget_in_bounds`, mirroring the
 /// production overflow handling at `crates/vb_core/src/budget/loop_body.rs:43`
 /// (steps), ``crates/vb_core/src/budget/depth.rs:79-84` (depth), `crates/vb_core/src/budget/successors.rs:142-149` (branch_count_to_u16),
@@ -191,7 +196,7 @@ pub assume_specification[ production::whole_workflow_budget_compute ](
             Ok(budget) => spec_budget_in_bounds(budget) && spec_max_total_slots_from_contract(
                 *contract,
                 budget,
-            ) && spec_run_time_equals_total_steps(budget),
+            ) && spec_run_time_equals_policy_max(budget),
             Err(_) => true,
         },
 ;
@@ -219,7 +224,7 @@ pub exec fn exec_compute_and_discharge_contracts(
             Ok(budget) => spec_budget_in_bounds(budget) && spec_max_total_slots_from_contract(
                 *contract,
                 budget,
-            ) && spec_run_time_equals_total_steps(budget),
+            ) && spec_run_time_equals_policy_max(budget),
             Err(_) => true,
         },
 {
@@ -229,7 +234,7 @@ pub exec fn exec_compute_and_discharge_contracts(
     match &result {
         Ok(b) => {
             assert(spec_max_total_slots_from_contract(*contract, *b));
-            assert(spec_run_time_equals_total_steps(*b));
+            assert(spec_run_time_equals_policy_max(*b));
             assert(spec_budget_in_bounds(*b));
         },
         Err(_) => {},
@@ -250,7 +255,7 @@ pub exec fn exec_compute_and_discharge_contracts(
 /// VERUS-INV-005 / Bridge 1 (max_total_slots_from_contract):
 /// When `WholeWorkflowBudget::compute` returns Ok, the resulting
 /// `max_total_slots` field equals `contract.max_slots` (cast to u64).
-/// Mirrors the production body at `crates/vb_core/src/budget/compute.rs:171`:
+/// Mirrors the production body at `crates/vb_core/src/budget/compute.rs:178`:
 /// `let max_total_slots = u64::from(contract.max_slots);`
 ///
 /// Non-vacuous: the `requires` premise models the production contract
@@ -274,22 +279,24 @@ pub proof fn proof_max_total_slots_from_contract(b: WholeWorkflowBudget, contrac
     assert(spec_max_total_slots_from_contract(contract, b));
 }
 
-/// VERUS-INV-005 / Bridge 1 (run_time_equals_total_steps):
+/// VERUS-INV-005 / Bridge 1 (run_time_equals_policy_max):
 /// When `WholeWorkflowBudget::compute` returns Ok, the resulting
-/// `max_run_time_seconds` field equals `max_total_steps`.
-/// Mirrors the production body at `crates/vb_core/src/budget/compute.rs:174`:
-/// `let max_run_time_seconds = max_total_steps;`
-pub proof fn proof_run_time_equals_total_steps(b: WholeWorkflowBudget)
+/// `max_run_time_seconds` field equals
+/// `BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds`.
+/// Mirrors the production body at `crates/vb_core/src/budget/compute.rs:180`:
+/// `let max_run_time_seconds = BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds;`
+pub proof fn proof_run_time_equals_policy_max(b: WholeWorkflowBudget)
     requires
 // Production premise: b is a budget produced by compute(). The
-// production body at line 174 unconditionally sets max_run_time_seconds
-// = max_total_steps, so this is satisfied by every Ok-branch budget.
+// production body at line 180 unconditionally sets max_run_time_seconds
+// = BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds, so this is
+// satisfied by every Ok-branch budget.
 
-        b.max_run_time_seconds == b.max_total_steps,
+        b.max_run_time_seconds == SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS,
     ensures
-        spec_run_time_equals_total_steps(b),
+        spec_run_time_equals_policy_max(b),
 {
-    assert(spec_run_time_equals_total_steps(b));
+    assert(spec_run_time_equals_policy_max(b));
 }
 
 /// VERUS-INV-005 / Bridge 2 (spec_budget_in_bounds):

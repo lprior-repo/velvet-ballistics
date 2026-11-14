@@ -7,7 +7,7 @@
 // This file is a VERBATIM mirror of the production strict-admission
 // witness types and decision fns.
 //
-// DRIFT POLICY: `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189`
+// DRIFT POLICY: `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:91-113`
 // Production source coverage:
 //   - `SpecRuntimePolicy`  <- mirror of `vb_core::policy::RuntimePolicy`
 //                                (crates/vb_core/src/policy.rs)
@@ -15,7 +15,7 @@
 //   - `SpecStrictWitnessResult`
 //                              <- mirror of strict-admission decision
 //                                 output variants at
-//                                 crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189
+//                                 crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:91-113
 //   - `production_strict_like`        <- production strict-policy gate
 //   - `production_storage_backed`     <- production storage-backed gate
 //   - `strict_admission_witness_decision`

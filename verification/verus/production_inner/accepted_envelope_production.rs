@@ -20,7 +20,7 @@
 //   - `vb_storage::admission::verify_accepted_artifact` enforcement
 //                                                 (crates/vb_storage/src/admission/verification.rs:60-90)
 //   - `vb_storage::admission::verify_expected_bindings`
-//                                                 (crates/vb_storage/src/admission/verification.rs:145-160)
+//                                                 (crates/vb_storage/src/admission/verification.rs:163-178)
 //   - `vb_runtime::admission::verify_stored_artifact` coarse admission error mapping (unproved context)
 //                                                 (crates/vb_runtime/src/admission/registered_verification.rs:15-22)
 //   - `vb_runtime::admission::verify_stored_artifact_detailed` recovery path (unproved context)

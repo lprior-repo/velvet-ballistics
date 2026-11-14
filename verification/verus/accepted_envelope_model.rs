@@ -34,7 +34,7 @@
 //     `vb_storage::admission::verify_accepted_artifact` at
 //     crates/vb_storage/src/admission/verification.rs:60-90: recomputes the
 //     expected artifact and rejects any deviation via verify_expected_bindings
-//     (crates/vb_storage/src/admission/verification.rs:145-160); the runtime
+//     (crates/vb_storage/src/admission/verification.rs:163-178); the runtime
 //     maps every such failure for admission callers to ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
 //     Recovery's detailed path at

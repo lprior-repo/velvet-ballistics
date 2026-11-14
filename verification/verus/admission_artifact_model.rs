@@ -43,9 +43,9 @@
 //     `RuntimePolicy` (mirror of crates/vb_core/src/policy.rs:194-201)
 //                                               <- extern_admission_artifact_model.rs
 //   - `PREPARED_EVIDENCE_VERSION = 3`           (defined in this file;
-//                                               mirror of the evidence schema version
+//                                               mirror of the evidence schema version (`EVIDENCE_VERSION`)
 //                                               at
-//                                               crates/vb_storage/src/admission/verification.rs:10)
+//                                               crates/vb_storage/src/admission/verification.rs:11)
 //   - `AcceptedArtifact`                       <- extern_admission_artifact_model.rs
 //                                               (mirror of
 //                                               crates/vb_storage/src/admission.rs:41-77;
@@ -68,7 +68,7 @@
 //                                               `verify_accepted_artifact` at
 //                                               verification.rs:60-90 via
 //                                               `verify_expected_bindings`
-//                                               at verification.rs:145-160)
+//                                               at verification.rs:163-178)
 //   - `digest_eq`                              <- extern_admission_artifact_model.rs
 //                                               (mirror of PartialEq derive
 //                                               on WorkflowDigest at
@@ -180,7 +180,7 @@ pub const PREPARED_GATE_COUNT: u8 = 0;
 
 /// Mirror of the evidence schema version `build_evidence` stamps and
 /// `checked_evidence_schema` enforces
-/// (`crates/vb_storage/src/admission/verification.rs:10`).
+/// (`crates/vb_storage/src/admission/verification.rs:11`).
 pub const PREPARED_EVIDENCE_VERSION: u16 = 3;
 
 /// Spec view of `PREPARED_GATE_COUNT` as a mathematical integer.

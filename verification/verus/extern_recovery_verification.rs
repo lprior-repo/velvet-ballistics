@@ -1047,7 +1047,7 @@ pub fn recover_runtime_summary_pure(has_events: bool, summary_ok: bool) -> bool 
 /// Pure precondition decision mirroring `hydrate_run_frame` at
 /// `crates/vb_storage/src/recovery/hydrate/mod.rs:86-108` AND the
 /// `DurableFrameRecoveryBoundary::hydrate_run_frame` driver at
-/// `crates/vb_runtime/src/recovery.rs:189-191`.
+/// `crates/vb_runtime/src/recovery.rs:210-212`.
 ///
 /// Production body: validate_snapshot_recovery_inputs (run_id,
 /// tail run ids, tail seqs, has evidence), then

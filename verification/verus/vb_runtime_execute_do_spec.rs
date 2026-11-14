@@ -326,9 +326,10 @@ pub open spec fn spec_resume_action_outcome_decision(
 }
 
 /// Spec-side mirror of `compute_idempotency_key_pure`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:214-216
-/// and crates/vb_core/src/action/ticket.rs:78-96 (FNV-1a-inspired wrapping
-/// multiply-add hash).
+/// Mirrors the production body at crates/vb_core/src/action/ticket.rs:78-96
+/// (`compute_action_idempotency_key`, FNV-1a-inspired wrapping multiply-add
+/// hash), reached from the runtime via `compute_idempotency_key` at
+/// crates/vb_runtime/src/engine/action/mod.rs:265-266.
 pub open spec fn spec_compute_idempotency_key_decision(run: u64, seq: u64, action: u32) -> int {
     let run_part = run as int * 0x6c62272e07bb0143;
     let seq_part = seq as int;
@@ -776,8 +777,9 @@ pub exec fn checked_prod_resume_action_outcome(
 
 /// Production-bound exec wrapper that exercises
 /// `compute_idempotency_key_pure`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action/mod.rs:214-216 and
-/// crates/vb_core/src/action/ticket.rs:78-96.
+/// crates/vb_core/src/action/ticket.rs:78-96, reached from the runtime
+/// via `compute_idempotency_key` at
+/// crates/vb_runtime/src/engine/action/mod.rs:265-266.
 pub exec fn checked_prod_compute_idempotency_key(run: u64, seq: u64, action: u32) -> (key: u128)
     ensures
         key as int == spec_compute_idempotency_key_decision(run, seq, action),

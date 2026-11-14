@@ -106,13 +106,15 @@
 //       production Rust under crates/** is immutable per task brief).
 //
 //   (2) error[E0433]: cannot find module or crate `fjall` in this scope
-//        --> crates/vb_storage/src/journal/append.rs:90:31
-//         90 |     self.database.persist(fjall::PersistMode::SyncAll)?;
+//        --> crates/vb_storage/src/journal/append.rs:118:31
+//        118 |     self.database.persist(fjall::PersistMode::SyncAll)?;
 //            |                               ^^^^^ use of unresolved
 //            |                                   module or unlinked crate
 //       (Line re-verified against live main: the persist call moved
-//       86 -> 90 when vb-o6qcf.3 added the cfg(test) hook above it;
-//       the quoted diagnostic is otherwise verbatim from the probe.)
+//       86 -> 90 when vb-o6qcf.3 added the cfg(test) hook above it,
+//       then 90 -> 118 when d04f3c07 added append_runtime_admission_batch
+//       above persist_strict; the quoted diagnostic is otherwise verbatim
+//       from the probe.)
 //       The `fjall::PersistMode` / `fjall::OwnedWriteBatch` / `fjall::Error`
 //       references in the production append_strict call graph require
 //       `extern crate fjall;` with a compiled `--extern fjall` rlib —

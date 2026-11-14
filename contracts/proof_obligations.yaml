@@ -1031,7 +1031,7 @@ verus_registry:
     production: crates/vb_storage/src/admission.rs
 
   - id: PO-VERUS-015
-    description: "CLI digest-binding: cli_digest matches accepted artifact pre/post conditions at production crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122 (pre) and :165-174 (post) (VERUS-CLI-DIGEST-002 / PO-002)."
+    description: "CLI digest-binding: cli_digest matches accepted artifact pre/post conditions at production crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:156-173 (pre) and :215-221 (post) (VERUS-CLI-DIGEST-002 / PO-002)."
     verus: verification/verus/accepted_cli_digest_binding.rs
     production: crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
 
