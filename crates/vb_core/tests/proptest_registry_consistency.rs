@@ -5,7 +5,7 @@
 //! Invariants:
 //!   - All numeric codes non-zero.
 //!   - No duplicate (symbolic, numeric) pairs.
-//!   - Every entry's category matches its numeric high byte.
+//!   - Categories match their numeric prefix, including exact legacy identities.
 //!   - Symbolic→numeric→symbolic/lookup round-trip identity.
 //!   - Every SymbolicCode::from_static entry is reachable from numeric_to_symbolic.
 
@@ -47,6 +47,26 @@ fn code_registry_has_no_duplicate_symbolic_numeric_pairs() {
 fn code_registry_category_matches_numeric_high_byte() {
     for entry in CODE_REGISTRY {
         let high = (entry.numeric >> 8) & 0xFF;
+        let legacy = match entry.symbolic {
+            "NO_DURABLE_SNAPSHOT" => Some((0x4101, 0x41)),
+            "INCOMPLETE_TRIM" => Some((0x4102, 0x41)),
+            "RETENTION_POLICY_BLOCKS" => Some((0x4103, 0x41)),
+            "VERIFICATION_WARNING_SCHEMA_MISMATCH" => Some((0x5001, 0x50)),
+            _ => None,
+        };
+        if let Some((numeric, _)) = legacy {
+            assert_eq!(
+                entry.numeric, numeric,
+                "legacy code for '{}'",
+                entry.symbolic
+            );
+            assert_eq!(
+                entry.category,
+                CodeCategory::RuntimeBoundary,
+                "legacy category for '{}'",
+                entry.symbolic
+            );
+        }
         // Lifecycle entries: LIFECYCLE_STORAGE_UNAVAILABLE (0x3301) uses new
         // Lifecycle=E33xx range; CORE_LIFECYCLE_STORAGE_UNAVAILABLE (0x1501)
         // is a legacy entry with the pre-vb-xi2f.10 category assignment.
@@ -72,7 +92,7 @@ fn code_registry_category_matches_numeric_high_byte() {
             CodeCategory::Runtime => 0x30,
             CodeCategory::Ipc => 0x32,
             CodeCategory::Lifecycle => 0x33,
-            CodeCategory::RuntimeBoundary => 0x40,
+            CodeCategory::RuntimeBoundary => legacy.map_or(0x40, |(_, high)| high),
             _ => panic!("unknown CodeCategory variant: {:?}", entry.category),
         };
         assert_eq!(

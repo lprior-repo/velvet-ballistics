@@ -213,7 +213,7 @@
 //             `verus --crate-type=lib`).
 //           - `crates/vb_storage/src/recovery/types/errors.rs:4` `use vb_core::{...};` (requires vb_core
 //             extern crate alias wired through workspace Cargo.toml).
-//           - `crates/vb_storage/src/recovery/types/replay.rs:28`
+//           - `crates/vb_storage/src/recovery/types/replay.rs:8-20`
 //             `#[derive(... serde::Serialize, serde::Deserialize)]`
 //             on `RunSnapshot` (requires serde extern crate).
 //         The NARROW bind gives Verus a parseable surface that

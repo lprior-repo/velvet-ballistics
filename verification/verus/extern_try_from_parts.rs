@@ -734,7 +734,7 @@ pub struct SpecWorkflowParts {
     /// The projection treats a missing entry (a `kind_targets`
     /// shorter than `nodes_meta`) as an empty inventory for the
     /// tail nodes. The `try_reserve_exact` reservation inside
-    /// `collect_kind_targets` (edges.rs:41-62) has no projection
+    /// `collect_kind_targets` (crates/vb_core/src/workflow/loop_regions/edges.rs:41-62) has no projection
     /// counterpart: the inventory is caller-supplied, so the
     /// allocation step is out of scope.
     pub kind_targets: Vec<Vec<u32>>,
@@ -1613,7 +1613,7 @@ pub fn loop_region_relations_error(parts: &SpecWorkflowParts) -> Option<SpecWork
 }
 
 /// Finds the cached region a node controls, if any
-/// (`regions.get(node.id)` in edges.rs:90-112). The table holds one
+/// (`regions.get(node.id)` in crates/vb_core/src/workflow/loop_regions/edges.rs:90-112). The table holds one
 /// entry per cached control, so the scan is unique when it hits.
 #[verifier::external]
 fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLoopRegion> {
@@ -1625,7 +1625,7 @@ fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLo
     None
 }
 
-/// Pure projection of `is_finish` (edges.rs:130-135): the step
+/// Pure projection of `is_finish` (crates/vb_core/src/workflow/loop_regions/edges.rs:130-135): the step
 /// names a `Finish` node. Production indexes the node table by
 /// position; the projection scans by id, which agrees on every
 /// input that reached this step because step 1e validates `meta.id`
@@ -1640,7 +1640,7 @@ fn is_finish_step(parts: &SpecWorkflowParts, step: u32) -> bool {
     false
 }
 
-/// Pure projection of `owned_backedge` (edges.rs:90-112): a
+/// Pure projection of `owned_backedge` (crates/vb_core/src/workflow/loop_regions/edges.rs:90-112): a
 /// backward edge inside a region is owned iff it comes from the
 /// origin production expects for the node's kind (`Next` for a
 /// RepeatCheck, `Kind` otherwise) and the source node itself
@@ -1670,7 +1670,7 @@ fn owned_backedge(
     }
 }
 
-/// Pure projection of `validate_edge` (edges.rs:64-88) for one edge
+/// Pure projection of `validate_edge` (crates/vb_core/src/workflow/loop_regions/edges.rs:64-88) for one edge
 /// `from -> to` against one region. An entry edge is allowed only
 /// as a `Kind` edge from the region's start to its body; an exit
 /// edge only to the region's done step or a `Finish` node; a
@@ -1706,13 +1706,13 @@ fn validate_loop_edge(
     None
 }
 
-/// Pure projection of `validate_region_edges` (edges.rs:14-39)
+/// Pure projection of `validate_region_edges` (crates/vb_core/src/workflow/loop_regions/edges.rs:14-39)
 /// over the validated region table, in ascending control order.
 /// For each region: the entry step must lie outside it, then every
 /// node is checked in table order — routing `next` edge, routing
 /// error-handler edge, kind-target edges from the caller-supplied
 /// `kind_targets` inventory, then recovery support
-/// (`validate_recovery_support`, edges.rs:114-128): a node inside
+/// (`validate_recovery_support`, crates/vb_core/src/workflow/loop_regions/edges.rs:114-128): a node inside
 /// the region with an internal error handler, or an `ErrorHandler`
 /// node inside the region, returns `LoopRegionUnsupported`.
 /// Returns the first failure in that order, else `None`; `None`
@@ -2675,7 +2675,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // `unique_owner`, crates/vb_core/src/workflow/loop_regions/pairing.rs:8-50), region relations
     // (`validate_region_relations`, crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71), then edge
     // closure and recovery support (`validate_region_edges`,
-    // edges.rs:14-39). The projection models each step here, in
+    // crates/vb_core/src/workflow/loop_regions/edges.rs:14-39). The projection models each step here, in
     // the same order, over the region table the pairing step
     // builds. The kind-target edges read the caller-supplied
     // `kind_targets` inventory; the `try_reserve_exact`
