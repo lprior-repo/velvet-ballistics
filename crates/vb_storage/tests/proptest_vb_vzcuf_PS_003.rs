@@ -44,8 +44,8 @@ proptest! {
         prop_assert!(!msg.is_empty());
     }
     #[test]
-    fn ps003_error_diag(len in 1u32..10000u32, max in 1u32..10000u32) {
-        prop_assume!(len > max);
+    fn ps003_error_diag((len, max) in (2u32..10000u32).prop_flat_map(|len| (Just(len), 1u32..len))) {
+        prop_assert!(len > max);
         let err = JournalError::PayloadTooLarge { len, max };
         let msg = format!("{err}");
         prop_assert!(msg.contains(&len.to_string()));
