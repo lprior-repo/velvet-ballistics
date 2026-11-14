@@ -129,40 +129,49 @@ fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
     })
 }
 
-/// Test-local DTO with the same serde layout as RunAdmission, allowing
-/// construction of a forged policy pin for tampered checkpoint tests.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct ForgedRunAdmission {
-    artifact_digest: WorkflowDigest,
-    run_id: RunId,
-    granted_capabilities: CapabilitySet,
-    policy: RuntimePolicy,
-    policy_pin: RunPolicyPin,
-    budget: Option<AggregateResourceBudget>,
-    tenant: Option<TenantId>,
-    idempotency_attested: Box<[ActionId]>,
-    ir_compat_decision: Option<vb_storage::compat::CompatDecision>,
-}
-
+/// Forges a RunAdmission with a tampered policy pin by serializing the
+/// genuine admission through its production codec, locating and replacing
+/// only the encoded pin bytes, then decoding back. Every non-pin field,
+/// including input_digest, budget, tenant, idempotency evidence, and IR
+/// compatibility decision, is preserved byte-for-byte.
 fn forge_admission_with_pin(
     original: &RunAdmission,
     forged_pin: WorkflowDigest,
 ) -> Result<RunAdmission, String> {
-    let dto = ForgedRunAdmission {
-        artifact_digest: original.artifact_digest(),
-        run_id: original.run_id(),
-        granted_capabilities: original.granted_capabilities().clone(),
-        policy: original.policy(),
-        policy_pin: RunPolicyPin::Pinned(forged_pin),
-        budget: original.budget(),
-        tenant: original.tenant(),
-        idempotency_attested: original.idempotency_attested().to_vec().into_boxed_slice(),
-        ir_compat_decision: original.ir_compat_decision(),
-    };
-    let bytes = postcard::to_allocvec(&dto)
-        .map_err(|e| format!("forged admission serialization failed: {e}"))?;
-    postcard::from_bytes::<RunAdmission>(&bytes)
+    let original_bytes = postcard::to_allocvec(original)
+        .map_err(|e| format!("original admission serialization failed: {e}"))?;
+
+    // Decode to locate the policy pin, encode the forged pin separately,
+    // then splice the forged pin bytes into the original bytes at the
+    // pin's position.
+    let original_pin = original.policy_pin();
+    let original_pin_bytes = postcard::to_allocvec(&original_pin)
+        .map_err(|e| format!("original pin serialization failed: {e}"))?;
+    let forged_pin_bytes = postcard::to_allocvec(&RunPolicyPin::Pinned(forged_pin))
+        .map_err(|e| format!("forged pin serialization failed: {e}"))?;
+
+    // Find the original pin encoding in the bytes and replace it.
+    let pin_start = locate_subsequence(&original_bytes, &original_pin_bytes)
+        .ok_or_else(|| "pin not found in serialized admission".to_string())?;
+    let pin_end = pin_start + original_pin_bytes.len();
+
+    let mut forged_bytes = original_bytes[..pin_start].to_vec();
+    forged_bytes.extend_from_slice(&forged_pin_bytes);
+    forged_bytes.extend_from_slice(&original_bytes[pin_end..]);
+
+    postcard::from_bytes::<RunAdmission>(&forged_bytes)
         .map_err(|e| format!("forged admission deserialization failed: {e}"))
+}
+
+/// Finds the first occurrence of needle in haystack using a simple
+/// linear scan with slice equality.
+fn locate_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    if needle.is_empty() || haystack.len() < needle.len() {
+        return None;
+    }
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
 }
 
 fn shard_config_for(policy: RuntimePolicy) -> ShardConfig {

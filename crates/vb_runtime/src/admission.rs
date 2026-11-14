@@ -39,6 +39,7 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, TenantId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_storage::EventSeq;
+use vb_storage::RunInputBinding;
 use vb_storage::RunPolicyPin;
 use vb_storage::compat::CompatDecision;
 
@@ -221,6 +222,7 @@ pub fn check_capability(
     }
 }
 
+include!("admission/parts/compat_codec.rs");
 include!("admission/parts/chunk_001_types_errors_traits.rs");
 include!("admission/parts/chunk_002_records.rs");
 include!("admission/parts/chunk_003_stores.rs");
