@@ -27,8 +27,11 @@
 // `verify_accepted_artifact`
 // (crates/vb_storage/src/admission/verification.rs:60-90) enforces the
 // prepared shape by recompute-and-compare; any deviation is returned
-// to callers as ArtifactEvidenceInvalid
-// (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
+// to admission callers as ArtifactEvidenceInvalid
+// (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
+// Recovery's private detailed path at
+// crates/vb_runtime/src/admission/registered_verification.rs:24-49
+// is unproved call-chain context, not a mirrored executable body.
 // `REQUIRED_GATE_COUNT` is used in production only by the
 // AlwaysPresentArtifactStore fixture
 // (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91),

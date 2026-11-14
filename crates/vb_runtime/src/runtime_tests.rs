@@ -35,6 +35,7 @@ mod tests {
     use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
     include!("runtime_tests/helpers_and_recovery_tests.rs");
+    include!("runtime_tests/recovery_verifier_contract_tests.rs");
 
     include!("runtime_tests/lifecycle_and_routing.rs");
 

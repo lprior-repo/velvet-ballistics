@@ -15,29 +15,76 @@
 
     #[test]
     fn recover_rejects_malformed_command() -> Result<(), Box<dyn std::error::Error>> {
-        let mut shard = recovery_context_test_shard();
+        // Build a genuine workflow and artifact, then corrupt the artifact's IR
+        // so the envelope is internally consistent but recovery fails at
+        // deserialization.
+        let parts = crash_lab_minimal_parts(vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]));
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?;
+        let workflow = honest_digest_workflow(workflow)?;
+        let contract = action_recovery_test_contract()?;
+        let artifact = vb_storage::admission::prepare_compiled_artifact(
+            &workflow,
+            vb_core::policy::RuntimePolicy::Relaxed,
+            &[contract],
+        )?;
 
-        let frame = vb_core::frame::RunFrame::new(
+        // Corrupt the artifact: clear IR but keep the digest valid
+        let mut malformed = artifact;
+        malformed.ir.clear();
+        let malformed_digest = vb_storage::admission::accepted_artifact_digest(&malformed)?;
+        malformed.digest = malformed_digest;
+        malformed.verification.digest = malformed_digest;
+
+        // Store the malformed artifact
+        let store = action_recovery_contract_store(malformed);
+
+        let config = crate::shard::ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 8,
+            max_open_gates: 1024,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+            config,
+            journal,
+            store,
+        );
+
+        let mut frame = vb_core::frame::RunFrame::new(
             vb_core::ids::RunId::new(1),
-            vb_core::ids::StepIdx::new(0),
-            1,
-            1,
+            vb_core::ids::StepIdx::ZERO,
+            2,
+            2,
+        )?;
+        frame.write_slot(
+            vb_core::ids::SlotIdx::new(0),
+            vb_core::value::SlotValue::I64(0),
         )?;
 
         let command = crate::shard::types::RecoverRunCommand::new(
             vb_core::ids::RunId::new(1),
             frame,
-            vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-            vb_core::ids::WorkflowDigest::from_bytes([1u8; 32]),
+            malformed_digest,
+            workflow.digest(),
             vb_storage::EventSeq::new(1),
             crate::primitives::collect::CollectStates::new(),
             crate::recovery::RecoveredRunBoundary::none(),
         );
 
         let result = shard.handle_recover(command);
-        assert_eq!(result, Err(crate::RuntimeError::Recovery {
-            error: "artifact IR decode failed".to_string(),
-        }));
+        assert_eq!(
+            result,
+            Err(crate::RuntimeError::Recovery {
+                error: vb_storage::JournalError::PostcardDecodeFailed(
+                    postcard::Error::DeserializeUnexpectedEnd,
+                )
+                .to_string(),
+            })
+        );
+        assert_submit_pair_refused(&shard, vb_core::ids::RunId::new(1));
         Ok(())
     }
 

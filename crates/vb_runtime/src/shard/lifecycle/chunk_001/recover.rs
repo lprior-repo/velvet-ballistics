@@ -60,16 +60,14 @@ impl Shard {
                 },
             })?;
 
-        // Step 2: Deserialize and compile workflow from artifact IR
-        let parts: vb_core::workflow::WorkflowParts =
-            postcard::from_bytes(&artifact.ir).map_err(|_| RuntimeError::Recovery {
-                error: "artifact IR decode failed".to_string(),
-            })?;
-
-        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|e| {
-            RuntimeError::Recovery {
-                error: format!("workflow compile failed: {e}"),
-            }
+        // Step 2: Verify and compile workflow via the typed recovery verifier.
+        let workflow = crate::admission::verify_stored_artifact_detailed(
+            self.artifact_store.as_ref(),
+            &artifact,
+            Some(self.policy),
+        )
+        .map_err(|error| RuntimeError::Recovery {
+            error: error.to_string(),
         })?;
 
         // Step 3: Verify workflow identity matches command workflow_digest

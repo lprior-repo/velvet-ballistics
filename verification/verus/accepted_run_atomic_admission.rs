@@ -27,9 +27,12 @@
 //     crates/vb_storage/src/admission.rs:96-105 performs no gate/flag
 //     validation; `verify_accepted_artifact`
 //     (crates/vb_storage/src/admission/verification.rs:60-90) enforces the
-//     prepared shape by recompute-and-compare, any deviation returned as
+//     prepared shape by recompute-and-compare, any deviation returned to admission callers as
 //     ArtifactEvidenceInvalid
-//     (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
+//     (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
+//     Recovery's private detailed path at
+//     crates/vb_runtime/src/admission/registered_verification.rs:24-49
+//     remains unproved call-chain context.
 //   - `vb_storage::admission::PayloadTag`, `classify_accepted_artifact`,
 //     `is_strict_accepted_artifact_tag` at
 //     crates/vb_storage/src/admission/payload_tag.rs:10-39.

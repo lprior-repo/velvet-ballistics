@@ -31,8 +31,11 @@
 //     crates/vb_storage/src/admission/verification.rs:60-90: recomputes the
 //     expected artifact and rejects any deviation via verify_expected_bindings
 //     (crates/vb_storage/src/admission/verification.rs:145-160); the runtime
-//     maps every such failure to ArtifactEvidenceInvalid
-//     (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
+//     maps every such failure to ArtifactEvidenceInvalid for admission callers
+//     (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
+//     Recovery uses the private detailed path at
+//     crates/vb_runtime/src/admission/registered_verification.rs:24-49;
+//     that call-chain context is not proved by this model.
 //   - The legacy 15-gate, all-flags-true shape exists only in the
 //     AlwaysPresentArtifactStore fixture
 //     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91).

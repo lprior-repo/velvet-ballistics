@@ -12,7 +12,7 @@
 // time, which is the explicit drift-detection mechanism for the
 // strict-envelope admission contract.
 //
-// Production sources mirrored:
+// Production decision sources and unproved runtime call-chain context:
 //   - `vb_storage::admission::verification_proof_core`
 //                                                 (crates/vb_storage/src/admission/proof.rs:103-118)
 //   - `vb_storage::admission::prepare_with_profile` proof construction
@@ -21,8 +21,10 @@
 //                                                 (crates/vb_storage/src/admission/verification.rs:60-90)
 //   - `vb_storage::admission::verify_expected_bindings`
 //                                                 (crates/vb_storage/src/admission/verification.rs:145-160)
-//   - `vb_runtime::admission::verify_stored_artifact` error mapping
-//                                                 (crates/vb_runtime/src/admission/registered_verification.rs:5-28)
+//   - `vb_runtime::admission::verify_stored_artifact` coarse admission error mapping (unproved context)
+//                                                 (crates/vb_runtime/src/admission/registered_verification.rs:15-22)
+//   - `vb_runtime::admission::verify_stored_artifact_detailed` recovery path (unproved context)
+//                                                 (crates/vb_runtime/src/admission/registered_verification.rs:24-49)
 //   - `vb_runtime::admission::ArtifactEnvelopeError`
 //                                                 (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63)
 //
@@ -64,7 +66,7 @@ pub const REQUIRED_GATE_COUNT: u8 = 15;
 // collapsed to bare discriminants because the spec only reasons about
 // variant membership. `ArtifactEvidenceInvalid` is raised by independent
 // runtime verification (`verify_stored_artifact` at
-// `crates/vb_runtime/src/admission/registered_verification.rs:5-28`),
+// `crates/vb_runtime/src/admission/registered_verification.rs:15-22`),
 // not by the strict gate checks in `is_strict_accepted` below.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArtifactEnvelopeErrorKind {

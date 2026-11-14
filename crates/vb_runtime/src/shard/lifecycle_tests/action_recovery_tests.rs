@@ -21,19 +21,11 @@ fn action_recovery_test_contract()
 }
 
 fn action_recovery_contract_store(
-    digest: vb_core::ids::WorkflowDigest,
-    source_digest: vb_core::ids::WorkflowDigest,
-    policy_digest: vb_core::ids::WorkflowDigest,
-    workflow_ir: Vec<u8>,
-    contract: vb_core::action::ActionContract,
+    artifact: vb_storage::admission::AcceptedArtifact,
 ) -> crate::admission::SharedAcceptedArtifactStore {
     #[derive(Debug)]
     struct ActionRecoveryContractStore {
-        digest: vb_core::ids::WorkflowDigest,
-        source_digest: vb_core::ids::WorkflowDigest,
-        policy_digest: vb_core::ids::WorkflowDigest,
-        workflow_ir: Vec<u8>,
-        contract: vb_core::action::ActionContract,
+        artifact: vb_storage::admission::AcceptedArtifact,
     }
 
     impl crate::admission::AcceptedArtifactStore for ActionRecoveryContractStore {
@@ -42,57 +34,22 @@ fn action_recovery_contract_store(
             artifact_digest: vb_core::ids::WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, crate::admission::ArtifactEnvelopeError>
         {
-            if artifact_digest != self.digest {
+            if artifact_digest != self.artifact.digest {
                 return Err(crate::admission::ArtifactEnvelopeError::ArtifactNotFound {
                     digest: artifact_digest,
                 });
             }
-            Ok(vb_storage::admission::AcceptedArtifact {
-                digest: self.digest,
-                source_digest: self.source_digest,
-                policy_digest: self.policy_digest,
-                ir: self.workflow_ir.clone(),
-                verification: vb_storage::admission::VerificationProof {
-                    evidence: vb_core::artifact::ArtifactEvidence::Unverified,
-                    digest: self.digest,
-                    gate_count: 8,
-                    durable: true,
-                    bounded_claimed: true,
-                    taint_safe_claimed: true,
-                    retry_safe_claimed: true,
-                    idempotency_verified_claimed: true,
-                    replayable_claimed: true,
-                    idempotency_keyed: Box::new([]),
-                    idempotency_attested: Box::new([]),
-                    warnings: Vec::new(),
-                },
-                accepted_at_seq: vb_storage::types::EventSeq::new(0),
-                required_capabilities: Box::new([]),
-                action_contracts: Box::from([self.contract.clone()]),
-                artifact_version: vb_storage::compat::CURRENT_IR_VERSION,
-            })
+            Ok(self.artifact.clone())
         }
     }
 
-    std::sync::Arc::new(ActionRecoveryContractStore {
-        digest,
-        source_digest,
-        policy_digest,
-        workflow_ir,
-        contract,
-    })
+    std::sync::Arc::new(ActionRecoveryContractStore { artifact })
 }
 
 #[test]
 fn recover_restores_action_contracts_schedules_completes_and_finishes()
 -> Result<(), Box<dyn std::error::Error>> {
     let run_id = vb_core::ids::RunId::new(1);
-    let workflow_digest = vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]);
-    // vb-peb9u: artifact identity differs from workflow identity. The artifact
-    // digest is the content hash of the compiled artifact; the workflow digest
-    // is the semantic hash of the workflow. Mocked as distinct byte patterns.
-    let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
-    assert_ne!(artifact_digest, workflow_digest);
 
     let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
     let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
@@ -100,7 +57,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         semantic_source_identity: None,
         source_metadata: None,
         name: Box::from("recovery-test"),
-        digest: workflow_digest,
+        digest: vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]),
         nodes: Box::from([do_node, finish_node]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -117,15 +74,20 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         }]),
     };
 
-    let workflow_ir = postcard::to_allocvec(&parts)?;
-    let contract = action_recovery_test_contract()?;
+    let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?;
+    let workflow = honest_digest_workflow(workflow)?;
+    let workflow_digest = workflow.digest();
 
-    // Compute the actual policy digest from the workflow for fixture provenance.
-    // The parts are consumed here after serialization, so the mock store can
-    // carry the genuine computed digest rather than a made-up one.
-    let policy_digest = vb_storage::admission::compute_policy_digest(
-        &vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?,
+    let contract = action_recovery_test_contract()?;
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        &workflow,
+        vb_core::policy::RuntimePolicy::Relaxed,
+        &[contract],
     )?;
+    let artifact_digest = artifact.digest;
+    // Artifact identity (content hash of the prepared artifact) differs from
+    // workflow identity (semantic hash of the workflow).
+    assert_ne!(artifact_digest, workflow_digest);
 
     let config = crate::shard::ShardConfig {
         command_queue_capacity: 64,
@@ -135,17 +97,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    // vb-peb9u: Mocked store with internally consistent provenance. The artifact
-    // digest is content hash [43u8;32]; source digest matches workflow identity
-    // [42u8;32]; policy digest is the real computed value. Full admission would
-    // accept these together; the Unverified pin remains the test subject.
-    let store = action_recovery_contract_store(
-        artifact_digest,
-        workflow_digest,
-        policy_digest,
-        workflow_ir,
-        contract.clone(),
-    );
+    let store = action_recovery_contract_store(artifact.clone());
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
     let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
@@ -422,7 +374,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
 
     // The shard must reject this because the checkpoint's policy pin (forged to
     // [44u8;32]) does not match the artifact's actual policy digest (derived
-    // from [43u8;32]).
+    // from the prepared artifact's workflow).
     let result = shard.handle_recover(command);
     assert_eq!(
         result,
@@ -806,15 +758,13 @@ fn recovery_gate_shard() -> Result<
     Box<dyn std::error::Error>,
 > {
     let run_id = vb_core::ids::RunId::new(1);
-    let workflow_digest = vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]);
-    let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
     let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
     let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
         name: Box::from("recovery-test"),
-        digest: workflow_digest,
+        digest: vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]),
         nodes: Box::from([do_node, finish_node]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -830,11 +780,16 @@ fn recovery_gate_shard() -> Result<
             constraint: vb_core::CompiledInputConstraint::required(),
         }]),
     };
-    let workflow_ir = postcard::to_allocvec(&parts)?;
+    let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?;
+    let workflow = honest_digest_workflow(workflow)?;
+    let workflow_digest = workflow.digest();
     let contract = action_recovery_test_contract()?;
-    let policy_digest = vb_storage::admission::compute_policy_digest(
-        &vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?,
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        &workflow,
+        vb_core::policy::RuntimePolicy::Relaxed,
+        &[contract],
     )?;
+    let artifact_digest = artifact.digest;
     let config = crate::shard::ShardConfig {
         command_queue_capacity: 64,
         trace_capacity: 64,
@@ -843,13 +798,7 @@ fn recovery_gate_shard() -> Result<
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let store = action_recovery_contract_store(
-        artifact_digest,
-        workflow_digest,
-        policy_digest,
-        workflow_ir,
-        contract,
-    );
+    let store = action_recovery_contract_store(artifact);
     let journal = RecoveryGateJournal::shared();
     let shard = crate::shard::Shard::new_with_journal_and_artifact_store(
         config,

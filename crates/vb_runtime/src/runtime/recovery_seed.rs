@@ -183,14 +183,12 @@ impl Runtime {
                     _ => String::from("artifact_decode_failed"),
                 },
             })?;
-        let parts = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
-            .map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })?;
+        // Verify and compile workflow via the typed recovery verifier.
         let workflow =
-            CompiledWorkflow::try_from_parts(parts).map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })?;
+            crate::admission::verify_stored_artifact_detailed(&store, &artifact, Some(self.policy))
+                .map_err(|error| RuntimeError::Recovery {
+                    error: error.to_string(),
+                })?;
         Ok(RecoveryArtifactWorkflow { artifact, workflow })
     }
 }

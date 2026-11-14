@@ -237,3 +237,4 @@ mod artifact_envelope_tests {
 #[path = "admission/registered_verification.rs"]
 mod registered_verification;
 pub(crate) use registered_verification::verify_stored_artifact;
+pub(crate) use registered_verification::verify_stored_artifact_detailed;
