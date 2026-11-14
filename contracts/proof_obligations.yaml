@@ -1072,7 +1072,7 @@ verus_registry:
   #   Per GOD RULE 2, the file was deleted (not bound).
 
   - id: PO-VERUS-020
-    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production crates/vb_storage/src/recovery/types/replay.rs:45-265 verbatim (VERUS-REPLAY-004)."
+    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production crates/vb_storage/src/recovery/types/replay.rs:25-245 verbatim (VERUS-REPLAY-004)."
     verus: verification/verus/idempotency_replay_tracker.rs
     production: crates/vb_storage/src/recovery/types/replay.rs
 
