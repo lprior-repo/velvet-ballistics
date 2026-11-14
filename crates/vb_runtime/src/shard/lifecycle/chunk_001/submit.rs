@@ -25,6 +25,46 @@ impl SubmitOptions {
 }
 
 impl Shard {
+    /// Returns true when the journal is explicitly Volatile with no storage backend.
+    /// Only that profile may skip retained-input admission for RunId-zero compatibility.
+    fn is_volatile_admission(&self) -> bool {
+        self.journal.durability_profile() == Some(vb_storage::DurabilityProfile::Volatile)
+            && self.journal.storage_journal().is_none()
+    }
+
+    /// Builds the same-run admission header events without a retained input record.
+    /// Used exclusively by the explicitly Volatile storage-free admission path.
+    fn build_volatile_admission_events(
+        &self,
+        run: RunId,
+        admission: &crate::admission::RunAdmission,
+        digest: vb_core::WorkflowDigest,
+        ir_compat_decision: Option<vb_storage::compat::CompatDecision>,
+        tenant_admission: Option<RuntimeJournalEvent>,
+        has_budget: bool,
+        run_started_millis: u64,
+    ) -> RuntimeResult<Vec<RuntimeJournalEvent>> {
+        let mut events = vec![
+            RuntimeJournalEvent::RunSubmitted { run, workflow: digest },
+            RuntimeJournalEvent::RunAdmission {
+                admission: admission.clone(),
+            },
+        ];
+        if let Some(decision) = ir_compat_decision {
+            events.push(RuntimeJournalEvent::CompatibilityDecision { run, decision });
+        }
+        if let Some(event) = tenant_admission {
+            events.push(event);
+        }
+        if has_budget {
+            events.push(RuntimeJournalEvent::RunBudgetOrigin {
+                run,
+                started_millis: run_started_millis,
+            });
+        }
+        Ok(events)
+    }
+
     fn handle_submit_with_inputs_contracts_and_header_mode(
         &mut self,
         run: RunId,
@@ -100,55 +140,80 @@ impl Shard {
         }
         let mut header_bytes: u64 = 0;
         if let (true, Some(admission)) = (options.persist_header, admission.as_ref()) {
-            let retained_inputs = match vb_storage::RunInputsRecord::new(
-                run,
-                admission.artifact_digest(),
-                digest,
-                &workflow,
-                filled_inputs.into_boxed_slice(),
-            ) {
-                Ok(record) => record,
-                Err(error) => {
+            if self.is_volatile_admission() {
+                // Explicitly Volatile storage-free journal: use sequenced batch
+                // directly. No retained inputs record constructed. RunId zero is valid.
+                // Input validation already completed above; admission carries validated
+                // input digest in RunInputBinding::Digest.
+                let events = self.build_volatile_admission_events(
+                    run,
+                    admission,
+                    digest,
+                    ir_compat_decision,
+                    tenant_admission,
+                    admission.budget().is_some(),
+                    run_started_millis,
+                )?;
+                let batch_result = self.append_journal_event_batch(&events);
+                if let Err(error) = batch_result {
                     self.release_frame(frame);
                     self.release_admission_quota(run)?;
-                    return Err(RuntimeError::from(error));
-                }
-            };
-            let mut events = vec![
-                RuntimeJournalEvent::RunSubmitted {
-                    run,
-                    workflow: digest,
-                },
-                RuntimeJournalEvent::RunAdmission {
-                    admission: admission.clone(),
-                },
-            ];
-            if let Some(decision) = ir_compat_decision {
-                events.push(RuntimeJournalEvent::CompatibilityDecision { run, decision });
-            }
-            if let Some(event) = tenant_admission {
-                events.push(event);
-            }
-            if admission.budget().is_some() {
-                events.push(RuntimeJournalEvent::RunBudgetOrigin {
-                    run,
-                    started_millis: run_started_millis,
-                });
-            }
-            header_bytes = match self.journal_batch_bytes(&events) {
-                Ok(bytes) => bytes,
-                Err(error) => {
-                    self.release_frame(frame);
-                    self.release_admission_quota(run)?;
+                    self.discard_journal_sequence(run);
                     return Err(error);
                 }
-            };
-            let header_result = self.append_admission_journal_event_batch(&events, retained_inputs);
-            if let Err(error) = header_result {
-                self.release_frame(frame);
-                self.release_admission_quota(run)?;
-                self.discard_journal_sequence(run);
-                return Err(RuntimeError::admission_header_persistence_failed(error));
+            } else {
+                // Durable/unknown profile: retained inputs required. RunId zero
+                // rejected by storage key constructors (run_header_key).
+                let retained_inputs = match vb_storage::RunInputsRecord::new(
+                    run,
+                    admission.artifact_digest(),
+                    digest,
+                    &workflow,
+                    filled_inputs.into_boxed_slice(),
+                ) {
+                    Ok(record) => record,
+                    Err(error) => {
+                        self.release_frame(frame);
+                        self.release_admission_quota(run)?;
+                        return Err(RuntimeError::from(error));
+                    }
+                };
+                let mut events = vec![
+                    RuntimeJournalEvent::RunSubmitted {
+                        run,
+                        workflow: digest,
+                    },
+                    RuntimeJournalEvent::RunAdmission {
+                        admission: admission.clone(),
+                    },
+                ];
+                if let Some(decision) = ir_compat_decision {
+                    events.push(RuntimeJournalEvent::CompatibilityDecision { run, decision });
+                }
+                if let Some(event) = tenant_admission {
+                    events.push(event);
+                }
+                if admission.budget().is_some() {
+                    events.push(RuntimeJournalEvent::RunBudgetOrigin {
+                        run,
+                        started_millis: run_started_millis,
+                    });
+                }
+                header_bytes = match self.journal_batch_bytes(&events) {
+                    Ok(bytes) => bytes,
+                    Err(error) => {
+                        self.release_frame(frame);
+                        self.release_admission_quota(run)?;
+                        return Err(error);
+                    }
+                };
+                let header_result = self.append_admission_journal_event_batch(&events, retained_inputs);
+                if let Err(error) = header_result {
+                    self.release_frame(frame);
+                    self.release_admission_quota(run)?;
+                    self.discard_journal_sequence(run);
+                    return Err(RuntimeError::admission_header_persistence_failed(error));
+                }
             }
         } else {
             if options.persist_header {

@@ -104,6 +104,27 @@
     }
 
     #[test]
+    fn shard_with_run_id_zero_volatile_journal() {
+        // RunId zero must be accepted by explicitly Volatile storage-free journals.
+        let journal = crate::journal::VolatileRuntimeJournal::new();
+        let shared: crate::journal::SharedRuntimeJournal = std::sync::Arc::new(journal);
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(0),
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    }
+
+    #[test]
     fn take_inspect_response_returns_none_when_none_pending() {
         let mut shard = Shard::new(small_config());
         assert_eq!(shard.take_inspect_response(), None);
