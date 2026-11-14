@@ -33,6 +33,6 @@ The in-memory transition loop can be extremely fast. These operations are not na
 ## Release Profiles
 
 Current-scope performance evidence targets the release/bench IR-interpreter path.
-`maxperf`, PGO, generated Rust execution, and native CPU builds are deferred to
-`docs/deferred-codegen-maxperf.md`; do not use them as acceptance gates for the
+`maxperf`, PGO, generated Rust execution, and native CPU builds are deferred (see
+`velvet-ballistics-MASTER.md` §22); do not use them as acceptance gates for the
 Backend / IR Interpreter Complete milestone.
