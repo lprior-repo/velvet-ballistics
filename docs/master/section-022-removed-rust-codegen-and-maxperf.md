@@ -11,12 +11,7 @@ Rust workflow code generation is **out of the current core feature set**. The ac
 
 Current command surface excludes `compile --emit rust`. Current acceptance excludes generated Rust semantic parity, generated compile-fail fixtures, generated-vs-IR ratio benchmarks, PGO release workflows, and `maxperf` release claims.
 
-Historical notes live in:
-
-```text
-docs/generated-workflows.md
-docs/deferred-codegen-maxperf.md
-```
+The historical notes (`docs/generated-workflows.md`, `docs/deferred-codegen-maxperf.md`) were removed in the 2026-06-26 orphan cleanup (`ee7fca18`) and are not present in the repo.
 
 Codegen is not in current scope. Any future reintroduction requires a dedicated master amendment and cannot inherit acceptance credit from historical notes.
 
