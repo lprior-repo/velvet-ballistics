@@ -80,7 +80,7 @@ mod harnesses {
         assert!(is_supported_code(0x0603)); // Contract Discovery last
         assert!(is_supported_code(0x1001)); // Compilation first
         assert!(is_supported_code(0x300F)); // Runtime first (new vs shadow)
-        assert!(is_supported_code(0x3022)); // Runtime last (new vs shadow)
+        assert!(is_supported_code(0x3024)); // Runtime last (IPC flag codes)
         assert!(is_supported_code(0x3201)); // Ipc first (new vs shadow)
         assert!(is_supported_code(0x3301)); // Lifecycle sample (new vs shadow)
         assert!(is_supported_code(0x4001)); // Boundary first

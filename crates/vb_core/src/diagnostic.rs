@@ -629,6 +629,11 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     ),
     active_code_entry("ACTION_TYPE_CONSTRAINT_FAIL", 0x3021, CodeCategory::Runtime),
     active_code_entry("ACTION_CIRCUIT_BREAKER_OPEN", 0x3022, CodeCategory::Runtime),
+    // IPC flag-validation errors emitted by vb_ipc. They sit here rather
+    // than beside their 0x3001-0x300E siblings because 0x300F/0x3010
+    // collide with RUNTIME_TIMEOUT/RUNTIME_BUDGET_EXHAUSTED above.
+    active_code_entry("IPC_INVALID_COMMAND_FLAGS", 0x3023, CodeCategory::Runtime),
+    active_code_entry("IPC_RESERVED_BITS_SET", 0x3024, CodeCategory::Runtime),
     // ---- Core Engine: E12xx (Step budget / counter overflow) ----
     active_code_entry("STEP_BUDGET_EXHAUSTED", 0x1201, CodeCategory::Expression),
     active_code_entry("STEP_COUNTER_OVERFLOW", 0x1202, CodeCategory::Expression),

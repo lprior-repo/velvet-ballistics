@@ -133,9 +133,9 @@ impl IpcError {
     /// Diagnostic code for response decode failed.
     pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300E);
     /// Diagnostic code for invalid command flags.
-    pub const INVALID_COMMAND_FLAGS_CODE: DiagnosticCode = DiagnosticCode::new(0x300F);
+    pub const INVALID_COMMAND_FLAGS_CODE: DiagnosticCode = DiagnosticCode::new(0x3023);
     /// Diagnostic code for reserved flag bits set.
-    pub const RESERVED_BITS_SET_CODE: DiagnosticCode = DiagnosticCode::new(0x3010);
+    pub const RESERVED_BITS_SET_CODE: DiagnosticCode = DiagnosticCode::new(0x3024);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]

@@ -18,7 +18,7 @@
 //! | GAP-1 | `CommandFlags` struct with `validate()`, `valid_mask()`, `as_u16()` | Implemented |
 //! | GAP-2 | `IpcError::InvalidCommandFlags { command, flags }` variant | Implemented |
 //! | GAP-3 | `IpcError::ReservedBitsSet { command, actual, reserved_mask }` variant | Implemented |
-//! | GAP-4 | Diagnostic codes `0x300F`, `0x3010` | Implemented |
+//! | GAP-4 | Diagnostic codes `0x3023`, `0x3024` | Implemented |
 //! | GAP-5 | Flag validation wired into `IpcFrameHeader::decode()` | Implemented |
 //! | GAP-6 | Exhaustive match arm updates for new error variants | Implemented |
 //!
@@ -642,16 +642,16 @@ fn valid_mask_matches_contract_section_2_2_literals_for_all_commands() {
 // ============================================================================
 
 /// B-ERROR-001: IpcError::InvalidCommandFlags returns diagnostic code
-/// 0x300F, the Display impl contains "invalid flags", the command
+/// 0x3023, the Display impl contains "invalid flags", the command
 /// name, and the flags value.
 ///
 #[test]
-fn invalid_command_flags_error_returns_diagnostic_code_0x300_f() {
+fn invalid_command_flags_error_returns_diagnostic_code_0x3023() {
     let err = IpcError::InvalidCommandFlags {
         command: IpcCommand::Health,
         flags: 0x0001,
     };
-    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x300F));
+    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x3023));
     let msg = format!("{err}");
     assert!(
         msg.contains("invalid flags"),
@@ -672,17 +672,17 @@ fn invalid_command_flags_error_returns_diagnostic_code_0x300_f() {
 }
 
 /// B-ERROR-002: IpcError::ReservedBitsSet returns diagnostic code
-/// 0x3010, the Display impl contains "reserved", the command name,
+/// 0x3024, the Display impl contains "reserved", the command name,
 /// the actual value, and the mask.
 ///
 #[test]
-fn reserved_bits_set_error_returns_diagnostic_code_0x3010() {
+fn reserved_bits_set_error_returns_diagnostic_code_0x3024() {
     let err = IpcError::ReservedBitsSet {
         command: IpcCommand::Shutdown,
         actual: 0x8000,
         reserved_mask: 0xFF00,
     };
-    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x3010));
+    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x3024));
     let msg = format!("{err}");
     assert!(
         msg.contains("reserved"),
@@ -703,6 +703,80 @@ fn reserved_bits_set_error_returns_diagnostic_code_0x3010() {
     assert_eq!(
         err.runtime_code(),
         Some(IpcError::IPC_FRAME_INVALID_RUNTIME_CODE)
+    );
+}
+
+/// B-ERROR-003: the two flag-validation variants emit registered codes
+/// under IPC symbolic names, distinct from RUNTIME_TIMEOUT (0x300F)
+/// and RUNTIME_BUDGET_EXHAUSTED (0x3010), which previously shared
+/// those numbers.
+#[test]
+fn ipc_flag_error_codes_are_registered_under_ipc_symbolic_names() {
+    use std::str::FromStr;
+    use vb_core::SymbolicCode;
+    use vb_core::diagnostic::{numeric_to_symbolic, symbolic_to_numeric};
+    let invalid = IpcError::InvalidCommandFlags {
+        command: IpcCommand::Health,
+        flags: 0x0001,
+    };
+    let reserved = IpcError::ReservedBitsSet {
+        command: IpcCommand::Shutdown,
+        actual: 0x8000,
+        reserved_mask: 0xFF00,
+    };
+    assert_eq!(invalid.diagnostic_code(), DiagnosticCode::new(0x3023));
+    assert_eq!(reserved.diagnostic_code(), DiagnosticCode::new(0x3024));
+    assert_eq!(
+        invalid
+            .diagnostic_code()
+            .symbolic_code()
+            .map(SymbolicCode::as_str),
+        Some("IPC_INVALID_COMMAND_FLAGS")
+    );
+    assert_eq!(
+        reserved
+            .diagnostic_code()
+            .symbolic_code()
+            .map(SymbolicCode::as_str),
+        Some("IPC_RESERVED_BITS_SET")
+    );
+    assert_eq!(
+        symbolic_to_numeric("IPC_INVALID_COMMAND_FLAGS"),
+        Some(0x3023)
+    );
+    assert_eq!(symbolic_to_numeric("IPC_RESERVED_BITS_SET"), Some(0x3024));
+    assert_eq!(
+        numeric_to_symbolic(0x3023),
+        Some("IPC_INVALID_COMMAND_FLAGS")
+    );
+    assert_eq!(numeric_to_symbolic(0x3024), Some("IPC_RESERVED_BITS_SET"));
+    assert_eq!(
+        SymbolicCode::from_static("IPC_INVALID_COMMAND_FLAGS").and_then(SymbolicCode::numeric_code),
+        Some(0x3023)
+    );
+    assert_eq!(
+        SymbolicCode::from_static("IPC_RESERVED_BITS_SET").and_then(SymbolicCode::numeric_code),
+        Some(0x3024)
+    );
+    assert_eq!(
+        DiagnosticCode::from_str("E3023"),
+        Ok(DiagnosticCode::new(0x3023))
+    );
+    assert_eq!(
+        DiagnosticCode::from_str("E3024"),
+        Ok(DiagnosticCode::new(0x3024))
+    );
+    assert_eq!(
+        DiagnosticCode::new(0x300F)
+            .symbolic_code()
+            .map(SymbolicCode::as_str),
+        Some("RUNTIME_TIMEOUT")
+    );
+    assert_eq!(
+        DiagnosticCode::new(0x3010)
+            .symbolic_code()
+            .map(SymbolicCode::as_str),
+        Some("RUNTIME_BUDGET_EXHAUSTED")
     );
 }
 
