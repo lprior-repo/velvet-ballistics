@@ -138,8 +138,13 @@ pub(super) fn validate_node_kind(
             body,
             exhausted,
         } => validate_slot_and_steps(*policy_slot, *body, *exhausted, parts),
-        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
-            validate_two_steps(*body, *handler, parts)
+        CompiledNodeKind::ErrorHandler {
+            body,
+            handler,
+            error_slot,
+        } => {
+            validate_two_steps(*body, *handler, parts)?;
+            validate_optional_slot(error_slot.slot(), parts.slot_count)
         }
         CompiledNodeKind::Jump { target } => validate_step(*target, parts.nodes.len()),
         CompiledNodeKind::Finish { result } => validate_slot(*result, parts.slot_count),
@@ -266,13 +271,6 @@ fn validate_repeat_start(
     validate_two_steps(body, done, parts)
 }
 
-fn validate_optional_step_continuation(
-    continuation: BranchContinuation,
-    node_count: usize,
-) -> Result<(), WorkflowError> {
-    validate_optional_step(continuation.step(), node_count)
-}
-
 fn validate_slot_choose(
     branches: &[SlotBranch],
     otherwise: BranchContinuation,
@@ -283,7 +281,7 @@ fn validate_slot_choose(
         validate_slot(branch.condition, parts.slot_count)?;
         validate_step(branch.target, parts.nodes.len())
     })?;
-    validate_optional_step_continuation(otherwise, parts.nodes.len())
+    validate_optional_step(otherwise.step(), parts.nodes.len())
 }
 
 fn validate_expr_choose(
@@ -296,5 +294,5 @@ fn validate_expr_choose(
         validate_expr(branch.condition, parts.expressions.len())?;
         validate_step(branch.target, parts.nodes.len())
     })?;
-    validate_optional_step_continuation(otherwise, parts.nodes.len())
+    validate_optional_step(otherwise.step(), parts.nodes.len())
 }

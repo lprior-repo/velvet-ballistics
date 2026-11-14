@@ -33,6 +33,18 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
 
     for (node_index, node) in parts.nodes.iter().enumerate() {
         match &node.kind {
+            CompiledNodeKind::ForEachConcurrentStart { .. }
+            | CompiledNodeKind::TogetherConcurrentStart { .. }
+            | CompiledNodeKind::FirstSuccessStart { .. }
+            | CompiledNodeKind::ConcurrentLaneEnd { .. }
+            | CompiledNodeKind::ConcurrentGroupJoin { .. } => {
+                vb_core::workflow::validate_concurrent_node_kind(&node.kind, parts).map_err(
+                    |error| ValidationError::NodeKindConstraintViolation {
+                        node_index,
+                        detail: error.to_string(),
+                    },
+                )?;
+            }
             CompiledNodeKind::Finish { result } => {
                 let result_usize = result.as_usize();
                 if result_usize >= slot_count {

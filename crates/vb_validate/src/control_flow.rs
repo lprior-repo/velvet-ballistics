@@ -12,7 +12,7 @@ use crate::{ValidationError, ValidationResult};
 /// Checks that branch targets are valid indices, that all then/branch
 /// targets point forward, and that every step is reachable from step 0.
 pub fn validate_control_flow(flow: &WorkflowFlow) -> ValidationResult<()> {
-    validate_forward_targets(flow)?;
+    validate_forward_only_then(flow)?;
     validate_reachability(flow)?;
     Ok(())
 }
@@ -40,18 +40,6 @@ pub fn validate_reachability(flow: &WorkflowFlow) -> ValidationResult<()> {
     let mut reachable = vec![false; flow.steps.len()];
     mark_reachable(flow, &mut reachable)?;
     reject_unreachable(flow, &reachable)
-}
-
-fn validate_forward_targets(flow: &WorkflowFlow) -> ValidationResult<()> {
-    for (step_index, step) in flow.steps.iter().enumerate() {
-        for &target in &step.branch_targets {
-            validate_target_index(target, flow.steps.len())?;
-            if target <= step_index {
-                return Err(ValidationError::ControlFlowCycle);
-            }
-        }
-    }
-    Ok(())
 }
 
 fn validate_target_index(target: usize, step_count: usize) -> ValidationResult<()> {

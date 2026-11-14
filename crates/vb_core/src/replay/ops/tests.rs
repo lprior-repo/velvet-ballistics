@@ -102,3 +102,4 @@ include!("tests/expr_stack_and_pop.rs");
 include!("tests/arith_compare_logic.rs");
 include!("tests/load_and_eval_expr.rs");
 include!("tests/blackhat_mixed_ce003.rs");
+include!("tests/helper_contract_recovery.rs");

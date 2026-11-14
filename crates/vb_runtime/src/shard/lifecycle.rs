@@ -70,6 +70,9 @@ mod tests {
     include!("lifecycle_tests/secret_recovery_tests.rs");
     include!("lifecycle_tests/lifetime_clock_regressions.rs");
     include!("lifecycle_tests/timer_due_regressions.rs");
+    include!("lifecycle_tests/timer_retry_regressions.rs");
+    include!("lifecycle_tests/timer_answer_regressions.rs");
+    include!("lifecycle_tests/timer_cold_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
     include!("lifecycle_tests/chunk_014.rs");
 

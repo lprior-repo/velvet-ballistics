@@ -60,7 +60,11 @@ impl FramePool {
             .frames
             .pop()
             .ok_or(vb_core::errors::CoreError::AllocationFailed)?;
-        frame.reinitialize(run_id, first_step, self.step_count, self.slot_count)?;
+        if let Err(error) = frame.reinitialize(run_id, first_step, self.step_count, self.slot_count)
+        {
+            self.frames.push(frame);
+            return Err(error);
+        }
         Ok(frame)
     }
 

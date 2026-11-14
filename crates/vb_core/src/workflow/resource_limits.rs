@@ -126,6 +126,11 @@ pub(super) fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), Wo
     check_resource_contract_limits(&contract)?;
     validate_resource_usage(parts, contract)?;
     validate_expr_stack_usage(parts.expressions.as_ref(), contract.max_expr_stack)?;
+    if contract.max_step_budget_per_tick == 0 {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: ContractResource::StepBudgetPerTick,
+        });
+    }
     validate_transitions_nonzero(contract.max_transitions_per_tick)
 }
 

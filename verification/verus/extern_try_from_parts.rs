@@ -62,35 +62,35 @@
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
 //     <- crates/vb_core/src/workflow/validate.rs:151-170
 //     <- crates/vb_core/src/workflow/validate.rs:199-207
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:13-147
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:13-152
 //   - `validate_slots`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:149-154
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:154-159
 //   - `validate_build_list`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:156-163
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:161-168
 //   - `validate_build_object`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:165-178
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:170-183
 //   - `validate_for_each_start`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:180-190
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:185-195
 //   - `validate_slot_and_steps`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:192-200
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:197-205
 //   - `validate_two_steps`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:202-209
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:207-214
 //   - `validate_together`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:211-221
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:216-226
 //   - `validate_nonzero_u16`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:223-229
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:228-234
 //   - `validate_reduce_start`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:231-245
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:236-250
 //   - `validate_reduce_next`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:247-257
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:252-262
 //   - `validate_repeat_start`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:259-267
-//   - `validate_optional_step_continuation`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:269-273
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:264-272
+//   - `validate_optional_step`
+//     <- crates/vb_core/src/workflow/validate_refs.rs:31-36
 //   - `validate_slot_choose`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:276-287
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:274-285
 //   - `validate_expr_choose`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:289-300
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:287-298
 //   - `validate_branch_route`
 //     <- crates/vb_core/src/workflow/validate_refs.rs:20-29
 //   - `MAX_LIST_ITEMS_PER_VALUE` / `MAX_OBJECT_FIELDS_PER_VALUE`
@@ -602,7 +602,7 @@ pub struct SpecInputConstraint {
     pub max_length: i64,
 }
 /// One ordered validation operation of production
-/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:13-147`)
+/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:13-152`)
 /// for a single node. The per-node `kind_refs` inventory lists these
 /// in the exact order production checks them, so the projection
 /// returns the same first failure production's `?`-propagation
@@ -762,7 +762,7 @@ pub struct SpecWorkflowParts {
     /// `node.output.slot().is_none() && *source == slot` guard.
     pub written_slots: Vec<Vec<u32>>,
     /// Per-node ordered kind-reference inventory consumed by
-    /// `validate_node_kind` (workflow/validate_node_kind.rs:13-147).
+    /// `validate_node_kind` (workflow/validate_node_kind.rs:13-152).
     /// `kind_refs[i]` is node i's `SpecKindRef` list in the exact
     /// order production checks the kind payload: SetConst
     /// Const(value); Copy Slot(source); EvalExpr Expr(expr);
@@ -1070,7 +1070,7 @@ pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWor
 // Pure decision fn: per-node validator
 // ============================================================================
 /// Pure projection of one ordered `SpecKindRef` inventory:
-/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:13-147`)
+/// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:13-152`)
 /// checks the kind payload references in inventory order and returns
 /// the first failure production's `?`-propagation would return:
 /// `SlotOutOfBounds` (`validate_slot`, crates/vb_core/src/workflow/validate_refs.rs:56-62),
@@ -1080,8 +1080,8 @@ pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWor
 /// returns `WorkflowError::Expression(CoreError::ExprOutOfBounds)`),
 /// `ResourceContractExceeded` for a count over its cap
 /// (`validate_build_list` / `validate_build_object`,
-/// crates/vb_core/src/workflow/validate_node_kind.rs:156-163 / workflow/validate_node_kind.rs:165-178) or a zero nonzero-checked value
-/// (`validate_nonzero_u16`, crates/vb_core/src/workflow/validate_node_kind.rs:223-229). Returns `None` when
+/// crates/vb_core/src/workflow/validate_node_kind.rs:161-168 / workflow/validate_node_kind.rs:170-183) or a zero nonzero-checked value
+/// (`validate_nonzero_u16`, crates/vb_core/src/workflow/validate_node_kind.rs:228-234). Returns `None` when
 /// every inventory entry is in bounds. The `EmptyBranchTable` check
 /// (`validate_branch_route`, crates/vb_core/src/workflow/validate_refs.rs:20-29) runs before this
 /// inventory in production and is handled by the caller.
@@ -1462,7 +1462,7 @@ pub fn validate_node_pure(
     if meta.has_error_slot == 1 && meta.error_slot >= slot_count {
         return Some(SpecWorkflowError::SlotOutOfBounds);
     }
-    // 2. validate_node_kind (workflow/validate_node_kind.rs:13-147). Choose /
+    // 2. validate_node_kind (workflow/validate_node_kind.rs:13-152). Choose /
     // ChooseSlot run validate_branch_route first (EmptyBranchTable
     // when zero branches and no otherwise), then the ordered
     // kind-ref inventory; every other kind runs the inventory

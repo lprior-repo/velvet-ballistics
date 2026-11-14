@@ -29,9 +29,12 @@ mod concurrent_start_entries;
 mod concurrent_targets;
 #[path = "concurrent/together_policy.rs"]
 mod concurrent_together_policy;
+#[path = "concurrent/validation_api.rs"]
+mod concurrent_validation_api;
 #[path = "concurrent/kind_refs.rs"]
 mod kind_refs;
 pub use concurrent_analysis_error::ConcurrentAnalysisError;
+pub use concurrent_validation_api::{validate_concurrent_node_kind, validate_concurrent_structure};
 mod compiled;
 #[path = "concurrent/group_frame_bound.rs"]
 mod concurrent_group_frame_bound;

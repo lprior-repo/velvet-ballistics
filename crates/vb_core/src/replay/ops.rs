@@ -38,7 +38,12 @@ pub fn eval_replay_op(
         Ok(())
     });
     stack.reset_operand_taint();
-    result
+    result.map_err(|error| match error {
+        ReplayError::ExpressionEvalFailed { .. } => {
+            ReplayError::ExpressionEvalFailed { step: run.pc() }
+        }
+        other => other,
+    })
 }
 
 fn eval_replay_op_inner(
@@ -288,3 +293,7 @@ fn expect_i64_replay(value: SlotValue) -> Result<i64, ReplayError> {
 #[cfg(test)]
 #[path = "ops/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ops/provenance_recovery.rs"]
+mod provenance_recovery;
