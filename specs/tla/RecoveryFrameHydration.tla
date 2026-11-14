@@ -3,7 +3,7 @@
  * Frame reconstruction from RecoveryFrameSeed, matching crates/vb_runtime/src/recovery.rs.
  *
  * Hydration pipeline (crates/vb_runtime/src/recovery/frame.rs:27-45):
- *   1. unsupported flags classified by classify_full_recovery_resume (crates/vb_runtime/src/recovery/full.rs:121-131), enforced by the gate at full.rs:229-241
+ *   1. unsupported flags classified by classify_full_recovery_resume (crates/vb_runtime/src/recovery/full.rs:134-144), enforced by the gate at full.rs:244-256
  *   2. empty_recovered_frame (crates/vb_runtime/src/recovery/frame.rs:127-135)
  *   3. apply_recovered_steps (crates/vb_runtime/src/recovery/frame.rs:137-141)  -- two-phase for Waiting/Asking in apply_recovered_step (frame.rs:160-174)
  *   4. apply_recovered_slots (crates/vb_runtime/src/recovery/frame.rs:143-149)
@@ -110,7 +110,7 @@ DuplicateFreeSlots ==
     \A i, j \in DOMAIN seed.slots :
         i # j => seed.slots[i].slot # seed.slots[j].slot
 
-(* ALL unsupported flags must reject hydration (contract; crates/vb_runtime/src/recovery/full.rs:121-131, gate at full.rs:229-241) *)
+(* ALL unsupported flags must reject hydration (contract; crates/vb_runtime/src/recovery/full.rs:134-144, gate at full.rs:244-256) *)
 UnsupportedStateRejected ==
     hydration \in {"Ok", "Err"} =>
         ((seed.unsupported.slot_values = TRUE
@@ -131,7 +131,7 @@ PcValidAfterHydration ==
 PcOutOfBoundsMeansErr ==
     pc >= seed.step_count => hydration = "Err"
 
-(* PC must point to a resumable step (crates/vb_runtime/src/recovery/full.rs:121-131) *)
+(* PC must point to a resumable step (crates/vb_runtime/src/recovery/full.rs:134-144) *)
 PcResumable ==
     hydration = "Ok" => frame.step_states[pc] \in ResumableStates
 
