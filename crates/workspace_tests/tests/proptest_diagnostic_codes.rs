@@ -17,11 +17,11 @@
 //!
 //! # Source type
 //!
-//! `DiagnosticCode` is defined at `crates/vb_core/src/diagnostic.rs:977`
+//! `DiagnosticCode` is defined at `crates/vb_core/src/diagnostic.rs:1013`
 //! as `pub struct DiagnosticCode(u16)` with the constructor
-//! `pub const fn new(code: u16) -> Self { Self(code) }` at line 982.
+//! `pub const fn new(code: u16) -> Self { Self(code) }` at line 1018.
 //! The packed numeric accessor is `pub const fn code(self) -> u16`
-//! at line 988 (NOT `.get()`, which does not exist).
+//! at line 1024 (NOT `.get()`, which does not exist).
 //!
 //! # Properties
 //!
@@ -260,7 +260,7 @@ const RUNTIME_ERROR_CODES: &[FrozenCode] = &[
 /// Lightweight `(name, code)` projection used for the proptest sweep.
 ///
 /// `DiagnosticCode` is `Copy` (see
-/// `crates/vb_core/src/diagnostic.rs:977`), so a slice of
+/// `crates/vb_core/src/diagnostic.rs:1013`), so a slice of
 /// `(&'static str, DiagnosticCode)` is itself `Copy + Clone`, which
 /// satisfies `proptest::sample::select`'s `T: Clone` bound.
 const RUNTIME_ERROR_CODE_PAIRS: &[(&str, DiagnosticCode)] = &[
@@ -437,8 +437,8 @@ fn diagnostic_code_stability_against_frozen_baseline() {
 /// system-code range `0xFFFF_0000..=0xFFFF_FFFF`.
 ///
 /// `DiagnosticCode` is `pub struct DiagnosticCode(u16)` at
-/// `crates/vb_core/src/diagnostic.rs:975-977`, so the constructor
-/// `pub const fn new(code: u16) -> Self` at line 982 makes the upper
+/// `crates/vb_core/src/diagnostic.rs:1011-1013`, so the constructor
+/// `pub const fn new(code: u16) -> Self` at line 1018 makes the upper
 /// `0xFFFF_0000..=0xFFFF_FFFF` range structurally unreachable on
 /// `u16`. This test asserts the bound explicitly so widening the
 /// representation (e.g., to `u32`) trips the test immediately.
@@ -578,9 +578,9 @@ proptest! {
     /// `DiagnosticCode::new(u).code() == u` and the constructor
     /// produces `Eq`-consistent values.
     ///
-    /// Source: `crates/vb_core/src/diagnostic.rs:982`
+    /// Source: `crates/vb_core/src/diagnostic.rs:1018`
     /// `pub const fn new(code: u16) -> Self { Self(code) }` and
-    /// `crates/vb_core/src/diagnostic.rs:988`
+    /// `crates/vb_core/src/diagnostic.rs:1024`
     /// `pub const fn code(self) -> u16 { self.0 }`.
     #[test]
     fn diagnostic_code_constructor_round_trip(u in any::<u16>()) {

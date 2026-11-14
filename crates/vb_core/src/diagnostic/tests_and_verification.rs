@@ -260,6 +260,44 @@ mod tests {
         }
     }
 
+
+    #[test]
+    fn registry_ipc_codes_3001_300e_are_registered() {
+        let expected: [(&str, u16); 14] = [
+            ("IPC_QUEUE_FULL", 0x3001),
+            ("IPC_DISCONNECTED", 0x3002),
+            ("IPC_INGRESS_PAYLOAD_TOO_LARGE", 0x3003),
+            ("IPC_INVALID_MAGIC", 0x3004),
+            ("IPC_UNSUPPORTED_VERSION", 0x3005),
+            ("IPC_UNKNOWN_COMMAND", 0x3006),
+            ("IPC_RESERVED_NON_ZERO", 0x3007),
+            ("IPC_PAYLOAD_LENGTH_MISMATCH", 0x3008),
+            ("IPC_HEADER_ENCODE_FAILED", 0x3009),
+            ("IPC_HEADER_DECODE_FAILED", 0x300A),
+            ("IPC_PAYLOAD_LENGTH_OUT_OF_RANGE", 0x300B),
+            ("IPC_PAYLOAD_ENCODE_FAILED", 0x300C),
+            ("IPC_PAYLOAD_DECODE_FAILED", 0x300D),
+            ("IPC_RESPONSE_DECODE_FAILED", 0x300E),
+        ];
+        for (symbolic, numeric) in expected {
+            assert_eq!(symbolic_to_numeric(symbolic), Some(numeric));
+            assert_eq!(numeric_to_symbolic(numeric), Some(symbolic));
+            let entry = CODE_REGISTRY
+                .iter()
+                .find(|entry| entry.numeric == numeric)
+                .expect("registered IPC code must have a registry entry");
+            assert!(!entry.deprecated);
+            assert_eq!(entry.category, CodeCategory::Runtime);
+            let code = DiagnosticCode::new(numeric);
+            assert_eq!(
+                code.symbolic_code().map(SymbolicCode::as_str),
+                Some(symbolic)
+            );
+            assert_eq!(code.category(), Some(CodeCategory::Runtime));
+            assert_eq!(DiagnosticCode::from_str(&code.to_string()), Ok(code));
+        }
+    }
+
     #[test]
     fn diagnostic_code_symbolic_lookup_known_code() {
         let dc = DiagnosticCode::new(0x0101);

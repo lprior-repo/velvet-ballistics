@@ -475,10 +475,18 @@ fn all_journal_error_diagnostic_codes_registered_in_registry() {
 fn all_ipc_error_diagnostic_codes_registered_in_registry() {
     // Note: IpcError diagnostic codes (0x3001-0x300E) are allocated in the
     // Runtime E30xx range, not the IPC E32xx range. This is an existing design
-    // characteristic. We verify non-zero instead of registry membership.
+    // characteristic; the codes are registered under IPC_* names with
+    // CodeCategory::Runtime. The two flag variants (InvalidCommandFlags 0x300F,
+    // ReservedBitsSet 0x3010) collide with registered RUNTIME_TIMEOUT /
+    // RUNTIME_BUDGET_EXHAUSTED and are not registered; they are not
+    // enumerated here.
     for error in &all_ipc_error_variants() {
         let code = error.diagnostic_code();
         let hex = code.code();
-        assert_ne!(hex, 0, "IpcError diagnostic_code is zero");
+        assert!(
+            CODE_REGISTRY.iter().any(|e| e.numeric == hex),
+            "IpcError diagnostic_code 0x{hex:04X} not found in CODE_REGISTRY for variant {:?}",
+            error
+        );
     }
 }
