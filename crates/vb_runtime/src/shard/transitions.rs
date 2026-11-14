@@ -102,7 +102,7 @@ impl Shard {
             result,
             attempt: state.run_attempt.get(),
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }
@@ -146,7 +146,7 @@ impl Shard {
             output,
             action_abi_digest,
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }
@@ -175,6 +175,17 @@ impl Shard {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
+        let generation = if register_timer {
+            match self.scheduled_timer_generation(run, 0) {
+                Ok(generation) => Some(generation),
+                Err(error) => {
+                    self.run_state_insert(run, state)?;
+                    return Err(error);
+                }
+            }
+        } else {
+            None
+        };
         let ask_boundary_seq = if kind == PendingTimerKind::Ask {
             self.reserve_pending_ask_authority_slot(run)?;
             Some(self.journal_sequence_for(run))
@@ -190,7 +201,7 @@ impl Shard {
                 PendingTimerKind::Ask => RuntimeJournalEvent::AskScheduled { run, step },
             };
             let projected =
-                Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+                self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
             if Self::journal_bytes_exceeds_budget(&state, projected) {
                 return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
             }
@@ -200,14 +211,7 @@ impl Shard {
             }
             state.journal_bytes_written = projected;
         }
-        if register_timer {
-            let generation = match self.next_pending_timer_generation(run) {
-                Some(generation) => generation,
-                None => {
-                    self.run_state_insert(run, state)?;
-                    return Err(RuntimeError::InvalidTimerFire);
-                }
-            };
+        if let Some(generation) = generation {
             self.pending_timer_insert(
                 run,
                 PendingTimer {
@@ -236,7 +240,7 @@ impl Shard {
             run,
             attempt: state.run_attempt.get(),
         };
-        let projected = Self::journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
+        let projected = self.journal_bytes_after_append(&state, core::slice::from_ref(&event))?;
         if Self::journal_bytes_exceeds_budget(&state, projected) {
             return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
         }

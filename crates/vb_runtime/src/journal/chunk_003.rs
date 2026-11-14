@@ -41,6 +41,28 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
             .map_err(RuntimeError::from)
     }
 
+    fn append_admission_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        if self.profile == DurabilityProfile::Strict {
+            return Err(RuntimeError::UnsupportedAsyncStrictAck);
+        }
+        let mut storage_events = Vec::new();
+        storage_events
+            .try_reserve(events.len())
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::QueueFull))?;
+        for (offset, event) in events.iter().enumerate() {
+            let seq = StorageRuntimeJournal::sequence_at_offset(start_seq, offset)?;
+            storage_events.push(StorageRuntimeJournal::storage_event(event.clone(), seq)?);
+        }
+        self.queue
+            .enqueue_journaled_admission_batch(storage_events, inputs)
+            .map_err(RuntimeError::from)
+    }
+
     fn probe(&self) -> RuntimeResult<()> {
         if self.profile == DurabilityProfile::Strict {
             return Err(RuntimeError::UnsupportedAsyncStrictAck);
@@ -141,6 +163,52 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
             .map_err(RuntimeError::from)?;
         let storage_event = JournalEvent::GateOpenedEvent {
             run: gate.run,
+            seq,
+            gate,
+            opened_at_ms,
+            requester,
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
+
+    fn append_gate_decision_bound_strict(
+        &self,
+        record: vb_core::manual_gate::BoundGateOutcomeRecord,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        self.queue
+            .probe_accepting_writes()
+            .map_err(RuntimeError::from)?;
+        self.queue
+            .drain_all(self.journal.as_ref())
+            .map_err(RuntimeError::from)?;
+        let storage_event = JournalEvent::GateDecisionBoundEvent {
+            run: record.record.run,
+            seq,
+            record: Box::new(record),
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
+
+    fn append_gate_opened_bound_strict(
+        &self,
+        gate: vb_core::manual_gate::BoundManualGate,
+        opened_at_ms: u64,
+        requester: vb_core::manual_gate::ApproverId,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        self.queue
+            .probe_accepting_writes()
+            .map_err(RuntimeError::from)?;
+        self.queue
+            .drain_all(self.journal.as_ref())
+            .map_err(RuntimeError::from)?;
+        let storage_event = JournalEvent::GateOpenedBoundEvent {
+            run: gate.gate.run,
             seq,
             gate,
             opened_at_ms,

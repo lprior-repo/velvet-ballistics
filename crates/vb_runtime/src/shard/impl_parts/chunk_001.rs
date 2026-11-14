@@ -16,6 +16,21 @@ impl Shard {
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
+        Self::new_with_shared_quota(
+            config,
+            journal,
+            artifact_store,
+            crate::quota::SharedQuotaLedger::new(),
+        )
+    }
+
+    /// Creates a shard sharing a runtime-wide quota ledger.
+    pub(crate) fn new_with_shared_quota(
+        config: ShardConfig,
+        journal: SharedRuntimeJournal,
+        artifact_store: crate::admission::SharedAcceptedArtifactStore,
+        quota: crate::quota::SharedQuotaLedger,
+    ) -> Self {
         Self {
             secret_availability: std::sync::Arc::from([]),
             command_queue: ShardCommandQueue::from_config(config),
@@ -24,10 +39,14 @@ impl Shard {
             journal_sequences: IndexMap::new(),
             pending_ask_authorities: IndexMap::new(),
             open_gates: IndexMap::new(),
+            bound_open_gates: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
+            quota,
+            pending_quota_reservation: None,
+            charged_quotas: IndexMap::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
             max_open_gates: config.max_open_gates,
@@ -40,6 +59,7 @@ impl Shard {
             completion_capture: crate::runtime::completion_observation::CompletionCapture::default(
             ),
             fencing_tokens: super::fencing::FencingTokens::new(),
+            last_lifetime_expiry: None,
         }
     }
 
@@ -52,28 +72,43 @@ impl Shard {
     /// storage-backed accepted-artifact source rejects admission instead of silently
     /// accepting unbacked artifacts.
     pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
-        let artifact_store: crate::admission::SharedAcceptedArtifactStore =
-            if let Some(fjall_journal) = journal.storage_journal() {
-                // Storage-backed journal: use StorageArtifactStore for strict/journaled
-                // artifact validation. This ensures the shard can load and validate
-                // accepted artifacts from durable storage before admission.
-                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(
-                    fjall_journal,
-                    journal.executor_catalog(),
-                ))
-            } else {
-                match config.policy {
-                    vb_core::policy::RuntimePolicy::Relaxed => {
-                        crate::admission::AlwaysPresentArtifactStore::shared()
-                    }
-                    vb_core::policy::RuntimePolicy::Strict
-                    | vb_core::policy::RuntimePolicy::Journaled => {
-                        crate::admission::MissingAcceptedArtifactStore::shared()
-                    }
-                    _ => crate::admission::MissingAcceptedArtifactStore::shared(),
+        Self::new_with_journal_and_quota(config, journal, crate::quota::SharedQuotaLedger::new())
+    }
+
+    /// Creates a shard with a journal sink sharing a runtime-wide quota ledger.
+    pub(crate) fn new_with_journal_and_quota(
+        config: ShardConfig,
+        journal: SharedRuntimeJournal,
+        quota: crate::quota::SharedQuotaLedger,
+    ) -> Self {
+        let artifact_store = Self::artifact_store_for(&config, &journal);
+        Self::new_with_shared_quota(config, journal, artifact_store, quota)
+    }
+
+    fn artifact_store_for(
+        config: &ShardConfig,
+        journal: &SharedRuntimeJournal,
+    ) -> crate::admission::SharedAcceptedArtifactStore {
+        if let Some(fjall_journal) = journal.storage_journal() {
+            // Storage-backed journal: use StorageArtifactStore for strict/journaled
+            // artifact validation. This ensures the shard can load and validate
+            // accepted artifacts from durable storage before admission.
+            std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(
+                fjall_journal,
+                journal.executor_catalog(),
+            ))
+        } else {
+            match config.policy {
+                vb_core::policy::RuntimePolicy::Relaxed => {
+                    crate::admission::AlwaysPresentArtifactStore::shared()
                 }
-            };
-        Self::new_with_journal_and_artifact_store(config, journal, artifact_store)
+                vb_core::policy::RuntimePolicy::Strict
+                | vb_core::policy::RuntimePolicy::Journaled => {
+                    crate::admission::MissingAcceptedArtifactStore::shared()
+                }
+                _ => crate::admission::MissingAcceptedArtifactStore::shared(),
+            }
+        }
     }
 }
 

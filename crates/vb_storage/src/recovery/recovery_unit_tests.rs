@@ -1280,8 +1280,11 @@ mod tests {
                 JournalEvent::PolicyDecisionEvent { .. } => Ok(false),
                 JournalEvent::GateDecisionEvent { .. } => Ok(false),
                 JournalEvent::GateOpenedEvent { .. } => Ok(false),
+                JournalEvent::GateOpenedBoundEvent { .. } => Ok(false),
+                JournalEvent::GateDecisionBoundEvent { .. } => Ok(false),
                 JournalEvent::CompatibilityDecisionEvent { .. } => Ok(false),
                 JournalEvent::TenantAdmissionEvent { .. } => Ok(false),
+                JournalEvent::RunBudgetOriginEvent { .. } => Ok(false),
             }
         }
     };

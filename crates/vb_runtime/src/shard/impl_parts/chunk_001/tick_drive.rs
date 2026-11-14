@@ -21,12 +21,16 @@ impl Shard {
         self.current_tick
     }
 
-    /// Returns the next freshness generation for a run's pending timer.
+    /// Returns the next freshness generation for a run's pending timer counter.
     ///
     /// - `Some(n)` where `n > 0` is the next generation to use.
     /// - `None` if generation would overflow `u64`.
     ///
     /// If no timer exists for the run, returns `Some(1)`.
+    ///
+    /// This counter is diagnostic for non-journaled timer-wheel use. It is not
+    /// authority for journal-backed timers; those use the durable schedule
+    /// event sequence and the captured current entry.
     #[must_use]
     pub fn next_pending_timer_generation(&self, run: RunId) -> Option<u64> {
         match self.pending_timer_get(run) {
@@ -83,114 +87,21 @@ impl Shard {
             return Ok(false);
         }
 
-        let Some(cmd) = self.command_queue.pop() else {
+        self.expire_overdue_run_lifetime()?;
+
+        let Some(queued) = self.command_queue.pop_queued() else {
             self.drive_one_ready_run()?;
             return Ok(true);
         };
-
-        match cmd {
-            ShardCommand::ActivateOwnedSubmission {
-                run,
-                expected_source_digest,
-            } => {
-                self.handle_owned_activation(run, expected_source_digest)?;
-            }
-            ShardCommand::Submit {
-                run,
-                workflow,
-                caps,
-            } => self.handle_submit(run, workflow, caps)?,
-            ShardCommand::SubmitPrePersisted {
-                run,
-                workflow,
-                caps,
-            } => self.handle_submit_pre_persisted(run, workflow, caps)?,
-            ShardCommand::SubmitWithInputs {
-                run,
-                workflow,
-                inputs,
-                caps,
-            } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
-            ShardCommand::SubmitWithContracts {
-                run,
-                workflow,
-                caps,
-                action_contracts,
-            } => self.handle_submit_with_contracts(run, workflow, caps, &action_contracts)?,
-            ShardCommand::SubmitWithInputsAndContracts {
-                run,
-                workflow,
-                inputs,
-                caps,
-                action_contracts,
-            } => self.handle_submit_with_inputs_and_contracts(
-                run,
-                workflow,
-                &inputs,
-                caps,
-                &action_contracts,
-            )?,
-            ShardCommand::Resume { run } => {
-                let resumed = self.handle_resume(run).map_err(RuntimeError::from)?;
-                if resumed.status == crate::shard::ResumeStatus::AlreadyRunning {
-                    self.drive_one_pending_run()?;
-                }
-            }
-            ShardCommand::OpenGate {
-                gate,
-                opened_at_ms,
-                requester,
-            } => {
-                self.open_gate(gate, opened_at_ms, requester)?;
-            }
-            ShardCommand::SubmitGateDecision { run, input } => {
-                self.submit_gate_decision(run, input)?;
-            }
-            ShardCommand::EscalateGate { run, gate, now_ms } => {
-                self.escalate_timed_out_gate(run, gate, now_ms)?;
-            }
-            ShardCommand::RegisteredActionCompleted {
-                ticket,
-                receipt,
-                output,
-            } => {
-                self.handle_registered_action_completion(ticket, receipt, output)?;
-            }
-            ShardCommand::ActionCompleted { ticket, output } => {
-                self.handle_action_completion(ticket, output)?;
-            }
-            ShardCommand::ActionCompletedLegacy { run, step } => {
-                self.handle_legacy_action_completion(run, step)?;
-            }
-            ShardCommand::ActionFailed { ticket, failure } => {
-                self.handle_action_failure(ticket, failure)?;
-            }
-            ShardCommand::RuntimeActionFailed { ticket, failure } => {
-                self.handle_action_failure(ticket, failure)
-                    .map_err(Self::runtime_action_failure_error)?;
-            }
-            ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
-            ShardCommand::TimerFired {
-                run,
-                generation,
-                deadline,
-                kind,
-            } => self.handle_timer(run, generation, deadline, kind)?,
-            ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
-            ShardCommand::Kill { run, reason } => self.handle_kill(run, reason)?,
-            ShardCommand::Inspect { run, correlation } => {
-                self.handle_inspect(run, correlation);
-            }
-            ShardCommand::Recover { command } => {
-                self.handle_recover(*command)?;
-            }
-            ShardCommand::Shutdown => {
-                self.shutting_down = true;
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
+        let pending_run = queued.command.run_id();
+        self.pending_quota_reservation = queued
+            .quota
+            .zip(pending_run)
+            .map(|(reservation, run)| (run, reservation));
+        let cmd = queued.command;
+        let submit_run = submission_run(&cmd);
+        let result = self.dispatch_command(cmd);
+        self.finish_queued_quota(submit_run, result)
     }
 
     fn runtime_action_failure_error(error: RuntimeError) -> RuntimeError {

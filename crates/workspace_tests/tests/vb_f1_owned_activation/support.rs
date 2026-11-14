@@ -97,14 +97,19 @@ impl Case {
     }
 }
 
-pub(super) fn header(run: RunId, workflow: &CompiledWorkflow) -> RunHeaderRecord {
-    RunHeaderRecord {
+pub(super) fn header(run: RunId, workflow: &CompiledWorkflow) -> TestResult<RunHeaderRecord> {
+    let accepted_at_ms = u64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_millis(),
+    )?;
+    Ok(RunHeaderRecord {
         run,
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
-    }
+        accepted_at_ms,
+    })
 }
 
 pub(super) fn config(budget: u64, queue: usize, capacity: usize) -> ShardConfig {
@@ -126,21 +131,79 @@ pub(super) fn runtime(journal: SharedRuntimeJournal, config: ShardConfig) -> Tes
 
 pub(super) fn assert_pristine(case: &Case, journal: &FjallJournal) -> TestResult {
     let events = journal.events_for_run_full(case.run)?;
-    assert_eq!(events.len(), 3);
-    assert!(
-        matches!(events.first(), Some(vb_storage::JournalEvent::RunAccepted { run, seq, workflow })
-        if *run == case.run && seq.get() == 0 && *workflow == case.workflow.digest())
+    assert_eq!(events.len(), 4);
+    let accepted = events
+        .iter()
+        .find(|event| matches!(event, vb_storage::JournalEvent::RunAccepted { .. }))
+        .ok_or("accepted event missing")?;
+    assert!(matches!(
+        accepted,
+        vb_storage::JournalEvent::RunAccepted { run, seq, workflow }
+        if *run == case.run && seq.get() == 0 && *workflow == case.workflow.digest()
+    ));
+    let admission = events
+        .iter()
+        .find(|event| matches!(event, vb_storage::JournalEvent::RunAdmissionBudget { .. }))
+        .ok_or("budgeted admission missing")?;
+    assert!(matches!(
+        admission,
+        vb_storage::JournalEvent::RunAdmissionBudget {
+            run, input_digest: vb_storage::RunInputBinding::Digest(digest), ..
+        }
+        if *run == case.run && *digest == case.input_digest
+    ));
+    assert_eq!(
+        admission.seq().get(),
+        accepted
+            .seq()
+            .get()
+            .checked_add(1)
+            .ok_or("accepted sequence overflow")?
     );
-    assert!(
-        matches!(events.get(1), Some(vb_storage::JournalEvent::RunAdmission {
-        run, seq, input_digest: vb_storage::RunInputBinding::Digest(digest), .. })
-        if *run == case.run && seq.get() == 1 && *digest == case.input_digest)
-    );
-    assert!(
-        matches!(events.get(2), Some(vb_storage::JournalEvent::CompatibilityDecisionEvent { run, seq, decision })
-        if *run == case.run && seq.get() == 2
+    let compatibility = events
+        .iter()
+        .find(|event| {
+            matches!(
+                event,
+                vb_storage::JournalEvent::CompatibilityDecisionEvent { .. }
+            )
+        })
+        .ok_or("compatibility decision missing")?;
+    assert!(matches!(
+        compatibility,
+        vb_storage::JournalEvent::CompatibilityDecisionEvent { run, decision, .. }
+        if *run == case.run
             && decision.class == vb_storage::compat::CompatibilityClass::Identical
-            && decision.boundary == vb_storage::compat::CompatBoundary::IrVersion)
+            && decision.boundary == vb_storage::compat::CompatBoundary::IrVersion
+    ));
+    assert_eq!(
+        compatibility.seq().get(),
+        admission
+            .seq()
+            .get()
+            .checked_add(1)
+            .ok_or("admission sequence overflow")?
+    );
+    let origin = events
+        .iter()
+        .find(|event| matches!(event, vb_storage::JournalEvent::RunBudgetOriginEvent { .. }))
+        .ok_or("budget origin missing")?;
+    let accepted_at_ms = journal
+        .run_header(case.run)?
+        .ok_or("run header missing")?
+        .accepted_at_ms;
+    assert!(matches!(
+        origin,
+        vb_storage::JournalEvent::RunBudgetOriginEvent { run, started_millis, .. }
+        if *run == case.run && *started_millis == accepted_at_ms
+    ));
+    assert_eq!(
+        origin.seq().get(),
+        compatibility
+            .seq()
+            .get()
+            .checked_add(1)
+            .ok_or("compatibility sequence overflow")?
     );
     let record = journal
         .owned_run_inputs(
@@ -150,7 +213,7 @@ pub(super) fn assert_pristine(case: &Case, journal: &FjallJournal) -> TestResult
             &case.workflow,
         )?
         .ok_or("owned receipt missing")?;
-    record.validate_admission(events.get(1).ok_or("admission missing")?)?;
+    record.validate_admission(admission)?;
     assert_eq!(record.checkpoint(), &case.initial);
     Ok(())
 }
@@ -171,7 +234,7 @@ fn persist(
         source.clone(),
         artifact.clone(),
         record,
-        header(run, workflow),
+        header(run, workflow)?,
     )?;
     {
         let journal = FjallJournal::open(directory.path(), None)?;
@@ -197,7 +260,7 @@ pub(super) fn additional_run(case: &Case, journal: &FjallJournal, run: RunId) ->
         case.source.clone(),
         case.artifact.clone(),
         record,
-        header(run, &case.workflow),
+        header(run, &case.workflow)?,
     )?;
     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
     Ok(())

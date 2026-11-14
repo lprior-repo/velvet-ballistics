@@ -75,6 +75,26 @@ impl StorageRuntimeJournal {
         batch.commit().map_err(RuntimeError::from)
     }
 
+    fn append_runtime_admission_batch(
+        journal: &FjallJournal,
+        profile: DurabilityProfile,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        let mut storage_events = Vec::new();
+        storage_events
+            .try_reserve(events.len())
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::QueueFull))?;
+        for (offset, event) in events.iter().enumerate() {
+            let seq = Self::sequence_at_offset(start_seq, offset)?;
+            storage_events.push(Self::storage_event(event.clone(), seq)?);
+        }
+        journal
+            .append_runtime_admission_batch(&storage_events, &inputs, profile)
+            .map_err(RuntimeError::from)
+    }
+
     fn sequence_at_offset(start_seq: EventSeq, offset: usize) -> RuntimeResult<EventSeq> {
         let offset = u64::try_from(offset)
             .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
@@ -89,131 +109,25 @@ impl StorageRuntimeJournal {
         event: RuntimeJournalEvent,
         seq: EventSeq,
     ) -> RuntimeResult<Option<JournalEvent>> {
+        use RuntimeJournalEvent::*;
         match event {
-            RuntimeJournalEvent::RunSubmitted { run, workflow } => {
-                Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
+            RunAdmission { admission } => Ok(Some(Self::admission_storage_event(admission, seq))),
+            event
+            @ (RunSubmitted { .. } | RunFailed { .. } | RunKilled { .. } | Resumed { .. }) => {
+                Self::run_status_event(event, seq)
             }
-            RuntimeJournalEvent::RunAdmission { admission } => {
-                if let Some(budget) = admission.budget() {
-                    Ok(Some(JournalEvent::RunAdmissionBudget {
-                        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-                        run: admission.run_id(),
-                        seq,
-                        artifact_digest: admission.artifact_digest(),
-                        policy_pin: admission.policy_pin(),
-                        granted_capabilities: admission.granted_capabilities().clone(),
-                        policy: admission.policy(),
-                        budget,
-                    }))
-                } else {
-                    Ok(Some(JournalEvent::RunAdmission {
-                        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-                        run: admission.run_id(),
-                        seq,
-                        artifact_digest: admission.artifact_digest(),
-                        policy_pin: admission.policy_pin(),
-                        granted_capabilities: admission.granted_capabilities().clone(),
-                        policy: admission.policy(),
-                    }))
-                }
+            event @ RunFinished { .. } => Self::run_finished_event(event, seq),
+            event @ RunCancelled { .. } => Self::run_cancelled_event(event, seq),
+            event @ RetryCheckpoint { .. } => Self::run_retry_event(event, seq),
+            event @ (CompatibilityDecision { .. } | RunBudgetOrigin { .. }) => {
+                Self::run_compatibility_event(event, seq)
             }
-            RuntimeJournalEvent::RetryCheckpoint {
-                run,
-                attempt,
-                step,
-                payload_digest,
-                payload,
-            } => Ok(Some(JournalEvent::RetryCheckpoint {
-                run,
-                seq,
-                attempt,
-                step,
-                payload_digest,
-                payload,
-            })),
-            RuntimeJournalEvent::RunFinished {
-                run,
-                result,
-                attempt,
-            } => Ok(Some(JournalEvent::RunFinished {
-                run,
-                seq,
-                result,
-                attempt,
-            })),
-            RuntimeJournalEvent::CompatibilityDecision { run, decision } => {
-                Ok(Some(JournalEvent::CompatibilityDecisionEvent {
-                    run,
-                    seq,
-                    decision,
-                }))
+            event @ TenantAdmission { .. } => Self::run_tenant_event(event, seq),
+            event @ (StepStarted { .. } | StepFailed { .. }) => {
+                Self::run_step_status_event(event, seq)
             }
-            RuntimeJournalEvent::TenantAdmission {
-                run,
-                tenant,
-                cost_units,
-            } => Ok(Some(JournalEvent::TenantAdmissionEvent {
-                run,
-                seq,
-                tenant,
-                cost_units,
-            })),
-            RuntimeJournalEvent::RunFailed { run, attempt } => {
-                Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
-            }
-            RuntimeJournalEvent::RunCancelled {
-                run,
-                reason,
-                attempt,
-            } => Ok(Some(JournalEvent::RunCancelled {
-                run,
-                seq,
-                attempt,
-                reason,
-            })),
-            RuntimeJournalEvent::RunKilled { run, attempt } => {
-                Ok(Some(JournalEvent::RunKilled { run, seq, attempt }))
-            }
-            RuntimeJournalEvent::Resumed { run, timestamp } => {
-                resumed_storage_event(run, seq, timestamp).map(Some)
-            }
-            RuntimeJournalEvent::StepStarted { run, step, attempt } => {
-                Ok(Some(JournalEvent::StepStarted {
-                    run,
-                    seq,
-                    step,
-                    attempt,
-                }))
-            }
-            RuntimeJournalEvent::StepFailed { run, step, attempt } => {
-                Ok(Some(JournalEvent::StepFailed {
-                    run,
-                    seq,
-                    step,
-                    attempt,
-                }))
-            }
-            RuntimeJournalEvent::StepSucceeded {
-                run, step, output, ..
-            } => Ok(Some(JournalEvent::StepSucceeded {
-                run,
-                seq,
-                step,
-                output,
-            })),
-            RuntimeJournalEvent::ActionScheduled { .. }
-            | RuntimeJournalEvent::ActionCompleted { .. }
-            | RuntimeJournalEvent::ActionScheduledTicket { .. }
-            | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
-            | RuntimeJournalEvent::ActionFailed { .. }
-            | RuntimeJournalEvent::ActionAbandoned { .. }
-            | RuntimeJournalEvent::RetryTimerScheduled { .. }
-            | RuntimeJournalEvent::WaitScheduled { .. }
-            | RuntimeJournalEvent::WaitResolved { .. }
-            | RuntimeJournalEvent::AskScheduled { .. }
-            | RuntimeJournalEvent::AskAnswered { .. }
-            | RuntimeJournalEvent::AskTimedOut { .. }
-            | RuntimeJournalEvent::SlotWritten { .. } => Ok(None),
+            event @ StepSucceeded { .. } => Self::run_step_success_event(event, seq),
+            _ => Ok(None),
         }
     }
 }

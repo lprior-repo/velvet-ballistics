@@ -144,7 +144,8 @@ impl Shard {
         let (journal_events, trace_events) = self
             .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+        if !self
+            .charge_drive_journal_bytes(&mut state, &journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?
         {
             return self.fail_run_on_journal_budget(run, state, trace_events);

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{JournalEvent, RunHeaderRecord, WorkflowSourceRecord};
+use crate::{EventSeq, JournalEvent, RunHeaderRecord, WorkflowSourceRecord};
 use vb_core::RuntimePolicy;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -83,7 +83,7 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
         let expected_event_count = if policy == RuntimePolicy::Relaxed {
             0
         } else {
-            3
+            4
         };
         let events = journal.events_for_run(retained.run())?;
         assert_eq!(events.len(), expected_event_count);
@@ -96,6 +96,16 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
                 JournalEvent::CompatibilityDecisionEvent { decision, .. }
                     if decision.class == crate::compat::CompatibilityClass::Identical
                         && decision.boundary == crate::compat::CompatBoundary::IrVersion
+            ));
+            assert!(matches!(
+                events.get(3),
+                Some(JournalEvent::RunBudgetOriginEvent {
+                    run,
+                    seq,
+                    started_millis
+                }) if *run == RunId::new(7)
+                    && *seq == EventSeq::new(3)
+                    && *started_millis == 123
             ));
         }
         assert!(
@@ -112,6 +122,60 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
             )?)?
         );
     }
+    Ok(())
+}
+
+#[test]
+fn failed_runtime_admission_batch_publishes_neither_event_nor_inputs() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let journal = FjallJournal::open(directory.path(), None)?;
+    let workflow = super::tests::workflow()?;
+    let artifact =
+        crate::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])?;
+    let run = RunId::new(91);
+    let inputs = RunInputsRecord::new(
+        run,
+        artifact.digest,
+        workflow.digest(),
+        &workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::I64(73))]),
+    )?;
+    let events = [
+        JournalEvent::RunAccepted {
+            run,
+            seq: crate::EventSeq::new(0),
+            workflow: workflow.digest(),
+        },
+        JournalEvent::RunAdmission {
+            run,
+            seq: crate::EventSeq::new(1),
+            artifact_digest: artifact.digest,
+            input_digest: crate::RunInputBinding::Digest(inputs.input_digest()),
+            granted_capabilities: vb_core::CapabilitySet::empty(),
+            policy: RuntimePolicy::Strict,
+            policy_pin: crate::RunPolicyPin::Unverified,
+        },
+    ];
+
+    journal.fail_next_batch_commit_for_test();
+    assert!(matches!(
+        journal.append_runtime_admission_batch(
+            &events,
+            &inputs,
+            crate::types::DurabilityProfile::Strict,
+        ),
+        Err(JournalError::Fjall(_))
+    ));
+    assert!(journal.events_for_run(run)?.is_empty());
+    assert!(journal.run_inputs(run)?.is_none());
+
+    journal.append_runtime_admission_batch(
+        &events,
+        &inputs,
+        crate::types::DurabilityProfile::Strict,
+    )?;
+    assert_eq!(journal.events_for_run(run)?, events);
+    assert_eq!(journal.run_inputs(run)?, Some(inputs));
     Ok(())
 }
 

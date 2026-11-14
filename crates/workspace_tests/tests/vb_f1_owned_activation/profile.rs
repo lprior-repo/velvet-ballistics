@@ -3,8 +3,36 @@ use std::sync::Arc;
 use vb_core::RuntimePolicy;
 use vb_runtime::RuntimeError;
 use vb_runtime::journal::{
-    QueuedStorageRuntimeJournal, StorageRuntimeJournal, VolatileRuntimeJournal,
+    QueuedStorageRuntimeJournal, RuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal,
+    StorageRuntimeJournal, VolatileRuntimeJournal,
 };
+
+/// Test-only RuntimeJournal wrapper that intentionally omits durability_profile
+/// so the trait default None applies. Holds a volatile inner journal and forwards
+/// the two required trait methods, append and probe. This does not claim any
+/// durability or storage backing, which is exactly the unknown/default profile
+/// condition.
+struct UnknownProfileVolatileJournal {
+    inner: VolatileRuntimeJournal,
+}
+
+impl UnknownProfileVolatileJournal {
+    fn shared() -> SharedRuntimeJournal {
+        Arc::new(Self {
+            inner: VolatileRuntimeJournal::new(),
+        })
+    }
+}
+
+impl RuntimeJournal for UnknownProfileVolatileJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
+        self.inner.append(event)
+    }
+
+    fn probe(&self) -> vb_runtime::RuntimeResult<()> {
+        self.inner.probe()
+    }
+}
 
 #[test]
 fn runtime_strict_policy_does_not_upgrade_a_journaled_adapter() -> TestResult {
@@ -60,7 +88,7 @@ fn queued_strict_profile_still_refuses_async_strict_ack() -> TestResult {
 #[test]
 fn unknown_default_profile_has_no_strict_activation_authority() -> TestResult {
     let case = Case::new(false, RuntimePolicy::Strict)?;
-    let adapter = VolatileRuntimeJournal::shared();
+    let adapter = UnknownProfileVolatileJournal::shared();
     assert_eq!(adapter.durability_profile(), None);
     let runtime = runtime(adapter, config(10, 8, 8))?;
     assert!(matches!(

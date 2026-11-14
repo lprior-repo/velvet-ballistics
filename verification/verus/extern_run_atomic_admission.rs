@@ -14,7 +14,9 @@
 // the prepared-proof gate-count decision
 // (`vb_storage::admission::submit_artifact_with_contracts` at
 // crates/vb_storage/src/admission.rs:96-105 performs no gate/flag
-// validation; the prepared proof carries gate_count 0 per
+// validation; it delegates to private submit_prepared_artifact
+// (crates/vb_storage/src/admission.rs:114-136) which owns the Strict tag
+// check, issuance and readback). The prepared proof carries gate_count 0 per
 // `verification_proof_core` at crates/vb_storage/src/admission/proof.rs:103-118,
 // with only bounded_claimed and idempotency_verified_claimed set by
 // `prepare_with_profile` at
@@ -22,6 +24,8 @@
 // payload-tag surface (`PayloadTag`, `classify_accepted_artifact`,
 // `is_strict_accepted_artifact_tag` at
 // crates/vb_storage/src/admission/payload_tag.rs:10-39).
+// The submit wrapper and helper citations describe unproved call-chain
+// context; this extern does not bind or prove their executable bodies.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 

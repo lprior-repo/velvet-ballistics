@@ -107,6 +107,35 @@ impl Runtime {
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
+    /// Opens a bound manual gate and suspends the run until an operator
+    /// decision. Bound gates carry artifact/policy/input/attempt binding;
+    /// the legacy path rejects them.
+    pub fn open_bound_gate(
+        &self,
+        run: RunId,
+        gate: vb_core::manual_gate::BoundManualGate,
+        opened_at_ms: u64,
+        requester: vb_core::manual_gate::ApproverId,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for_run(run)?;
+        shard.enqueue(ShardCommand::OpenBoundGate {
+            gate,
+            opened_at_ms,
+            requester,
+        })
+    }
+
+    /// Escalates an open bound gate after its deadline.
+    pub fn escalate_bound_gate(
+        &self,
+        run: RunId,
+        gate: vb_core::manual_gate::GateId,
+        now_ms: u64,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for_run(run)?;
+        shard.enqueue(ShardCommand::EscalateBoundGate { run, gate, now_ms })
+    }
+
     /// Submits an operator decision to an open manual gate.
     ///
     /// The gate must already be open for the run: the submission is
@@ -120,6 +149,52 @@ impl Runtime {
         let shard = self.shard_for_run(run)?;
         shard.validate_open_gate_decision(run, &input)?;
         shard.enqueue(ShardCommand::SubmitGateDecision { run, input })
+    }
+
+    /// Submits an operator decision to an open bound manual gate.
+    ///
+    /// Bound gates carry artifact/policy/input/attempt binding. A legacy gate
+    /// submitted here is rejected with a typed legacy-without-binding error.
+    /// Direct Rust callers are recorded as in-process callers.
+    pub fn submit_bound_gate_decision(
+        &self,
+        run: RunId,
+        input: GateDecisionInput,
+    ) -> RuntimeResult<()> {
+        self.submit_bound_gate_decision_with_trust(
+            run,
+            input,
+            vb_core::manual_gate::OperatorTrust::InProcessCaller,
+        )
+    }
+
+    /// Submits a decision received through the local Unix-socket server.
+    /// The IPC payload cannot supply or override this trust provenance.
+    pub fn submit_bound_gate_decision_from_local_socket(
+        &self,
+        run: RunId,
+        input: GateDecisionInput,
+    ) -> RuntimeResult<()> {
+        self.submit_bound_gate_decision_with_trust(
+            run,
+            input,
+            vb_core::manual_gate::OperatorTrust::LocalSocketClaim,
+        )
+    }
+
+    fn submit_bound_gate_decision_with_trust(
+        &self,
+        run: RunId,
+        input: GateDecisionInput,
+        operator_trust: vb_core::manual_gate::OperatorTrust,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for_run(run)?;
+        shard.validate_open_bound_gate_decision(run, &input)?;
+        shard.enqueue(ShardCommand::SubmitBoundGateDecision {
+            run,
+            input,
+            operator_trust,
+        })
     }
 
     /// Legacy run-only timer delivery is fail-closed because it carries no authority.
@@ -144,6 +219,9 @@ impl Runtime {
     /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run owner.
     pub fn timer_entry_fired(&self, entry: TimerEntry) -> RuntimeResult<()> {
         let shard = self.shard_for_run(entry.run)?;
+        if shard.timer_entry(entry.run) != Some(entry) {
+            return Err(RuntimeError::InvalidTimerFire);
+        }
         shard.enqueue(ShardCommand::TimerFired {
             run: entry.run,
             generation: entry.generation,

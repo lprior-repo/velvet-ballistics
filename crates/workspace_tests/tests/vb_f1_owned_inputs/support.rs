@@ -112,14 +112,19 @@ pub(super) fn record(f: &Fixture) -> TestResult<OwnedRunInputsRecordV1> {
     )?)
 }
 
-pub(super) fn header(f: &Fixture) -> RunHeaderRecord {
-    RunHeaderRecord {
+pub(super) fn header(f: &Fixture) -> TestResult<RunHeaderRecord> {
+    let accepted_at_ms = u64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_millis(),
+    )?;
+    Ok(RunHeaderRecord {
         run: f.run,
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: f.workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
-    }
+        accepted_at_ms,
+    })
 }
 
 pub(super) fn submission(f: &Fixture) -> TestResult<RunSubmission> {
@@ -127,6 +132,6 @@ pub(super) fn submission(f: &Fixture) -> TestResult<RunSubmission> {
         f.source.clone(),
         f.artifact.clone(),
         record(f)?,
-        header(f),
+        header(f)?,
     )?)
 }

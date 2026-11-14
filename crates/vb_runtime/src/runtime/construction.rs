@@ -26,9 +26,14 @@ impl Runtime {
     ) -> Self {
         let count = shard_count.get();
         let mut shards = Vec::with_capacity(count);
+        let quota = crate::quota::SharedQuotaLedger::new();
         let mut index = 0usize;
         while index < count {
-            shards.push(Shard::new_with_journal(config, journal.clone()));
+            shards.push(Shard::new_with_journal_and_quota(
+                config,
+                journal.clone(),
+                quota.clone(),
+            ));
             index = index.saturating_add(1);
         }
         Self {
@@ -37,6 +42,7 @@ impl Runtime {
             journal,
             policy: config.policy,
             live_policy: crate::policy::LivePolicy::new(),
+            quota,
         }
     }
 

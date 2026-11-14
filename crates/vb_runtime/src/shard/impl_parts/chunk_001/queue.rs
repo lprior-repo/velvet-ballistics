@@ -9,9 +9,32 @@ impl Shard {
         if self.shutting_down {
             return Err(RuntimeError::ShutdownInProgress);
         }
-        self.validate_secret_submission(&cmd)?;
-        match &cmd {
+        if let ShardCommand::ActivateOwnedSubmission {
+            run,
+            expected_source_digest,
+        } = &cmd
+        {
+            let verified = self.preflight_owned_activation(*run, *expected_source_digest)?;
+            return self.enqueue_owned_activation(*run, *expected_source_digest, verified);
+        }
+        self.prepare_submission_inputs(&cmd)?;
+        self.probe_submission_journal(&cmd)?;
+        let limit = self.admitted_queue_depth(&cmd)?;
+        let duplicate_active = submission_run(&cmd).is_some_and(|run| self.run_state_contains(run));
+        let quota = if duplicate_active {
+            None
+        } else {
+            self.pending_submission_quota(&cmd)?
+        };
+        self.command_queue
+            .enqueue_with_reservation(cmd, limit, quota, Some(&self.quota))
+    }
+
+    fn prepare_submission_inputs(&self, cmd: &ShardCommand) -> RuntimeResult<()> {
+        self.validate_secret_submission(cmd)?;
+        match cmd {
             ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitWithLifetimeCap { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
             | ShardCommand::SubmitWithContracts { workflow, .. } => {
                 let inputs = self.prepare_secret_inputs(workflow, &[])?;
@@ -28,8 +51,13 @@ impl Shard {
             }
             _ => {}
         }
-        match &cmd {
+        Ok(())
+    }
+
+    fn probe_submission_journal(&self, cmd: &ShardCommand) -> RuntimeResult<()> {
+        match cmd {
             ShardCommand::Submit { .. }
+            | ShardCommand::SubmitWithLifetimeCap { .. }
             | ShardCommand::ActivateOwnedSubmission { .. }
             | ShardCommand::SubmitPrePersisted { .. }
             | ShardCommand::SubmitWithInputs { .. }
@@ -40,8 +68,27 @@ impl Shard {
             }
             _ => {}
         }
-        let limit = self.admitted_queue_depth(&cmd)?;
-        self.command_queue.enqueue_with_limit(cmd, limit)
+        Ok(())
+    }
+
+    pub(crate) fn enqueue_owned_activation(
+        &self,
+        run: vb_core::RunId,
+        source: vb_core::WorkflowDigest,
+        verified: crate::shard::lifecycle::owned_activation::VerifiedOwnedQueueDepth,
+    ) -> RuntimeResult<()> {
+        if !verified.matches(run, source) {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "owned_activation_queue_authority_mismatch",
+            });
+        }
+        let command = ShardCommand::ActivateOwnedSubmission {
+            run,
+            expected_source_digest: source,
+        };
+        let limit = minimum_queue_depth(self.active_run_queue_depth(&command), verified.depth());
+        self.command_queue
+            .enqueue_with_reservation(command, limit, None, Some(&self.quota))
     }
 
     /// Resolves the admitted per-run queue depth for a command, when one
@@ -54,24 +101,48 @@ impl Shard {
     fn admitted_queue_depth(&self, cmd: &ShardCommand) -> RuntimeResult<Option<u32>> {
         match cmd {
             ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitWithLifetimeCap { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
             | ShardCommand::SubmitWithInputs { workflow, .. }
             | ShardCommand::SubmitWithContracts { workflow, .. }
-            | ShardCommand::SubmitWithInputsAndContracts { workflow, .. } => {
-                let budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
-                    .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
-                        digest: workflow.digest(),
-                    })?;
-                Ok(Some(budget.max_queue_depth))
+            | ShardCommand::SubmitWithInputsAndContracts { workflow, .. }
+            | ShardCommand::SubmitTenantScoped { workflow, .. }
+            | ShardCommand::SubmitTenantWithInputsAndContracts { workflow, .. } => {
+                self.workflow_queue_depth(cmd, workflow)
             }
-            ShardCommand::Recover { command } => Ok(command.admitted_queue_depth()),
-            _ => Ok(cmd.run_id().and_then(|run| {
-                self.run_state_get(run)
-                    .and_then(|state| state.admission.as_ref())
-                    .and_then(|admission| admission.budget())
-                    .map(|budget| budget.max_queue_depth)
-            })),
+            ShardCommand::Recover { command } => Ok(minimum_queue_depth(
+                self.active_run_queue_depth(cmd),
+                command.admitted_queue_depth(),
+            )),
+            _ => Ok(self.active_run_queue_depth(cmd)),
         }
+    }
+
+    fn workflow_queue_depth(
+        &self,
+        command: &ShardCommand,
+        workflow: &vb_core::workflow::CompiledWorkflow,
+    ) -> RuntimeResult<Option<u32>> {
+        let budget =
+            vb_core::budget::AggregateResourceBudget::from_workflow(workflow).map_err(|_| {
+                RuntimeError::AdmissionArtifactInvalid {
+                    digest: workflow.digest(),
+                }
+            })?;
+        let candidate = budget.max_queue_depth;
+        Ok(Some(
+            self.active_run_queue_depth(command)
+                .map_or(candidate, |admitted| admitted.min(candidate)),
+        ))
+    }
+
+    fn active_run_queue_depth(&self, command: &ShardCommand) -> Option<u32> {
+        command
+            .run_id()
+            .and_then(|run| self.run_state_get(run))
+            .and_then(|state| state.admission.as_ref())
+            .and_then(|admission| admission.budget())
+            .map(|budget| budget.max_queue_depth)
     }
 
     /// Returns the number of commands currently pending for a run.
@@ -114,5 +185,36 @@ impl Shard {
 
     fn run_capacity_error(capacity: usize) -> RuntimeError {
         RuntimeError::ActiveRunCapacityExceeded { capacity }
+    }
+}
+
+fn minimum_queue_depth(active: Option<u32>, incoming: Option<u32>) -> Option<u32> {
+    match (active, incoming) {
+        (Some(active), Some(incoming)) => Some(active.min(incoming)),
+        (Some(depth), None) | (None, Some(depth)) => Some(depth),
+        (None, None) => None,
+    }
+}
+
+fn submission_run(command: &ShardCommand) -> Option<RunId> {
+    match command {
+        ShardCommand::Submit { run, .. }
+        | ShardCommand::SubmitWithLifetimeCap { run, .. }
+        | ShardCommand::SubmitTenantScoped { run, .. }
+        | ShardCommand::SubmitTenantWithInputsAndContracts { run, .. }
+        | ShardCommand::SubmitPrePersisted { run, .. }
+        | ShardCommand::SubmitWithInputs { run, .. }
+        | ShardCommand::SubmitWithContracts { run, .. }
+        | ShardCommand::SubmitWithInputsAndContracts { run, .. } => Some(*run),
+        ShardCommand::Recover { command }
+            if matches!(
+                &command.admission,
+                crate::shard::types::RecoveredAdmissionKind::Historical(admission)
+                    if admission.budget().is_some()
+            ) =>
+        {
+            Some(command.run)
+        }
+        _ => None,
     }
 }

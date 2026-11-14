@@ -12,6 +12,8 @@ pub enum ShutdownPhase {
     ShardDrain { shard: usize },
     /// Committing accepted journal writes and their durability barrier.
     JournalDrain,
+    /// Releasing admitted-cost reservations after a durable drain.
+    QuotaRelease,
 }
 
 /// A completed quiescence and durability barrier, with suspended work retained.
@@ -98,7 +100,7 @@ impl ShutdownFailure {
 pub(super) fn shutdown(runtime: &mut Runtime) -> Result<ShutdownReport, ShutdownFailure> {
     let commands_drained = quiesce(runtime)?;
     let journal = drain_journal(runtime)?;
-    Ok(release_timers(runtime, commands_drained, journal))
+    release_timers(runtime, commands_drained, journal)
 }
 
 fn quiesce(runtime: &mut Runtime) -> Result<usize, ShutdownFailure> {
@@ -140,16 +142,26 @@ fn release_timers(
     runtime: &mut Runtime,
     commands_drained: usize,
     journal: JournalWriterFlushReport,
-) -> ShutdownReport {
+) -> Result<ShutdownReport, ShutdownFailure> {
     let remaining = runtime.pending_boundary_snapshot(DETAIL_LIMIT_PER_SHARD);
     let timers_released = remaining.pending_timer_count();
     for shard in &mut runtime.shards {
         shard.clear_pending_timers();
     }
-    ShutdownReport {
+    for shard in &mut runtime.shards {
+        if let Err(error) = shard.release_all_admission_quotas() {
+            return Err(ShutdownFailure::capture(
+                runtime,
+                ShutdownPhase::QuotaRelease,
+                error,
+                runtime.shards.len(),
+            ));
+        }
+    }
+    Ok(ShutdownReport {
         commands_drained,
         remaining,
         timers_released,
         journal,
-    }
+    })
 }

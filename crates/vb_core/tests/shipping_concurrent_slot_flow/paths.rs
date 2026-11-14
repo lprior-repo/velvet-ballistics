@@ -1,8 +1,8 @@
 use super::{assert_error, fixtures as f};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind as K, ErrorRouting, InputSlotKind, SlotBranch, SlotFlowFailure,
-    WorkflowParts, validate_slot_flow,
+    CompiledNode, CompiledNodeKind as K, CompiledWorkflow, ErrorRouting, InputSlotKind, SlotBranch,
+    SlotFlowFailure, WorkflowParts, validate_slot_flow,
 };
 
 fn group(join: u16) -> CompiledNode {
@@ -118,6 +118,18 @@ fn action_error_value_is_assigned() {
 fn action_error_does_not_initialize_success_output() {
     let parts = action(1);
     assert_error(parts, 3, Some(1), SlotFlowFailure::UninitializedRead);
+}
+
+#[test]
+fn checked_constructor_rejects_action_fixture() {
+    let parts = action(1);
+    assert_eq!(
+        CompiledWorkflow::try_from_concurrent_parts(parts).map(|_| ()),
+        Err(vb_core::workflow::WorkflowError::ConcurrentLaneSuspension {
+            owner: StepIdx::new(0),
+            step: StepIdx::new(1),
+        })
+    );
 }
 
 #[test]

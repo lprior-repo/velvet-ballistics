@@ -13,9 +13,12 @@
 //! - `signals`: `EngineSignal`-fallback conversion.
 
 mod budget;
+mod concurrent_support;
 mod dispatch;
 mod handlers;
 mod handlers_compound;
+pub(crate) mod handlers_concurrent;
+mod handlers_concurrent_foreach;
 mod handlers_suspend;
 mod signals;
 

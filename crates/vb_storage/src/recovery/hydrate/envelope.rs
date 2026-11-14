@@ -116,8 +116,12 @@ pub(crate) fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bo
         | JournalEvent::PolicyDecisionEvent { .. }
         | JournalEvent::GateDecisionEvent { .. } => Ok(true),
         JournalEvent::GateOpenedEvent { .. } => Ok(true),
+        JournalEvent::GateOpenedBoundEvent { .. } | JournalEvent::GateDecisionBoundEvent { .. } => {
+            Ok(true)
+        }
         JournalEvent::CompatibilityDecisionEvent { .. }
-        | JournalEvent::TenantAdmissionEvent { .. } => Ok(true),
+        | JournalEvent::TenantAdmissionEvent { .. }
+        | JournalEvent::RunBudgetOriginEvent { .. } => Ok(true),
         JournalEvent::ActionScheduled { .. }
         | JournalEvent::ActionScheduledTicket { .. }
         | JournalEvent::ActionCompletedEvent { .. }

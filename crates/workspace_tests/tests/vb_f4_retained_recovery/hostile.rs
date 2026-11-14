@@ -1,8 +1,11 @@
 use super::*;
 use super::{owned::Case, wire};
 use vb_core::root_bundle::OwnedRootBundleError;
-use vb_runtime::{RuntimeError, recovery::RuntimeRecoveryProduct};
+use vb_runtime::RuntimeError;
 use vb_storage::{JournalError, OwnedInputError};
+
+#[path = "hostile/unknown_arena.rs"]
+mod unknown_arena;
 
 fn rejected(case: &Case) -> TestResult<RuntimeError> {
     let journal = case.open()?;
@@ -181,41 +184,5 @@ fn self_consistent_secret_descendant_with_clean_root_is_not_recovered() -> TestR
             OwnedRootBundleError::TaintMismatch { slot, actual: vb_core::Taint::Clean, .. }
         )) if slot == case.input))
     );
-    Ok(())
-}
-
-#[test]
-fn journal_owned_slot_writes_still_require_unknown_runtime_arenas() -> TestResult {
-    let case = Case::new("$input.data.profile.count")?;
-    let journal = case.open()?;
-    journal.append_journaled(&vb_storage::JournalEvent::SlotWrittenEvent {
-        run: RUN,
-        seq: vb_storage::EventSeq::new(3),
-        slot: case.input,
-        value: Some(postcard::to_allocvec(&SlotValue::List(
-            vb_core::ListId::new(999),
-        ))?),
-        extra: Some(
-            vb_storage::encode_slot_written_extra(vb_core::Taint::Clean, None)
-                .map_err(|error| format!("slot extra: {error:?}"))?,
-        ),
-        attempt: 1,
-    })?;
-    journal.persist_strict()?;
-    drop(journal);
-    let journal = case.open()?;
-    let runtime = runtime(journal.clone());
-    let product = runtime.recover_product(RUN)?;
-    assert!(
-        matches!(product, RuntimeRecoveryProduct::CannotResume(product) if product.reason() == "store_missing")
-    );
-    assert!(
-        matches!(runtime.recover_and_resume(RUN), Err(RuntimeError::RecoveryCannotResume { reason }) if reason == "store_missing")
-    );
-    assert_eq!(
-        runtime.pending_boundary_snapshot(8).command_queue_depth(),
-        0
-    );
-    assert_eq!(journal.events_for_run_full(RUN)?.len(), 4);
     Ok(())
 }

@@ -44,7 +44,7 @@ pub(super) fn validate(parts: &crate::workflow::WorkflowParts) -> FlowResult<()>
     if parts.nodes.len() > crate::limits::MAX_STEPS_PER_WORKFLOW {
         return Err(capacity());
     }
-    let regions = crate::workflow::concurrent_analyze::analyze(parts)
+    let regions = crate::workflow::concurrent_analyze::analyze_raw(parts)
         .map_err(|e| model_error(e, parts.entry))?;
     engine::validate(parts, &regions)
 }

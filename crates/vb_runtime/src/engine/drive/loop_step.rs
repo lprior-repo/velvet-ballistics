@@ -17,6 +17,10 @@ use crate::engine::types::{
 };
 use crate::primitives::collect::CollectStates;
 
+#[path = "loop_step/first_success_error.rs"]
+mod first_success_error;
+use first_success_error::{FirstSuccessErrorContext, route_resumed_first_success_error};
+
 /// Enhanced drive loop that handles all node kinds including
 /// iteration, compound, action, and suspension primitives.
 ///
@@ -36,17 +40,7 @@ pub fn drive_deterministic_full(
     granted: &vb_core::capability::CapabilitySet,
     state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    initialize_drive(run, plan)?;
-
-    // RE-004: thread a drive-state object through the loop so that
-    // emit_slot_evidence can record evidence gaps (read_slot errors)
-    // instead of silently swallowing them. The counter is owned by
-    // the loop body and only escapes the public drive_deterministic_full
-    // signature via the typed `RuntimeEngineError::EvidenceGapsRecorded`
-    // variant at the end of the drive (black-hat FINDING-002).
-    let mut drive_state = DriveState::new();
-
-    let signal = run_drive_loop(
+    drive_and_report_gaps(DriveLoopContext {
         plan,
         run,
         budget,
@@ -56,80 +50,119 @@ pub fn drive_deterministic_full(
         evidence,
         collect_states,
         granted,
-        &mut drive_state,
+        drive_state: DriveState::new(),
         state_run_attempt,
-    )?;
-
-    // RE-004 observability follow-up: surface the gap report through
-    // the existing `Result<_, RuntimeEngineError>` channel when the
-    // drive naturally terminated with `Finished` and at least one gap
-    // was recorded. A zero-gap drive, or any drive that ended with a
-    // suspension / continue signal, returns the natural `Ok(signal)`
-    // unchanged — suspending on a gap would prevent action-completion
-    // and async wait flows from ever resuming their workflows (the
-    // natural signal is the only artifact the runtime can use to
-    // route the run forward). Gaps accumulated during the drive are
-    // still observable to callers via the typed error variant when
-    // the workflow reaches its terminal Finished state, so the
-    // operator visibility demanded by black-hat FINDING-002 is
-    // preserved without breaking existing AwaitingAction/AwaitingWait/
-    // AwaitingAsk/Continue/StepBudgetExhausted flows.
-    let report = drive_state.take_evidence_gaps_report();
-    if report.count > 0 && matches!(signal, RuntimeSignal::Finished(_)) {
-        Err(RuntimeEngineError::EvidenceGapsRecorded {
-            count: report.count,
-            last_slot: report.last_slot,
-        })
-    } else {
-        Ok(signal)
-    }
+    })
 }
 
 /// Inner drive loop. Returns the natural `RuntimeSignal` from the
 /// drive; gap surfacing happens in [`drive_deterministic_full`].
-#[allow(clippy::too_many_arguments)]
-fn run_drive_loop(
-    plan: &CompiledWorkflow,
-    run: &mut RunFrame,
-    budget: &mut StepBudget,
-    store: &mut ValueStore,
-    contracts: &[ActionContract],
+struct DriveLoopContext<'a> {
+    plan: &'a CompiledWorkflow,
+    run: &'a mut RunFrame,
+    budget: &'a mut StepBudget,
+    store: &'a mut ValueStore,
+    contracts: &'a [ActionContract],
     retry_policy: RetryPolicy,
-    evidence: &mut EvidenceCollector,
-    collect_states: &mut CollectStates,
-    granted: &vb_core::capability::CapabilitySet,
-    drive_state: &mut DriveState,
+    evidence: &'a mut EvidenceCollector,
+    collect_states: &'a mut CollectStates,
+    granted: &'a vb_core::capability::CapabilitySet,
+    drive_state: DriveState,
     state_run_attempt: u16,
-) -> RuntimeEngineResult<RuntimeSignal> {
+}
+
+enum DriveStepResult {
+    RecoveredFailure,
+    Signal(RuntimeSignal),
+}
+
+/// Reports evidence gaps only after a natural terminal signal.
+fn drive_and_report_gaps(mut drive: DriveLoopContext<'_>) -> RuntimeEngineResult<RuntimeSignal> {
+    initialize_drive(drive.run, drive.plan)?;
+    let signal = run_drive_loop(&mut drive)?;
+    let report = drive.drive_state.take_evidence_gaps_report();
+    if report.count > 0 && matches!(signal, RuntimeSignal::Finished(_)) {
+        return Err(RuntimeEngineError::EvidenceGapsRecorded {
+            count: report.count,
+            last_slot: report.last_slot,
+        });
+    }
+    Ok(signal)
+}
+
+fn run_drive_loop(drive: &mut DriveLoopContext<'_>) -> RuntimeEngineResult<RuntimeSignal> {
     loop {
-        let Some(step) = begin_drive_step(plan, run, budget, evidence)? else {
+        let Some(step) = begin_drive_step(drive.plan, drive.run, drive.budget, drive.evidence)?
+        else {
             return Ok(RuntimeSignal::StepBudgetExhausted);
         };
-        let ctx = NodeDispatchContext {
-            plan,
-            run,
-            store,
-            node: step.node,
-            contracts,
-            retry_policy,
-            collect_states,
-            granted,
-            state_run_attempt,
-        };
-        let signal = execute_node_deferred(ctx)?;
-        finish_drive_step(
-            plan,
-            run,
-            evidence,
-            collect_states,
-            step,
-            &signal,
-            drive_state,
-        )?;
-        match signal {
-            RuntimeSignal::Continue => {}
-            other => return Ok(other),
+        match drive_one_step(drive, step)? {
+            DriveStepResult::RecoveredFailure => continue,
+            DriveStepResult::Signal(RuntimeSignal::Continue) => {}
+            DriveStepResult::Signal(signal) => return Ok(signal),
         }
+    }
+}
+
+fn drive_one_step(
+    drive: &mut DriveLoopContext<'_>,
+    step: crate::engine::drive::transitions::DriveStep<'_>,
+) -> RuntimeEngineResult<DriveStepResult> {
+    let signal = dispatch_drive_step(drive, &step)?;
+    let Some(signal) = signal else {
+        return Ok(DriveStepResult::RecoveredFailure);
+    };
+    finish_drive_step(
+        drive.plan,
+        drive.run,
+        drive.evidence,
+        drive.collect_states,
+        step,
+        &signal,
+        &mut drive.drive_state,
+    )?;
+    Ok(DriveStepResult::Signal(signal))
+}
+
+fn dispatch_drive_step(
+    drive: &mut DriveLoopContext<'_>,
+    step: &crate::engine::drive::transitions::DriveStep<'_>,
+) -> RuntimeEngineResult<Option<RuntimeSignal>> {
+    let ctx = NodeDispatchContext {
+        plan: drive.plan,
+        run: drive.run,
+        store: drive.store,
+        node: step.node,
+        contracts: drive.contracts,
+        retry_policy: drive.retry_policy,
+        collect_states: drive.collect_states,
+        granted: drive.granted,
+        state_run_attempt: drive.state_run_attempt,
+        budget: Some(drive.budget),
+        evidence: Some(drive.evidence),
+        drive_state: Some(&mut drive.drive_state),
+    };
+    match execute_node_deferred(ctx) {
+        Ok(signal) => Ok(Some(signal)),
+        Err(error) => route_drive_error(drive, step.pc, error),
+    }
+}
+
+fn route_drive_error(
+    drive: &mut DriveLoopContext<'_>,
+    step: vb_core::ids::StepIdx,
+    error: RuntimeEngineError,
+) -> RuntimeEngineResult<Option<RuntimeSignal>> {
+    let mut route = FirstSuccessErrorContext {
+        plan: drive.plan,
+        run: drive.run,
+        store: drive.store,
+        evidence: drive.evidence,
+    };
+    if route_resumed_first_success_error(&mut route, step, &error)? {
+        Ok(None)
+    } else {
+        Err(error)
     }
 }
 

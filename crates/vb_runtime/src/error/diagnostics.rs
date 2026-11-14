@@ -105,6 +105,9 @@ impl RuntimeError {
             Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
             Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
             Self::AdmissionArtifactInvalid { .. } => Self::ADMISSION_ARTIFACT_INVALID_CODE,
+            Self::ResourceQuotaExceeded { .. } | Self::ResourceAccountingUnderflow { .. } => {
+                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
+            }
             Self::AdmissionArtifactDigestMismatch { .. } => {
                 Self::ADMISSION_ARTIFACT_DIGEST_MISMATCH_CODE
             }
@@ -211,6 +214,8 @@ impl RuntimeError {
             | Self::OpenGateCapacityZero
             | Self::AdmissionArtifactNotFound { .. }
             | Self::AdmissionArtifactInvalid { .. }
+            | Self::ResourceQuotaExceeded { .. }
+            | Self::ResourceAccountingUnderflow { .. }
             | Self::AdmissionCapabilityDenied { .. }
             | Self::AdmissionCapabilityCountMismatch { .. }
             | Self::AdmissionActionRegistryMismatch { .. }

@@ -12,7 +12,7 @@ use canonical_branch_body::emit_scoped_branch_body;
 pub(super) mod iteration_body;
 pub(super) use canonical_branch_body::{MAX_BODY_NESTING_DEPTH, emit_scoped_typed_body};
 pub(super) use canonical_branch_body::{emit_body_result, emit_scoped_flat_body};
-pub(super) use iteration_body::{emit_iteration_body, iteration_body_width};
+pub(super) use iteration_body::{emit_iteration_body, for_each_overhead, iteration_body_width};
 #[path = "canonical_choose_conditions.rs"]
 mod canonical_choose_conditions;
 use canonical_choose_conditions::choose_node;

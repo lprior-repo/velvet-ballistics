@@ -430,7 +430,11 @@ fn recursive_owned_defaults_nulls_and_secret_payloads_survive_retention_and_runt
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms: u64::try_from(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)?
+                    .as_millis(),
+            )?,
         },
     )?;
     assert_eq!(revalidated.checkpoint(), bundle.checkpoint());
@@ -536,7 +540,11 @@ fn reject_omitted_retained_default(optional: bool) -> TestResult {
             workflow_id: vb_core::WorkflowId::new(0),
             compiled_digest: workflow.digest(),
             status: 0,
-            accepted_at_ms: 123,
+            accepted_at_ms: u64::try_from(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)?
+                    .as_millis(),
+            )?,
         },
     )
     .and_then(|submission| journal.commit_run_submission(&submission, RuntimePolicy::Strict));

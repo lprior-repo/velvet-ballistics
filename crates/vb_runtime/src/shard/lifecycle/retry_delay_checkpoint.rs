@@ -65,7 +65,7 @@ impl Shard {
                     checkpoint: payload,
                 },
             };
-            let charge = Self::journal_batch_bytes(&[failed_event.clone(), event.clone()])?;
+            let charge = self.journal_batch_bytes(&[failed_event.clone(), event.clone()])?;
             let projected = state
                 .journal_bytes_written
                 .checked_add(charge)

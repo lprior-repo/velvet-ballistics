@@ -47,7 +47,11 @@ pub(super) fn persist_owned(
         workflow_id: vb_core::WorkflowId::new(0),
         compiled_digest: workflow.digest(),
         status: 0,
-        accepted_at_ms: 123,
+        accepted_at_ms: u64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_millis(),
+        )?,
     };
     let submission = RunSubmission::owned(source.clone(), artifact, record, header)?;
     let directory = tempfile::tempdir()?;
@@ -80,16 +84,18 @@ fn load(
         .owned_run_inputs(expected.run, artifact.digest, source.digest, &verified)?
         .ok_or("owned record missing")?;
     let events = journal.events_for_run_full(expected.run)?;
-    // Submission writes Accepted + Admission + CompatibilityDecision (#210).
-    assert_eq!(events.len(), 3);
+    // Submission writes the accepted, budgeted admission, compatibility, and origin prefix.
+    assert_eq!(events.len(), 4);
     let admission = events
         .into_iter()
-        .find(|event| matches!(event, JournalEvent::RunAdmission { .. }))
+        .find(|event| {
+            matches!(
+                event,
+                JournalEvent::RunAdmissionBudget { .. } | JournalEvent::RunAdmission { .. }
+            )
+        })
         .ok_or("admission missing")?;
-    match &admission {
-        JournalEvent::RunAdmission { seq, .. } => assert_eq!(*seq, expected.prior_seq),
-        _ => return Err("selected non-admission".into()),
-    }
+    assert_eq!(admission.seq(), expected.prior_seq);
     record.validate_admission(&admission)?;
     record.validate_workflow(&verified)?;
     Ok(Receipt {

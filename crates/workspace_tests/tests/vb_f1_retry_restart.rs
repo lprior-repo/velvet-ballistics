@@ -58,15 +58,18 @@ fn fjall_retry_delay_survives_waiting_and_action_restarts_then_finishes_once() -
             .generation
             .checked_add(1)
             .ok_or("generation overflow")?;
-        runtime.timer_entry_fired(forged)?;
-        assert!(matches!(
-            runtime.tick_all(),
+        assert_eq!(
+            runtime.timer_entry_fired(forged),
             Err(RuntimeError::InvalidTimerFire)
-        ));
+        );
         assert_eq!(runtime.capture_timer_entry(RUN)?, entry);
         assert_eq!(journal.events_for_run_full(RUN)?, prefix);
         wait_for_action(&mut runtime, &timer)?;
-        restart_integrity::reject_duplicate_action_schedule(&journal.events_for_run_full(RUN)?)?;
+        let inputs = journal.run_inputs(RUN)?.ok_or("retained inputs absent")?;
+        restart_integrity::reject_duplicate_action_schedule(
+            &journal.events_for_run_full(RUN)?,
+            &inputs,
+        )?;
         ticket(&runtime)?
     };
     {
@@ -188,6 +191,7 @@ fn legacy_wait_record_cannot_authorize_a_retry_deadline() -> TestResult {
     )?;
     submit(&mut runtime, workflow.clone())?;
     fail(&mut runtime, ActionFailureCode::Timeout)?;
+    let inputs = journal.run_inputs(RUN)?.ok_or("retained inputs absent")?;
     let events = journal.events_for_run_full(RUN)?;
     let other = tempfile::tempdir()?;
     let (target, mut recovered) = open(other.path())?;
@@ -197,8 +201,9 @@ fn legacy_wait_record_cannot_authorize_a_retry_deadline() -> TestResult {
         RuntimePolicy::Journaled,
         &[contract()?],
     )?;
-    for event in events {
-        let old = match event {
+    let transformed: Vec<JournalEvent> = events
+        .into_iter()
+        .map(|event| match event {
             JournalEvent::RetryTimerScheduled {
                 run,
                 seq,
@@ -212,9 +217,13 @@ fn legacy_wait_record_cannot_authorize_a_retry_deadline() -> TestResult {
                 attempt,
             },
             event => event,
-        };
-        target.append_strict(&old)?;
-    }
+        })
+        .collect();
+    target.append_runtime_admission_batch(
+        &transformed,
+        &inputs,
+        vb_storage::DurabilityProfile::Strict,
+    )?;
     let product = recovered.recover_product(RUN)?;
     assert!(!product.is_resumable());
     assert_eq!(product.cannot_resume_reason(), Some("pending_timers"));

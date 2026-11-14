@@ -103,9 +103,8 @@ pub(super) fn replay_reduce_next(
     let state_items = store.list(state_id).map_err(|_| ReplayError::Internal {
         reason: "reduce iterator state missing during replay",
     })?;
-    if state_items.is_empty() {
-        return replay_jump(run, done);
-    }
+    // The compact cursor state is always a 2-element list; an empty list is a
+    // corrupted handle, not exhaustion. decode_iterator_state owns that refusal.
     let (source_id, cursor) = decode_iterator_state(state_items)?;
     let source = store.list(source_id).map_err(|_| ReplayError::Internal {
         reason: "reduce source list missing during replay",

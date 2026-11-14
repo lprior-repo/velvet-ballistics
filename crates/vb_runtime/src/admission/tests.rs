@@ -63,3 +63,4 @@ use evidence_test_support::accepted_artifact_with_caps;
 
 include!("tests/tests_admission_core.rs");
 include!("tests/tests_admission_budget.rs");
+include!("tests/tests_admission_compat.rs");

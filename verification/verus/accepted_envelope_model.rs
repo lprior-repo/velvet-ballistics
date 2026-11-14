@@ -24,8 +24,12 @@
 //     idempotency attestation empty.
 //   - submit_artifact_with_contracts mirrors
 //     `vb_storage::admission::submit_artifact_with_contracts` at
-//     crates/vb_storage/src/admission.rs:96-105: prepares, issues, and
-//     readback-verifies. It performs no gate-count or proof-flag validation.
+//     crates/vb_storage/src/admission.rs:96-105: prepares then calls private
+//     submit_prepared_artifact; it performs no gate-count or proof-flag validation.
+//   - submit_prepared_artifact mirrors
+//     `vb_storage::admission::submit_prepared_artifact` at
+//     crates/vb_storage/src/admission.rs:114-136: owns the Strict tag check,
+//     sequence issuance and readback verification.
 //   - verify_accepted_artifact mirrors
 //     `vb_storage::admission::verify_accepted_artifact` at
 //     crates/vb_storage/src/admission/verification.rs:60-90: recomputes the

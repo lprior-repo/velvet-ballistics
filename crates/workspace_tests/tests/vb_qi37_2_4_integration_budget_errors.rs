@@ -560,18 +560,7 @@ fn integration_policy_returns_action_tickets_exceeded_when_action_tickets_cross_
 // RunTimeExceeded
 // ---------------------------------------------------------------------------
 
-/// I5: RunTimeExceeded via workflow with high runtime estimate
-///
-/// GAP-2 (BLOCK_LOCAL): budget.max_run_time_seconds is ALWAYS set to 0 in the
-/// current implementation (see budget.rs line 113: max_run_time_seconds: 0).
-/// It is NOT computed from workflow characteristics.
-///
-/// Therefore, RunTimeExceeded cannot be triggered through normal workflow validation
-/// because budget.max_run_time_seconds is always 0, and 0 > X is always false.
-///
-/// This test FAILs when Ok(()) is returned, explicitly documenting the GAP.
-/// To trigger RunTimeExceeded, the implementation must compute max_run_time_seconds
-/// from workflow characteristics (e.g., max_step_budget_per_tick * max_steps).
+/// I5: RunTimeExceeded when the profile hard lifetime cap exceeds policy.
 #[test]
 fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
     // Build a simple workflow
@@ -630,21 +619,16 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
 
     let result = policy.validate(&budget);
 
-    // GAP-2 repaired: runtime is derived from total steps and per-tick budget.
     match result {
         Err(BudgetError::RunTimeExceeded { actual, limit }) => {
-            assert_eq!(actual, 10, "actual runtime should be computed");
+            assert_eq!(
+                actual,
+                BoundednessPolicy::DEFAULT.absolute_max_run_time_seconds
+            );
             assert_eq!(limit, 1, "limit should be 1");
         }
         Ok(()) => {
-            // GAP-2 BLOCK_LOCAL: max_run_time_seconds = 0 always passes
-            // because implementation does not compute runtime from workflow
-            panic!(
-                "GAP-2: RunTimeExceeded cannot be triggered. \
-                 budget.max_run_time_seconds is always 0 in implementation. \
-                 To fix: compute max_run_time_seconds from \
-                 max_step_budget_per_tick * max_steps or similar."
-            );
+            panic!("the bounded profile lifetime must exceed the one-second test policy");
         }
         other => panic!("Expected RunTimeExceeded, got {:?}", other),
     }

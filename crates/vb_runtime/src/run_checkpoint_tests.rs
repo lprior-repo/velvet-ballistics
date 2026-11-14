@@ -444,3 +444,119 @@ fn versioned_decoder_preserves_pinned_admission_through_roundtrip() -> Result<()
     );
     Ok(())
 }
+
+#[test]
+fn nested_checkpoint_preserves_full_bound_admission() -> Result<(), String> {
+    let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
+    let run_id = RunId::new(500);
+    let mut state = failed_state(workflow.clone(), run_id)
+        .ok_or_else(|| "failed state setup failed".to_string())?;
+
+    let artifact_digest = WorkflowDigest::from_bytes([7; 32]);
+    let input_digest = vb_core::ids::WorkflowDigest::from_bytes([0x55; 32]);
+    let budget = vb_core::budget::AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 1,
+        max_gather_items: 1,
+        max_for_each_iterations: 1,
+        max_together_branches: 1,
+        max_repeat_attempts: 1,
+        max_run_time_seconds: 60,
+        max_result_bytes: 1000,
+        max_total_slots_written: 10,
+        max_timer_entries: 1,
+        max_trace_events: 10,
+        max_queue_depth: 10,
+        max_journal_batch_bytes: 1024,
+        max_ipc_payload_bytes: 1024,
+        max_blob_bytes: 1000,
+        max_input_bytes: 1000,
+        max_step_budget_per_tick: 10,
+        max_transitions_per_tick: 10,
+        max_open_gates: 1,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions: 100,
+        max_journal_bytes_total: 10240,
+        max_value_store_entries: 10,
+        max_cost_units: 100,
+    };
+
+    let compat_inputs =
+        vb_storage::compat::artifact_ir_version_inputs(vb_storage::compat::CURRENT_IR_VERSION);
+    let decision = vb_storage::compat::decide_boundary(
+        compat_inputs,
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+    );
+
+    let full_admission = RunAdmission::new(
+        artifact_digest,
+        run_id,
+        state.admission.clone().map_or_else(
+            || vb_core::capability::CapabilitySet::empty(),
+            |a| a.granted_capabilities().clone(),
+        ),
+        vb_core::policy::RuntimePolicy::Strict,
+    )
+    .with_input_digest(vb_storage::RunInputBinding::Digest(input_digest))
+    .with_attached_budget(budget)
+    .with_tenant(vb_core::ids::TenantId::new(42))
+    .with_policy_pin(vb_storage::RunPolicyPin::Pinned(artifact_digest))
+    .with_ir_compat_decision(decision);
+
+    state.admission = Some(full_admission.clone());
+
+    let checkpoint = RunCheckpointV1::capture(
+        run_id,
+        artifact_digest,
+        NonZeroU16::new(1).ok_or_else(|| "invalid attempt".to_string())?,
+        StepIdx::ZERO,
+        0,
+        &state,
+    )
+    .map_err(|e| format!("capture failed: {e}"))?;
+
+    assert_eq!(checkpoint.version, 3, "checkpoint version should be 3");
+    assert_eq!(
+        checkpoint.admission.as_ref().map(|a| a.input_digest()),
+        Some(vb_storage::RunInputBinding::Digest(input_digest)),
+        "checkpoint should have bound input digest"
+    );
+    assert_eq!(
+        checkpoint.admission.as_ref().and_then(|a| a.budget()),
+        Some(budget),
+        "checkpoint should have budget"
+    );
+    assert_eq!(
+        checkpoint.admission.as_ref().map(|a| a.tenant()),
+        Some(Some(vb_core::ids::TenantId::new(42))),
+        "checkpoint should have tenant"
+    );
+
+    let bytes =
+        postcard::to_allocvec(&checkpoint).map_err(|e| format!("checkpoint encode failed: {e}"))?;
+    let decoded: RunCheckpointV1 =
+        postcard::from_bytes(&bytes).map_err(|e| format!("checkpoint decode failed: {e}"))?;
+
+    assert_eq!(
+        decoded, checkpoint,
+        "decoded checkpoint should match original"
+    );
+
+    let (restored, _, _, _) = decoded
+        .restore(workflow.clone(), artifact_digest, &state.action_contracts)
+        .map_err(|e| format!("restore failed: {e}"))?;
+
+    // Complete admission comparison
+    assert_eq!(
+        restored.admission,
+        Some(full_admission),
+        "restored admission should be complete and identical to original"
+    );
+
+    Ok(())
+}

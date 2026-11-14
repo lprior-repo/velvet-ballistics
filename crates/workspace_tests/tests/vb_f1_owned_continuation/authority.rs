@@ -10,7 +10,9 @@ use vb_storage::{JournalEvent, RunInputBinding};
 fn checked_input_record_requires_the_actual_complete_admission_binding() -> TestResult {
     let fixture = at_cut(false)?;
     let mut admission = fixture.admission.clone();
-    let JournalEvent::RunAdmission { input_digest, .. } = &mut admission else {
+    let (JournalEvent::RunAdmissionBudget { input_digest, .. }
+    | JournalEvent::RunAdmission { input_digest, .. }) = &mut admission
+    else {
         return Err("wrong receipt".into());
     };
     *input_digest = RunInputBinding::LegacyUnbound;
@@ -22,7 +24,9 @@ fn checked_input_record_requires_the_actual_complete_admission_binding() -> Test
     );
     assert!(matches!(result, Err(RunContinuationError::Storage(error))
         if matches!(*error, vb_storage::JournalError::OwnedInputs(vb_storage::OwnedInputError::AdmissionMismatch))));
-    if let JournalEvent::RunAdmission { input_digest, .. } = &mut admission {
+    if let JournalEvent::RunAdmissionBudget { input_digest, .. }
+    | JournalEvent::RunAdmission { input_digest, .. } = &mut admission
+    {
         *input_digest = RunInputBinding::Digest(WorkflowDigest::from_bytes([9; 32]));
     }
     assert!(
@@ -137,7 +141,12 @@ fn historical_budget_is_never_discarded_to_fit_hydration() -> TestResult {
         .as_ref()
         .ok_or("admission missing")?;
     let mut rich = serde_json::to_value(admission)?;
-    let budget = vb_core::budget::AggregateResourceBudget::from_workflow(&fixture.state.workflow)?;
+    let mut budget =
+        vb_core::budget::AggregateResourceBudget::from_workflow(&fixture.state.workflow)?;
+    budget.max_steps_executable = budget
+        .max_steps_executable
+        .checked_sub(1)
+        .ok_or("budget unexpectedly zero")?;
     *rich.get_mut("budget").ok_or("budget field missing")? = serde_json::to_value(budget)?;
     fixture.state.admission = Some(serde_json::from_value(rich)?);
     assert!(matches!(

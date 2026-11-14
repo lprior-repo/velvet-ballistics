@@ -4,6 +4,8 @@ use crate::workflow::{
     WorkflowParts,
 };
 
+pub(super) type LaneWalk = (Vec<StepIdx>, Vec<StepIdx>, Option<StepIdx>);
+
 struct Walk {
     owner: StepIdx,
     entry: StepIdx,
@@ -12,6 +14,7 @@ struct Walk {
     seen: Vec<bool>,
     ends: Vec<StepIdx>,
     children: Vec<StepIdx>,
+    suspension: Option<StepIdx>,
     legacy: Box<[Option<CompiledLoopRegion>]>,
 }
 
@@ -43,6 +46,7 @@ fn init(
         seen,
         ends,
         children,
+        suspension: None,
         legacy,
     })
 }
@@ -134,6 +138,16 @@ fn record(parts: &WorkflowParts, w: &mut Walk, node: &CompiledNode) -> Result<bo
             record_child(parts, w, node)?;
             Ok(false)
         }
+        CompiledNodeKind::Do { .. }
+        | CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::AskResume { .. } => {
+            if w.suspension.is_none() {
+                w.suspension = Some(node.id);
+            }
+            Ok(false)
+        }
         _ => Ok(false),
     }
 }
@@ -179,9 +193,9 @@ pub(super) fn walk_lane(
     parts: &WorkflowParts,
     owner: StepIdx,
     entry: StepIdx,
-) -> Result<(Vec<StepIdx>, Vec<StepIdx>), WorkflowError> {
+) -> Result<LaneWalk, WorkflowError> {
     let w = walk_state(parts, owner, entry)?;
-    Ok((w.ends, w.children))
+    Ok((w.ends, w.children, w.suspension))
 }
 
 pub(super) fn lane_members(
@@ -199,7 +213,13 @@ pub(super) fn check_start(parts: &WorkflowParts, owner: StepIdx) -> Result<(), W
     super::concurrent_start_entries::validate(parts, src)?;
     let (starts, _) = entries(src)?;
     for entry in starts.iter() {
-        drop(walk_lane(parts, owner, *entry)?);
+        let w = walk_state(parts, owner, *entry)?;
+        if let Some(step) = w.suspension {
+            return Err(WorkflowError::ConcurrentLaneSuspension {
+                owner: w.owner,
+                step,
+            });
+        }
     }
     Ok(())
 }

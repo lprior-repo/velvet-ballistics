@@ -15,6 +15,12 @@ impl Shard {
                 workflow,
                 caps,
             }
+            | ShardCommand::SubmitWithLifetimeCap {
+                run,
+                workflow,
+                caps,
+                ..
+            }
             | ShardCommand::SubmitPrePersisted {
                 run,
                 workflow,
@@ -33,6 +39,13 @@ impl Shard {
                 action_contracts,
             }
             | ShardCommand::SubmitWithInputsAndContracts {
+                run,
+                workflow,
+                caps,
+                action_contracts,
+                ..
+            }
+            | ShardCommand::SubmitTenantWithInputsAndContracts {
                 run,
                 workflow,
                 caps,

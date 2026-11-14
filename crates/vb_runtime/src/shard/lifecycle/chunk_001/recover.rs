@@ -32,7 +32,7 @@ impl Shard {
     /// 7. Handle boundary (pending action / open ask / recovered timer)
     pub(crate) fn handle_recover(
         &mut self,
-        command: crate::shard::types::RecoverRunCommand,
+        mut command: crate::shard::types::RecoverRunCommand,
     ) -> RuntimeResult<()> {
         let run = command.run;
         let frame = command.frame;
@@ -41,35 +41,28 @@ impl Shard {
         let next_seq = command.next_seq;
         let collect_states = command.collect_states;
         let retry_checkpoint = command.retry_checkpoint;
+        let boundary_kind = command.boundary.kind();
         let boundary = command.boundary;
         let admission = command.admission;
+        let open_gates = core::mem::take(&mut command.open_gates);
+        let bound_open_gates = core::mem::take(&mut command.bound_open_gates);
         let restored_store = command.restored_store;
+        let recovered_origin = command.run_started_millis;
+        let recovered_action_attempts = command.recovered_action_attempts;
+        let recovered_journal_bytes_written = command.recovered_journal_bytes_written;
+        let recovered_tenant = command.recovered_tenant;
 
-        // Step 1: Load artifact by artifact_digest for verification
-        let artifact = self
-            .artifact_store
-            .load_accepted_artifact(artifact_digest)
-            .map_err(|e| match e {
-                crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
-                    RuntimeError::Recovery {
-                        error: format!("artifact not found during recovery: {digest:?}"),
-                    }
-                }
-                other => RuntimeError::Recovery {
-                    error: format!("artifact load failed: {other}"),
-                },
-            })?;
+        // Step 1: Load artifact by artifact_digest for verification.
+        let artifact = self.load_recovery_artifact(artifact_digest)?;
 
         // Step 2: Deserialize and compile workflow from artifact IR
-        let parts: vb_core::workflow::WorkflowParts =
-            postcard::from_bytes(&artifact.ir).map_err(|_| RuntimeError::Recovery {
-                error: "artifact IR decode failed".to_string(),
-            })?;
-
-        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|e| {
-            RuntimeError::Recovery {
-                error: format!("workflow compile failed: {e}"),
-            }
+        let workflow = crate::admission::verify_stored_artifact_detailed(
+            self.artifact_store.as_ref(),
+            &artifact,
+            Some(self.policy),
+        )
+        .map_err(|error| RuntimeError::Recovery {
+            error: error.to_string(),
         })?;
 
         // Step 3: Verify workflow identity matches command workflow_digest
@@ -126,6 +119,20 @@ impl Shard {
         } else {
             None
         };
+        let lifetime_admission = match &admission {
+            crate::shard::types::RecoveredAdmissionKind::Historical(value) => Some(value.as_ref()),
+            crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => retry_checkpoint
+                .as_ref()
+                .and_then(|checkpoint| checkpoint.admission.as_ref())
+                .or(unverified_admission.as_ref()),
+        };
+        let checkpoint_origin = retry_checkpoint
+            .as_ref()
+            .and_then(|checkpoint| checkpoint.run_started_millis);
+        let validated_origin = crate::recovery::validate_recovered_lifetime_at_wall_clock(
+            lifetime_admission,
+            recovered_origin.or(checkpoint_origin),
+        )?;
 
         self.validate_secret_presence(&workflow)?;
         if retry_checkpoint.is_none() {
@@ -154,7 +161,7 @@ impl Shard {
             } else {
                 crate::shard::types::RegisteredExecutionMode::Live
             };
-        let state = if let Some(checkpoint) = retry_checkpoint {
+        let mut state = if let Some(checkpoint) = retry_checkpoint {
             let (mut state, _attempt, _retry_step, _prior_seq) = checkpoint
                 .restore(workflow, artifact_digest, &artifact.action_contracts)
                 .map_err(|error| RuntimeError::Recovery {
@@ -167,6 +174,7 @@ impl Shard {
             }
             state.registered_execution = registered_execution;
             self.restore_retry_boundary_frame(&mut state, boundary)?;
+            state.run_started_millis = validated_origin;
             self.prepare_run_slots(run)?;
             state
         } else {
@@ -196,103 +204,49 @@ impl Shard {
                     unverified_admission
                 }
             };
+            let (action_attempts, journal_bytes_written) =
+                crate::recovery::recover_admission_accounting(
+                    state_admission.as_ref(),
+                    recovered_action_attempts,
+                    recovered_journal_bytes_written,
+                    frame_step_count,
+                )?;
             crate::shard::types::RunState {
                 registered_execution,
                 frame,
                 run_attempt: core::num::NonZeroU16::MIN,
                 workflow,
                 store,
-                action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+                action_attempts,
                 admission: state_admission,
-                run_started_millis: None,
+                run_started_millis: validated_origin,
                 collect_states,
-                journal_bytes_written: 0,
+                journal_bytes_written,
                 action_contracts: artifact.action_contracts.clone(),
             }
         };
 
+        let rollback_frame = state.frame.clone();
+        if let Err(error) = self.restore_recovered_quota(run, &mut state, recovered_tenant) {
+            self.release_frame(state.frame);
+            return Err(error);
+        }
         self.terminal_runs_remove(run);
-        self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+        if let Err(error) =
+            self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)
+        {
+            self.release_admission_quota(run)?;
+            self.release_frame(rollback_frame);
+            return Err(error);
+        }
 
-        // Step 7a: Restore reconstructed open gates before any boundary
-        // handling. A gated run is suspended on its gate, never on another
-        // boundary: a recovered gate together with a pending-action or
-        // open-ask boundary is inconsistent journal evidence, so recovery
-        // fails instead of driving a gated run or dropping the gate. The
-        // run stays suspended (AwaitAction) and is not driven; the gate
-        // decision resumes or fails it through the normal submission flow.
-        if !command.open_gates.is_empty() {
-            if boundary.kind() != crate::recovery::RecoveredRunBoundaryKind::None {
-                return Err(RuntimeError::Recovery {
-                    error: "recovered run has both an open gate and a suspended boundary"
-                        .to_string(),
-                });
-            }
-            self.restore_open_gates(run, &command.open_gates)?;
-            self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
+        // Step 7a: restore reconstructed open gates before boundary handling.
+        if self.restore_recovered_gates(run, &open_gates, &bound_open_gates, boundary_kind)? {
             return Ok(());
         }
 
-        // Step 7: Handle boundary for suspended operations
-        match boundary.kind() {
-            crate::recovery::RecoveredRunBoundaryKind::RetryTimer => {
-                let timer = recovered_timer.ok_or(RuntimeError::InvalidTimerFire)?;
-                self.pending_timer_insert(run, timer)?;
-                self.apply(run, RuntimeEvent::AwaitTimer)?;
-                return Ok(());
-            }
-            crate::recovery::RecoveredRunBoundaryKind::None => {}
-            crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
-                // Re-inject the durable pending-action ticket and leave the run
-                // suspended at the pending action. Recovery MUST NOT re-drive the
-                // Do node: the action is already durably scheduled
-                // (ActionScheduledTicket) and its input slot may not be re-readable
-                // (legacy unbound admission does not retain inputs). Re-driving would
-                // emit a duplicate StepStarted and, for legacy runs, fail closed on
-                // the un-rehydrated input slot. The recovered run resumes only on the
-                // external action completion/failure signal.
-                if let Some(t) = boundary.pending_action_ticket().map(|t| t.ticket()) {
-                    // Restore the per-step attempt counter so a later completion or
-                    // failure can validate the recovered ticket's attempt
-                    // (validate_ticket_attempt requires action_attempts[step] to
-                    // equal the scheduled ticket's attempt).
-                    if let Some(state) = self.run_state_get_mut(run) {
-                        crate::shard::helpers::record_scheduled_attempt(state, t);
-                    }
-                    self.reinject_pending_action(run, t)?;
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
-                    return Ok(());
-                }
-            }
-            crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
-                if let Some(ask) = boundary.open_ask() {
-                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
-                    return Ok(());
-                }
-            }
-            crate::recovery::RecoveredRunBoundaryKind::WaitingTimer => {
-                // Re-arms the durable wait schedule as a live timer and leaves
-                // the run suspended. Recovery MUST NOT drive the wait node:
-                // re-driving would emit a duplicate WaitScheduledEvent.
-                if let Some(timer) = boundary.waiting_timer() {
-                    self.restore_recovered_timer(run, timer.step(), PendingTimerKind::Wait)?;
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
-                    return Ok(());
-                }
-            }
-            crate::recovery::RecoveredRunBoundaryKind::TimedAsk => {
-                // Restores both the ask authority and the timer the timeout
-                // slot armed. The timer is required: without it the pending
-                // ask ticket lookup refuses (ask_timer_matches) and the
-                // answer path cannot validate the ticket.
-                if let Some(ask) = boundary.timed_ask() {
-                    self.restore_recovered_timer(run, ask.step(), PendingTimerKind::Ask)?;
-                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
-                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
-                    return Ok(());
-                }
-            }
+        if self.restore_suspended_boundary(run, boundary, recovered_timer)? {
+            return Ok(());
         }
 
         self.drive_recovered_run(run)

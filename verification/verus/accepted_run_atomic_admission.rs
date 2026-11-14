@@ -24,8 +24,11 @@
 //     `vb_runtime::admission::RunAdmission::new` at
 //     crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66.
 //   - `vb_storage::admission::submit_artifact_with_contracts` at
+//     (unproved call-chain context; no submit body is mirrored here)
 //     crates/vb_storage/src/admission.rs:96-105 performs no gate/flag
-//     validation; `verify_accepted_artifact`
+//     validation; it prepares then calls private submit_prepared_artifact
+//     (crates/vb_storage/src/admission.rs:114-136), which owns the Strict tag
+//     check, sequence issuance and readback. `verify_accepted_artifact`
 //     (crates/vb_storage/src/admission/verification.rs:60-90) enforces the
 //     prepared shape by recompute-and-compare, any deviation returned as
 //     ArtifactEvidenceInvalid
@@ -45,7 +48,8 @@ mod production;
 // ============================================================
 // Production decision fn: is_strict_accepted_artifact_tag mirrors the
 // strict admission tag check at
-// vb_storage::admission::submit_artifact_with_contracts strict branch.
+// vb_storage::admission::submit_prepared_artifact at
+// crates/vb_storage/src/admission.rs:114-136; the submit body remains unproved.
 pub fn is_strict_accepted_artifact_tag(tag: production::PayloadTag) -> bool {
     production::is_strict_accepted_artifact_tag(tag)
 }

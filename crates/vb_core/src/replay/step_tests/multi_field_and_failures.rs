@@ -139,6 +139,7 @@ fn replay_collect_next_reports_missing_source_list() -> Result<(), CoreError> {
             cursor: 1,
             page_size: 1,
             item_count: 1,
+            limit: 1,
             taint: Taint::Clean,
         },
     );

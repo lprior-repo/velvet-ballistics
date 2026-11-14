@@ -34,7 +34,9 @@ fn historical_unbound_and_wrong_complete_input_binding_are_refused() -> TestResu
     ] {
         let case = Case::new(false, RuntimePolicy::Strict)?;
         wire::admission(&case, |event| {
-            let JournalEvent::RunAdmission { input_digest, .. } = event else {
+            let (JournalEvent::RunAdmissionBudget { input_digest, .. }
+            | JournalEvent::RunAdmission { input_digest, .. }) = event
+            else {
                 return Err("admission missing".into());
             };
             *input_digest = binding;
@@ -52,9 +54,12 @@ fn historical_unbound_and_wrong_complete_input_binding_are_refused() -> TestResu
 fn wrong_artifact_receipt_and_missing_actual_artifact_are_refused() -> TestResult {
     let case = Case::new(false, RuntimePolicy::Strict)?;
     wire::admission(&case, |event| {
-        let JournalEvent::RunAdmission {
+        let (JournalEvent::RunAdmissionBudget {
             artifact_digest, ..
-        } = event
+        }
+        | JournalEvent::RunAdmission {
+            artifact_digest, ..
+        }) = event
         else {
             return Err("admission missing".into());
         };
@@ -133,9 +138,12 @@ fn strict_artifact_cannot_upgrade_unpinned_or_non_strict_admission() -> TestResu
     for change_policy in [false, true] {
         let case = Case::new(false, RuntimePolicy::Strict)?;
         wire::admission(&case, |event| {
-            let JournalEvent::RunAdmission {
+            let (JournalEvent::RunAdmissionBudget {
                 policy, policy_pin, ..
-            } = event
+            }
+            | JournalEvent::RunAdmission {
+                policy, policy_pin, ..
+            }) = event
             else {
                 return Err("admission missing".into());
             };

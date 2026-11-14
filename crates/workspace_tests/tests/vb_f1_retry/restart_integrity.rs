@@ -79,6 +79,7 @@ fn retry_checkpoint_identity_tampering_cannot_admit_or_write() -> TestResult {
     )?;
     submit(&mut runtime, workflow.clone())?;
     fail(&mut runtime, ActionFailureCode::Timeout)?;
+    let inputs = journal.run_inputs(RUN)?.ok_or("retained inputs absent")?;
     let original = journal.events_for_run_full(RUN)?;
     for case in 0..5 {
         let target_directory = tempfile::tempdir()?;
@@ -89,6 +90,7 @@ fn retry_checkpoint_identity_tampering_cannot_admit_or_write() -> TestResult {
             RuntimePolicy::Journaled,
             &[contract()?],
         )?;
+        let mut mutated = Vec::with_capacity(original.len());
         for mut event in original.clone() {
             if let JournalEvent::RetryTimerScheduled { timer, .. } = &mut event {
                 let mut checkpoint: vb_runtime::run_checkpoint::RunCheckpointV1 =
@@ -124,8 +126,13 @@ fn retry_checkpoint_identity_tampering_cannot_admit_or_write() -> TestResult {
                 timer.checkpoint_digest = *blake3::hash(&timer.checkpoint).as_bytes();
                 timer.validate()?;
             }
-            target.append_strict(&event)?;
+            mutated.push(event);
         }
+        target.append_runtime_admission_batch(
+            &mutated,
+            &inputs,
+            vb_storage::DurabilityProfile::Strict,
+        )?;
         let before = target.events_for_run_full(RUN)?;
         let expected = if case == 4 {
             "retry timer: checkpoint frame belongs to a different run"
@@ -155,7 +162,10 @@ fn retry_checkpoint_identity_tampering_cannot_admit_or_write() -> TestResult {
     Ok(())
 }
 
-pub(super) fn reject_duplicate_action_schedule(events: &[JournalEvent]) -> TestResult {
+pub(super) fn reject_duplicate_action_schedule(
+    events: &[JournalEvent],
+    record: &vb_storage::RunInputsRecord,
+) -> TestResult {
     let directory = tempfile::tempdir()?;
     let (journal, mut runtime) = open(directory.path())?;
     let workflow = compile(3, "2s", false)?;
@@ -165,9 +175,11 @@ pub(super) fn reject_duplicate_action_schedule(events: &[JournalEvent]) -> TestR
         RuntimePolicy::Journaled,
         &[contract()?],
     )?;
-    for event in events {
-        journal.append_strict(event)?;
-    }
+    journal.append_runtime_admission_batch(
+        events,
+        record,
+        vb_storage::DurabilityProfile::Strict,
+    )?;
     let mut duplicate = events.last().cloned().ok_or("schedule missing")?;
     let JournalEvent::ActionScheduledTicket { seq, .. } = &mut duplicate else {
         return Err("schedule shape".into());

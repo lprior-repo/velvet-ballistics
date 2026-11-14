@@ -58,7 +58,10 @@ impl JournalEvent {
             | Self::GateDecisionEvent { run, .. }
             | Self::GateOpenedEvent { run, .. }
             | Self::CompatibilityDecisionEvent { run, .. }
-            | Self::TenantAdmissionEvent { run, .. } => *run,
+            | Self::TenantAdmissionEvent { run, .. }
+            | Self::RunBudgetOriginEvent { run, .. }
+            | Self::GateOpenedBoundEvent { run, .. }
+            | Self::GateDecisionBoundEvent { run, .. } => *run,
         }
     }
     /// Event sequence carried by this event.
@@ -101,7 +104,10 @@ impl JournalEvent {
             | Self::GateDecisionEvent { seq, .. }
             | Self::GateOpenedEvent { seq, .. }
             | Self::CompatibilityDecisionEvent { seq, .. }
-            | Self::TenantAdmissionEvent { seq, .. } => *seq,
+            | Self::TenantAdmissionEvent { seq, .. }
+            | Self::RunBudgetOriginEvent { seq, .. }
+            | Self::GateOpenedBoundEvent { seq, .. }
+            | Self::GateDecisionBoundEvent { seq, .. } => *seq,
         }
     }
 
@@ -162,6 +168,9 @@ impl JournalEvent {
             Self::CompatibilityDecisionEvent { .. } => RecordKind::CompatibilityDecision,
             Self::RunAdmissionBudget { .. } => RecordKind::RunAdmissionBudget,
             Self::TenantAdmissionEvent { .. } => RecordKind::TenantAdmission,
+            Self::GateOpenedBoundEvent { .. } => RecordKind::GateOpenedBound,
+            Self::GateDecisionBoundEvent { .. } => RecordKind::GateDecisionBound,
+            Self::RunBudgetOriginEvent { .. } => RecordKind::RunBudgetOrigin,
         }
     }
 
@@ -207,7 +216,10 @@ impl JournalEvent {
             | Self::GateDecisionEvent { .. }
             | Self::GateOpenedEvent { .. }
             | Self::CompatibilityDecisionEvent { .. }
-            | Self::TenantAdmissionEvent { .. } => None,
+            | Self::TenantAdmissionEvent { .. }
+            | Self::RunBudgetOriginEvent { .. }
+            | Self::GateOpenedBoundEvent { .. }
+            | Self::GateDecisionBoundEvent { .. } => None,
         }
     }
 
@@ -263,8 +275,12 @@ impl JournalEvent {
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. }
-            | Self::GateOpenedEvent { .. } => true,
-            Self::CompatibilityDecisionEvent { .. } | Self::TenantAdmissionEvent { .. } => true,
+            | Self::GateOpenedEvent { .. }
+            | Self::GateOpenedBoundEvent { .. }
+            | Self::GateDecisionBoundEvent { .. } => true,
+            Self::CompatibilityDecisionEvent { .. }
+            | Self::TenantAdmissionEvent { .. }
+            | Self::RunBudgetOriginEvent { .. } => true,
         }
     }
 }

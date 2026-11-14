@@ -1,8 +1,8 @@
 use super::super::support::{Case, TestResult};
+use vb_storage::JournalEvent;
 use vb_storage::constants::{
     KEYSPACE_RUN_EVENT, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
 };
-use vb_storage::{EventSeq, JournalEvent};
 
 // Adversarial persisted fixtures only: mutate after canonical commit and close.
 // Positive activation always uses the untouched actual atomic submission.
@@ -34,19 +34,25 @@ pub(super) fn admission(
         let journal = case.open()?;
         journal
             .events_for_run_full(case.run)?
-            .get(1)
-            .cloned()
+            .into_iter()
+            .find(|event| {
+                matches!(
+                    event,
+                    JournalEvent::RunAdmission { .. } | JournalEvent::RunAdmissionBudget { .. }
+                )
+            })
             .ok_or("admission missing")?
     };
     change(&mut admission)?;
+    let seq = admission.seq();
     let bytes = vb_storage::encode_record(
         MAGIC_JOURNAL_EVENT,
         admission.record_kind(),
-        1,
+        seq.get(),
         &admission,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
-    let key = vb_storage::keys::run_event_key(case.run, EventSeq::new(1))?;
+    let key = vb_storage::keys::run_event_key(case.run, seq)?;
     replace(case, KEYSPACE_RUN_EVENT, &key, Some(bytes))
 }
 

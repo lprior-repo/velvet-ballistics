@@ -144,7 +144,7 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
 ///
 /// Tracks slot allocation, constant pool, expression programs, accessor
 /// programs, and input slot metadata during step lowering.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SlotCompiler {
     pub(super) body_depth: u16,
     pub(super) together_stack: Vec<StepIdx>,
@@ -158,4 +158,24 @@ pub struct SlotCompiler {
     pub(super) input_slots: Vec<CompiledInputSlot>,
     pub(super) secret_requirements:
         Vec<vb_core::workflow::source_metadata::CompiledSecretRequirement>,
+    pub(super) resource_contract: ResourceContract,
+}
+
+impl Default for SlotCompiler {
+    fn default() -> Self {
+        Self {
+            body_depth: 0,
+            together_stack: Vec::new(),
+            symbols: crate::source_symbols::SourceSymbolTable::default(),
+            display_names: std::collections::BTreeMap::new(),
+            nodes: Vec::new(),
+            constants: Vec::new(),
+            expressions: Vec::new(),
+            accessors: Vec::new(),
+            max_slot: None,
+            input_slots: Vec::new(),
+            secret_requirements: Vec::new(),
+            resource_contract: ResourceContract::DEFAULT,
+        }
+    }
 }

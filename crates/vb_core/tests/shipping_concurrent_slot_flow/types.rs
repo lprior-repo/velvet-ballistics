@@ -1,8 +1,8 @@
 use super::{assert_error, fixtures};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
 use vb_core::workflow::{
-    CompiledNodeKind as K, InputSlotKind, SlotFlowError, SlotFlowFailure, WorkflowParts,
-    validate_slot_flow,
+    CompiledNodeKind as K, CompiledWorkflow, InputSlotKind, SlotFlowError, SlotFlowFailure,
+    WorkflowError, WorkflowParts, validate_slot_flow,
 };
 
 use fixtures::{declare, end, finish, join, n, parts, set};
@@ -99,6 +99,27 @@ fn dynamic_foreach_item_retains_runtime_check() -> Result<(), SlotFlowError> {
         result: Some(SlotIdx::new(1)),
     };
     validate_slot_flow(&p)?;
+    Ok(())
+}
+
+#[test]
+fn checked_constructor_rejects_dynamic_foreach_wait_fixture() -> Result<(), WorkflowError> {
+    let mut p = fixtures::foreach(3, 3);
+    p.nodes.get_mut(1).ok_or_else(missing)?.kind = K::WaitUntil {
+        deadline_slot: SlotIdx::new(1),
+    };
+    p.nodes.get_mut(1).ok_or_else(missing)?.output = None.into();
+    p.nodes.get_mut(2).ok_or_else(missing)?.kind = K::ConcurrentLaneEnd {
+        owner: StepIdx::new(0),
+        result: Some(SlotIdx::new(1)),
+    };
+    assert_eq!(
+        CompiledWorkflow::try_from_concurrent_parts(p).map(|_| ()),
+        Err(WorkflowError::ConcurrentLaneSuspension {
+            owner: StepIdx::new(0),
+            step: StepIdx::new(1),
+        })
+    );
     Ok(())
 }
 

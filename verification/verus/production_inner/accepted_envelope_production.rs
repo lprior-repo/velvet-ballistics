@@ -29,9 +29,12 @@
 // There is no production `is_strict_accepted` decision fn and no
 // strict-policy gate validation in `submit_artifact_with_contracts`
 // (crates/vb_storage/src/admission.rs:96-105 performs no gate-count
-// or proof-flag check). The shape below is the decision production
-// actually enforces, by recompute-and-compare, with every deviation
-// rejected as `ArtifactEvidenceInvalid`.
+// or proof-flag check; it delegates to private
+// submit_prepared_artifact at crates/vb_storage/src/admission.rs:114-136,
+// which owns the Strict tag check, sequence issuance and readback).
+// The shape below is the decision production actually enforces, by
+// recompute-and-compare, with every deviation rejected as
+// `ArtifactEvidenceInvalid`.
 //
 // DRIFT POLICY: This file MUST be regenerated whenever the production
 // source changes. The mirror is annotated with the originating

@@ -82,6 +82,12 @@ impl RunContinuationV1 {
         let store = ValueStore::from_checkpoint_v1(body.value_store)?;
         let collect_states = CollectStates::from_checkpoint_v1(body.collect_states)
             .map_err(RunContinuationError::CollectCheckpoint)?;
+        let admission = body.admission;
+        let run_started_millis = crate::recovery::resolve_run_started_millis(
+            Some(&admission),
+            authority.run_started_millis,
+        )
+        .map_err(|_| RunContinuationError::Admission)?;
         Ok(RunState {
             registered_execution: RegisteredExecutionMode::ReconcileOnly,
             frame,
@@ -89,8 +95,8 @@ impl RunContinuationV1 {
             workflow: authority.workflow,
             store,
             action_attempts: body.action_attempts,
-            admission: Some(body.admission),
-            run_started_millis: None,
+            admission: Some(admission),
+            run_started_millis,
             collect_states,
             journal_bytes_written: 0,
             action_contracts: body.action_contracts,

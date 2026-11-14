@@ -1,5 +1,6 @@
 use super::*;
 use crate::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
+use proptest::prelude::*;
 
 fn n(raw: u16, kind: K, out: Option<u16>, next: Option<u16>) -> CompiledNode {
     node(
@@ -173,4 +174,50 @@ fn same_lane_foreign_cursor_write_is_rejected() -> Result<(), Box<dyn std::error
     };
     assert_eq!(checked(&parts), Err(expected));
     Ok(())
+}
+
+proptest! {
+    #[test]
+    fn generated_lane_width_and_owner_preserve_exact_region_bounds(
+        prefix in 0u16..=8,
+        width in 1u16..=8,
+    ) {
+        let entry = prefix.checked_add(1).ok_or_else(|| TestCaseError::fail("entry overflow"))?;
+        let lane_end = entry.checked_add(width).ok_or_else(|| TestCaseError::fail("lane end overflow"))?;
+        let join = lane_end.checked_add(1).ok_or_else(|| TestCaseError::fail("join overflow"))?;
+        let finish = join.checked_add(1).ok_or_else(|| TestCaseError::fail("finish overflow"))?;
+        let mut parts = build_parts();
+        parts.slot_count = 2;
+        let mut nodes = Vec::with_capacity(usize::from(finish) + 1);
+        for step in 0..prefix {
+            let next = step.checked_add(1).ok_or_else(|| TestCaseError::fail("prefix overflow"))?;
+            nodes.push(n(step, K::Copy { source: SlotIdx::new(0) }, Some(0), Some(next)));
+        }
+        nodes.push(n(prefix, K::TogetherConcurrentStart {
+            branches: Box::new([StepIdx::new(entry)]),
+            join: StepIdx::new(join),
+        }, None, None));
+        for offset in 0..width {
+            let step = entry.checked_add(offset).ok_or_else(|| TestCaseError::fail("body overflow"))?;
+            let next = step.checked_add(1).ok_or_else(|| TestCaseError::fail("body edge overflow"))?;
+            nodes.push(n(step, K::Copy { source: SlotIdx::new(0) }, Some(0), Some(next)));
+        }
+        nodes.push(n(lane_end, K::ConcurrentLaneEnd {
+            owner: StepIdx::new(prefix),
+            result: None,
+        }, None, Some(join)));
+        nodes.push(n(join, K::ConcurrentGroupJoin { owner: StepIdx::new(prefix) }, Some(1), Some(finish)));
+        nodes.push(n(finish, K::Finish { result: SlotIdx::new(1) }, None, None));
+        parts.nodes = nodes.into_boxed_slice();
+        let regions = crate::workflow::concurrent_analyze::analyze(&parts)
+            .map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
+        prop_assert_eq!(regions.len(), 1);
+        let region = regions.first().ok_or_else(|| TestCaseError::fail("missing region"))?;
+        prop_assert_eq!(region.owner, StepIdx::new(prefix));
+        prop_assert_eq!(region.join, StepIdx::new(join));
+        let lane = region.lanes.first().ok_or_else(|| TestCaseError::fail("missing lane"))?;
+        prop_assert_eq!(lane.entry, StepIdx::new(entry));
+        prop_assert_eq!(lane.exclusive_end, StepIdx::new(join));
+        prop_assert_eq!(lane.ends.as_ref(), &[StepIdx::new(lane_end)]);
+    }
 }

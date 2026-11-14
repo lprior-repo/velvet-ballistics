@@ -56,6 +56,12 @@ pub enum GateError {
     /// Deadline arithmetic overflowed.
     #[error("gate deadline arithmetic overflowed")]
     DeadlineOverflow,
+    /// The gate definition or its bound wrapper fails structural validation.
+    #[error("gate definition is structurally invalid")]
+    InvalidGate,
+    /// Submitted requester differs from the durable gate-opening requester.
+    #[error("requester does not match the durable gate opening")]
+    RequesterMismatch,
     /// Approver identity is empty or over-long.
     #[error("approver identity is invalid")]
     InvalidApprover,
@@ -77,6 +83,47 @@ pub enum GateError {
     /// Replay found a receipt on a non-approval outcome.
     #[error("replay record carries a receipt without an approval outcome")]
     ReplayReceiptMismatch,
+    /// Replay stream contains the same approval receipt twice.
+    #[error("replay contains duplicate approval receipt for gate {gate}")]
+    ReplayDuplicateReceipt {
+        /// Gate whose receipt appears more than once.
+        gate: u64,
+    },
+    /// Bound receipt does not verify against its bound gate.
+    #[error("bound approval receipt does not verify")]
+    BoundReceiptMismatch,
+    /// Bound decision record does not match its durable opening.
+    #[error("bound gate decision does not match the durable opening for gate {gate}")]
+    ReplayBoundGateMismatch {
+        /// Gate identifier whose opening and decision disagree.
+        gate: u64,
+    },
+    /// Replay stream contains the same bound approval receipt twice.
+    #[error("replay contains duplicate bound approval receipt for gate {gate}")]
+    ReplayDuplicateBoundReceipt {
+        /// Gate whose bound receipt appears more than once.
+        gate: u64,
+    },
+    /// A bound gate was submitted through the legacy decision path.
+    #[error("gate {gate} requires the bound approval path")]
+    BoundGateRequired {
+        /// Gate identifier.
+        gate: u64,
+    },
+    /// A legacy gate was submitted through the bound decision path.
+    #[error("gate {gate} is a legacy gate without a binding")]
+    LegacyGateWithoutBinding {
+        /// Gate identifier.
+        gate: u64,
+    },
+    /// Bound gate binding does not match the live run state.
+    #[error("bound gate {gate} binding does not match live run field {field}")]
+    BoundGateBindingMismatch {
+        /// Gate identifier.
+        gate: u64,
+        /// Binding field that disagrees with the live run.
+        field: &'static str,
+    },
     /// Replay found a gate opened twice without a closing decision.
     #[error("replay opened gate {gate} twice without a closing decision")]
     ReplayDuplicateOpen {

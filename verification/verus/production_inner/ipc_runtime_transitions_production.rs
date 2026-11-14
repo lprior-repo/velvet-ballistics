@@ -62,10 +62,10 @@
 //   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types/runtime_state.rs:4-15
 // Production `crates/vb_runtime/src/shard/types/runtime_state.rs:4-15`
 //   - `RuntimeState::is_resumable()`                  <- crates/vb_runtime/src/shard/types/runtime_state.rs:20-22
-//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:34-57
-// Production `crates/vb_runtime/src/shard/types/shard.rs:34-57`
-//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:62-67
-// Production `crates/vb_runtime/src/shard/types/shard.rs:62-67`
+//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types/shard.rs:45-68
+// Production `crates/vb_runtime/src/shard/types/shard.rs:45-68`
+//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types/shard.rs:73-78
+// Production `crates/vb_runtime/src/shard/types/shard.rs:73-78`
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types/command_queue.rs:2
 //     (declared in the spec file, not this mirror — see header note)
 //   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types/command_queue.rs:20-36

@@ -1,5 +1,14 @@
+use serde::{Deserialize, Serialize};
+
 /// Accepted run admission record, attached to a run frame after passing the admission gate.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+///
+/// Serde behavior is manual, not derived. The derived ten-position layout
+/// broke decoding of historical nine-position records that predate
+/// `input_digest`. Manual implementations route through a private
+/// compatibility view (`compat_codec`) that preserves the nine-position
+/// byte layout while supporting bound admissions with input digests via
+/// a closed carrier at the budget position.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunAdmission {
     /// Digest of the accepted compiled artifact.
     artifact_digest: WorkflowDigest,
@@ -11,12 +20,13 @@ pub struct RunAdmission {
     policy: RuntimePolicy,
     /// Actual policy identity from the accepted artifact, or explicit absence.
     policy_pin: RunPolicyPin,
+    /// Canonical typed-input identity, or explicit historical absence.
+    input_digest: RunInputBinding,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
     /// Caller-supplied tenant the run is charged to, when tenant-scoped
     /// admission was used. Absent for admissions that predate tenant
     /// scoping or did not use it.
-    #[serde(default)]
     tenant: Option<TenantId>,
     /// Actions whose idempotency evidence passed artifact admission.
     idempotency_attested: Box<[ActionId]>,
@@ -26,8 +36,125 @@ pub struct RunAdmission {
     /// and for admissions that predate compatibility journaling. Boxed:
     /// the three digests on the decision would otherwise push
     /// `RunAdmission` past the large-variant lint threshold.
-    #[serde(default)]
     ir_compat_decision: Option<Box<CompatDecision>>,
+}
+
+// compat_codec is included into this same module via admission.rs;
+// reference it directly by name.
+
+impl serde::Serialize for RunAdmission {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if serializer.is_human_readable() {
+            // Human-readable: for bound admissions serialize all ten fields;
+            // for unbound admissions omit input_digest to preserve the old
+            // nine-field named-map shape. Deserialization defaults a missing
+            // input_digest to LegacyUnbound.
+            if matches!(self.input_digest, RunInputBinding::Digest(_)) {
+                #[derive(Serialize)]
+                struct HumanBound<'a> {
+                    artifact_digest: &'a WorkflowDigest,
+                    run_id: &'a RunId,
+                    granted_capabilities: &'a CapabilitySet,
+                    policy: &'a RuntimePolicy,
+                    policy_pin: &'a RunPolicyPin,
+                    input_digest: &'a RunInputBinding,
+                    budget: &'a Option<AggregateResourceBudget>,
+                    tenant: &'a Option<TenantId>,
+                    idempotency_attested: &'a [ActionId],
+                    ir_compat_decision: &'a Option<Box<CompatDecision>>,
+                }
+                HumanBound {
+                    artifact_digest: &self.artifact_digest,
+                    run_id: &self.run_id,
+                    granted_capabilities: &self.granted_capabilities,
+                    policy: &self.policy,
+                    policy_pin: &self.policy_pin,
+                    input_digest: &self.input_digest,
+                    budget: &self.budget,
+                    tenant: &self.tenant,
+                    idempotency_attested: &self.idempotency_attested,
+                    ir_compat_decision: &self.ir_compat_decision,
+                }
+                .serialize(serializer)
+            } else {
+                #[derive(Serialize)]
+                struct HumanUnbound<'a> {
+                    artifact_digest: &'a WorkflowDigest,
+                    run_id: &'a RunId,
+                    granted_capabilities: &'a CapabilitySet,
+                    policy: &'a RuntimePolicy,
+                    policy_pin: &'a RunPolicyPin,
+                    budget: &'a Option<AggregateResourceBudget>,
+                    tenant: &'a Option<TenantId>,
+                    idempotency_attested: &'a [ActionId],
+                    ir_compat_decision: &'a Option<Box<CompatDecision>>,
+                }
+                HumanUnbound {
+                    artifact_digest: &self.artifact_digest,
+                    run_id: &self.run_id,
+                    granted_capabilities: &self.granted_capabilities,
+                    policy: &self.policy,
+                    policy_pin: &self.policy_pin,
+                    budget: &self.budget,
+                    tenant: &self.tenant,
+                    idempotency_attested: &self.idempotency_attested,
+                    ir_compat_decision: &self.ir_compat_decision,
+                }
+                .serialize(serializer)
+            }
+        } else {
+            // Binary: use the 9-position compatibility layout that
+            // preserves old Postcard bytes for historical records.
+            compat_codec::serialize_admission(self, serializer)
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for RunAdmission {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        if deserializer.is_human_readable() {
+            #[derive(Deserialize)]
+            struct Human {
+                artifact_digest: WorkflowDigest,
+                run_id: RunId,
+                granted_capabilities: CapabilitySet,
+                policy: RuntimePolicy,
+                policy_pin: RunPolicyPin,
+                #[serde(default)]
+                input_digest: RunInputBinding,
+                budget: Option<AggregateResourceBudget>,
+                #[serde(default)]
+                tenant: Option<TenantId>,
+                idempotency_attested: Box<[ActionId]>,
+                #[serde(default)]
+                ir_compat_decision: Option<Box<CompatDecision>>,
+            }
+            let human = Human::deserialize(deserializer)?;
+            Ok(RunAdmission {
+                artifact_digest: human.artifact_digest,
+                run_id: human.run_id,
+                granted_capabilities: human.granted_capabilities,
+                policy: human.policy,
+                policy_pin: human.policy_pin,
+                input_digest: human.input_digest,
+                budget: human.budget,
+                tenant: human.tenant,
+                idempotency_attested: human.idempotency_attested,
+                ir_compat_decision: human.ir_compat_decision,
+            })
+        } else {
+            // Binary: decode the 9-position compatibility layout, which
+            // handles both old historical records and new bound
+            // admissions via the carrier discriminant.
+            compat_codec::deserialize_admission(deserializer)
+        }
+    }
 }
 
 /// Aggregate resource request plus policy used by runtime budget admission.
@@ -58,6 +185,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: RunInputBinding::LegacyUnbound,
             budget: None,
             tenant: None,
             idempotency_attested: Box::new([]),
@@ -82,6 +210,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: RunInputBinding::LegacyUnbound,
             budget: None,
             tenant: None,
             idempotency_attested,
@@ -106,6 +235,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             policy_pin: RunPolicyPin::Unverified,
+            input_digest: RunInputBinding::LegacyUnbound,
             budget: Some(budget),
             tenant: None,
             idempotency_attested: Box::new([]),
@@ -122,6 +252,21 @@ impl RunAdmission {
     pub(crate) fn with_policy_pin(mut self, policy_pin: RunPolicyPin) -> Self {
         self.policy_pin = policy_pin;
         self
+    }
+
+    /// Attaches the canonical typed-input identity from the submission.
+    pub(crate) fn with_input_digest(
+        mut self,
+        input_digest: RunInputBinding,
+    ) -> Self {
+        self.input_digest = input_digest;
+        self
+    }
+
+    /// Returns the canonical typed-input identity, or explicit historical absence.
+    #[must_use]
+    pub fn input_digest(&self) -> RunInputBinding {
+        self.input_digest
     }
 
     /// Attaches the workflow-derived aggregate budget to this admission.

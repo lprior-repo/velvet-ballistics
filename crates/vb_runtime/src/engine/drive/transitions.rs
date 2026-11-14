@@ -3,7 +3,7 @@
 //! Drive-loop state transitions: begin/finish step and signal classification.
 
 use vb_core::engine::{EngineError, StepBudget};
-use vb_core::frame::RunFrame;
+use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
@@ -14,17 +14,18 @@ use crate::engine::types::{
     EvidenceCollector, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };
 use crate::primitives::collect::CollectStates;
+use crate::recovery::handler_route_for_failure;
 
 /// Carries the per-step node reference plus its program counter through
 /// the begin/finish transition pair.
-pub(super) struct DriveStep<'a> {
+pub(crate) struct DriveStep<'a> {
     pub pc: StepIdx,
     pub node: &'a CompiledNode,
 }
 
 /// Consumes one step from the budget, fetches the current node, records
 /// `StepStarted`, and marks the step as running on the run frame.
-pub(super) fn begin_drive_step<'a>(
+pub(crate) fn begin_drive_step<'a>(
     plan: &'a CompiledWorkflow,
     run: &mut RunFrame,
     budget: &mut StepBudget,
@@ -37,12 +38,98 @@ pub(super) fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    super::loop_rearm::validate_activation(plan, node, run)?;
-    evidence
-        .push_step_started(pc)
-        .map_err(RuntimeEngineError::Core)?;
-    run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    let resumed = resumes_journaled_handler(plan, node, run)?;
+    super::loop_rearm::validate_activation(plan, node, run, resumed)?;
+    rearm_foreach_entry_before_resume(plan, run, pc)?;
+    if !resumed {
+        evidence
+            .push_step_started(pc)
+            .map_err(RuntimeEngineError::Core)?;
+        run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    }
     Ok(Some(DriveStep { pc, node }))
+}
+
+fn rearm_foreach_entry_before_resume(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    step: StepIdx,
+) -> RuntimeEngineResult<()> {
+    if run.step_state(step).map_err(RuntimeEngineError::Core)? != StepState::Succeeded {
+        return Ok(());
+    }
+    if concurrent_foreach_body_owner(plan, step).is_some() {
+        run.mark_pending(step).map_err(RuntimeEngineError::Core)?;
+    }
+    Ok(())
+}
+
+pub(crate) fn concurrent_foreach_body_owner(
+    plan: &CompiledWorkflow,
+    step: StepIdx,
+) -> Option<StepIdx> {
+    for raw in 0..plan.node_count() {
+        let owner = StepIdx::new(raw);
+        let Some(node) = plan.node(owner) else {
+            continue;
+        };
+        let CompiledNodeKind::ForEachConcurrentStart { body, join, .. } = &node.kind else {
+            continue;
+        };
+        if *body != step || owner >= step || step >= *join {
+            continue;
+        }
+        return matches!(
+            plan.node(*join).map(|node| &node.kind),
+            Some(CompiledNodeKind::ConcurrentGroupJoin { owner: join_owner }) if *join_owner == owner
+        )
+        .then_some(owner);
+    }
+    None
+}
+
+/// Reports whether `node` is a compiled error-handler target whose
+/// `StepStarted` is already durable.
+///
+/// A failure routed to an authored handler journals `ActionFailed` and then
+/// the resolved handler's `StepStarted` (and the `ErrorHandler` body's, when
+/// the handler is a legacy wrapper) before executing it. A crash in that
+/// window leaves those steps `Running` with no handler effect, so recovery
+/// resumes the journaled step in place: re-emitting `StepStarted` would
+/// duplicate durable evidence, and no action ticket or completion exists for
+/// it.
+///
+/// Targets are resolved with the same table the failure path and the replay
+/// repair use ([`handler_route_for_failure`]), so direct `on_error` routes and
+/// legacy wrapper jump targets are treated identically. The candidate step must
+/// already be `Failed`, so an unrelated `Running` node is never exempted.
+fn resumes_journaled_handler(
+    plan: &CompiledWorkflow,
+    node: &CompiledNode,
+    run: &RunFrame,
+) -> RuntimeEngineResult<bool> {
+    if run.step_state(node.id).map_err(RuntimeEngineError::Core)? != StepState::Running {
+        return Ok(false);
+    }
+    for raw in 0..plan.node_count() {
+        let Some(candidate) = plan.node(StepIdx::new(raw)) else {
+            continue;
+        };
+        if run
+            .step_state(candidate.id)
+            .map_err(RuntimeEngineError::Core)?
+            != StepState::Failed
+        {
+            continue;
+        }
+        let Some(route) = handler_route_for_failure(plan, candidate.id) else {
+            continue;
+        };
+        if route.handler == node.id || route.handler_body == Some(node.id) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Extracts the body step index from an owning-loop control node, or
@@ -63,7 +150,7 @@ pub(super) fn loop_body_target(node: &CompiledNode) -> Option<StepIdx> {
 pub(super) fn owned_continuation_rearm(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
-    step: DriveStep<'_>,
+    step: &DriveStep<'_>,
 ) -> RuntimeEngineResult<()> {
     let Some(body) = loop_body_target(step.node) else {
         return Ok(());
@@ -77,10 +164,52 @@ pub(super) fn owned_continuation_rearm(
     super::loop_rearm::loop_body_rearm(plan, run, step.pc, body)
 }
 
+fn concurrent_lane_rearm(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    step: &DriveStep<'_>,
+) -> RuntimeEngineResult<()> {
+    let CompiledNodeKind::ConcurrentLaneEnd { owner, .. } = step.node.kind else {
+        return Ok(());
+    };
+    let Some(body) = concurrent_foreach_body(plan, owner)? else {
+        return Ok(());
+    };
+    if run.pc() != body || body > step.pc {
+        return Ok(());
+    }
+    for raw in body.get()..=step.pc.get() {
+        let lane_step = StepIdx::new(raw);
+        if lane_step != body
+            && run
+                .step_state(lane_step)
+                .map_err(RuntimeEngineError::Core)?
+                == StepState::Succeeded
+        {
+            run.mark_pending(lane_step)
+                .map_err(RuntimeEngineError::Core)?;
+        }
+    }
+    Ok(())
+}
+
+fn concurrent_foreach_body(
+    plan: &CompiledWorkflow,
+    owner: StepIdx,
+) -> RuntimeEngineResult<Option<StepIdx>> {
+    let start = plan
+        .node(owner)
+        .ok_or(EngineError::InvalidProgramCounter { step: owner })?;
+    Ok(match start.kind {
+        CompiledNodeKind::ForEachConcurrentStart { body, .. } => Some(body),
+        _ => None,
+    })
+}
+
 /// Emits slot evidence for the just-finished step, then commits the
 /// matching run-frame step state (Succeeded for success-class signals,
 /// Waiting/Asking/etc for suspension signals).
-pub(super) fn finish_drive_step(
+pub(crate) fn finish_drive_step(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
     evidence: &mut EvidenceCollector,
@@ -112,7 +241,7 @@ pub(super) fn finish_drive_step(
         evidence
             .push_step_succeeded(step.pc, step.node.output.slot())
             .map_err(RuntimeEngineError::Core)?;
-        owned_continuation_rearm(plan, run, step)?;
+        rearm_after_success(plan, run, &step)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
         // no StepSucceeded event, but slot evidence above is still valid
@@ -120,6 +249,15 @@ pub(super) fn finish_drive_step(
         mark_step_after_signal(run, step.pc, signal)?;
     }
     Ok(())
+}
+
+fn rearm_after_success(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    step: &DriveStep<'_>,
+) -> RuntimeEngineResult<()> {
+    owned_continuation_rearm(plan, run, step)?;
+    concurrent_lane_rearm(plan, run, step)
 }
 
 /// Returns true when the signal represents a step that completed

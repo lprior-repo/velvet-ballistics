@@ -94,6 +94,8 @@ pub mod kani_admission_store;
 #[cfg(loom)]
 pub mod models;
 pub mod policy;
+mod quota;
+pub use quota::RuntimeQuotaUsage;
 pub mod primitives;
 pub mod recovery;
 pub mod retry;

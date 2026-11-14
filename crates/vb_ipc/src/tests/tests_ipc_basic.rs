@@ -76,6 +76,10 @@ fn command_ids_cover_required_surface() {
     assert_eq!(IpcCommand::from_u16(15), Ok(IpcCommand::UnknownCommand(15)));
     assert_eq!(IpcCommand::from_u16(16), Ok(IpcCommand::UnknownCommand(16)));
     assert_eq!(IpcCommand::from_u16(17), Ok(IpcCommand::UnknownCommand(17)));
+    assert_eq!(
+        IpcCommand::from_u16(18),
+        Ok(IpcCommand::SubmitBoundGateDecision)
+    );
 }
 
 #[test]
@@ -903,4 +907,3 @@ fn try_submit_returns_full_when_at_capacity() {
 
     assert_eq!(queue.try_submit(frame), Err(IpcError::Full));
 }
-

@@ -34,9 +34,9 @@
 //   - `validate_budget_result` budget error collapse
 //     <- crates/vb_core/src/workflow/validate.rs:121-130
 //   - `WholeWorkflowBudget` field set
-//     <- crates/vb_core/src/budget/compute.rs:20-96
+//     <- crates/vb_core/src/budget/compute.rs:21-97
 //   - `WholeWorkflowBudget::compute`
-//     <- crates/vb_core/src/budget/compute.rs:103-109
+//     <- crates/vb_core/src/budget/compute.rs:104-110
 //   - `BoundednessPolicy` field set
 //     <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::DEFAULT`
@@ -85,6 +85,8 @@
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:247-257
 //   - `validate_repeat_start`
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:259-267
+//   - `validate_optional_step_continuation`
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:269-273
 //   - `validate_slot_choose`
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:276-287
 //   - `validate_expr_choose`

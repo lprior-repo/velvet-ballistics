@@ -7,11 +7,13 @@
 // This file mirrors the production strict-admission payload-tag
 // surface and the prepared-proof gate-count decision.
 //
-// Production sources mirrored:
+// Production decision sources and unproved call-chain context:
 //   - `vb_runtime::admission::REQUIRED_GATE_COUNT` (= 15)
 //     (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2)
 //   - `vb_storage::admission::submit_artifact_with_contracts`
-//     (crates/vb_storage/src/admission.rs:96-105)
+//     (crates/vb_storage/src/admission.rs:96-105, unproved submit context)
+//   - `vb_storage::admission::submit_prepared_artifact`
+//     (crates/vb_storage/src/admission.rs:114-136, unproved Strict check/issuance/readback context)
 //   - `vb_storage::admission::PayloadTag`, `classify_accepted_artifact`,
 //     `is_strict_accepted_artifact_tag`
 //     (crates/vb_storage/src/admission/payload_tag.rs:10-39)
@@ -35,17 +37,19 @@
 // which builds the legacy 15-gate/all-true shape with Unverified
 // evidence; real validation rejects it.
 //
-// DRIFT POLICY: `crates/vb_storage/src/admission.rs:96-105`
-// Production source coverage:
+// DRIFT POLICY: `crates/vb_storage/src/admission/payload_tag.rs:10-39`
+// Decision coverage and unproved call-chain context:
 //   - `REQUIRED_GATE_COUNT` (= 15)
 //     <- crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
-//   - `submit_artifact_with_contracts`
+//   - `submit_artifact_with_contracts` (unproved context, not mirrored)
 //     <- crates/vb_storage/src/admission.rs:96-105
+//   - `submit_prepared_artifact` (unproved context, not mirrored)
+//     <- crates/vb_storage/src/admission.rs:114-136
 //   - `PayloadTag`, `classify_accepted_artifact`, `is_strict_accepted_artifact_tag`
 //     <- crates/vb_storage/src/admission/payload_tag.rs:10-39
-// Regenerate this file whenever production changes. Any rename of
-// `PayloadTag::AcceptedArtifact` or body change in the submit path
-// breaks the `extern_run_atomic_admission` Verus build.
+// Review this file when the cited definitions change. The payload-tag
+// definitions have the separate Production claims below; the submit
+// bodies are neither mirrored nor proved by this binding.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

@@ -3,8 +3,7 @@ fn drive_state_fails_when_gather_items_exceed_admitted_limit() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(750);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     seed_collect_items_consumed(&mut state, run, 3);
     assert_eq!(state.collect_states.total_items_consumed(), 3);
     state.admission = Some(RunAdmission::with_budget(
@@ -30,8 +29,7 @@ fn drive_state_at_gather_items_limit_finishes() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(751);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     seed_collect_items_consumed(&mut state, run, 3);
     state.admission = Some(RunAdmission::with_budget(
         digest,
@@ -49,8 +47,7 @@ fn drive_state_at_gather_items_limit_finishes() {
 fn drive_state_without_admitted_budget_ignores_gather_items() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(752);
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     seed_collect_items_consumed(&mut state, run, 3);
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
@@ -232,6 +229,10 @@ fn queued_retry_flushes_emitted_prefix_and_resumes_drive() -> Result<(), String>
 struct NeverDurableJournal;
 
 impl crate::journal::RuntimeJournal for NeverDurableJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> Result<(), crate::RuntimeError> {
         Ok(())
     }
@@ -391,8 +392,7 @@ fn drive_state_fails_when_finished_list_deep_size_exceeds_admitted_limit() {
     let workflow = list_result_workflow().expect("list result workflow builds");
     let run = RunId::new(750);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -416,8 +416,7 @@ fn drive_state_at_finished_list_deep_size_limit_finishes() {
     let workflow = list_result_workflow().expect("list result workflow builds");
     let run = RunId::new(751);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -434,8 +433,7 @@ fn drive_state_at_finished_list_deep_size_limit_finishes() {
 fn drive_state_without_admitted_budget_ignores_finished_list_size() {
     let workflow = list_result_workflow().expect("list result workflow builds");
     let run = RunId::new(752);
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
@@ -500,8 +498,7 @@ fn drive_state_fails_when_delivered_pages_exceed_admitted_limit() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(764);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     deliver_collect_page(&mut state.collect_states, run, 1);
     deliver_collect_page(&mut state.collect_states, run, 2);
     state.admission = Some(RunAdmission::with_budget(
@@ -527,8 +524,7 @@ fn drive_state_at_delivered_pages_limit_finishes() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(765);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     deliver_collect_page(&mut state.collect_states, run, 1);
     deliver_collect_page(&mut state.collect_states, run, 2);
     state.admission = Some(RunAdmission::with_budget(
@@ -547,8 +543,7 @@ fn drive_state_at_delivered_pages_limit_finishes() {
 fn drive_state_without_admitted_budget_ignores_delivered_pages() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(766);
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     deliver_collect_page(&mut state.collect_states, run, 1);
     deliver_collect_page(&mut state.collect_states, run, 2);
     let mut evidence = EvidenceCollector::new();
@@ -561,8 +556,7 @@ fn drive_state_fails_when_delivered_pages_exceed_limit_after_removal() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(767);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     deliver_collect_page(&mut state.collect_states, run, 1);
     deliver_collect_page(&mut state.collect_states, run, 2);
     state.collect_states.remove(run, SlotIdx::new(1));
@@ -622,8 +616,7 @@ fn drive_state_fails_when_run_time_exceeds_admitted_limit() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(744);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -648,8 +641,7 @@ fn drive_state_within_run_time_limit_finishes() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(745);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -657,20 +649,18 @@ fn drive_state_within_run_time_limit_finishes() {
         vb_core::policy::RuntimePolicy::Relaxed,
         run_time_budget(1000),
     ));
-    state.run_started_millis =
-        crate::shard::helpers::wall_clock_millis_since_epoch();
+    state.run_started_millis = crate::shard::helpers::wall_clock_millis_since_epoch();
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
 #[test]
-fn drive_state_without_recorded_start_records_wall_clock_on_first_drive() {
+fn drive_state_without_recorded_start_fails_closed() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(746);
     let digest = workflow.digest();
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -678,23 +668,214 @@ fn drive_state_without_recorded_start_records_wall_clock_on_first_drive() {
         vb_core::policy::RuntimePolicy::Relaxed,
         run_time_budget(1000),
     ));
+    state.run_started_millis = None;
     assert_eq!(state.run_started_millis, None);
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
-    assert_ne!(state.run_started_millis, None);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(
+            EngineError::InternalInvariantViolation { .. }
+        ))
+    ));
+    assert_eq!(state.run_started_millis, None);
 }
 
 #[test]
 fn drive_state_without_admitted_budget_ignores_run_time() {
     let workflow = two_slot_workflow().expect("two slot workflow builds");
     let run = RunId::new(747);
-    let mut state = crate::shard::helpers::make_run_state(workflow, run)
-        .expect("run state builds");
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     state.run_started_millis = Some(0);
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_run_time_overflow_fails_closed() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(760);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(u64::MAX),
+    ));
+    state.run_started_millis = Some(0);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(1);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "run_time",
+            limit: u64::MAX,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_run_time_exact_limit_is_live_and_plus_one_fails() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let digest = workflow.digest();
+
+    let run = RunId::new(761);
+    let mut exact = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    exact.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    exact.run_started_millis = Some(10_000);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_000);
+    let mut evidence = EvidenceCollector::new();
+    let exact_result = Shard::drive_state_with_manual_gates(&mut exact, 100, 0, &mut evidence);
+    assert!(matches!(exact_result, Ok(RuntimeSignal::Finished(_))));
+
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(762);
+    let mut over = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    over.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    over.run_started_millis = Some(10_000);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_001);
+    let mut evidence = EvidenceCollector::new();
+    let over_result = Shard::drive_state_with_manual_gates(&mut over, 100, 0, &mut evidence);
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert!(matches!(
+        over_result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "run_time",
+            limit: 10,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_run_time_repeated_checks_keep_original_origin() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(763);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    state.run_started_millis = Some(10_000);
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_000);
+    assert_eq!(Shard::check_run_time_budget(&mut state), Ok(()));
+    assert_eq!(state.run_started_millis, Some(10_000));
+    assert_eq!(Shard::check_run_time_budget(&mut state), Ok(()));
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert_eq!(
+        state.run_started_millis,
+        Some(10_000),
+        "repeated checks must not restart the admitted origin"
+    );
+}
+
+#[test]
+fn suspended_run_over_lifetime_fails_on_tick() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let workflow = suspended_workflow().ok_or_else(|| "suspended workflow builds".to_string())?;
+    let run = RunId::new(764);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .ok_or_else(|| "run state builds".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    state.run_started_millis = Some(10_000);
+    state
+        .frame
+        .mark_running(StepIdx::ZERO)
+        .map_err(|error| format!("mark running failed: {error:?}"))?;
+    state
+        .frame
+        .mark_waiting(StepIdx::ZERO)
+        .map_err(|error| format!("mark waiting failed: {error:?}"))?;
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Resumable)
+        .map_err(|error| error.to_string())?;
+
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_001);
+    let ticked = shard.tick().map_err(|error| error.to_string())?;
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert!(ticked);
+    assert!(shard.terminal_runs_contains(run));
+    assert!(!shard.run_state_contains(run));
+    assert_eq!(shard.last_lifetime_expiry(), Some((run, 10)));
+    let events = journal.snapshot().map_err(|error| error.to_string())?;
+    assert!(
+        events.iter().any(
+            |event| matches!(event, RuntimeJournalEvent::RunFailed { run: failed, .. } if *failed == run)
+        ),
+        "lifetime expiry must journal RunFailed"
+    );
+    Ok(())
+}
+
+#[test]
+fn multiple_expired_suspended_runs_progress_one_per_tick() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let mut shard = Shard::new_with_journal(small_config(), journal);
+    let workflow = suspended_workflow().ok_or_else(|| "suspended workflow builds".to_string())?;
+    let digest = workflow.digest();
+    let first = RunId::new(765);
+    let second = RunId::new(766);
+    for run in [first, second] {
+        let mut state = crate::shard::helpers::make_run_state(workflow.clone(), run)
+            .ok_or_else(|| "run state builds".to_string())?;
+        state.admission = Some(RunAdmission::with_budget(
+            digest,
+            run,
+            CapabilitySet::empty(),
+            vb_core::policy::RuntimePolicy::Relaxed,
+            run_time_budget(10),
+        ));
+        state.run_started_millis = Some(10_000);
+        state
+            .frame
+            .mark_running(StepIdx::ZERO)
+            .map_err(|error| format!("mark running failed: {error:?}"))?;
+        state
+            .frame
+            .mark_waiting(StepIdx::ZERO)
+            .map_err(|error| format!("mark waiting failed: {error:?}"))?;
+        shard
+            .admit_run_state(run, state, super::super::RuntimeState::Resumable)
+            .map_err(|error| error.to_string())?;
+    }
+    crate::shard::helpers::timer::install_wall_clock_millis_for_test(20_001);
+    assert_eq!(shard.tick(), Ok(true));
+    assert!(shard.terminal_runs_contains(first));
+    assert!(shard.run_state_contains(second));
+    assert_eq!(shard.last_lifetime_expiry(), Some((first, 10)));
+    assert_eq!(shard.tick(), Ok(true));
+    crate::shard::helpers::timer::restore_wall_clock_for_test();
+    assert!(shard.terminal_runs_contains(second));
+    assert_eq!(shard.last_lifetime_expiry(), Some((second, 10)));
+    Ok(())
 }
 
 fn tiny_journal_contract() -> ResourceContract {
@@ -914,31 +1095,46 @@ fn charge_drive_journal_bytes_enforces_cumulative_total() -> Result<(), String> 
     let digest = workflow.digest();
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .ok_or_else(|| "run state builds".to_string())?;
+    let shard = Shard::new(small_config());
     let event = RuntimeJournalEvent::RunFailed { run, attempt: 1 };
-    let bytes = postcard::to_allocvec(&event)
-        .map_err(|error| format!("event encode failed: {error:?}"))?;
+    let bytes =
+        postcard::to_allocvec(&event).map_err(|error| format!("event encode failed: {error:?}"))?;
     let len = u64::try_from(bytes.len()).map_err(|_| "event length overflow".to_string())?;
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
         CapabilitySet::empty(),
         vb_core::policy::RuntimePolicy::Relaxed,
-        journal_bytes_budget(len.checked_mul(2).ok_or_else(|| "budget overflow".to_string())?),
+        journal_bytes_budget(
+            len.checked_mul(2)
+                .ok_or_else(|| "budget overflow".to_string())?,
+        ),
     ));
-    assert!(Shard::charge_drive_journal_bytes(&mut state, &[event.clone()])
-        .map_err(|error| format!("first charge failed: {error:?}"))?);
-    assert_eq!(state.journal_bytes_written, len);
-    assert!(Shard::charge_drive_journal_bytes(&mut state, &[event.clone()])
-        .map_err(|error| format!("second charge failed: {error:?}"))?);
-    assert_eq!(
-        state.journal_bytes_written,
-        len.checked_mul(2).ok_or_else(|| "counter overflow".to_string())?
+    assert!(
+        shard
+            .charge_drive_journal_bytes(&mut state, &[event.clone()])
+            .map_err(|error| format!("first charge failed: {error:?}"))?
     );
-    assert!(!Shard::charge_drive_journal_bytes(&mut state, &[event])
-        .map_err(|error| format!("third charge failed: {error:?}"))?);
+    assert_eq!(state.journal_bytes_written, len);
+    assert!(
+        shard
+            .charge_drive_journal_bytes(&mut state, &[event.clone()])
+            .map_err(|error| format!("second charge failed: {error:?}"))?
+    );
     assert_eq!(
         state.journal_bytes_written,
-        len.checked_mul(2).ok_or_else(|| "counter overflow".to_string())?
+        len.checked_mul(2)
+            .ok_or_else(|| "counter overflow".to_string())?
+    );
+    assert!(
+        !shard
+            .charge_drive_journal_bytes(&mut state, &[event])
+            .map_err(|error| format!("third charge failed: {error:?}"))?
+    );
+    assert_eq!(
+        state.journal_bytes_written,
+        len.checked_mul(2)
+            .ok_or_else(|| "counter overflow".to_string())?
     );
     Ok(())
 }
@@ -949,19 +1145,23 @@ fn charge_drive_journal_bytes_without_budget_charges_without_enforcing() -> Resu
     let run = RunId::new(771);
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .ok_or_else(|| "run state builds".to_string())?;
+    let shard = Shard::new(small_config());
     let event = RuntimeJournalEvent::RunFailed { run, attempt: 1 };
-    let bytes = postcard::to_allocvec(&event)
-        .map_err(|error| format!("event encode failed: {error:?}"))?;
+    let bytes =
+        postcard::to_allocvec(&event).map_err(|error| format!("event encode failed: {error:?}"))?;
     let len = u64::try_from(bytes.len()).map_err(|_| "event length overflow".to_string())?;
-    assert!(Shard::charge_drive_journal_bytes(&mut state, &[event])
-        .map_err(|error| format!("charge failed: {error:?}"))?);
+    assert!(
+        shard
+            .charge_drive_journal_bytes(&mut state, &[event])
+            .map_err(|error| format!("charge failed: {error:?}"))?
+    );
     assert_eq!(state.journal_bytes_written, len);
     Ok(())
 }
 
 #[test]
-fn drive_finished_run_falls_back_to_single_run_failed_when_journal_budget_exceeded(
-) -> Result<(), String> {
+fn drive_finished_run_falls_back_to_single_run_failed_when_journal_budget_exceeded()
+-> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -984,8 +1184,8 @@ fn drive_finished_run_falls_back_to_single_run_failed_when_journal_budget_exceed
 }
 
 #[test]
-fn drive_continue_run_falls_back_to_single_run_failed_when_journal_budget_exceeded(
-) -> Result<(), String> {
+fn drive_continue_run_falls_back_to_single_run_failed_when_journal_budget_exceeded()
+-> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -1007,8 +1207,8 @@ fn drive_continue_run_falls_back_to_single_run_failed_when_journal_budget_exceed
 }
 
 #[test]
-fn drive_awaiting_run_falls_back_to_single_run_failed_when_journal_budget_exceeded(
-) -> Result<(), String> {
+fn drive_awaiting_run_falls_back_to_single_run_failed_when_journal_budget_exceeded()
+-> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -1051,6 +1251,41 @@ fn journal_bytes_counter_matches_appended_header_and_drive_events() -> Result<()
             .ok_or_else(|| "measured total overflow".to_string())?;
     }
     assert!(measured > 0, "journal must contain events");
+    assert_eq!(state.journal_bytes_written, measured);
+    Ok(())
+}
+
+#[test]
+fn storage_journal_byte_counter_matches_durable_storage_events() -> Result<(), String> {
+    let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target");
+    std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+    let dir = tempfile::Builder::new()
+        .prefix("vb-runtime-storage-bytes-")
+        .tempdir_in(base)
+        .map_err(|error| error.to_string())?;
+    let fjall = std::sync::Arc::new(
+        vb_storage::FjallJournal::open(dir.path(), None).map_err(|error| error.to_string())?,
+    );
+    let shared: SharedRuntimeJournal =
+        crate::journal::StorageRuntimeJournal::shared_strict(fjall.clone());
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let workflow = suspended_workflow().ok_or_else(|| "suspended workflow".to_string())?;
+    let run = RunId::new(779);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
+    let state = shard
+        .run_state_get(run)
+        .ok_or_else(|| "run should be suspended".to_string())?;
+    let events = fjall
+        .events_for_run_full(run)
+        .map_err(|error| error.to_string())?;
+    assert!(events.len() >= 2, "header must produce multiple events");
+    let measured = crate::recovery::recover_journal_bytes_written(&events)
+        .map_err(|error| error.to_string())?;
     assert_eq!(state.journal_bytes_written, measured);
     Ok(())
 }
@@ -1166,10 +1401,77 @@ fn empty_evidence_await_timer_charges_ask_scheduled_bytes() -> Result<(), String
         .checked_sub(before_measured)
         .ok_or_else(|| "journal must not shrink across the reschedule".to_string())?;
     assert_eq!(charged, appended);
-    assert!(
-        charged > 0,
-        "rescheduled ask must charge its journal event"
-    );
+    assert!(charged > 0, "rescheduled ask must charge its journal event");
     Ok(())
 }
 
+#[test]
+fn tenant_quota_charges_on_submit_and_releases_on_cancel() -> Result<(), String> {
+    let workflow = suspended_workflow().ok_or_else(|| "suspended workflow".to_string())?;
+    let tenant = vb_core::ids::TenantId::new(7);
+    let run = RunId::new(8_001);
+    let mut shard = Shard::new(small_config());
+    shard.set_resource_quotas(u64::MAX, u64::MAX);
+    shard
+        .handle_submit_with_inputs_contracts_and_tenant(
+            run,
+            workflow,
+            &[(SlotIdx::ZERO, SlotValue::I64(0))],
+            crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            &crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+            tenant,
+        )
+        .map_err(|error| error.to_string())?;
+    assert!(shard.run_state_contains(run));
+    let cost = shard
+        .run_state_get(run)
+        .and_then(|state| state.admission.as_ref())
+        .and_then(|admission| admission.budget())
+        .map(|budget| budget.max_cost_units)
+        .ok_or_else(|| "admitted budget".to_string())?;
+    assert!(cost > 0);
+    assert_eq!(shard.usage_snapshot().tenant_cost_usage(tenant), Ok(cost));
+    assert_eq!(shard.global_cost_usage(), cost);
+    shard
+        .handle_cancel(run, Some(String::from("test")))
+        .map_err(|error| error.to_string())?;
+    assert_eq!(shard.usage_snapshot().tenant_cost_usage(tenant), Ok(0));
+    assert_eq!(shard.global_cost_usage(), 0);
+    Ok(())
+}
+
+#[test]
+fn tenant_quota_rejects_limit_plus_one_without_mutation() -> Result<(), String> {
+    let tenant = vb_core::ids::TenantId::new(8);
+    let run = RunId::new(8_002);
+    let mut shard = Shard::new(small_config());
+    shard.set_resource_quotas(0, u64::MAX);
+    let result = shard.charge_admission_quota(run, Some(tenant), 1);
+    assert!(matches!(
+        result,
+        Err(RuntimeError::ResourceQuotaExceeded {
+            resource: "tenant_quota_cost_units",
+            ..
+        })
+    ));
+    assert_eq!(shard.usage_snapshot().tenant_cost_usage(tenant), Ok(0));
+    assert_eq!(shard.global_cost_usage(), 0);
+    Ok(())
+}
+
+#[test]
+fn global_quota_rejects_limit_plus_one() -> Result<(), String> {
+    let run = RunId::new(8_003);
+    let mut shard = Shard::new(small_config());
+    shard.set_resource_quotas(u64::MAX, 0);
+    let result = shard.charge_admission_quota(run, None, 1);
+    assert!(matches!(
+        result,
+        Err(RuntimeError::ResourceQuotaExceeded {
+            resource: "global_quota_cost_units",
+            ..
+        })
+    ));
+    assert_eq!(shard.global_cost_usage(), 0);
+    Ok(())
+}

@@ -4,6 +4,7 @@
 pub(crate) mod choose;
 pub(crate) mod error_routing;
 pub(crate) mod expr_eval;
+mod expression_failure;
 pub(crate) mod node_helpers;
 pub(crate) mod object_list;
 pub mod repeat;
@@ -25,6 +26,7 @@ pub use expr_eval::eval_accessor;
 pub use expr_eval::eval_accessor_with_store;
 pub use expr_eval::eval_expr;
 pub use expr_eval::eval_expr_with_store;
+pub use expression_failure::is_ordinary_expression_failure;
 pub use object_list::build_list;
 pub use object_list::build_list as build_list_impl;
 pub use object_list::build_object;

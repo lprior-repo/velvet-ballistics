@@ -1,5 +1,6 @@
 use super::arenas::{TAINTS, VALUES};
 use super::support::{Case, TestResult};
+use vb_core::budget::AggregateResourceBudget;
 use vb_core::{CoreError, SlotValue, StepIdx, StepState, Taint};
 use vb_runtime::runtime::Runtime;
 
@@ -28,7 +29,8 @@ pub(super) fn original_prefix(case: &Case, runtime: &Runtime) -> TestResult {
         admission.policy_pin(),
         vb_storage::RunPolicyPin::Pinned(case.artifact.policy_digest)
     );
-    assert_eq!(admission.budget(), None);
+    let expected_budget = AggregateResourceBudget::from_workflow(&case.workflow)?;
+    assert_eq!(admission.budget(), Some(expected_budget));
     assert!(admission.idempotency_attested().is_empty());
     Ok(())
 }

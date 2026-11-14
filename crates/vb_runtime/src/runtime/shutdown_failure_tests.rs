@@ -19,6 +19,10 @@ struct FailShutdownPortOnce {
 }
 
 impl RuntimeJournal for FailShutdownPortOnce {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        self.inner.durability_profile()
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         self.inner.append(event)
     }
@@ -31,6 +35,14 @@ impl RuntimeJournal for FailShutdownPortOnce {
         seq: EventSeq,
     ) -> RuntimeResult<()> {
         self.inner.append_sequenced_batch(events, seq)
+    }
+    fn append_admission_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        seq: EventSeq,
+        inputs: vb_storage::RunInputsRecord,
+    ) -> RuntimeResult<()> {
+        self.inner.append_admission_batch(events, seq, inputs)
     }
     fn probe(&self) -> RuntimeResult<()> {
         self.inner.probe()

@@ -209,6 +209,8 @@ fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
         JournalEvent::PolicyDecisionEvent { .. }
             | JournalEvent::GateDecisionEvent { .. }
             | JournalEvent::GateOpenedEvent { .. }
+            | JournalEvent::GateOpenedBoundEvent { .. }
+            | JournalEvent::GateDecisionBoundEvent { .. }
             | JournalEvent::CompatibilityDecisionEvent { .. }
             | JournalEvent::TenantAdmissionEvent { .. }
             | JournalEvent::RunContinuation { .. }
@@ -254,8 +256,11 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::GateDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::GateOpenedEvent { .. } => LifecycleState::Active,
+        JournalEvent::GateOpenedBoundEvent { .. } => LifecycleState::Active,
+        JournalEvent::GateDecisionBoundEvent { .. } => LifecycleState::Active,
         JournalEvent::CompatibilityDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::TenantAdmissionEvent { .. } => LifecycleState::Active,
+        JournalEvent::RunBudgetOriginEvent { .. } => LifecycleState::Active,
     }
 }
 

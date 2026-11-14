@@ -1,19 +1,77 @@
+#[path = "recovery_seed/owned.rs"]
+mod owned;
+
 impl Runtime {
-    /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
-    /// for a workflow-aware replay path.
+    /// Reconstructs the typed recovery seed plus any replayed frame/store
+    /// evidence for a loaded workflow.
     ///
-    /// **FINDING-002 typestate closure.** Uses the typed entry point
-    /// `recover_runtime_frame_seed_from_events_with_workflow` so the
-    /// storage-classified cannot-resume/resumable product is the source
-    /// of truth; the runtime never sees the raw DTO.
-    fn recover_seed_for_loaded_workflow(
+    /// Deterministic owned controls and source-only traces with retained
+    /// handles replay from the input checkpoint used by the live run. Other
+    /// workflows keep the generic seed and scalar replay path.
+    fn recover_seed_evidence(
         events: &[vb_storage::JournalEvent],
         workflow: &CompiledWorkflow,
-    ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
-        vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(events, workflow)
+        retained_inputs: &crate::recovery::RecoveredRetainedInputs,
+    ) -> RuntimeResult<RecoveredSeedEvidence> {
+        if let Some(evidence) =
+            Self::recover_owned_seed_evidence(events, workflow, retained_inputs)?
+        {
+            return Ok(evidence);
+        }
+        let (seed, repaired_failure_route) =
+            Self::recover_seed_for_loaded_workflow(events, workflow)?;
+        let complete_frame = Self::complete_scalar_frame(events, workflow, repaired_failure_route)?;
+        Ok(RecoveredSeedEvidence {
+            seed,
+            complete_frame,
+            recovered_store: None,
+        })
+    }
+
+    fn complete_scalar_frame(
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+        repaired_failure_route: bool,
+    ) -> RuntimeResult<Option<vb_core::RunFrame>> {
+        if repaired_failure_route {
+            return Ok(None);
+        }
+        vb_storage::recovery::complete_scalar::replay_complete_scalar(events, workflow)
+            .map(|replayed| replayed.map(|complete| complete.into_frame()))
             .map_err(|error| RuntimeError::Recovery {
                 error: error.to_string(),
             })
+    }
+
+    /// Reconstructs the workflow-aware seed and repairs only a partial handler route.
+    fn recover_seed_for_loaded_workflow(
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+    ) -> RuntimeResult<(vb_storage::recovery::RecoveryFrameSeedProduct, bool)> {
+        let product = vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(
+            events, workflow,
+        )
+        .map_err(|error| RuntimeError::Recovery {
+            error: error.to_string(),
+        })?;
+        let (seed, repaired) = Self::repair_routed_action_failure(product, events, workflow)?;
+        Ok((seed, repaired))
+    }
+
+    fn repair_routed_action_failure(
+        product: vb_storage::recovery::RecoveryFrameSeedProduct,
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+    ) -> RuntimeResult<(vb_storage::recovery::RecoveryFrameSeedProduct, bool)> {
+        let mut seed = product.seed().clone();
+        let repaired = crate::recovery::restore_routed_action_failure(&mut seed, events, workflow)
+            .map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })?;
+        Ok((
+            vb_storage::recovery::RecoveryFrameSeedProduct::from_seed(seed),
+            repaired,
+        ))
     }
 
     /// Builds the recovered live-run boundary from the typed seed product.
@@ -46,17 +104,17 @@ impl Runtime {
     fn product_from_recovered_seed(
         run: RunId,
         prefix: RecoveryPrefixEvidence,
-        seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+        evidence: RecoveredSeedEvidence,
         boundary: crate::recovery::RecoveredRunBoundary,
         retained_inputs: crate::recovery::RecoveredRetainedInputs,
-        complete_frame: Option<vb_core::RunFrame>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let context = RecoveredSeedProductContext {
             run,
             prefix,
-            seed,
+            seed: evidence.seed,
             boundary,
-            complete_frame,
+            complete_frame: evidence.complete_frame,
+            recovered_store: evidence.recovered_store,
         };
         Self::product_from_recovered_context(context, &retained_inputs)
     }
@@ -65,11 +123,20 @@ impl Runtime {
         context: RecoveredSeedProductContext,
         retained_inputs: &crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let replay_store = context
+            .recovered_store
+            .clone()
+            .map(vb_core::value_store::ValueStore::from_checkpoint_v1)
+            .transpose()
+            .map_err(|error| RuntimeError::Recovery {
+                error: format!("recovered value store invalid: {error}"),
+            })?;
+        let store = replay_store.as_ref().or_else(|| retained_inputs.store());
         let cannot_resume = crate::recovery::classify_full_recovery_resume(
             context.seed.seed(),
             context.boundary,
             retained_inputs.initial_inputs(),
-            retained_inputs.store(),
+            store,
         );
         if !cannot_resume.is_resumable() {
             return Ok(crate::recovery::RuntimeRecoveryProduct::cannot_resume(
@@ -88,12 +155,13 @@ impl Runtime {
                 ),
             );
         }
-        Self::resumable_product_from_recovered_context(context, retained_inputs)
+        Self::resumable_product_from_recovered_context(context, retained_inputs, store)
     }
 
     fn resumable_product_from_recovered_context(
         context: RecoveredSeedProductContext,
         retained_inputs: &crate::recovery::RecoveredRetainedInputs,
+        store: Option<&vb_core::value_store::ValueStore>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let initial_inputs = retained_inputs.initial_inputs().to_vec();
         let frame = match context.complete_frame {
@@ -102,12 +170,16 @@ impl Runtime {
                 context.seed.seed(),
                 context.boundary,
                 initial_inputs,
-                retained_inputs.store(),
+                store,
             )?,
         };
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
         let open_gates = crate::manual_gate::reconstruct_open_gates(&context.prefix.events)
             .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
+        let bound_open_gates =
+            crate::manual_gate::reconstruct_bound_open_gates(&context.prefix.events)
+                .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
+        let frame_step_count = frame.step_count();
         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
             crate::recovery::ResumableRecoveryProduct::new(
                 crate::recovery::ResumableRecoveryParts {
@@ -121,8 +193,21 @@ impl Runtime {
                     boundary: context.boundary,
                     retry_checkpoint: None,
                     open_gates,
+                    bound_open_gates,
                     admission: context.prefix.admission.clone(),
-                    restored_store: retained_inputs.store_checkpoint(),
+                    run_started_millis: context.prefix.run_started_millis,
+                    recovered_action_attempts: Some(crate::recovery::recover_action_attempts(
+                        &context.prefix.events,
+                        frame_step_count,
+                    )),
+                    recovered_journal_bytes_written: Some(
+                        crate::recovery::recover_journal_bytes_written(&context.prefix.events)?,
+                    ),
+                    recovered_tenant: crate::recovery::hydrate_run_tenant(&context.prefix.events),
+                    restored_store: context
+                        .recovered_store
+                        .clone()
+                        .or_else(|| retained_inputs.store_checkpoint()),
                 },
             ),
         ))
@@ -183,14 +268,11 @@ impl Runtime {
                     _ => String::from("artifact_decode_failed"),
                 },
             })?;
-        let parts = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
-            .map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })?;
         let workflow =
-            CompiledWorkflow::try_from_parts(parts).map_err(|error| RuntimeError::Recovery {
-                error: error.to_string(),
-            })?;
+            crate::admission::verify_stored_artifact_detailed(&store, &artifact, Some(self.policy))
+                .map_err(|error| RuntimeError::Recovery {
+                    error: error.to_string(),
+                })?;
         Ok(RecoveryArtifactWorkflow { artifact, workflow })
     }
 }

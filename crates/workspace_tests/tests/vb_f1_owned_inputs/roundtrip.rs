@@ -58,10 +58,15 @@ fn strict_owned_submission_reopens_with_exact_arenas_roots_taints_and_receipt() 
     assert_eq!(loaded.checkpoint(), expected.checkpoint());
     assert_owned_graph(&loaded, &workflow)?;
     let events = journal.events_for_run(f.run)?;
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 4);
     let admission = events
         .iter()
-        .find(|e| matches!(e, JournalEvent::RunAdmission { .. }))
+        .find(|event| {
+            matches!(
+                event,
+                JournalEvent::RunAdmissionBudget { .. } | JournalEvent::RunAdmission { .. }
+            )
+        })
         .ok_or("admission missing")?;
     loaded.validate_admission(admission)?;
     assert!(journal.run_header(f.run)?.is_some());

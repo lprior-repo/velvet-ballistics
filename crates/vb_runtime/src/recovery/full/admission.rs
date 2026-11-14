@@ -121,7 +121,7 @@ fn validate_recovered_budget(
     workflow: &CompiledWorkflow,
 ) -> RuntimeResult<()> {
     let Some(recorded) = admission.budget() else {
-        return Ok(());
+        return Err(cannot_resume_error("admission_budget_missing"));
     };
     let required = vb_core::AggregateResourceBudget::from_workflow(workflow)
         .map_err(|_| cannot_resume_error("admission_budget_invalid"))?;
@@ -162,6 +162,9 @@ fn validate_recorded_budget_limits(
         max_value_store_entries,
         max_cost_units,
     } = required;
+    if recorded.max_run_time_seconds == 0 || recorded.max_run_time_seconds > *max_run_time_seconds {
+        return Err(cannot_resume_error("admission_budget_lifetime_invalid"));
+    }
     if [
         *max_steps_executable <= recorded.max_steps_executable,
         *max_action_tickets <= recorded.max_action_tickets,
@@ -172,7 +175,6 @@ fn validate_recorded_budget_limits(
         *max_for_each_iterations <= recorded.max_for_each_iterations,
         *max_together_branches <= recorded.max_together_branches,
         *max_repeat_attempts <= recorded.max_repeat_attempts,
-        *max_run_time_seconds <= recorded.max_run_time_seconds,
         *max_result_bytes <= recorded.max_result_bytes,
         *max_total_slots_written <= recorded.max_total_slots_written,
         *max_timer_entries <= recorded.max_timer_entries,

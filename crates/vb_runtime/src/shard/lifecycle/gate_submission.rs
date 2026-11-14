@@ -23,11 +23,14 @@
 // command can drive it either.
 
 use vb_core::manual_gate::{
-    ApproverId, GateDecision, GateDecisionInput, GateId, GateOutcomeRecord, ManualGate,
+    ApproverId, BoundGateOutcomeRecord, BoundManualGate, GateDecision, GateDecisionInput, GateId,
+    GateOutcomeRecord, ManualGate, OperatorTrust,
 };
 
-use crate::manual_gate::{evaluate_decision, evaluate_timeout};
-use crate::shard::types::OpenGate;
+use crate::manual_gate::{
+    evaluate_bound_decision, evaluate_bound_timeout, evaluate_decision, evaluate_timeout,
+};
+use crate::shard::types::{BoundOpenGate, OpenGate};
 
 impl Shard {
     /// Opens a manual gate for a run and suspends the run until decided.
@@ -55,7 +58,7 @@ impl Shard {
         if !self.run_state_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        if self.open_gates.contains_key(&gate.id) {
+        if self.open_gates.contains_key(&gate.id) || self.bound_open_gates.contains_key(&gate.id) {
             return Err(RuntimeError::GateAlreadyOpen { gate: gate.id });
         }
         self.check_gate_suspendable(run)?;
@@ -69,39 +72,6 @@ impl Shard {
             delegated_to: None,
         };
         self.open_gates.insert(open.gate.id, open);
-        Ok(())
-    }
-
-    /// Restores gates reconstructed from durable journal evidence into the
-    /// shard registry after recovery.
-    ///
-    /// The gates were folded from the full per-run journal by
-    /// [`crate::manual_gate::reconstruct_open_gates`], so their definitions
-    /// are already validated; this restores the live registry entries the
-    /// crash lost. Every gate must belong to the recovered run, no gate id
-    /// may already be registered, and the registry cap still applies. A
-    /// violation fails recovery instead of silently dropping a gate.
-    /// Restoring performs no journal append: the openings are already durable.
-    pub(crate) fn restore_open_gates(
-        &mut self,
-        run: RunId,
-        gates: &[OpenGate],
-    ) -> RuntimeResult<()> {
-        for open in gates {
-            if open.gate.run != run {
-                return Err(RuntimeError::Recovery {
-                    error: format!(
-                        "recovered open gate {} belongs to a different run",
-                        open.gate.id.get()
-                    ),
-                });
-            }
-            if self.open_gates.contains_key(&open.gate.id) {
-                return Err(RuntimeError::GateAlreadyOpen { gate: open.gate.id });
-            }
-            self.reserve_open_gate_slot()?;
-            self.open_gates.insert(open.gate.id, open.clone());
-        }
         Ok(())
     }
 
@@ -120,6 +90,13 @@ impl Shard {
         run: RunId,
         input: GateDecisionInput,
     ) -> RuntimeResult<GateOutcomeRecord> {
+        if self.bound_open_gates.contains_key(&input.gate) {
+            return Err(RuntimeError::GateEvaluationFailed {
+                source: crate::manual_gate::GateError::BoundGateRequired {
+                    gate: input.gate.get(),
+                },
+            });
+        }
         let open = self
             .open_gates
             .get(&input.gate)
@@ -140,7 +117,7 @@ impl Shard {
                 actual: input.approver.clone(),
             });
         }
-        let record = evaluate_decision(&open.gate, open.opened_at_ms, &input)
+        let record = evaluate_decision(&open.gate, open.opened_at_ms, &open.requester, &input)
             .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
         self.append_gate_decision_strict(record.clone())?;
         match input.decision {
@@ -175,6 +152,11 @@ impl Shard {
         gate: GateId,
         now_ms: u64,
     ) -> RuntimeResult<GateOutcomeRecord> {
+        if self.bound_open_gates.contains_key(&gate) {
+            return Err(RuntimeError::GateEvaluationFailed {
+                source: crate::manual_gate::GateError::BoundGateRequired { gate: gate.get() },
+            });
+        }
         let open = self
             .open_gates
             .get(&gate)
@@ -222,21 +204,6 @@ impl Shard {
         }
     }
 
-    /// Returns the first open gate id for a run, in opening order, if any.
-    pub(crate) fn open_gate_for(&self, run: RunId) -> Option<GateId> {
-        self.open_gates
-            .values()
-            .find(|open| open.gate.run == run)
-            .map(|open| open.gate.id)
-    }
-
-    pub(crate) fn open_gate_count(&self, run: RunId) -> u64 {
-        self.open_gates
-            .values()
-            .filter(|open| open.gate.run == run)
-            .fold(0u64, |count, _| count.saturating_add(1))
-    }
-
     /// Rejects opening a gate on a run that cannot be suspended.
     ///
     /// Only a run that can proceed may be gated: initial or running, with
@@ -255,24 +222,6 @@ impl Shard {
             return Err(RuntimeError::GateRunNotSuspendable { run, state });
         }
         Ok(())
-    }
-
-    /// Reserves one slot in the shard-wide open-gate registry.
-    ///
-    /// Total open gates are capped at the shard's configured
-    /// `max_open_gates`: the registry must stay bounded even for runs
-    /// admitted without a budget.
-    fn reserve_open_gate_slot(&mut self) -> RuntimeResult<()> {
-        if self.open_gates.len() >= self.max_open_gates {
-            return Err(RuntimeError::OpenGateCapacityExceeded {
-                capacity: self.max_open_gates,
-            });
-        }
-        self.open_gates
-            .try_reserve(1)
-            .map_err(|_| RuntimeError::OpenGateCapacityExceeded {
-                capacity: self.max_open_gates,
-            })
     }
 
     /// Fails a gated run after its decision record is journaled.

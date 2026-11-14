@@ -907,3 +907,30 @@ fn terminal_gate_suspended_run_without_terminal_is_not_terminal() {
     let events = vec![started_event(run, 0, 1)];
     assert!(!super::run_is_currently_terminal(&events));
 }
+
+#[test]
+fn recovery_reconstructs_action_attempts_and_journal_bytes() -> Result<(), String> {
+    let run = RunId::new(27_005);
+    let events = vec![
+        vb_storage::JournalEvent::ActionFailedEvent {
+            run,
+            seq: EventSeq::ZERO,
+            step: StepIdx::new(1),
+            action: ActionId::new(0),
+            attempt: 3,
+        },
+        vb_storage::JournalEvent::ActionFailedEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            action: ActionId::new(0),
+            attempt: 2,
+        },
+    ];
+    let attempts = super::recover_action_attempts(&events, 2);
+    assert_eq!(attempts.get(0).copied(), Some(0));
+    assert_eq!(attempts.get(1).copied(), Some(3));
+    let bytes = super::recover_journal_bytes_written(&events).map_err(|error| error.to_string())?;
+    assert!(bytes > 0);
+    Ok(())
+}

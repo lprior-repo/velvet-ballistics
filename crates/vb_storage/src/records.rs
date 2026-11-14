@@ -2,6 +2,7 @@
 //! Durable record types for storage.
 
 mod kind;
+mod kind_magic;
 mod status;
 mod structs;
 

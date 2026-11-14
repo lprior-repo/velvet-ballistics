@@ -39,6 +39,7 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, TenantId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_storage::EventSeq;
+use vb_storage::RunInputBinding;
 use vb_storage::RunPolicyPin;
 use vb_storage::compat::CompatDecision;
 
@@ -184,6 +185,11 @@ pub fn admit_run_with_budget_and_global_quota(
 }
 
 fn validate_requested_budget(budget: &AdmissionBudgetRequest) -> Result<(), AdmissionError> {
+    if budget.requested.max_run_time_seconds == 0 {
+        return Err(AdmissionError::ResourceBudgetInvalidCapacity {
+            resource: "max_run_time_seconds",
+        });
+    }
     validate_aggregate_budget(&budget.requested, &budget.policy).map_err(map_budget_error)?;
     let requested_usage = AggregateResourceUsage::default()
         .try_add_budget(&budget.requested)
@@ -216,6 +222,9 @@ pub fn check_capability(
     }
 }
 
+#[path = "admission/parts/compat_codec.rs"]
+mod compat_codec;
+
 include!("admission/parts/chunk_001_types_errors_traits.rs");
 include!("admission/parts/chunk_002_records.rs");
 include!("admission/parts/chunk_003_stores.rs");
@@ -236,4 +245,4 @@ mod artifact_envelope_tests {
 
 #[path = "admission/registered_verification.rs"]
 mod registered_verification;
-pub(crate) use registered_verification::verify_stored_artifact;
+pub(crate) use registered_verification::{verify_stored_artifact, verify_stored_artifact_detailed};
