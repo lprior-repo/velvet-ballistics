@@ -734,6 +734,10 @@ impl RecoveryGateJournal {
 }
 
 impl crate::journal::RuntimeJournal for RecoveryGateJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(
         &self,
         _event: crate::journal::RuntimeJournalEvent,

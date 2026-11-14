@@ -221,6 +221,10 @@ struct SubmissionSingletonJournal {
 }
 
 impl crate::journal::RuntimeJournal for SubmissionSingletonJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Ok(())
@@ -259,6 +263,10 @@ struct SubmissionRejectingBatchJournal {
 }
 
 impl crate::journal::RuntimeJournal for SubmissionRejectingBatchJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         self.singleton_calls
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);

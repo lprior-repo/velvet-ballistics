@@ -19,6 +19,10 @@ impl RejectCompletionJournal {
 }
 
 impl RuntimeJournal for RejectCompletionJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         if matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { .. }) {
             return Err(RuntimeError::JournalFull { capacity: 0 });

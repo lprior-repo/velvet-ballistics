@@ -119,6 +119,10 @@ impl GateDecisionTestJournal {
 }
 
 impl RuntimeJournal for GateDecisionTestJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         Ok(())
     }

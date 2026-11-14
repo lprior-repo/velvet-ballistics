@@ -182,6 +182,10 @@ impl RejectAdmissionHeaderJournal {
 }
 
 impl crate::journal::RuntimeJournal for RejectAdmissionHeaderJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         let reject_submitted =
             matches!(event, RuntimeJournalEvent::RunSubmitted { .. }) && self.reject_submitted;

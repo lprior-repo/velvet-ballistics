@@ -229,6 +229,10 @@ fn queued_retry_flushes_emitted_prefix_and_resumes_drive() -> Result<(), String>
 struct NeverDurableJournal;
 
 impl crate::journal::RuntimeJournal for NeverDurableJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> Result<(), crate::RuntimeError> {
         Ok(())
     }

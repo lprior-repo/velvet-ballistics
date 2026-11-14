@@ -317,6 +317,10 @@ fn shard_timer_fire_for_ask_timeout_fails_run() -> Result<(), String> {
 struct CancelAppendFailsJournal;
 
 impl crate::journal::RuntimeJournal for CancelAppendFailsJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(vb_storage::DurabilityProfile::Volatile)
+    }
+
     fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
         self.append_sequenced(event, vb_storage::EventSeq::ZERO)
     }
