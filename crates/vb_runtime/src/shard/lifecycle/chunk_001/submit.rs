@@ -25,6 +25,13 @@ impl SubmitOptions {
 }
 
 impl Shard {
+    /// Returns true when the journal is explicitly Volatile with no storage backend.
+    /// Only that profile may skip retained-input admission for RunId-zero compatibility.
+    fn is_volatile_admission(&self) -> bool {
+        self.journal.durability_profile() == Some(vb_storage::DurabilityProfile::Volatile)
+            && self.journal.storage_journal().is_none()
+    }
+
     fn handle_submit_with_inputs_contracts_and_header_mode(
         &mut self,
         run: RunId,
@@ -44,7 +51,8 @@ impl Shard {
         }
         let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
         self.validate_secret_presence(&workflow)?;
-        let filled_inputs = self.prepare_secret_inputs(&workflow, inputs)?;
+        let secret_inputs = self.prepare_secret_inputs(&workflow, inputs)?;
+        let filled_inputs = crate::shard::helpers::prepare_input_slots(&secret_inputs, &workflow)?;
         let inputs = filled_inputs.as_slice();
         if let Some(metadata) = workflow.source_metadata() {
             vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
@@ -100,18 +108,22 @@ impl Shard {
         }
         let mut header_bytes: u64 = 0;
         if let (true, Some(admission)) = (options.persist_header, admission.as_ref()) {
-            let retained_inputs = match vb_storage::RunInputsRecord::new(
-                run,
-                admission.artifact_digest(),
-                digest,
-                &workflow,
-                filled_inputs.into_boxed_slice(),
-            ) {
-                Ok(record) => record,
-                Err(error) => {
-                    self.release_frame(frame);
-                    self.release_admission_quota(run)?;
-                    return Err(RuntimeError::from(error));
+            let retained_inputs = if self.is_volatile_admission() {
+                None
+            } else {
+                match vb_storage::RunInputsRecord::new(
+                    run,
+                    admission.artifact_digest(),
+                    digest,
+                    &workflow,
+                    filled_inputs.into_boxed_slice(),
+                ) {
+                    Ok(record) => Some(record),
+                    Err(error) => {
+                        self.release_frame(frame);
+                        self.release_admission_quota(run)?;
+                        return Err(RuntimeError::from(error));
+                    }
                 }
             };
             let mut events = vec![
@@ -143,7 +155,10 @@ impl Shard {
                     return Err(error);
                 }
             };
-            let header_result = self.append_admission_journal_event_batch(&events, retained_inputs);
+            let header_result = match retained_inputs {
+                Some(inputs) => self.append_admission_journal_event_batch(&events, inputs),
+                None => self.append_journal_event_batch(&events),
+            };
             if let Err(error) = header_result {
                 self.release_frame(frame);
                 self.release_admission_quota(run)?;
