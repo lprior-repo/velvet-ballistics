@@ -449,6 +449,46 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         0x4032,
         CodeCategory::RuntimeBoundary,
     ),
+    active_code_entry("INVALID_CONFIG", 0x4033, CodeCategory::RuntimeBoundary),
+    active_code_entry(
+        "UNSUPPORTED_READ_ONLY",
+        0x4034,
+        CodeCategory::RuntimeBoundary,
+    ),
+    active_code_entry(
+        "REPLAY_KEY_PAYLOAD_MISMATCH",
+        0x4040,
+        CodeCategory::RuntimeBoundary,
+    ),
+    active_code_entry(
+        "REPLAY_ENVELOPE_SEQUENCE_MISMATCH",
+        0x4041,
+        CodeCategory::RuntimeBoundary,
+    ),
+    active_code_entry(
+        "EMERGENCY_DENY_UNSUPPORTED_VERSION",
+        0x4042,
+        CodeCategory::RuntimeBoundary,
+    ),
+    active_code_entry(
+        "EMERGENCY_DENY_MALFORMED",
+        0x4043,
+        CodeCategory::RuntimeBoundary,
+    ),
+    // ---- Trim: E41xx (0x4101–0x4103) ----
+    active_code_entry("NO_DURABLE_SNAPSHOT", 0x4101, CodeCategory::RuntimeBoundary),
+    active_code_entry("INCOMPLETE_TRIM", 0x4102, CodeCategory::RuntimeBoundary),
+    active_code_entry(
+        "RETENTION_POLICY_BLOCKS",
+        0x4103,
+        CodeCategory::RuntimeBoundary,
+    ),
+    // ---- Verification warnings: E50xx (0x5001) ----
+    active_code_entry(
+        "VERIFICATION_WARNING_SCHEMA_MISMATCH",
+        0x5001,
+        CodeCategory::RuntimeBoundary,
+    ),
     active_code_entry("JOURNAL_WRONG_RUN", 0x4008, CodeCategory::RuntimeBoundary),
     active_code_entry(
         "JOURNAL_SEQUENCE_GAP",
