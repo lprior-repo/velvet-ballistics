@@ -74,7 +74,12 @@ fn diagnostic_code_parser_accepts_each_global_partition() {
         DiagnosticCode::from_str("E200D"),
         Ok(DiagnosticCode::new(0x200D))
     );
-    // 0x300E was a gap after vb-xi2f.9/10 registry changes — use E2070 (Storage range start)
+    // IpcError codes 0x3001-0x300E are registered in CODE_REGISTRY; E300E
+    // covers the IPC partition. E2070 still covers the Storage range start.
+    assert_eq!(
+        DiagnosticCode::from_str("E300E"),
+        Ok(DiagnosticCode::new(0x300E))
+    );
     assert_eq!(
         DiagnosticCode::from_str("E2070"),
         Ok(DiagnosticCode::new(0x2070))
