@@ -288,8 +288,7 @@ pub fn run_frame_new(
     type FrameArrays = (Box<[StepState]>, Box<[SlotCell]>);
     fn try_frame_array<T>(len: usize, make: impl FnMut() -> T) -> CoreResult<Box<[T]>> {
         let mut values = Vec::new();
-        values.try_reserve_exact(len)
-            .map_err(|_error| CoreError::AllocationFailed)?;
+        values.try_reserve_exact(len).map_err(|_error| CoreError::AllocationFailed)?;
         if core::mem::size_of::<T>() != 0 && values.capacity() != len {
             return Err(CoreError::AllocationFailed);
         }
