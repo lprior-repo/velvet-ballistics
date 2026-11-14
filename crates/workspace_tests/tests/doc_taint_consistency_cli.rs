@@ -28,6 +28,15 @@ use tempfile::Builder;
 
 const BINARY: &str = env!("CARGO_BIN_EXE_check-doc-taint-consistency");
 
+fn fixture_dir() -> tempfile::TempDir {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/doc-taint-tests");
+    fs::create_dir_all(&root).expect("create fixture root");
+    Builder::new()
+        .prefix("vb-taint-test-")
+        .tempdir_in(&root)
+        .expect("temp dir")
+}
+
 /// Holds a temporary document and its path; keeps TempDir alive while tests run.
 struct TestDoc {
     _dir: tempfile::TempDir,
@@ -36,20 +45,14 @@ struct TestDoc {
 
 impl TestDoc {
     fn new(content: &str) -> Self {
-        let dir = Builder::new()
-            .prefix("vb-taint-test-")
-            .tempdir()
-            .expect("temp dir");
+        let dir = fixture_dir();
         let path = dir.path().join("velvet-ballistics-MASTER.md");
         fs::write(&path, content).expect("write doc");
         Self { _dir: dir, path }
     }
 
     fn new_non_utf8() -> Self {
-        let dir = Builder::new()
-            .prefix("vb-taint-test-")
-            .tempdir()
-            .expect("temp dir");
+        let dir = fixture_dir();
         let path = dir.path().join("velvet-ballistics-MASTER.md");
         let mut f = fs::File::create(&path).expect("create doc");
         f.write_all(&[0x80, 0x81, 0x82]).expect("write bytes");
@@ -136,10 +139,7 @@ fn too_many_arguments_prints_usage_exit2() {
 
 #[test]
 fn wrong_filename_fails_exit2() {
-    let dir = Builder::new()
-        .prefix("vb-taint-test-")
-        .tempdir()
-        .expect("temp dir");
+    let dir = fixture_dir();
     let path = dir.path().join("wrong-name.md");
     fs::write(&path, "clean doc").expect("write");
     let path_str = path.to_str().expect("path");
@@ -157,9 +157,11 @@ fn wrong_filename_fails_exit2() {
 
 #[test]
 fn nonexistent_file_fails_exit2() {
-    let path = "/tmp/vb-taint-nonexistent/velvet-ballistics-MASTER.md";
-    let expected = format!("error: document not found: {}\n", path);
-    let result = run_checker(&[path]);
+    let dir = fixture_dir();
+    let path = dir.path().join("velvet-ballistics-MASTER.md");
+    let path_str = path.to_str().expect("path");
+    let expected = format!("error: document not found: {}\n", path_str);
+    let result = run_checker(&[path_str]);
     assert_eq!(result.status.code(), Some(2));
     let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
     let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
@@ -169,14 +171,29 @@ fn nonexistent_file_fails_exit2() {
 
 #[test]
 fn directory_named_master_fails_exit2() {
-    let dir = Builder::new()
-        .prefix("vb-taint-test-")
-        .tempdir()
-        .expect("temp dir");
+    let dir = fixture_dir();
     let master_dir = dir.path().join("velvet-ballistics-MASTER.md");
     fs::create_dir(&master_dir).expect("create dir");
     let path_str = master_dir.to_str().expect("path");
     let expected = format!("error: document not found: {}\n", path_str);
+    let result = run_checker(&[path_str]);
+    assert_eq!(result.status.code(), Some(2));
+    let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
+    let stderr = String::from_utf8(result.stderr).expect("stderr utf-8");
+    assert_eq!(stdout, "");
+    assert_eq!(stderr, expected);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn unreadable_file_fails_exit2() {
+    let dir = fixture_dir();
+    let path = dir.path().join("velvet-ballistics-MASTER.md");
+    std::os::unix::fs::symlink("/proc/self/mem", &path).expect("create unreadable file link");
+    assert!(path.is_file(), "linked target must pass file validation");
+    let detail = fs::read(&path).expect_err("linked target must fail to read");
+    let path_str = path.to_str().expect("path");
+    let expected = format!("error: cannot read {}: {}\n", path_str, detail);
     let result = run_checker(&[path_str]);
     assert_eq!(result.status.code(), Some(2));
     let stdout = String::from_utf8(result.stdout).expect("stdout utf-8");
@@ -218,6 +235,46 @@ fn document_with_required_finish_passes() {
 #[test]
 fn document_with_only_node_names_passes() {
     assert_success("EvalExpr\nBuildObject\nBuildList\nFinished(SlotValue, Taint) is emitted.");
+}
+
+#[test]
+fn lowercase_node_names_do_not_match_forbidden_phrases() {
+    for content in [
+        "evalexpr Always Clean.\nFinished(SlotValue, Taint) is emitted.",
+        "buildobject Always Clean.\nFinished(SlotValue, Taint) is emitted.",
+        "buildlist Always Clean.\nFinished(SlotValue, Taint) is emitted.",
+    ] {
+        assert_success(content);
+    }
+}
+
+#[test]
+fn case_variants_of_node_phrases_pass() {
+    for content in [
+        "EvalExpr Always clean.\nFinished(SlotValue, Taint) is emitted.",
+        "EvalExpr always clean.\nFinished(SlotValue, Taint) is emitted.",
+        "EvalExpr No Taint join.\nFinished(SlotValue, Taint) is emitted.",
+        "EvalExpr no taint JOIN of expression operands.\nFinished(SlotValue, Taint) is emitted.",
+        "BuildObject Always clean.\nFinished(SlotValue, Taint) is emitted.",
+        "BuildObject always clean.\nFinished(SlotValue, Taint) is emitted.",
+        "BuildObject no JOIN of field taints.\nFinished(SlotValue, Taint) is emitted.",
+        "BuildList Always clean.\nFinished(SlotValue, Taint) is emitted.",
+        "BuildList always clean.\nFinished(SlotValue, Taint) is emitted.",
+        "BuildList no JOIN of item taints.\nFinished(SlotValue, Taint) is emitted.",
+    ] {
+        assert_success(content);
+    }
+}
+
+#[test]
+fn case_variants_of_vocabulary_literals_pass() {
+    for content in [
+        "clean < Secret < DerivedFromSecret.\nFinished(SlotValue, Taint) is emitted.",
+        "secret downgrades to Clean.\nFinished(SlotValue, Taint) is emitted.",
+        "private taint level.\nFinished(SlotValue, Taint) is emitted.",
+    ] {
+        assert_success(content);
+    }
 }
 
 #[test]
