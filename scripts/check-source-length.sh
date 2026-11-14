@@ -142,7 +142,7 @@ check_mutants_residue() {
 
 check_hot_functions() {
   mkdir -p target/gate-tools
-  rustc +nightly-2026-04-28 --edition=2024 "$SCRIPT_DIR/source_length_hot_functions.rs" \
+  rustup run nightly-2026-04-28 rustc --edition=2024 "$SCRIPT_DIR/source_length_hot_functions.rs" \
     -o target/gate-tools/source-length-hot-functions || { status=1; return; }
   hot_files | target/gate-tools/source-length-hot-functions || status=1
 }
