@@ -19,7 +19,7 @@
 // gate audit walks to.
 //
 // The in-tree mirror is a verbatim copy of the production
-// `FjallJournal::append_strict` (crates/vb_storage/src/journal/append.rs:39-61)
+// `FjallJournal::append_strict` (crates/vb_storage/src/journal/append.rs:40-62)
 // + `JournalWriteBatch::{strict, commit}` (batch/commit.rs:5-40) +
 // `JournalError` variants reachable from `append_strict`
 // (crates/vb_storage/src/error/mod.rs:21-206), with minimal substitutions (spec-mode type

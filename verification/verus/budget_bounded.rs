@@ -32,7 +32,7 @@
 // BINDING LEDGER:
 //   - `WholeWorkflowBudget`                  <- extern_budget_bounded.rs
 //                                              (mirror of
-//                                              crates/vb_core/src/budget/compute.rs:17-93)
+//                                              crates/vb_core/src/budget/compute.rs:18-94)
 //   - `WholeWorkflowBudget::compute`         <- extern_budget_bounded.rs
 //                                              `whole_workflow_budget_compute`
 //   - `BoundednessPolicy::validate`          <- extern_budget_bounded.rs
@@ -506,7 +506,7 @@ pub assume_specification[ production::sub_dim ](
 /// with `max_total_steps <= u64::MAX` (no u64 overflow) and `Ok` iff the
 /// production DFS did not encounter a back-edge cycle or depth overflow.
 /// Mirrors the success branch of `compute` at
-/// `crates/vb_core/src/budget/compute.rs:172-204` and the success contract of
+/// `crates/vb_core/src/budget/compute.rs:179-210` and the success contract of
 /// `count_total_steps` at `crates/vb_core/src/budget/loop_body.rs:11-17`.
 pub assume_specification[ production::whole_workflow_budget_compute ](
     nodes: &[production::workflow::CompiledNode],

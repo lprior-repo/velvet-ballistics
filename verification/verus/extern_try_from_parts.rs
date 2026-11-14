@@ -34,9 +34,9 @@
 //   - `validate_budget_result` budget error collapse
 //     <- crates/vb_core/src/workflow/validate.rs:121-130
 //   - `WholeWorkflowBudget` field set
-//     <- crates/vb_core/src/budget/compute.rs:21-97
+//     <- crates/vb_core/src/budget/compute.rs:22-98
 //   - `WholeWorkflowBudget::compute`
-//     <- crates/vb_core/src/budget/compute.rs:104-110
+//     <- crates/vb_core/src/budget/compute.rs:105-111
 //   - `BoundednessPolicy` field set
 //     <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::DEFAULT`
@@ -625,9 +625,9 @@ pub enum SpecKindRef {
     NonZero(u32),
 }
 /// Mirrors the production `WholeWorkflowBudget` field set at
-/// `crates/vb_core/src/budget/compute.rs:20-96`: the computed budget
+/// `crates/vb_core/src/budget/compute.rs:21-97`: the computed budget
 /// `WholeWorkflowBudget::compute` derives by walking the IR
-/// (budget/compute.rs:103-109). Production `u64` fields stay `u64`;
+/// (budget/compute.rs:104-110). Production `u64` fields stay `u64`;
 /// production `u16` fields are promoted to `u32` per this
 /// file's numeric-mirror convention. The seven fields
 /// `BoundednessPolicy::DEFAULT.validate` never reads
@@ -824,7 +824,7 @@ pub struct SpecWorkflowParts {
     /// Caller-supplied computed budget consumed by step 4
     /// (`validate_budget`, workflow/validate.rs:113-119). Production
     /// derives it with `WholeWorkflowBudget::compute`
-    /// (budget/compute.rs:103-109) and validates it against
+    /// (budget/compute.rs:104-110) and validates it against
     /// `BoundednessPolicy::DEFAULT` (budget/validate.rs:60-84); the
     /// projection checks the supplied value with `budget_error`
     /// instead, so the compute walk stays with the caller.
@@ -2699,7 +2699,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // from already-validated nodes, so the projection treats it as
     // passing for inputs that reached this step.
     // ---- Step 4: budget validation ----
-    // Production calls WholeWorkflowBudget::compute (budget/compute.rs:103-109)
+    // Production calls WholeWorkflowBudget::compute (budget/compute.rs:104-110)
     // then BoundednessPolicy::DEFAULT.validate (budget/validate.rs:88-146);
     // validate_budget_result (workflow/validate.rs:121-130) collapses
     // any BudgetError to BudgetPolicyExceeded. The projection checks

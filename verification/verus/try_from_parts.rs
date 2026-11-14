@@ -2476,7 +2476,7 @@ pub open spec fn spec_reachability_error(parts: &SpecWorkflowParts) -> Option<Sp
 }
 
 /// Spec mirror of one `next`-chain step in
-/// `find_inner_together_start` (engine/validate.rs:209-237):
+/// `find_inner_together_start` (crates/vb_core/src/engine/validate/nested_together.rs:140-166):
 /// the first `TogetherStart` (discriminant 12) distinct from
 /// `outer` reachable from `idx` by following routing `next`
 /// steps, stopping at `stop` (exclusive). `fuel` bounds the
@@ -2508,7 +2508,7 @@ pub open spec fn spec_walk_inner(
 
 /// Spec mirror of one outer `TogetherStart`'s branch scan in
 /// `validate_no_nested_together`
-/// (engine/validate.rs:119-172): the branch entries are every
+/// (crates/vb_core/src/engine/validate/nested_together.rs:63-85): the branch entries are every
 /// `kind_targets` position but the last (the join); a branch
 /// whose entry or join is out of range is skipped, matching
 /// production.
@@ -2538,7 +2538,7 @@ pub open spec fn spec_nested_branches_from(
 
 /// Spec mirror of the outer scan in
 /// `validate_no_nested_together`
-/// (engine/validate.rs:119-172): the first `TogetherStart` in
+/// (crates/vb_core/src/engine/validate/nested_together.rs:15-30): the first `TogetherStart` in
 /// table order whose branch bodies contain another
 /// `TogetherStart`. With fewer than two `TogetherStart` nodes
 /// the scan returns `None`, matching production's early return:
@@ -4503,7 +4503,7 @@ pub proof fn lemma_reachability_chain_accepted(parts: &SpecWorkflowParts)
 /// reachable from another `TogetherStart`'s branch body over
 /// the routing `next` chain is rejected with `NestedTogether`
 /// (production `validate_no_nested_together`,
-/// engine/validate.rs:119-172). The fixture is otherwise
+/// crates/vb_core/src/engine/validate/nested_together.rs:15-30). The fixture is otherwise
 /// well-formed: every node is reachable, every edge points
 /// forward, the loop spans nest strictly, and no counter slot
 /// is claimed, so the nested-together step is the first failure
@@ -4709,7 +4709,7 @@ pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
 /// rejected: the second starts at the first one's join, so the
 /// first one's branch walk stops before reaching it
 /// (production `validate_no_nested_together`,
-/// engine/validate.rs:119-172). This is the no-over-reject
+/// crates/vb_core/src/engine/validate/nested_together.rs:15-30). This is the no-over-reject
 /// witness for the nested-together step.
 pub proof fn lemma_nested_together_sequential_accepted(parts: &SpecWorkflowParts)
     requires

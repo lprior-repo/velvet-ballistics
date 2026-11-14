@@ -19,7 +19,7 @@
 //     (crates/vb_storage/src/admission/proof.rs:103-118).
 //   - prepare_with_profile mirrors
 //     `vb_storage::admission::prepare_with_profile` at
-//     crates/vb_storage/src/admission/verification.rs:39-42: sets exactly
+//     crates/vb_storage/src/admission/verification.rs:40-43: sets exactly
 //     bounded_claimed and idempotency_verified_claimed true and leaves the
 //     idempotency attestation empty.
 //   - submit_artifact_with_contracts is unproved call-chain context:
@@ -32,9 +32,9 @@
 //     sequence issuance and readback verification; no submit body is mirrored here.
 //   - verify_accepted_artifact mirrors
 //     `vb_storage::admission::verify_accepted_artifact` at
-//     crates/vb_storage/src/admission/verification.rs:60-90: recomputes the
+//     crates/vb_storage/src/admission/verification.rs:61-108: recomputes the
 //     expected artifact and rejects any deviation via verify_expected_bindings
-//     (crates/vb_storage/src/admission/verification.rs:145-160); the runtime
+//     (crates/vb_storage/src/admission/verification.rs:163-178); the runtime
 //     maps every such failure for admission callers to ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
 //     Recovery's detailed path at
@@ -42,7 +42,7 @@
 //     remains unproved call-chain context.
 //   - The legacy 15-gate, all-flags-true shape exists only in the
 //     AlwaysPresentArtifactStore fixture
-//     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91).
+//     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:76-93).
 //     It is not an admitted artifact: verify_accepted_artifact rejects it,
 //     per the gate-count and proof-flag tests at
 //     crates/vb_runtime/src/admission/artifact_envelope_tests.rs:205-318.
@@ -82,11 +82,11 @@ pub open spec fn PREPARED_GATE_COUNT() -> int {
 // (crates/vb_storage/src/admission/proof.rs:103-118) forces gate_count 0,
 // durable false, and every proof flag false, and
 // `prepare_with_profile`
-// (crates/vb_storage/src/admission/verification.rs:39-42) then sets
+// (crates/vb_storage/src/admission/verification.rs:40-43) then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and leaves the idempotency attestation empty. The shape is enforced
 // by `verify_accepted_artifact`
-// (crates/vb_storage/src/admission/verification.rs:60-90), which
+// (crates/vb_storage/src/admission/verification.rs:61-108), which
 // recomputes the expected artifact and rejects any deviation with
 // `ArtifactEvidenceInvalid`.
 //
@@ -141,9 +141,9 @@ pub fn proof_matches_prepared_shape(
 // prepared-proof shape: `verification_proof_core` at
 // `crates/vb_storage/src/admission/proof.rs:103-118` plus the flag
 // assignments in `prepare_with_profile` at
-// `crates/vb_storage/src/admission/verification.rs:39-42`, enforced by
+// `crates/vb_storage/src/admission/verification.rs:40-43`, enforced by
 // `verify_accepted_artifact` at
-// `crates/vb_storage/src/admission/verification.rs:60-90`.
+// `crates/vb_storage/src/admission/verification.rs:61-108`.
 pub assume_specification[ production::proof_matches_prepared_shape ](
     gate_count: u8,
     bounded_claimed: bool,

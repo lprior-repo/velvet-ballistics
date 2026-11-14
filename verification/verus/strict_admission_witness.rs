@@ -12,7 +12,7 @@
 //      mirror of the production enum shapes (SpecRuntimePolicy,
 //      SpecWitnessKind) and a pure projection
 //      `strict_admission_witness_decision` that captures the strict-policy
-//      branch of `admit_artifact_run_with_certificate_floor` (chunk_005_admit_core.rs:92-175)
+//      branch of `admit_artifact_run_with_certificate_floor` (chunk_005_admit_core.rs:99-112)
 //      plus the `validate_accepted_artifact_envelope` gate validation
 //      (chunk_004_validation.rs:1-12). See extern_strict_admission_witness.rs for
 //      the binding ledger and the trust boundary.
@@ -28,12 +28,12 @@
 //   - REQUIRED_GATE_COUNT mirrors `vb_runtime::admission::REQUIRED_GATE_COUNT`
 //     at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2 (u8 = 15).
 //   - SpecRuntimePolicy mirrors `vb_core::policy::RuntimePolicy` referenced
-//     by the production strict-admission dispatch at chunk_005_admit_core.rs:92-175.
+//     by the production strict-admission dispatch at chunk_005_admit_core.rs:99-112.
 //   - SpecWitnessKind mirrors the four-witness taxonomy used by the
-//     production storage-backend surface at chunk_003_stores.rs:1-196.
+//     production storage-backend surface at chunk_003_stores.rs:1-213.
 //   - strict_admission_witness_decision mirrors the strict-policy branch
 //     of `admit_artifact_run_with_certificate_floor` at
-//     crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:92-175, plus the gate validation
+//     crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:99-112, plus the gate validation
 //     in `validate_accepted_artifact_envelope` at chunk_004_validation.rs:1-12.
 //
 // ============================================================================
@@ -80,7 +80,7 @@ pub const REQUIRED_GATE_COUNT: u8 = 15;
 // Spec predicates (mathematical model used by proofs)
 // ============================================================================
 /// Spec predicate: a `SpecRuntimePolicy` is strict-like iff it is `Strict`
-/// or `Journaled`. Mirrors the production dispatch at chunk_005_admit_core.rs:92-175
+/// or `Journaled`. Mirrors the production dispatch at chunk_005_admit_core.rs:99-112
 /// where these two variants share the artifact-validation branch while
 /// `Relaxed` skips it.
 pub open spec fn strict_like(policy: SpecRuntimePolicy) -> bool {
@@ -100,7 +100,7 @@ pub open spec fn production_strict_like_spec(policy: SpecRuntimePolicy) -> bool 
 
 /// Spec predicate: a `SpecWitnessKind` is storage-backed iff it is
 /// `StorageAcceptedArtifact`. Mirrors the production storage-backend
-/// surface at chunk_003_stores.rs:113-196 — only `StorageArtifactStore` reading
+/// surface at chunk_003_stores.rs:115-213 — only `StorageArtifactStore` reading
 /// through `vb_storage::FjallJournal` provides a true storage-backed
 /// witness.
 pub open spec fn storage_backed(witness: SpecWitnessKind) -> bool {
@@ -287,7 +287,7 @@ pub proof fn proof_strict_requires_storage(witness: SpecWitnessKind)
 
 // Non-vacuous proof 2: Journaled-policy requires a storage-backed witness.
 // Same obligation as Strict — Strict and Journaled share the
-// artifact-validation branch at chunk_005_admit_core.rs:92-175.
+// artifact-validation branch at chunk_005_admit_core.rs:99-112.
 pub proof fn proof_journaled_requires_storage(witness: SpecWitnessKind)
     requires
         valid_admission_witness(SpecRuntimePolicy::Journaled, witness),
@@ -307,7 +307,7 @@ pub proof fn proof_journaled_requires_storage(witness: SpecWitnessKind)
 // `load_accepted_artifact` returns
 // `ArtifactEnvelopeError::PostcardDecodeFailed` because the raw payload
 // is not a valid `AcceptedArtifact` envelope
-// (chunk_003_stores.rs:183-184).
+// (chunk_003_stores.rs:200-201).
 pub proof fn proof_raw_parts_not_strict_witness()
     ensures
         !valid_admission_witness(SpecRuntimePolicy::Strict, SpecWitnessKind::RawWorkflowParts),
@@ -336,7 +336,7 @@ pub proof fn proof_raw_parts_not_strict_witness()
 // witness under Strict or Journaled policy. The production
 // `load_accepted_artifact` returns `ArtifactEnvelopeError::PostcardDecodeFailed`
 // because the raw compiled IR is not a valid `AcceptedArtifact` envelope
-// (chunk_003_stores.rs:183-184).
+// (chunk_003_stores.rs:200-201).
 pub proof fn proof_raw_compiled_not_strict_witness()
     ensures
         !valid_admission_witness(SpecRuntimePolicy::Strict, SpecWitnessKind::RawCompiledWorkflow),
@@ -370,7 +370,7 @@ pub proof fn proof_raw_compiled_not_strict_witness()
 // Non-vacuous proof 5: AlwaysPresentStore is not a storage-backed
 // witness under Strict or Journaled policy. The production
 // `AlwaysPresentArtifactStore` fabricates a valid envelope without
-// reading from storage (chunk_003_stores.rs:49-56) — so while it returns
+// reading from storage (chunk_003_stores.rs:51-58) — so while it returns
 // `Ok` from `load_accepted_artifact`, it does NOT satisfy the
 // strict-admission storage-backed witness obligation.
 pub proof fn proof_always_present_not_strict_witness()
@@ -402,7 +402,7 @@ pub proof fn proof_always_present_not_strict_witness()
 
 // Non-vacuous proof 6: StorageAcceptedArtifact is a valid strict-admission
 // witness. The production `StorageArtifactStore` reads through
-// `vb_storage::FjallJournal` (chunk_003_stores.rs:164-180), which provides the
+// `vb_storage::FjallJournal` (chunk_003_stores.rs:155-171), which provides the
 // storage-backed witness the strict-policy dispatch requires.
 pub proof fn proof_storage_artifact_satisfies_strict_witness()
     ensures

@@ -1047,7 +1047,7 @@ pub fn recover_runtime_summary_pure(has_events: bool, summary_ok: bool) -> bool 
 /// Pure precondition decision mirroring `hydrate_run_frame` at
 /// `crates/vb_storage/src/recovery/hydrate/mod.rs:86-108` AND the
 /// `DurableFrameRecoveryBoundary::hydrate_run_frame` driver at
-/// `crates/vb_runtime/src/recovery.rs:189-191`.
+/// `crates/vb_runtime/src/recovery.rs:209-211`.
 ///
 /// Production body: validate_snapshot_recovery_inputs (run_id,
 /// tail run ids, tail seqs, has evidence), then
@@ -1092,7 +1092,7 @@ pub fn hydrate_run_frame_preconditions_pure(
 
 /// Pure decision fn mirroring
 /// `SummaryRecoveryBoundary::hydrate_run_frame` at
-/// `crates/vb_runtime/src/recovery.rs:232-234`.
+/// `crates/vb_runtime/src/recovery.rs:252-254`.
 ///
 /// Production body: `Err(RuntimeError::UnsupportedFullRecoveryHydration)`
 /// unconditionally. Pure projection: always false (never succeeds).
