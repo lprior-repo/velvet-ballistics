@@ -255,7 +255,7 @@ pub open spec fn legal_terminal_transition(before: int, after: int) -> bool {
 /// or cancelled run's pending timer is removed (via
 /// `pending_timer_remove` in the `finish_run`/`fail_run_state`
 /// after-journaled continuations at
-/// `crates/vb_runtime/src/shard/transitions_cleanup.rs:24, 45`).
+/// `crates/vb_runtime/src/shard/transitions_cleanup.rs:26, 48`).
 pub open spec fn timer_eligible(run_exists: bool, terminal: int, cancelled: bool) -> bool {
     run_exists && none_terminal(terminal) && !cancelled
 }

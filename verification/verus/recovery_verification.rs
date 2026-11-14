@@ -121,7 +121,7 @@
 //   - `summary_recovery_boundary_hydrate_pure`
 //                                       <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            crates/vb_runtime/src/recovery.rs:190-192
+//                                            crates/vb_runtime/src/recovery.rs:253-255
 //                                            `SummaryRecoveryBoundary::hydrate_run_frame`;
 //                                            always returns
 //                                            `UnsupportedFullRecoveryHydration`)
@@ -608,7 +608,7 @@ pub fn recover_runtime_summary(has_events: bool, summary_ok: bool) -> bool {
 /// Production-bound exec fn: `hydrate_run_frame` precondition
 /// projection. Mirrors
 /// `crates/vb_storage/src/recovery/hydrate/mod.rs:72-91` AND
-/// `crates/vb_runtime/src/recovery.rs:189-191`.
+/// `crates/vb_runtime/src/recovery.rs:210-212`.
 pub fn hydrate_run_frame_preconditions(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -799,7 +799,7 @@ pub assume_specification[ production::recover_runtime_summary_pure ](
 /// Bridge contract: `hydrate_run_frame` precondition decision.
 /// Mirrors production body at
 /// `crates/vb_storage/src/recovery/hydrate/mod.rs:72-91` AND
-/// `crates/vb_runtime/src/recovery.rs:189-191`.
+/// `crates/vb_runtime/src/recovery.rs:210-212`.
 pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
