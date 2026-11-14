@@ -2633,6 +2633,8 @@ E300B  PayloadLengthOutOfRange { actual }
 E300C  PayloadEncodeFailed
 E300D  PayloadDecodeFailed
 E300E  ResponseDecodeFailed
+E3023  InvalidCommandFlags { command, flags }
+E3024  ReservedBitsSet { command, actual, reserved_mask }
 ```
 
 ---
