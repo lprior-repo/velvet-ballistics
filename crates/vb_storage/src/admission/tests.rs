@@ -1131,7 +1131,7 @@ fn admission_postcard_encode_failed_surfaces_typed_variant() {
     // `crates/vb_storage/src/admission/verification.rs:37, 182, 196-197, 199`,
     // `crates/vb_storage/src/admission/verification/ledger.rs:13, 60`,
     // `crates/vb_storage/src/admission/digest.rs:23`) and two in
-    // `admit_compiled_artifact` (`crates/vb_storage/src/admission.rs:205, 212`).
+    // `admit_compiled_artifact` (`crates/vb_storage/src/admission.rs:229, 236`).
     let journal_err: JournalError =
         match postcard::to_slice(&ResourceContract::DEFAULT, &mut zero_len_buffer) {
             Ok(_) => panic!("zero-length buffer must not succeed"),
@@ -1259,6 +1259,69 @@ fn submit_artifact_strict_returns_accepted_artifact_tag() -> Result<(), String> 
         classify_accepted_artifact(&artifact),
         PayloadTag::AcceptedArtifact
     );
+    Ok(())
+}
+
+#[test]
+fn submit_prepared_strict_accepts_current_version() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let artifact = prepare_compiled_artifact(&workflow, vb_core::RuntimePolicy::Strict, &[])
+        .map_err(|e| format!("prepare failed: {e}"))?;
+    let submitted = submit_prepared_artifact(&journal, artifact, vb_core::RuntimePolicy::Strict)
+        .map_err(|e| format!("submit_prepared_artifact(strict) failed: {e}"))?;
+    assert_eq!(
+        classify_accepted_artifact(&submitted),
+        PayloadTag::AcceptedArtifact
+    );
+    let stored = journal
+        .compiled_ir(submitted.digest)
+        .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+    assert!(stored.is_some(), "artifact must be readable after submit");
+    Ok(())
+}
+
+#[test]
+fn submit_prepared_strict_rejects_legacy_version() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let mut artifact = prepare_compiled_artifact(&workflow, vb_core::RuntimePolicy::Strict, &[])
+        .map_err(|e| format!("prepare failed: {e}"))?;
+    artifact.artifact_version = crate::compat::SchemaVersion::new(1, 0, 0);
+    assert_eq!(
+        classify_accepted_artifact(&artifact),
+        PayloadTag::LegacyCompiledIr
+    );
+    let digest = artifact.digest;
+    let result = submit_prepared_artifact(&journal, artifact, vb_core::RuntimePolicy::Strict);
+    assert!(
+        matches!(result, Err(JournalError::ArtifactMalformed)),
+        "Strict submit of a legacy-version artifact must reject as ArtifactMalformed, got {result:?}"
+    );
+    let stored = journal
+        .compiled_ir(digest)
+        .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+    assert!(stored.is_none(), "rejected artifact must not be persisted");
+    Ok(())
+}
+
+#[test]
+fn submit_prepared_relaxed_accepts_legacy_version() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let mut artifact = prepare_compiled_artifact(&workflow, vb_core::RuntimePolicy::Strict, &[])
+        .map_err(|e| format!("prepare failed: {e}"))?;
+    artifact.artifact_version = crate::compat::SchemaVersion::new(1, 0, 0);
+    let submitted = submit_prepared_artifact(&journal, artifact, vb_core::RuntimePolicy::Relaxed)
+        .map_err(|e| format!("submit_prepared_artifact(relaxed) failed: {e}"))?;
+    assert_eq!(
+        classify_accepted_artifact(&submitted),
+        PayloadTag::LegacyCompiledIr
+    );
+    let stored = journal
+        .compiled_ir(submitted.digest)
+        .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+    assert!(stored.is_some(), "artifact must be readable after submit");
     Ok(())
 }
 

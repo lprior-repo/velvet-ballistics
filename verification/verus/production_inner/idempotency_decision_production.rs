@@ -16,8 +16,8 @@
 // Production `crates/vb_core/src/action/contract.rs:10-17`
 //   - `vb_core::action::ActionContract`     (crates/vb_core/src/action/contract.rs:83-105)
 //   - `vb_storage::admission::is_contract_idempotency_accepted`
-//                                            (crates/vb_storage/src/admission.rs:174-188)
-// Production `crates/vb_storage/src/admission.rs:174-188`
+//                                            (crates/vb_storage/src/admission.rs:189-203)
+// Production `crates/vb_storage/src/admission.rs:189-203`
 //   - `vb_validate::idempotency_contract::is_statically_idempotent_contract`
 //                                            (crates/vb_validate/src/idempotency_contract.rs:140-187)
 // Production `crates/vb_validate/src/idempotency_contract.rs:140-187`
