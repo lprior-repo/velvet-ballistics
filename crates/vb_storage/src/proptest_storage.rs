@@ -1,4 +1,11 @@
 #![forbid(unsafe_code)]
+
+#[cfg(test)]
+#[path = "proptest_codec_fixtures.rs"]
+mod codec_fixtures;
+#[cfg(test)]
+#[path = "proptest_codec_matrix.rs"]
+mod codec_matrix;
 #[cfg(test)]
 #[allow(
     clippy::as_conversions,
@@ -134,13 +141,14 @@ mod storage_tests {
                 28 => RecordKind::RunKilled,
                 29 => RecordKind::AskTimedOut,
                 31 => RecordKind::WaitResolved,
-                _ => return Ok(()),
+                _ => return Err(proptest::test_runner::TestCaseError::fail(format!("unsupported kind_id {}", kind_id))),
             };
 
-            let event = JournalEvent::RunAccepted {
-                run,
-                seq,
-                workflow: WorkflowDigest::from_bytes([kind_id as u8; 32]),
+            let event = super::codec_fixtures::journal_event(kind, run, seq, attempt_val)?;
+            let expected_attempt = if kind == RecordKind::RunAccepted || kind == RecordKind::RunAdmission || kind == RecordKind::RunResumed || kind == RecordKind::RunRetried || kind == RecordKind::RunAnswered {
+                None
+            } else {
+                Some(attempt_val)
             };
 
             let encoded = encode_record(
@@ -150,19 +158,24 @@ mod storage_tests {
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = encoded.map_err(|e| proptest::test_runner::TestCaseError::fail(format!("encode failed: {}", e)))?;
 
             let decoded = decode_record::<JournalEvent>(
                 &encoded,
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok((envelope, decoded_event)) = decoded else { return Ok(()) };
+            let (envelope, decoded_event) = decoded.map_err(|e| proptest::test_runner::TestCaseError::fail(format!("decode failed: {}", e)))?;
 
             prop_assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
             prop_assert_eq!(envelope.record_kind, kind.id());
             prop_assert_eq!(envelope.sequence, seq_val);
-            prop_assert_eq!(decoded_event, event);
+            prop_assert_eq!(&decoded_event, &event);
+            prop_assert_eq!(decoded_event.run_id(), run);
+            prop_assert_eq!(decoded_event.seq(), seq);
+            prop_assert_eq!(decoded_event.record_kind(), kind);
+            prop_assert_eq!(decoded_event.attempt(), expected_attempt);
+            prop_assert!(decoded_event.is_valid());
         });
     }
 
@@ -175,10 +188,17 @@ mod storage_tests {
                 bytes: blob_bytes,
             };
             let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, MAX_BLOB_BYTES);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = encoded.map_err(|e| {
+                proptest::test_runner::TestCaseError::fail(format!(
+                    "encode failed for blob of length {}: {}",
+                    record.bytes.len(),
+                    e
+                ))
+            })?;
 
             let decoded = decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, MAX_BLOB_BYTES);
-            let Ok((_, decoded_record)) = decoded else { return Ok(()) };
+            let decoded = decoded.map_err(|e| proptest::test_runner::TestCaseError::fail(format!("decode failed for blob of length {}: {}", record.bytes.len(), e)))?;
+            let (_, decoded_record) = decoded;
 
             prop_assert_eq!(decoded_record, record);
         });
