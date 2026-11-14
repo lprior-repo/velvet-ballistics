@@ -52,7 +52,7 @@ pub enum CodeCategory {
     Ipc,
     /// Lifecycle errors: E33xx
     Lifecycle,
-    /// Runtime boundary errors: E40xx
+    /// Runtime boundary errors: E40xx, legacy trim E4101–E4103, and warning E5001.
     RuntimeBoundary,
     /// Internal invariant violations (fallback codes): E13xx
     Internal,
@@ -128,7 +128,7 @@ const fn active_code_entry(
 /// - Symbolic → numeric: exactly one mapping.
 /// - Numeric → symbolic: exactly one mapping.
 /// - All numeric codes are non-zero.
-/// - Category consistency: `(numeric >> 8) & 0xFF` matches the category range.
+/// - Category consistency follows the documented ranges and exact legacy identities.
 pub const CODE_REGISTRY: &[CodeEntry] = &[
     // ---- Schema: E01xx (0x0101–0x010B) ----
     active_code_entry("DUPLICATE_KEY", 0x0101, CodeCategory::Schema),
