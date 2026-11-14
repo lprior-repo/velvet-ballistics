@@ -842,7 +842,7 @@ impl CoreError {
     /// Repeat exhausted diagnostic code.
     pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1402);
     /// Invalid repeat state diagnostic code.
-    pub const INVALID_REPEAT_STATE_CODE: DiagnosticCode = DiagnosticCode::new(0x140E);
+    pub const INVALID_REPEAT_STATE_CODE: DiagnosticCode = DiagnosticCode::new(0x140F);
     /// Collect page limit exceeded diagnostic code.
     pub const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1403);
     /// Collect item limit exceeded diagnostic code.

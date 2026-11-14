@@ -693,6 +693,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     active_code_entry("EXPRESSION_STACK_UNDERFLOW", 0x130B, CodeCategory::Accessor),
     active_code_entry("OBJECT_FIELD_NOT_FOUND", 0x130C, CodeCategory::Accessor),
     active_code_entry("LIST_INDEX_OUT_OF_BOUNDS", 0x130D, CodeCategory::Accessor),
+    active_code_entry("INVALID_SPAN", 0x130E, CodeCategory::Accessor),
     active_code_entry("SYMBOL_OUT_OF_BOUNDS", 0x1311, CodeCategory::Accessor),
     active_code_entry("LIST_OUT_OF_BOUNDS", 0x1312, CodeCategory::Accessor),
     active_code_entry("OBJECT_OUT_OF_BOUNDS", 0x1313, CodeCategory::Accessor),
@@ -734,7 +735,13 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         0x140C,
         CodeCategory::Lowering,
     ),
-    active_code_entry("EVIDENCE_CAPACITY_EXCEEDED", 0x140D, CodeCategory::Lowering),
+    active_code_entry(
+        "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",
+        0x140D,
+        CodeCategory::Lowering,
+    ),
+    active_code_entry("EVIDENCE_CAPACITY_EXCEEDED", 0x140E, CodeCategory::Lowering),
+    active_code_entry("INVALID_REPEAT_STATE", 0x140F, CodeCategory::Lowering),
     // ---- Core Engine: E15xx (Lifecycle / journal / replay errors) ----
     active_code_entry(
         "CORE_LIFECYCLE_STORAGE_UNAVAILABLE",
