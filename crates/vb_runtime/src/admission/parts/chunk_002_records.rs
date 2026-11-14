@@ -79,9 +79,7 @@ impl serde::Serialize for RunAdmission {
         } else {
             // Binary: use the 9-position compatibility layout that
             // preserves old Postcard bytes for historical records.
-            compat_codec::serialize_admission(self).map(|bytes| {
-                serializer.serialize_bytes(bytes.as_slice())
-            })?
+            serialize_admission(self, serializer)
         }
     }
 }
@@ -126,9 +124,7 @@ impl<'de> serde::Deserialize<'de> for RunAdmission {
             // Binary: decode the 9-position compatibility layout, which
             // handles both old historical records and new bound
             // admissions via the carrier discriminant.
-            let bytes = <Vec<u8>>::deserialize(deserializer)?;
-            compat_codec::deserialize_admission(&bytes)
-                .map_err(serde::de::Error::custom)
+            deserialize_admission(deserializer)
         }
     }
 }

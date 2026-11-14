@@ -16,7 +16,7 @@
 /// encodes legacy Option variants identically while adding discriminant 2
 /// for new bound admissions that retain their input digest.
 
-use serde::{Deserialize, Serialize, Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// The compatibility wire layout: 9 positions in historical order.
 #[derive(Debug, Serialize, Deserialize)]
@@ -73,50 +73,38 @@ impl CompatibilityView {
             Carrier::LegacyWithBudget(b) => (RunInputBinding::LegacyUnbound, Some(b)),
             Carrier::Bound { digest, budget } => (RunInputBinding::Digest(digest), budget),
         };
-        let mut admission = RunAdmission::new(
-            self.artifact_digest,
-            self.run_id,
-            self.granted_capabilities,
-            self.policy,
-        );
-        admission = admission.with_policy_pin(self.policy_pin);
-        admission = admission.with_input_digest(input_digest);
-        if let Some(b) = budget {
-            admission = admission.with_attached_budget(b);
+        RunAdmission {
+            artifact_digest: self.artifact_digest,
+            run_id: self.run_id,
+            granted_capabilities: self.granted_capabilities,
+            policy: self.policy,
+            policy_pin: self.policy_pin,
+            input_digest,
+            budget,
+            tenant: self.tenant,
+            idempotency_attested: self.idempotency_attested,
+            ir_compat_decision: self.ir_compat_decision,
         }
-        if let Some(t) = self.tenant {
-            admission = admission.with_tenant(t);
-        }
-        if !self.idempotency_attested.is_empty() {
-            admission = admission.with_idempotency_evidence(
-                self.artifact_digest,
-                self.run_id,
-                self.granted_capabilities,
-                self.policy,
-                self.idempotency_attested,
-            );
-            admission = admission.with_policy_pin(self.policy_pin);
-            admission = admission.with_input_digest(input_digest);
-            if let Some(b) = budget {
-                admission = admission.with_attached_budget(b);
-            }
-            if let Some(t) = self.tenant {
-                admission = admission.with_tenant(t);
-            }
-        }
-        if let Some(d) = self.ir_compat_decision {
-            admission = admission.with_ir_compat_decision(*d);
-        }
-        admission
     }
 }
 
-pub fn serialize_admission(admission: &RunAdmission) -> Result<Vec<u8>, postcard::to_allocvec::Error> {
+pub fn serialize_admission<S>(
+    admission: &RunAdmission,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
     let view = CompatibilityView::from_admission(admission);
-    postcard::to_allocvec(&view)
+    view.serialize(serializer)
 }
 
-pub fn deserialize_admission(bytes: &[u8]) -> Result<RunAdmission, postcard::de::Error> {
-    let view: CompatibilityView = postcard::from_bytes(bytes)?;
+pub fn deserialize_admission<'de, D>(
+    deserializer: D,
+) -> Result<RunAdmission, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let view = CompatibilityView::deserialize(deserializer)?;
     Ok(view.into_admission())
 }

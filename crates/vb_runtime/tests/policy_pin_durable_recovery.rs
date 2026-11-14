@@ -129,49 +129,54 @@ fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
     })
 }
 
-/// Forges a RunAdmission with a tampered policy pin by serializing the
-/// genuine admission through its production codec, locating and replacing
-/// only the encoded pin bytes, then decoding back. Every non-pin field,
-/// including input_digest, budget, tenant, idempotency evidence, and IR
-/// compatibility decision, is preserved byte-for-byte.
+/// Forges a RunAdmission with a tampered policy pin by decoding the
+/// genuine admission through its production codec, replacing only the
+/// policy pin field with a forged digest, and re-serializing. Every
+/// non-pin field — input_digest, budget, tenant, idempotency evidence,
+/// and IR compatibility decision — is preserved through the original
+/// RunAdmission object.
 fn forge_admission_with_pin(
     original: &RunAdmission,
     forged_pin: WorkflowDigest,
 ) -> Result<RunAdmission, String> {
-    let original_bytes = postcard::to_allocvec(original)
+    let admission_bytes = postcard::to_allocvec(original)
         .map_err(|e| format!("original admission serialization failed: {e}"))?;
 
-    // Decode to locate the policy pin, encode the forged pin separately,
-    // then splice the forged pin bytes into the original bytes at the
-    // pin's position.
-    let original_pin = original.policy_pin();
-    let original_pin_bytes = postcard::to_allocvec(&original_pin)
-        .map_err(|e| format!("original pin serialization failed: {e}"))?;
-    let forged_pin_bytes = postcard::to_allocvec(&RunPolicyPin::Pinned(forged_pin))
-        .map_err(|e| format!("forged pin serialization failed: {e}"))?;
+    // Decode the genuine prefix (fields 1-4) to know where the pin starts.
+    let mut rest = admission_bytes.as_slice();
+    let _prefix_digest: WorkflowDigest = postcard::take_from_bytes(rest)
+        .map(|(d, r)| { rest = r; d })
+        .map_err(|e| format!("prefix digest decode failed: {e}"))?;
+    let _prefix_run_id: RunId = postcard::take_from_bytes(rest)
+        .map(|(r, r2)| { rest = r2; r })
+        .map_err(|e| format!("prefix run_id decode failed: {e}"))?;
+    let _prefix_caps: CapabilitySet = postcard::take_from_bytes(rest)
+        .map(|(c, r)| { rest = r; c })
+        .map_err(|e| format!("prefix capabilities decode failed: {e}"))?;
+    let _prefix_policy: RuntimePolicy = postcard::take_from_bytes(rest)
+        .map(|(p, r)| { rest = r; p })
+        .map_err(|e| format!("prefix policy decode failed: {e}"))?;
 
-    // Find the original pin encoding in the bytes and replace it.
-    let pin_start = locate_subsequence(&original_bytes, &original_pin_bytes)
-        .ok_or_else(|| "pin not found in serialized admission".to_string())?;
-    let pin_end = pin_start + original_pin_bytes.len();
+    // Determine prefix byte length (fields 1-4) from original bytes.
+    let prefix_len = admission_bytes.len() - rest.len();
 
-    let mut forged_bytes = original_bytes[..pin_start].to_vec();
+    // Decode and discard the genuine pin to find the suffix start.
+    let _pin: RunPolicyPin = postcard::take_from_bytes(rest)
+        .map(|(p, r)| { rest = r; p })
+        .map_err(|e| format!("original pin decode failed: {e}"))?;
+    let suffix = rest;
+
+    // Reconstruct: prefix + forged pin + genuine suffix.
+    let forged_pin_value = RunPolicyPin::Pinned(forged_pin);
+    let forged_pin_bytes = postcard::to_allocvec(&forged_pin_value)
+        .map_err(|e| format!("forged pin encode failed: {e}"))?;
+    let mut forged_bytes = Vec::new();
+    forged_bytes.extend_from_slice(&admission_bytes[..prefix_len]);
     forged_bytes.extend_from_slice(&forged_pin_bytes);
-    forged_bytes.extend_from_slice(&original_bytes[pin_end..]);
+    forged_bytes.extend_from_slice(suffix);
 
     postcard::from_bytes::<RunAdmission>(&forged_bytes)
-        .map_err(|e| format!("forged admission deserialization failed: {e}"))
-}
-
-/// Finds the first occurrence of needle in haystack using a simple
-/// linear scan with slice equality.
-fn locate_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    if needle.is_empty() || haystack.len() < needle.len() {
-        return None;
-    }
-    haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
+        .map_err(|e| format!("forged admission decode failed: {e}"))
 }
 
 fn shard_config_for(policy: RuntimePolicy) -> ShardConfig {
