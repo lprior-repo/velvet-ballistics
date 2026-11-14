@@ -25,7 +25,7 @@
 //      extern crate alias, which is wired through the workspace
 //      `Cargo.toml` and is unavailable in a standalone
 //      `verus --crate-type=lib` invocation.
-//   3. `crates/vb_storage/src/recovery/types/replay.rs:28`
+//   3. `crates/vb_storage/src/recovery/types/replay.rs:8-20`
 //      `#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize,
 //      serde::Deserialize)]` on `RunSnapshot` requires the `serde`
 //      extern crate, also unavailable under the no-installs

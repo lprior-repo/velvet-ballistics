@@ -1547,7 +1547,7 @@ pub open spec fn spec_loop_relations_error(parts: &SpecWorkflowParts) -> Option<
 
 /// Spec predicate: the step names a `Finish` node (kind
 /// discriminant 33, `spec_node_kind_finish()`). Mirrors `is_finish`
-/// (edges.rs:128-133); production indexes the node table by
+/// (crates/vb_core/src/workflow/loop_regions/edges.rs:130-135); production indexes the node table by
 /// position, the mirror scans by id, which agrees on inputs that
 /// reached this step (step 1e validates `meta.id` against the table
 /// position first).
@@ -1563,7 +1563,7 @@ pub open spec fn spec_is_finish_step(metas: &Vec<SpecNodeMeta>, step: u32, i: in
 }
 
 /// Spec mirror of the `regions.get(node.id)` lookup in
-/// `owned_backedge` (edges.rs:88-110): the region a node controls,
+/// `owned_backedge` (crates/vb_core/src/workflow/loop_regions/edges.rs:90-112): the region a node controls,
 /// or `None` when the node is not a cached control.
 pub open spec fn spec_region_for_control(
     metas: &Vec<SpecNodeMeta>,
@@ -1581,7 +1581,7 @@ pub open spec fn spec_region_for_control(
     }
 }
 
-/// Spec mirror of `owned_backedge` (edges.rs:88-110): a backward
+/// Spec mirror of `owned_backedge` (crates/vb_core/src/workflow/loop_regions/edges.rs:90-112): a backward
 /// edge inside a region is owned iff it comes from the origin
 /// production expects for the node's kind (`Next`, discriminant 0,
 /// for a RepeatCheck, discriminant 24; `Kind`, discriminant 2,
@@ -1612,7 +1612,7 @@ pub open spec fn spec_owned_backedge(
     }
 }
 
-/// Spec mirror of `validate_edge` (edges.rs:62-86) for one edge
+/// Spec mirror of `validate_edge` (crates/vb_core/src/workflow/loop_regions/edges.rs:64-88) for one edge
 /// from `node` to `to` against one region. Origin discriminants:
 /// 0 `Next`, 1 `Error`, 2 `Kind` (see `spec_loop_edge_origin_*`).
 /// An entry edge is allowed only as a `Kind` edge from the
@@ -1653,7 +1653,7 @@ pub open spec fn spec_validate_loop_edge(
 }
 
 /// Spec mirror of the kind-target edge loop in
-/// `validate_region_edges` (edges.rs:14-39): every successor in
+/// `validate_region_edges` (crates/vb_core/src/workflow/loop_regions/edges.rs:14-39): every successor in
 /// the caller-supplied `targets` inventory, in order, checked as a
 /// `Kind` edge. Returns the first crossing, or `None`.
 pub open spec fn spec_kind_edge_error(
@@ -1684,7 +1684,7 @@ pub open spec fn spec_kind_edge_error(
 }
 
 /// Spec mirror of one node's checks inside
-/// `validate_region_edges` (edges.rs:14-39): routing `next` edge,
+/// `validate_region_edges` (crates/vb_core/src/workflow/loop_regions/edges.rs:14-39): routing `next` edge,
 /// routing error-handler edge, kind-target edges, then recovery
 /// support — a node inside the region with an internal error
 /// handler, or an `ErrorHandler` node (discriminant 31) inside the
@@ -1762,7 +1762,7 @@ pub open spec fn spec_edges_for_region(
     }
 }
 
-/// Spec mirror of `validate_region_edges` (edges.rs:14-39) over
+/// Spec mirror of `validate_region_edges` (crates/vb_core/src/workflow/loop_regions/edges.rs:14-39) over
 /// the node table. Walks cached controls in table order; for each
 /// region the entry step must lie outside it, then every node is
 /// checked. Returns the first failure, or `None`.
@@ -3137,7 +3137,7 @@ pub proof fn lemma_loop_region_shared_start_rejected(metas: &Vec<SpecNodeMeta>)
 /// Lemma 22: the entry-inside-region rejection. A workflow whose
 /// entry step lies inside a validated loop region is rejected with
 /// `LoopRegionCrossing` (production `validate_region_edges`,
-/// edges.rs:14-39, checks the entry before the node loop).
+/// crates/vb_core/src/workflow/loop_regions/edges.rs:14-39, checks the entry before the node loop).
 pub proof fn lemma_loop_region_entry_inside_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() == 3,
@@ -3194,7 +3194,7 @@ pub proof fn lemma_loop_region_entry_inside_rejected(parts: &SpecWorkflowParts)
 /// Lemma 23: the error-handler-inside-region rejection. An
 /// `ErrorHandler` node inside a validated loop region is rejected
 /// with `LoopRegionUnsupported` (production
-/// `validate_recovery_support`, edges.rs:112-126, runs after the
+/// `validate_recovery_support`, crates/vb_core/src/workflow/loop_regions/edges.rs:114-128, runs after the
 /// edge checks for each node inside the region).
 pub proof fn lemma_loop_region_error_handler_rejected(parts: &SpecWorkflowParts)
     requires
