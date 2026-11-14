@@ -260,7 +260,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn registry_ipc_codes_3001_300e_are_registered() {
         let expected: [(&str, u16); 14] = [
