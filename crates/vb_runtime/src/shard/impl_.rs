@@ -29,4 +29,5 @@ include!("impl_parts/gate_bound.rs");
 mod tests {
     include!("impl_tests/chunk_001.rs");
     include!("impl_tests/chunk_002.rs");
+    include!("impl_tests/default_binding.rs");
 }

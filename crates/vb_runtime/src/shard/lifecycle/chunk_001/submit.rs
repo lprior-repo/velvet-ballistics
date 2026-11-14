@@ -32,39 +32,6 @@ impl Shard {
             && self.journal.storage_journal().is_none()
     }
 
-    /// Builds the same-run admission header events without a retained input record.
-    /// Used exclusively by the explicitly Volatile storage-free admission path.
-    fn build_volatile_admission_events(
-        &self,
-        run: RunId,
-        admission: &crate::admission::RunAdmission,
-        digest: vb_core::WorkflowDigest,
-        ir_compat_decision: Option<vb_storage::compat::CompatDecision>,
-        tenant_admission: Option<RuntimeJournalEvent>,
-        has_budget: bool,
-        run_started_millis: u64,
-    ) -> RuntimeResult<Vec<RuntimeJournalEvent>> {
-        let mut events = vec![
-            RuntimeJournalEvent::RunSubmitted { run, workflow: digest },
-            RuntimeJournalEvent::RunAdmission {
-                admission: admission.clone(),
-            },
-        ];
-        if let Some(decision) = ir_compat_decision {
-            events.push(RuntimeJournalEvent::CompatibilityDecision { run, decision });
-        }
-        if let Some(event) = tenant_admission {
-            events.push(event);
-        }
-        if has_budget {
-            events.push(RuntimeJournalEvent::RunBudgetOrigin {
-                run,
-                started_millis: run_started_millis,
-            });
-        }
-        Ok(events)
-    }
-
     fn handle_submit_with_inputs_contracts_and_header_mode(
         &mut self,
         run: RunId,
@@ -84,7 +51,8 @@ impl Shard {
         }
         let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
         self.validate_secret_presence(&workflow)?;
-        let filled_inputs = self.prepare_secret_inputs(&workflow, inputs)?;
+        let secret_inputs = self.prepare_secret_inputs(&workflow, inputs)?;
+        let filled_inputs = crate::shard::helpers::prepare_input_slots(&secret_inputs, &workflow)?;
         let inputs = filled_inputs.as_slice();
         if let Some(metadata) = workflow.source_metadata() {
             vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
@@ -140,80 +108,62 @@ impl Shard {
         }
         let mut header_bytes: u64 = 0;
         if let (true, Some(admission)) = (options.persist_header, admission.as_ref()) {
-            if self.is_volatile_admission() {
-                // Explicitly Volatile storage-free journal: use sequenced batch
-                // directly. No retained inputs record constructed. RunId zero is valid.
-                // Input validation already completed above; admission carries validated
-                // input digest in RunInputBinding::Digest.
-                let events = self.build_volatile_admission_events(
-                    run,
-                    admission,
-                    digest,
-                    ir_compat_decision,
-                    tenant_admission,
-                    admission.budget().is_some(),
-                    run_started_millis,
-                )?;
-                let batch_result = self.append_journal_event_batch(&events);
-                if let Err(error) = batch_result {
-                    self.release_frame(frame);
-                    self.release_admission_quota(run)?;
-                    self.discard_journal_sequence(run);
-                    return Err(error);
-                }
+            let retained_inputs = if self.is_volatile_admission() {
+                None
             } else {
-                // Durable/unknown profile: retained inputs required. RunId zero
-                // rejected by storage key constructors (run_header_key).
-                let retained_inputs = match vb_storage::RunInputsRecord::new(
+                match vb_storage::RunInputsRecord::new(
                     run,
                     admission.artifact_digest(),
                     digest,
                     &workflow,
                     filled_inputs.into_boxed_slice(),
                 ) {
-                    Ok(record) => record,
+                    Ok(record) => Some(record),
                     Err(error) => {
                         self.release_frame(frame);
                         self.release_admission_quota(run)?;
                         return Err(RuntimeError::from(error));
                     }
-                };
-                let mut events = vec![
-                    RuntimeJournalEvent::RunSubmitted {
-                        run,
-                        workflow: digest,
-                    },
-                    RuntimeJournalEvent::RunAdmission {
-                        admission: admission.clone(),
-                    },
-                ];
-                if let Some(decision) = ir_compat_decision {
-                    events.push(RuntimeJournalEvent::CompatibilityDecision { run, decision });
                 }
-                if let Some(event) = tenant_admission {
-                    events.push(event);
-                }
-                if admission.budget().is_some() {
-                    events.push(RuntimeJournalEvent::RunBudgetOrigin {
-                        run,
-                        started_millis: run_started_millis,
-                    });
-                }
-                header_bytes = match self.journal_batch_bytes(&events) {
-                    Ok(bytes) => bytes,
-                    Err(error) => {
-                        self.release_frame(frame);
-                        self.release_admission_quota(run)?;
-                        return Err(error);
-                    }
-                };
-                let header_result = self.append_admission_journal_event_batch(&events, retained_inputs);
-                if let Err(error) = header_result {
+            };
+            let mut events = vec![
+                RuntimeJournalEvent::RunSubmitted {
+                    run,
+                    workflow: digest,
+                },
+                RuntimeJournalEvent::RunAdmission {
+                    admission: admission.clone(),
+                },
+            ];
+            if let Some(decision) = ir_compat_decision {
+                events.push(RuntimeJournalEvent::CompatibilityDecision { run, decision });
+            }
+            if let Some(event) = tenant_admission {
+                events.push(event);
+            }
+            if admission.budget().is_some() {
+                events.push(RuntimeJournalEvent::RunBudgetOrigin {
+                    run,
+                    started_millis: run_started_millis,
+                });
+            }
+            header_bytes = match self.journal_batch_bytes(&events) {
+                Ok(bytes) => bytes,
+                Err(error) => {
                     self.release_frame(frame);
                     self.release_admission_quota(run)?;
-                    self.discard_journal_sequence(run);
-                    return Err(RuntimeError::admission_header_persistence_failed(error));
+                    return Err(error);
                 }
+            };
+            let header_result = match retained_inputs {
+                Some(inputs) => self.append_admission_journal_event_batch(&events, inputs),
+                None => self.append_journal_event_batch(&events),
+            };
+            if let Err(error) = header_result {
+                self.release_frame(frame);
+                self.release_admission_quota(run)?;
+                self.discard_journal_sequence(run);
+                return Err(RuntimeError::admission_header_persistence_failed(error));
             }
         } else {
             if options.persist_header {
