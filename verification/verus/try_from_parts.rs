@@ -61,17 +61,19 @@ pub use production::{
     spec_node_kind_build_object, spec_node_kind_choose,
     spec_node_kind_choose_slot, spec_node_kind_collect_finish,
     spec_node_kind_collect_next, spec_node_kind_collect_page,
-    spec_node_kind_collect_start, spec_node_kind_copy, spec_node_kind_do,
+    spec_node_kind_collect_start, spec_node_kind_concurrent_group_join,
+    spec_node_kind_concurrent_lane_end, spec_node_kind_copy, spec_node_kind_do,
     spec_node_kind_error_handler, spec_node_kind_eval_expr,
-    spec_node_kind_finish, spec_node_kind_foreach_join,
+    spec_node_kind_finish, spec_node_kind_first_success_start,
+    spec_node_kind_foreach_concurrent_start, spec_node_kind_foreach_join,
     spec_node_kind_foreach_next, spec_node_kind_foreach_start,
     spec_node_kind_jump, spec_node_kind_nop, spec_node_kind_reduce_finish,
     spec_node_kind_reduce_next, spec_node_kind_reduce_start,
     spec_node_kind_repeat_attempt, spec_node_kind_repeat_check,
     spec_node_kind_repeat_finish, spec_node_kind_repeat_start,
     spec_node_kind_retry_check, spec_node_kind_set_const,
-    spec_node_kind_together_branch, spec_node_kind_together_join,
-    spec_node_kind_together_start, spec_node_kind_wait_event,
+    spec_node_kind_together_branch, spec_node_kind_together_concurrent_start,
+    spec_node_kind_together_join, spec_node_kind_together_start, spec_node_kind_wait_event,
     spec_node_kind_wait_until, spec_ref_none, SpecAccessor, SpecComputedBudget,
     SpecExprOp, SpecExprProgram,
     SpecInputConstraint, SpecKindRef, SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
@@ -149,9 +151,9 @@ pub open spec fn spec_workflow_error_is_structural(e: SpecWorkflowError) -> bool
 
 /// Spec predicate: the `SpecNodeKind` discriminant is one of the
 /// documented variants. Closed set (matches the production enum at
-/// `crates/vb_core/src/workflow/node_kind.rs:14-181`).
+/// `crates/vb_core/src/workflow/node_kind.rs:14-210`).
 pub open spec fn spec_node_kind_disc_valid(disc: int) -> bool {
-    0 <= disc <= 33
+    0 <= disc <= 38
 }
 
 /// Spec predicate: a `SpecValidationResult` discriminant is either
@@ -634,7 +636,9 @@ pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<S
 /// of `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172). Runs
 /// after the branch-target alias checks, per node, in node order:
 /// `ForEachStart` limit against `max_collect_items`
-/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `CollectStart` limit then
+/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `ForEachConcurrentStart`
+/// limit against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:183-190); `CollectStart` limit then
 /// page_size against `max_collect_items`
 /// (crates/vb_core/src/workflow/node_kind.rs:87-93); `TogetherStart` branch
 /// count against `max_fanout` (crates/vb_core/src/workflow/node_kind.rs:68-71);
@@ -642,15 +646,20 @@ pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<S
 /// (crates/vb_core/src/workflow/node_kind.rs:81-85). Each breached cap returns
 /// `ResourceContractExceeded`, matching `check_actual_within_declared`
 /// (crates/vb_core/src/workflow/resource_limits.rs:187-197); every other kind
-/// returns `None`. The `ForEachConcurrentStart` limit arm has no
-/// `SpecNodeKind` variant (the discriminant model covers 0..=33 only), so it
-/// is not modelled here.
+/// returns `None`.
 pub open spec fn spec_local_resources_error(
     kind: SpecNodeKind,
     contract: SpecResourceContract,
 ) -> Option<SpecWorkflowError> {
     match kind {
         SpecNodeKind::ForEachStart { limit, .. } => {
+            if (limit as int) > (contract.max_collect_items as int) {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::ForEachConcurrentStart { limit, .. } => {
             if (limit as int) > (contract.max_collect_items as int) {
                 Some(SpecWorkflowError::ResourceContractExceeded)
             } else {
@@ -1332,7 +1341,7 @@ pub exec fn checked_prod_validate_node_pure(
 //      violation discriminant is one of the typed slot / step /
 //      const / expr / accessor / symbol / empty variants.
 //   4. Node-kind discriminant validity: the closed set is exactly
-//      `0..=33`.
+//      `0..=38`.
 //   5. Empty-nodes rejection: when the node list is empty, the
 //      validator returns `Err(EmptyNodes)`.
 //   6. Slot-bounds preservation: a per-node `validate_node_pure`
@@ -3228,11 +3237,11 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
 
 /// Lemma 16: the closed-set validity of node-kind discriminants.
 /// Mirrors the production `CompiledNodeKind` enum at
-/// `crates/vb_core/src/workflow/node_kind.rs:14-181`. Any discriminant
-/// outside `0..=33` is binding drift, not a legitimate variant.
+/// `crates/vb_core/src/workflow/node_kind.rs:14-210`. Any discriminant
+/// outside `0..=38` is binding drift, not a legitimate variant.
 pub proof fn lemma_node_kind_disc_closed(disc: int)
     ensures
-        spec_node_kind_disc_valid(disc) == (0 <= disc && disc <= 33),
+        spec_node_kind_disc_valid(disc) == (0 <= disc && disc <= 38),
 {
 }
 
@@ -6647,7 +6656,7 @@ pub proof fn lemma_accessor_path_last_symbol_accepted(accessor: SpecAccessor)
 /// and an unreachable node is rejected with the accessor-path
 /// error, not the reachability error (production
 /// `validate_parts` runs `validate_accessor_paths` before
-/// `validate_reachability`, workflow/node_kind.rs:14-181 and 1382).
+/// `validate_reachability`, workflow/node_kind.rs:14-210 and 1382).
 pub proof fn lemma_accessor_path_before_reachability(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -6951,7 +6960,7 @@ pub proof fn lemma_build_object_symbol_first_out_of_bounds_wins(parts: &SpecWork
 /// unreachable node is rejected with the symbol error, not the
 /// reachability error (production `validate_parts` runs
 /// `validate_constants_symbols` before `validate_reachability`,
-/// workflow/node_kind.rs:14-181 and 1382).
+/// workflow/node_kind.rs:14-210 and 1382).
 pub proof fn lemma_symbols_before_reachability(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -9738,6 +9747,36 @@ pub proof fn lemma_local_resources_before_accessor_path(parts: &SpecWorkflowPart
         == Some(SpecWorkflowError::AccessorPathTooDeep));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 188: the ForEachConcurrentStart limit rejection. A
+/// `ForEachConcurrentStart` node whose limit exceeds the contract's
+/// `max_collect_items` is rejected with `ResourceContractExceeded`
+/// (production `local_resources::validate`,
+/// crates/vb_core/src/workflow/validate/local_resources.rs:6-8, via
+/// `check_actual_within_declared`,
+/// crates/vb_core/src/workflow/resource_limits.rs:187-197).
+pub proof fn lemma_foreach_concurrent_start_limit_rejected(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+)
+    requires
+        kind
+            == (SpecNodeKind::ForEachConcurrentStart {
+                input: 0u32,
+                item_slot: 1u32,
+                limit: 11u32,
+                at_once: 2u32,
+                body: 3u32,
+                join: 4u32,
+            }),
+        contract.max_collect_items == 10u32,
+    ensures
+        spec_local_resources_error(kind, contract)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_local_resources_error(kind, contract)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
 }
 
 fn main() {}

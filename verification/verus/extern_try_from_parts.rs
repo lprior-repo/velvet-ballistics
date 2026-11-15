@@ -511,6 +511,28 @@ pub enum SpecNodeKind {
     },
     Jump { target: u32 },
     Finish { result: u32 },
+    ForEachConcurrentStart {
+        input: u32,
+        item_slot: u32,
+        limit: u32,
+        at_once: u32,
+        body: u32,
+        join: u32,
+    },
+    TogetherConcurrentStart {
+        branch_count: u32,
+        join: u32,
+    },
+    FirstSuccessStart {
+        branch_count: u32,
+        join: u32,
+    },
+    ConcurrentLaneEnd {
+        owner: u32,
+        /// `result.is_some()` flattened to 1, else 0.
+        has_result: u8,
+    },
+    ConcurrentGroupJoin { owner: u32 },
 }
 /// Mirrors the production `CompiledNode` at
 /// `crates/vb_core/src/workflow/node.rs:14-25`.
@@ -813,16 +835,14 @@ pub struct SpecWorkflowParts {
     /// `CompiledNodeKind` discriminant order
     /// (crates/vb_core/src/workflow/node_kind.rs:14-210): only the
     /// ForEachStart limit (crates/vb_core/src/workflow/node_kind.rs:52-58),
+    /// ForEachConcurrentStart limit (crates/vb_core/src/workflow/node_kind.rs:183-190),
     /// CollectStart limit and page_size (crates/vb_core/src/workflow/node_kind.rs:87-93),
     /// TogetherStart branch_count (crates/vb_core/src/workflow/node_kind.rs:68-71), and
     /// TogetherJoin branch_count (crates/vb_core/src/workflow/node_kind.rs:81-85)
     /// are read, against `max_collect_items` and `max_fanout` of the
     /// resource contract; every other variant returns `Ok`. The
     /// projection treats a missing entry (a `node_kinds` shorter
-    /// than `nodes_meta`) as `Nop` for the tail nodes. The
-    /// `ForEachConcurrentStart` limit arm has no `SpecNodeKind`
-    /// variant (the discriminant model covers 0..=33 only), so it
-    /// is not modelled here.
+    /// than `nodes_meta`) as `Nop` for the tail nodes.
     pub node_kinds: Vec<SpecNodeKind>,
     /// Symbol inventory of the constant pool consumed by
     /// `validate_constants_symbols` (workflow/validate_refs.rs:166-176).
@@ -965,6 +985,11 @@ pub const fn spec_node_kind_retry_check() -> u32 { 30 }
 pub const fn spec_node_kind_error_handler() -> u32 { 31 }
 pub const fn spec_node_kind_jump() -> u32 { 32 }
 pub const fn spec_node_kind_finish() -> u32 { 33 }
+pub const fn spec_node_kind_foreach_concurrent_start() -> u32 { 34 }
+pub const fn spec_node_kind_together_concurrent_start() -> u32 { 35 }
+pub const fn spec_node_kind_first_success_start() -> u32 { 36 }
+pub const fn spec_node_kind_concurrent_lane_end() -> u32 { 37 }
+pub const fn spec_node_kind_concurrent_group_join() -> u32 { 38 }
 /// Sentinel for "no reference present" on `next_step`,
 /// `on_error_step`, `out_slot`, `error_slot`. Production stores
 /// `Option<StepIdx> / Option<SlotIdx>`; the projection flattens
@@ -1559,7 +1584,9 @@ pub fn validate_node_pure(
 /// of `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172). Runs
 /// after the branch-target alias checks, per node, in node order:
 /// `ForEachStart` limit against `max_collect_items`
-/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `CollectStart` limit then
+/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `ForEachConcurrentStart`
+/// limit against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:183-190); `CollectStart` limit then
 /// page_size against `max_collect_items`
 /// (crates/vb_core/src/workflow/node_kind.rs:87-93); `TogetherStart` branch
 /// count against `max_fanout` (crates/vb_core/src/workflow/node_kind.rs:68-71);
@@ -1567,9 +1594,7 @@ pub fn validate_node_pure(
 /// (crates/vb_core/src/workflow/node_kind.rs:81-85). Each breached cap returns
 /// `ResourceContractExceeded`, matching `check_actual_within_declared`
 /// (crates/vb_core/src/workflow/resource_limits.rs:187-197); every other kind
-/// returns `None`. The `ForEachConcurrentStart` limit arm has no
-/// `SpecNodeKind` variant (the discriminant model covers 0..=33 only), so it
-/// is not modelled here.
+/// returns `None`.
 ///
 /// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
 /// The spec-side mirror in `try_from_parts.rs` is the contract; this
@@ -1581,6 +1606,13 @@ pub fn local_resources_error(
 ) -> Option<SpecWorkflowError> {
     match kind {
         SpecNodeKind::ForEachStart { limit, .. } => {
+            if *limit > contract.max_collect_items {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::ForEachConcurrentStart { limit, .. } => {
             if *limit > contract.max_collect_items {
                 Some(SpecWorkflowError::ResourceContractExceeded)
             } else {
