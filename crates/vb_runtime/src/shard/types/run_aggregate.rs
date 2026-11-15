@@ -5,17 +5,28 @@ pub(crate) struct RunAggregate {
     runtime_states: IndexMap<RunId, RuntimeState>,
     checked_out_runs: IndexSet<RunId>,
     terminal_runs: IndexSet<RunId>,
-    pending_timers: IndexMap<RunId, PendingTimer>,
+    pending_timer_wheel: crate::shard::fixed_timers::AdmittedTimers,
     pending_actions: IndexMap<RunId, ActionTicket>,
 }
 
 impl RunAggregate {
+    #[cfg(kani)]
     pub(crate) fn new() -> Self {
+        Self::with_timers(crate::shard::fixed_timers::AdmittedTimers::empty())
+    }
+
+    pub(crate) fn try_with_timer_capacity(capacity: usize) -> RuntimeResult<Self> {
+        Ok(Self::with_timers(
+            crate::shard::fixed_timers::AdmittedTimers::try_new(capacity)?,
+        ))
+    }
+
+    fn with_timers(timers: crate::shard::fixed_timers::AdmittedTimers) -> Self {
         Self {
             runtime_states: IndexMap::new(),
             checked_out_runs: IndexSet::new(),
             terminal_runs: IndexSet::new(),
-            pending_timers: IndexMap::new(),
+            pending_timer_wheel: timers,
             pending_actions: IndexMap::new(),
         }
     }

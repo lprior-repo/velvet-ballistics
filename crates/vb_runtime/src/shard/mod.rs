@@ -6,6 +6,7 @@ pub mod completion_watermark;
 pub mod contract_validation;
 pub mod directive;
 mod fencing;
+mod fixed_timers;
 pub mod helpers;
 pub mod impl_;
 pub mod lifecycle;

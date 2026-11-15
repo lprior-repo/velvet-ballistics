@@ -47,15 +47,16 @@ impl Shard {
 
     fn try_with_services(config: ShardConfig, services: ShardServices) -> RuntimeResult<Self> {
         validate_command_queue_capacity(config.command_queue_capacity)?;
-        Ok(Self::with_services(config, services))
+        let aggregate = RunAggregate::try_with_timer_capacity(config.max_active_runs)?;
+        Ok(Self::with_services(config, services, aggregate))
     }
 
-    fn with_services(config: ShardConfig, services: ShardServices) -> Self {
+    fn with_services(config: ShardConfig, ports: ShardServices, aggregate: RunAggregate) -> Self {
         Self {
             secret_availability: std::sync::Arc::from([]),
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
-            run_aggregate: RunAggregate::new(),
+            run_aggregate: aggregate,
             journal_sequences: IndexMap::new(),
             pending_ask_authorities: IndexMap::new(),
             open_gates: IndexMap::new(),
@@ -64,16 +65,16 @@ impl Shard {
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
-            quota: services.quota,
+            quota: ports.quota,
             pending_quota_reservation: None,
             charged_quotas: IndexMap::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
             max_open_gates: config.max_open_gates,
             policy: config.policy,
-            artifact_store: services.artifact_store,
+            artifact_store: ports.artifact_store,
             control: ShardControlState::new(),
-            journal: services.journal,
+            journal: ports.journal,
             fencing_tokens: super::fencing::FencingTokens::new(),
         }
     }

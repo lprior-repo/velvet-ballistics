@@ -75,6 +75,13 @@ mod tests {
     include!("lifecycle_tests/timer_retry_regressions.rs");
     include!("lifecycle_tests/timer_answer_regressions.rs");
     include!("lifecycle_tests/timer_cold_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_authority_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_capacity_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_integration_regressions.rs");
+    include!("lifecycle_tests/timer_cold_continuation_regressions.rs");
+    include!("lifecycle_tests/timer_pending_work_regressions.rs");
+    include!("lifecycle_tests/timer_preparation_refusal_regressions.rs");
+    include!("lifecycle_tests/timer_registration_refusal_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
     include!("lifecycle_tests/chunk_014.rs");
 

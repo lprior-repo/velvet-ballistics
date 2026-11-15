@@ -48,12 +48,12 @@
 //   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types/command_queue.rs:20-36
 //   - `PendingTimerKind` (2-variant enum)             <- crates/vb_runtime/src/shard/types/pending_timer.rs:5-8
 //   - `TimerEntry` (4-field struct)                   <- crates/vb_runtime/src/shard/timer_wheel.rs:21-30
-//   - `TimerWheel`                                    <- crates/vb_runtime/src/shard/timer_wheel.rs:41-46
-//   - `TimerWheel::new`                               <- crates/vb_runtime/src/shard/timer_wheel.rs:51-56
-//   - `TimerWheel::cancel`                            <- crates/vb_runtime/src/shard/timer_wheel.rs:93-104
-//   - `TimerWheel::fire_expired`                      <- crates/vb_runtime/src/shard/timer_wheel.rs:109-128
-//   - `TimerWheel::len`                               <- crates/vb_runtime/src/shard/timer_wheel.rs:144-146
-//   - `TimerWheel::get_kind`                          <- crates/vb_runtime/src/shard/timer_wheel.rs:150-152
+//   - `TimerWheel`                                    <- crates/vb_runtime/src/shard/timer_wheel.rs:41-48
+//   - `TimerWheel::new`                               <- crates/vb_runtime/src/shard/timer_wheel.rs:53-60
+//   - `TimerWheel::cancel`                            <- crates/vb_runtime/src/shard/timer_wheel.rs:97-108
+//   - `TimerWheel::fire_expired`                      <- crates/vb_runtime/src/shard/timer_wheel.rs:113-132
+//   - `TimerWheel::len`                               <- crates/vb_runtime/src/shard/timer_wheel.rs:150-152
+//   - `TimerWheel::get_kind`                          <- crates/vb_runtime/src/shard/timer_wheel.rs:156-158
 //   - `RuntimePolicy` (3-variant enum)                <- crates/vb_core/src/policy.rs:194-201
 //   - `RunAdmission` (current ten-field admission record with direct Serde encoding)
 //                                                    <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34

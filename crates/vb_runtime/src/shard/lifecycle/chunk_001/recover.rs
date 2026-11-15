@@ -109,6 +109,9 @@ mod recover_phases {
             let tenant = command.recovered_tenant;
             let state = verified.restore(self, command, origin, store)?;
             continuation.prepare_timer(&state)?;
+            if let Some(timer) = continuation.timer {
+                self.prepare_pending_timer(continuation.run, timer)?;
+            }
             self.seed_journal_sequence(continuation.run, next_seq)?;
             self.admit_recovered_state(continuation.run, state, tenant)?;
             continuation.resume(self)

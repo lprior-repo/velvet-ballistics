@@ -71,15 +71,10 @@ impl Shard {
 
     fn drive_one_ready_run(&mut self) -> RuntimeResult<()> {
         let now = std::time::Instant::now();
-        let due = self
-            .pending_timer_iter()
-            .filter(|(_, timer)| timer.deadline <= now)
-            .min_by_key(|(run, timer)| (timer.deadline, run.get()))
-            .map(|(run, timer)| (*run, *timer));
-        let Some((run, timer)) = due else {
+        let Some(timer) = self.run_aggregate.pending_timer_due_peek(now) else {
             return self.drive_one_pending_run();
         };
-        self.handle_timer(run, timer.generation, timer.deadline, timer.kind)
+        self.handle_timer(timer.run, timer.generation, timer.deadline, timer.kind)
     }
 
     fn tick_inner(&mut self) -> RuntimeResult<bool> {

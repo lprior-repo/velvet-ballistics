@@ -56,7 +56,7 @@ impl Shard {
     }
 
     fn prepare_awaiting_timer(
-        &self,
+        &mut self,
         run: RunId,
         state: RunState,
         kind: PendingTimerKind,
@@ -74,6 +74,9 @@ impl Shard {
             register_timer,
             journal_events: &mut journal_events,
         })?;
+        if let Some(timer) = timer {
+            self.prepare_pending_timer(run, timer)?;
+        }
         Ok((journal_events, trace_events, state, timer, ask_boundary_seq))
     }
 
@@ -111,7 +114,8 @@ impl Shard {
         if !schedule.register_timer {
             return Ok(None);
         }
-        let generation = self.scheduled_timer_generation(schedule.run, schedule.journal_events.len())?;
+        let generation =
+            self.scheduled_timer_generation(schedule.run, schedule.journal_events.len())?;
         self.pending_timer_for_awaiting(schedule.state, schedule.step, schedule.kind, generation)
             .map(Some)
     }

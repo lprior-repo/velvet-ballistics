@@ -36,7 +36,6 @@ impl Shard {
         }
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         Self::validate_retry_timer_budget(state)?;
-        self.reserve_pending_timer_slot(run)?;
         let generation = self
             .journal_sequence_for(run)
             .get()
@@ -51,6 +50,7 @@ impl Shard {
         };
         let event = self.retry_timer_event(run, preflight, timer)?;
         timer.deadline = Self::scheduled_retry_deadline(&event)?;
+        self.prepare_pending_timer(run, timer)?;
         Ok(Some(RetryTimerPlan { timer, event }))
     }
 

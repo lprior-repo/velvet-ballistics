@@ -32,8 +32,17 @@ impl Shard {
         self.run_aggregate.pending_timer_contains(run_id)
     }
 
-    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (&RunId, &PendingTimer)> {
+    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (RunId, PendingTimer)> + '_ {
         self.run_aggregate.pending_timer_iter()
+    }
+
+    pub(crate) fn prepare_pending_timer(
+        &mut self,
+        run: RunId,
+        timer: PendingTimer,
+    ) -> RuntimeResult<()> {
+        self.run_aggregate
+            .prepare_pending_timer(run, timer, self.max_active_runs)
     }
 
     pub(crate) fn clear_pending_timers(&mut self) {

@@ -16,7 +16,7 @@
 //   - `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8`, `crates/vb_runtime/src/shard/types/command_queue.rs:2`, `crates/vb_runtime/src/shard/types/command_queue.rs:20-36` (PendingTimerKind,
 //                                                            ShardCommandQueue,
 //                                                            MAX_COMMAND_QUEUE_CAPACITY)
-//   - `crates/vb_runtime/src/shard/timer_wheel.rs:21-159`   (TimerEntry, TimerWheel)
+//   - `crates/vb_runtime/src/shard/timer_wheel.rs:21-165`   (TimerEntry, TimerWheel)
 //   - `crates/vb_core/src/policy.rs:194-201`                (RuntimePolicy)
 //   - `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34` (RunAdmission)
 //
@@ -43,7 +43,7 @@
 //   - `MirrorShardStatus` (11-field struct)            <- crates/vb_runtime/src/shard/types/shard.rs:63-86
 //   - `MirrorShardHealth` (2-variant enum)             <- crates/vb_runtime/src/shard/types/shard.rs:91-96
 //   - `MirrorTimerWheel::len / get_kind / cancel / fire_expired`
-//                                                     <- crates/vb_runtime/src/shard/timer_wheel.rs:144, 150, 93, 109
+//                                                     <- crates/vb_runtime/src/shard/timer_wheel.rs:150, 156, 97, 113
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`            <- crates/vb_runtime/src/shard/types/command_queue.rs:2
 //
 // Source: vb-IPC proof-obligations VERUS-IPC-003..005 / REFINE-IPC-003..005.
@@ -251,7 +251,7 @@ pub open spec fn legal_terminal_transition(before: int, after: int) -> bool {
 /// is not terminal, and the run is not cancelled.
 ///
 /// Production semantics (from `TimerWheel::cancel` at
-/// `crates/vb_runtime/src/shard/timer_wheel.rs:93-104`): a terminal
+/// `crates/vb_runtime/src/shard/timer_wheel.rs:97-108`): a terminal
 /// or cancelled run's pending timer is removed (via
 /// `pending_timer_remove` in the `finish_run`/`fail_run_state`
 /// after-journaled continuations at

@@ -43,6 +43,8 @@ pub struct TimerWheel {
     by_deadline: BTreeMap<Instant, Vec<TimerEntry>>,
     /// Run-indexed entries for O(1) cancel/lookup.
     by_run: Map<RunId, TimerEntry>,
+    #[cfg(test)]
+    prepared_bucket: Option<Instant>,
 }
 
 impl TimerWheel {
@@ -52,6 +54,8 @@ impl TimerWheel {
         Self {
             by_deadline: BTreeMap::new(),
             by_run: Map::new(),
+            #[cfg(test)]
+            prepared_bucket: None,
         }
     }
 
@@ -130,7 +134,9 @@ impl TimerWheel {
     /// Returns the next deadline, if any timers are pending.
     #[must_use]
     pub fn next_deadline(&self) -> Option<Instant> {
-        self.by_deadline.first_key_value().map(|(k, _)| *k)
+        self.by_deadline
+            .iter()
+            .find_map(|(deadline, entries)| (!entries.is_empty()).then_some(*deadline))
     }
 
     /// Returns true if no timers are pending.
@@ -164,6 +170,18 @@ impl Default for TimerWheel {
     }
 }
 
+#[path = "timer_wheel/reservation.rs"]
+#[cfg(test)]
+mod reservation;
+
 #[cfg(test)]
 #[path = "timer_wheel/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "timer_wheel/reservation_tests.rs"]
+mod reservation_tests;
+
+#[cfg(test)]
+#[path = "timer_wheel/shared_bucket_tests.rs"]
+mod shared_bucket_tests;

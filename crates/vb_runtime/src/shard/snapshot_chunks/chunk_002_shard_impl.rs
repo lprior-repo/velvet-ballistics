@@ -65,7 +65,7 @@ impl Shard {
             Vec::with_capacity(snapshot_capacity(self.pending_timer_count(), max_items));
         for (run_id, timer) in self.pending_timer_iter().take(max_items) {
             timers.push(PendingTimerBoundarySnapshot {
-                run_id: *run_id,
+                run_id,
                 step: timer.step,
                 kind: timer.kind,
                 generation: timer.generation,
