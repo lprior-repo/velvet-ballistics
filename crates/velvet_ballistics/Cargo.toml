@@ -67,3 +67,7 @@ path = "../workspace_tests/tests/cli/qa_permutation_matrix.rs"
 [[test]]
 name = "f5_example_input_shape"
 path = "../workspace_tests/tests/cli/f5_example_input_shape.rs"
+
+[[test]]
+name = "replay_exit_codes"
+path = "../workspace_tests/tests/cli/replay_exit_codes.rs"
