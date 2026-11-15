@@ -1,0 +1,97 @@
+use super::*;
+use vb_core::{Idempotency as I, RetryRequirement as Q, RetrySafety as R, SideEffect as S};
+
+#[test]
+fn canonical_taxonomy_projections_are_exact() {
+    for (value, expected) in [
+        (S::Pure, "pure"),
+        (S::LocalRead, "local_read"),
+        (S::LocalWrite, "local_write"),
+        (S::ExternalRead, "external_read"),
+        (S::ExternalWrite, "external_write"),
+        (S::Process, "process"),
+        (S::UnsafeShell, "unsafe_shell"),
+    ] {
+        assert_eq!(action_side_effect_name(value), expected);
+    }
+    for (value, expected) in [
+        (R::Idempotent, "idempotent"),
+        (R::RequiresIdempotencyKey, "requires_idempotency_key"),
+        (R::NotRetrySafe, "not_retry_safe"),
+        (R::Unknown, "unknown"),
+    ] {
+        assert_eq!(action_retry_safety_name(value), expected);
+    }
+}
+
+#[test]
+fn builtin_metadata_declarations_are_consistent_without_executor_authority()
+-> Result<(), Box<dyn std::error::Error>> {
+    let expected = [
+        (
+            1,
+            I::DeterministicPure,
+            S::Pure,
+            R::Idempotent,
+            Q::Unconditional,
+        ),
+        (
+            2,
+            I::IdempotentExternal,
+            S::ExternalWrite,
+            R::RequiresIdempotencyKey,
+            Q::StableKey,
+        ),
+        (
+            3,
+            I::AtLeastOnceExternal,
+            S::ExternalWrite,
+            R::NotRetrySafe,
+            Q::Forbidden,
+        ),
+    ];
+    assert_eq!(cli_action_specs().len(), expected.len());
+    for (spec, (id, idempotency, effect, safety, requirement)) in
+        cli_action_specs().iter().zip(expected)
+    {
+        let contract = action_contract(spec)?;
+        assert_eq!(contract.id.get(), id);
+        assert_eq!(contract.idempotency, idempotency);
+        assert_eq!(contract.side_effect, effect);
+        assert_eq!(contract.retry_safety, safety);
+        assert_eq!(vb_core::retry_requirement(&contract), Ok(requirement));
+    }
+    Ok(())
+}
+
+#[test]
+fn detail_rule_uses_all_declarations_and_never_infers_from_idempotency_alone()
+-> Result<(), Box<dyn std::error::Error>> {
+    let spec = cli_action_specs().first().ok_or("missing metadata")?;
+    let mut contract = action_contract(spec)?;
+    for effect in [S::LocalRead, S::LocalWrite, S::Process, S::UnsafeShell] {
+        contract.side_effect = effect;
+        assert_eq!(
+            action_idempotency_rule(&contract),
+            "invalid action classification; retry refused"
+        );
+    }
+    contract.idempotency = I::IdempotentExternal;
+    contract.side_effect = S::ExternalWrite;
+    contract.retry_safety = R::Idempotent;
+    assert_eq!(
+        action_idempotency_rule(&contract),
+        "external retries require a stable idempotency key"
+    );
+    contract.side_effect = S::ExternalRead;
+    assert_eq!(
+        action_idempotency_rule(&contract),
+        "declared idempotent external reads may retry without an external key"
+    );
+    contract.retry_safety = R::Unknown;
+    assert_eq!(
+        action_idempotency_rule(&contract),
+        "invalid action classification; retry refused"
+    );
+    Ok(())
+}

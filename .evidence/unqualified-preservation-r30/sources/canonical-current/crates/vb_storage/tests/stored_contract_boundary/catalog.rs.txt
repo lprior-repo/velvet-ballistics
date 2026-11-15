@@ -1,0 +1,162 @@
+use super::helpers::*;
+use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+use vb_core::{
+    ActionContract, Idempotency, IdempotencyViolation, RetrySafety, RuntimePolicy, SideEffect,
+};
+use vb_storage::executor::{ExecutorCatalog, ExecutorError};
+use vb_storage::{FjallJournal, StoredActionRegistry, StoredContractError};
+
+#[derive(Clone, Copy, Debug)]
+enum Entry {
+    Register,
+    Prepare,
+    Submit,
+}
+
+fn pure() -> TestResult<ActionContract> {
+    let cases = observations()?;
+    let case = cases
+        .iter()
+        .find(|case| case.0 == "i0-e0-r0")
+        .ok_or("native pure")?;
+    Ok(StoredActionRegistry::decode_exact(&case.2)?
+        .try_canonical()?
+        .first()
+        .ok_or("pure")?
+        .clone())
+}
+
+fn refusal(
+    result: Result<(), ExecutorError>,
+    contract: &ActionContract,
+    consistent: bool,
+) -> TestResult {
+    match (consistent, result) {
+        (true, Err(ExecutorError::UnsupportedRegisteredClassification { action })) => {
+            assert_eq!(action, contract.id);
+        }
+        (
+            false,
+            Err(ExecutorError::Contract(StoredContractError::InvalidCanonicalClassification {
+                action,
+                source,
+            })),
+        ) => {
+            assert_eq!(action, contract.id);
+            assert_eq!(
+                source,
+                IdempotencyViolation::InvalidClassification {
+                    idempotency: contract.idempotency,
+                    side_effect: contract.side_effect,
+                    retry_safety: contract.retry_safety,
+                }
+            );
+        }
+        (_, Err(error)) => return Err(format!("unexpected catalog refusal: {error:?}").into()),
+        (_, Ok(())) => return Err("catalog granted unsupported local-provider authority".into()),
+    }
+    Ok(())
+}
+
+fn check_entry(
+    catalog: &ExecutorCatalog,
+    contract: &ActionContract,
+    consistent: bool,
+    entry: Entry,
+) -> TestResult {
+    let scratch = tempfile::tempdir()?;
+    let path = scratch.path().join("journal");
+    let workflow =
+        vb_core::CompiledWorkflow::try_from_parts(decode(&bytes("workflow.postcard")?)?)?;
+    let journal = FjallJournal::open(&path, None)?;
+    let seed = vb_storage::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &[pure()?],
+    )?;
+    let seed_bytes = postcard::to_allocvec(&seed)?;
+    drop(journal);
+    let before_counter = counter(scratch.path())?;
+    let journal = FjallJournal::open(&path, None)?;
+    let result = match entry {
+        Entry::Register => catalog
+            .register_pack(
+                contract,
+                CapabilityScopeSpec {
+                    namespace: 15,
+                    key: 29,
+                },
+                RecoveryClass::ReconcileReceipt,
+            )
+            .map(|_| ()),
+        Entry::Prepare => catalog
+            .prepare_artifact(
+                &workflow,
+                RuntimePolicy::Strict,
+                std::slice::from_ref(contract),
+                &[],
+            )
+            .map(|_| ()),
+        Entry::Submit => catalog
+            .submit_artifact(
+                &journal,
+                &workflow,
+                RuntimePolicy::Strict,
+                std::slice::from_ref(contract),
+                &[],
+            )
+            .map(|_| ()),
+    };
+    assert_eq!(journal.list_artifacts()?.len(), 1, "{entry:?}");
+    assert_eq!(
+        journal.compiled_ir(seed.digest)?.ok_or("seed artifact")?.ir,
+        seed_bytes,
+        "{entry:?}"
+    );
+    drop(journal);
+    assert_eq!(counter(scratch.path())?, before_counter, "{entry:?}");
+    refusal(result, contract, consistent)
+}
+
+#[test]
+fn every_current_catalog_entry_refuses_exactly_without_artifact_or_counter_mutation() -> TestResult
+{
+    use Idempotency::{AtLeastOnceExternal as A, DeterministicPure as D, IdempotentExternal as I};
+    use RetrySafety::{
+        Idempotent as Safe, NotRetrySafe as No, RequiresIdempotencyKey as Key, Unknown,
+    };
+    use SideEffect::{
+        ExternalRead as Read, ExternalWrite as Write, LocalRead, LocalWrite, Process, Pure,
+        UnsafeShell,
+    };
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    [
+        (D, Pure, Safe, true),
+        (I, Read, Safe, true),
+        (I, Read, Key, true),
+        (I, Write, Safe, true),
+        (I, Write, Key, true),
+        (A, Write, Key, true),
+        (A, Write, No, true),
+        (I, LocalRead, Safe, false),
+        (I, LocalWrite, Key, false),
+        (A, Process, No, false),
+        (A, UnsafeShell, No, false),
+        (I, Read, Unknown, false),
+    ]
+    .into_iter()
+    .try_for_each(
+        |(idempotency, side_effect, retry_safety, consistent)| -> TestResult {
+            let contract = ActionContract {
+                idempotency,
+                side_effect,
+                retry_safety,
+                ..pure()?
+            };
+            [Entry::Register, Entry::Prepare, Entry::Submit]
+                .into_iter()
+                .try_for_each(|entry| check_entry(&catalog, &contract, consistent, entry))
+        },
+    )
+}

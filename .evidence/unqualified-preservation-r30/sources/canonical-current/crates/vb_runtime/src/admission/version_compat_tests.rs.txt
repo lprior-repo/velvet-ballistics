@@ -1,0 +1,77 @@
+#[test]
+fn real_storage_artifacts_preserve_version_decisions_and_refusals()
+-> Result<(), Box<dyn std::error::Error>> {
+    use crate::admission::{
+        AdmissionError, ArtifactEnvelopeError, StorageArtifactStore, admit_artifact_run,
+    };
+    use vb_storage::compat::{CompatibilityClass, SchemaVersion};
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.evidence/artifact-version-tests");
+    std::fs::create_dir_all(&root)?;
+    for (version, code) in [
+        (SchemaVersion::new(0, 0, 0), 300),
+        (SchemaVersion::new(1, 0, 0), 300),
+        (SchemaVersion::new(2, 0, 0), 100),
+        (SchemaVersion::new(2, 0, 1), 102),
+        (SchemaVersion::new(2, 2, 0), 102),
+        (SchemaVersion::new(3, 0, 0), 300),
+    ] {
+        let directory = tempfile::tempdir_in(&root)?;
+        let journal = Arc::new(vb_storage::FjallJournal::open(directory.path(), None)?);
+        let mut value = artifact()?;
+        value.artifact_version = version;
+        value.digest = vb_storage::admission::accepted_artifact_digest(&value)?;
+        value.verification.digest = value.digest;
+        journal.put_compiled_ir(&vb_storage::CompiledIrRecord {
+            digest: value.digest,
+            ir: postcard::to_allocvec(&value)?,
+        })?;
+        let store = StorageArtifactStore::new(journal.clone());
+        let loaded = store.load_accepted_artifact(value.digest);
+        let admission = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            vb_core::RunId::new(990),
+            value.digest,
+            vb_core::CapabilitySet::empty(),
+        );
+        if code == 300 {
+            assert_eq!(
+                loaded,
+                Err(ArtifactEnvelopeError::ArtifactVersionIncompatible {
+                    held: version,
+                    required: vb_storage::compat::CURRENT_IR_VERSION,
+                    code,
+                })
+            );
+            assert_eq!(
+                admission,
+                Err(AdmissionError::ArtifactVersionIncompatible {
+                    held: version,
+                    required: vb_storage::compat::CURRENT_IR_VERSION,
+                    code,
+                })
+            );
+        } else {
+            assert_eq!(loaded?, value);
+            let decision = admission?
+                .ir_compat_decision()
+                .ok_or("missing version decision")?;
+            assert_eq!(decision.decision_code.code(), code);
+            assert_eq!(
+                decision.class,
+                if code == 100 {
+                    CompatibilityClass::Identical
+                } else {
+                    CompatibilityClass::ForwardCompatible
+                }
+            );
+        }
+        assert!(
+            journal
+                .events_for_run_full(vb_core::RunId::new(990))?
+                .is_empty()
+        );
+    }
+    Ok(())
+}

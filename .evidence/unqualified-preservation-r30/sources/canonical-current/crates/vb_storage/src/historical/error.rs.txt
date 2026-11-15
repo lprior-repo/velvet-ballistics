@@ -1,0 +1,26 @@
+use crate::executor::ExecutorError;
+use crate::{JournalError, StoredContractError};
+use vb_core::WorkflowDigest;
+
+/// Exact retained identity or supported-source verification failed before activation.
+#[derive(Debug, thiserror::Error)]
+pub enum HistoricalArtifactError {
+    /// Envelope, structural, proof or ledger verification failed.
+    #[error("retained artifact: {0}")]
+    Artifact(#[from] JournalError),
+    /// Exact historical pack/provider or existing-receipt binding failed.
+    #[error("retained executor: {0}")]
+    Executor(#[from] ExecutorError),
+    /// Original record framing or canonical representation is unsupported.
+    #[error("retained contract: {0}")]
+    Contract(#[from] StoredContractError),
+    /// No supported exact source-backed verifier family matches this declaration.
+    #[error("unknown artifact verifier family {digest:?}")]
+    UnknownVerifierFamily { digest: WorkflowDigest },
+    /// The current canonical family has no registered packed provider.
+    #[error("canonical packed artifacts have no supported registered provider")]
+    UnsupportedCanonicalPack,
+    /// Compiled adapter inputs differ from the retained historical implementation.
+    #[error("historical adapter source preimages do not match")]
+    HistoricalSourceMismatch,
+}

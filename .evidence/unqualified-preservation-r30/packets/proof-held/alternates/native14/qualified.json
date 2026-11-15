@@ -1,0 +1,216 @@
+{
+  "bead": "vb-eirmk.75.8.25.28",
+  "status": "Complete14-file private native kernel independently CODE+TEST approved; full .28 OPEN",
+  "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "isolatedGitAndJjRoot": "/home/lewis/src/isoloated/vb-engine-proof28-r24",
+  "source": {
+    "patch": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/cursor-full-candidate.patch",
+      "sha256": "d6558e2a1669daa8d76582ad97e3736daf3c061c52d1453ac8ec8835e9a0c3f1"
+    },
+    "changedFiles": [
+      {
+        "file": "crates/vb_core/src/engine/validate/nested_together.rs",
+        "sha256": "cfc8837f4485892afd85df5e452865bc2bdd80a6abeb6f102f5bac340fe9b463"
+      },
+      {
+        "file": "crates/vb_core/src/engine/validate/nested_together/cursor_proof.rs",
+        "sha256": "603367937c3d6151db5c1930233b212c5d8a54fb7195fa0627f8ac23f79d3634"
+      },
+      {
+        "file": "crates/vb_core/src/engine/validate/nested_together/scan_spec.rs",
+        "sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+      },
+      {
+        "file": "crates/vb_core/src/engine/validate/nested_together/successors.rs",
+        "sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+      },
+      {
+        "file": "crates/vb_core/src/engine/validate/nested_together/walk.rs",
+        "sha256": "5e742f393352eb47b17b2db4e74b797694c4c3441279bbc5b36d200430769c7f"
+      },
+      {
+        "file": "crates/vb_core/src/engine/validate/nested_together/walk_spec.rs",
+        "sha256": "c9d8701e780b3c40cd8f480f8316c8a442e218cfacce83502be2b0ac130b55ff"
+      },
+      {
+        "file": "crates/vb_core/src/engine/validate/nested_together/walk_weight.rs",
+        "sha256": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+      },
+      {
+        "file": "crates/vb_core/src/ids/mod.rs",
+        "sha256": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+      },
+      {
+        "file": "crates/vb_core/src/ids/parts/chunk_001_custom_types.rs",
+        "sha256": "69a1cbe6e8ff886c952675072ae0be7f5485c3a2ad268a4ccbcc2af02e7a31cd"
+      },
+      {
+        "file": "crates/vb_core/src/workflow/input_slot.rs",
+        "sha256": "ce01e3e228d9b004f321ed33777e33b252d2f6dec9ad017faa6702a17efabe7a"
+      },
+      {
+        "file": "crates/vb_core/src/workflow/node.rs",
+        "sha256": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+      },
+      {
+        "file": "crates/vb_core/src/workflow/node_kind.rs",
+        "sha256": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+      },
+      {
+        "file": "crates/vb_core/src/workflow/retry_policy.rs",
+        "sha256": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+      },
+      {
+        "file": "crates/vb_core/src/workflow/route_enums.rs",
+        "sha256": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+      }
+    ],
+    "fullSourceManifest": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/cursor-full-source.json",
+      "sha256": "8bed7bce4e0bd107c1362e9a3a39393cb3c5e53d396d397e97e12883a63a9d83"
+    },
+    "fullSourceFileCount": 547,
+    "sourceTree": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/cursor-final-native",
+    "finalCandidateRef": null,
+    "publication": "Source-only frozen patch. No final ref or push after previously reported Git-step stop."
+  },
+  "verification": {
+    "actualOwningCore": {
+      "verified": 73,
+      "errors": 0,
+      "exit": 0,
+      "command": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/cursor-final.command.json",
+        "sha256": "8881d3fd4c45f520d68314db1ab56aae990513fcfce0f3293a0cd6bef378646a"
+      },
+      "stdout": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/cursor-final.stdout",
+        "sha256": "5a305ad547efe716c92efe6be319bbb578781a799d09c23a129eaf2438b48b4b"
+      }
+    },
+    "actualBodyMutation": {
+      "verified": 72,
+      "errors": 1,
+      "exit": 1,
+      "mutation": "Found(step) returns None; original postcondition retained",
+      "command": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/cursor-negative.command.json",
+        "sha256": "2cf3a5b96c2c3408362d0f65590a8cb6ca247ece9c09fdf84ba3f5a2c8fc7c71"
+      },
+      "stdout": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/cursor-negative.stdout",
+        "sha256": "81d9b3a8d4261e0f871e033e7cbfc9d62bbe788221d512ef8439dc26003f7ed5"
+      }
+    },
+    "nativeCoreTests": {
+      "passed": 4034,
+      "skipped": 0,
+      "exit": 0,
+      "stdout": {
+        "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/package-tests.log",
+        "sha256": "c4f4157d8c2e0f4693d94265cb159a8f42d254bd02ab2264a03ca8b2c70a676d"
+      },
+      "command": {
+        "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/package-command.json",
+        "sha256": "3956fe807f6f34f1f0d8014effcf6c22853012f633f8bb6691dacba9d6ca2b9b"
+      }
+    },
+    "differential": {
+      "outputs": 5192,
+      "baselineIdentical": true,
+      "exit": 0,
+      "stdout": {
+        "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/cursor-integration-review/corrected/differential.log",
+        "sha256": "abf7b9fddc3cda481a64beb5a00ec00f34b0a8e9354dbf8a81c039aedd1f3a7d"
+      },
+      "baseline": {
+        "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/differential-baseline.log",
+        "sha256": "c10f83442dd3c0cfb73ee41075329953d10751e7d858df3e2a3ea6980d26cdf8"
+      },
+      "candidate": {
+        "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/differential-candidate.log",
+        "sha256": "c10f83442dd3c0cfb73ee41075329953d10751e7d858df3e2a3ea6980d26cdf8"
+      }
+    },
+    "nativeAdditionalCases": {
+      "publicBoundaries": 2,
+      "privateCursor": 7,
+      "exit": 0,
+      "stdout": {
+        "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/literals.log",
+        "sha256": "91c8ac983224979b859202793a82b0d6f3aed974906a0e2bac26fdbd94f1af0b"
+      }
+    },
+    "strictNative": 0,
+    "sourceClippy": 0,
+    "fmt": 0,
+    "sourceLength": {
+      "productionFiles": 1535,
+      "overLimit": 0,
+      "exit": 0,
+      "documentedMaterializedRootMode": true,
+      "exactCompileSplitSupplementExit": 0,
+      "stdout": {
+        "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/cursor-integration-review/corrected/source-length-snapshot.log",
+        "sha256": "2b773b77382b2792fb7b25bd5fd1759549935c9fdc11cfada4ef4096f0322583"
+      }
+    }
+  },
+  "reviews": {
+    "code": {
+      "verdict": "APPROVED ACCEPTABLE complete14-file private kernel",
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/cursor-review/review.md",
+      "sha256": "80eef5d0c7e560356fba294c2fe3d9a8b32a0d40e83b3f48d5857e465cd2e43e"
+    },
+    "test": {
+      "verdict": "APPROVED ACCEPTABLE complete14-file private kernel; no source/test author overlap",
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/test-suite-review.md",
+      "sha256": "46f6ad366e448246eeddcaac071bbf3bb02122da6415027f478f6ceefc68835d",
+      "receipt": {
+        "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/receipt.sha256",
+        "sha256": "5b78e0b4ee7615d838b04dafc3d435fe2394fdba764fe5302b32b5743f174873"
+      }
+    },
+    "earlierCursorTest": {
+      "verdict": "APPROVED ACCEPTABLE cursor delta plus full native integration",
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/cursor-integration-review/corrected/review.md",
+      "sha256": "6ed9f88c4b20c6150646a91a5f94f3e0acc36f23a18357fb70687fa21d1f762b"
+    }
+  },
+  "supplementalCitationDelta": {
+    "patch": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/citation-delta/comments.patch",
+      "sha256": "94521b5047f19f505ddc3d4fbdb66ef8b03dd8e072ba22fd18753949457359e1"
+    },
+    "inputs": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/citation-delta/manifest.json",
+      "sha256": "1b22eee7cd95b46ee1b9d2aaa5e08c3e477788845dd77966a2eb73e6e377a4a1"
+    },
+    "review": {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/cursor-review/citation-review.md",
+      "sha256": "319e56d1f976089af51fdcef2de39e4b8f00c81344ea70a87bbe65d078f2492b"
+    },
+    "status": "APPROVED comments only, preserving central compiler citation fixes"
+  },
+  "commitProposal": {
+    "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/native-commit-proposal.txt",
+    "sha256": "ac2565b8bcadb7a99b87bcc2a56486ad014a30314d03f1f06384813fb6449da0"
+  },
+  "limits": [
+    "Full .28 and parent engine acceptance remain OPEN.",
+    "Public WorkflowError conversion embeds unsupported chrono DateTime<Utc>; no proof closure.",
+    "Canonical legacy projection and source-qualified constructive bridge are separate candidates.",
+    "No registry edits, joined moon ci, main integration, push, performance claim or GPU use.",
+    "Existing shared references and central current changes are preserved.",
+    "Future source-qualified V4 constructive overlay changes some ghost-only source bytes and requires its own frozen reviews/citations/native-erasure checks. This native14 packet excludes that overlay."
+  ],
+  "supersedes": {
+    "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/native-ready.json",
+    "sha256": "d7d00c90eb4602cc248e6c8c1a0e541a48349b9292e1f609a551adfd5d4b5c3c"
+  },
+  "contract": {
+    "path": "/home/lewis/src/isoloated/vb-proof28-private-r24/.beads/vb-eirmk.75.8.25.28/contract.md",
+    "sha256": "5ae72e2d45797c3c056195bc9f0a0f2022cba5519c1f2fd3121c045c1ade7b76"
+  }
+}

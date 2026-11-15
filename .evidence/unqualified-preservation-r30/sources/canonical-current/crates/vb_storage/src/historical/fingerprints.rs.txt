@@ -1,0 +1,78 @@
+use vb_core::WorkflowDigest;
+use vb_core::action_pack::{ExecutorVersionDigest, ReceiptSchemaDigest};
+
+fn fingerprint(sources: &[&[u8]]) -> WorkflowDigest {
+    let mut hasher = blake3::Hasher::new();
+    sources.iter().for_each(|source| {
+        hasher.update(source);
+    });
+    WorkflowDigest::from_bytes(hasher.finalize().into())
+}
+
+pub(crate) fn executor_version() -> ExecutorVersionDigest {
+    ExecutorVersionDigest::from_digest(fingerprint(&[
+        include_bytes!("inputs/crates/vb_storage/src/executor/register.rs.source"),
+        include_bytes!("inputs/crates/vb_storage/src/executor/receipt.rs.source"),
+        include_bytes!("inputs/crates/vb_storage/src/executor/authority.rs.source"),
+        include_bytes!("inputs/crates/vb_storage/src/executor/conformance.rs.source"),
+        include_bytes!("inputs/crates/vb_storage/src/executor/catalog.rs.source"),
+    ]))
+}
+
+pub(crate) fn receipt_schema() -> ReceiptSchemaDigest {
+    ReceiptSchemaDigest::from_digest(fingerprint(&[include_bytes!(
+        "inputs/crates/vb_storage/src/executor/receipt.rs.source"
+    )]))
+}
+
+pub(crate) fn verifier() -> WorkflowDigest {
+    fingerprint(&[
+        include_bytes!("inputs/crates/vb_storage/src/admission/verification.rs.source"),
+        include_bytes!("inputs/crates/vb_storage/src/admission/verification/ledger.rs.source"),
+        include_bytes!("inputs/crates/vb_core/src/workflow/mod.rs.source"),
+        include_bytes!("inputs/crates/vb_core/src/budget.rs.source"),
+        include_bytes!("inputs/crates/vb_core/src/action/registry.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/shared.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/mod.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_07.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_08.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_09.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_10.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_10_refs.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_11.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_11_spans.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_12.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_13.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_14.rs.source"),
+        include_bytes!("inputs/crates/vb_validate/src/gates/gate_15.rs.source"),
+    ])
+}
+
+const ADAPTER_SOURCES: [(&[u8], &[u8]); 5] = [
+    (
+        include_bytes!("../executor/register.rs").as_slice(),
+        include_bytes!("inputs/crates/vb_storage/src/executor/register.rs.source").as_slice(),
+    ),
+    (
+        include_bytes!("../executor/receipt.rs").as_slice(),
+        include_bytes!("inputs/crates/vb_storage/src/executor/receipt.rs.source").as_slice(),
+    ),
+    (
+        include_bytes!("../executor/authority.rs").as_slice(),
+        include_bytes!("inputs/crates/vb_storage/src/executor/authority.rs.source").as_slice(),
+    ),
+    (
+        include_bytes!("../executor/conformance.rs").as_slice(),
+        include_bytes!("inputs/crates/vb_storage/src/executor/conformance.rs.source").as_slice(),
+    ),
+    (
+        include_bytes!("../executor/catalog.rs").as_slice(),
+        include_bytes!("inputs/crates/vb_storage/src/executor/catalog.rs.source").as_slice(),
+    ),
+];
+
+pub(crate) fn adapter_sources_match() -> bool {
+    ADAPTER_SOURCES
+        .iter()
+        .all(|(actual, historical)| actual == historical)
+}

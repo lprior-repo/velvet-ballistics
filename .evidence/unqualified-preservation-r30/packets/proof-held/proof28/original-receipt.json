@@ -1,0 +1,198 @@
+{
+  "frozenAtUTC": "2026-11-15T19:52:16.789Z",
+  "handoff": {
+    "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/handoff.json",
+    "sha256": "66dc31ddf7ad7220040c358ea8832839b4d89a3426bb059f2869853ab2e1cfe2"
+  },
+  "summary": {
+    "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/HANDOFF.md",
+    "sha256": "220cb9bb4d1b17f20ad203f69ca686936928db1e3a036dcf1fd5be333ba6d13b"
+  },
+  "patch": {
+    "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/combined.patch",
+    "sha256": "87caead66576367dc593650dab2525888d690ae40f3db7b141d91fa8fd017289"
+  },
+  "fileManifest": {
+    "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/files.json",
+    "sha256": "2f7cd16ca73df7eab7ac25381f7fdb4287b171c6da717bc290eb2d15a1c88696",
+    "files": 73,
+    "sourcePostimageMismatches": 0
+  },
+  "referencedEvidenceChecks": [
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/combined.patch",
+      "sha256": "87caead66576367dc593650dab2525888d690ae40f3db7b141d91fa8fd017289",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/files.json",
+      "sha256": "2f7cd16ca73df7eab7ac25381f7fdb4287b171c6da717bc290eb2d15a1c88696",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/patch-check.command.json",
+      "sha256": "4aa4de6a4747580c26da62d79c324c73d258a35521c54c481f00a915d98d598b",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/patch-check.stdout",
+      "sha256": "acc48c72bc66447c3aa1635d3eafb17e1336e6adfadb19c3899a00a653da3b3f",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/commit-message.txt",
+      "sha256": "285035b97edb3683f0457288a9040927f0e5510fdeaef2862043dba29cbfabcd",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/cursor-review/review.md",
+      "sha256": "80eef5d0c7e560356fba294c2fe3d9a8b32a0d40e83b3f48d5857e465cd2e43e",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/test-suite-review.md",
+      "sha256": "46f6ad366e448246eeddcaac071bbf3bb02122da6415027f478f6ceefc68835d",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/native14-qualified.json",
+      "sha256": "14eeb04372b44c4030d1b9f70d1f606ea2e1b77ffe854641ec991714cceb911a",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/bridge-code-review/review.md",
+      "sha256": "6a7d974db61e6e8d8e167b1a1277c920aea1a1affcc3274c939f3efbf9fe1fa7",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/bridge-code-review/receipt.sha256",
+      "sha256": "605f7143d0d12a5df4bd2ea27579e7663203d28589eeac375c77c566a1ee3db5",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/test-review.md",
+      "sha256": "3b8a17d886c6adf5fa85f9381184253ec2482fdc0a84522a02fd9219b26ad954",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/test-receipt.sha256",
+      "sha256": "56ceca6f3002dc2852db6c2dfe16884f75b4fe89414480084648c44cb76e18fb",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/citation-v4-code-review/review.md",
+      "sha256": "3676b7c844ae0d50312f18f191876935d5efac40403023e08af45eed0bf9a4ec",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/citation-v4-code-review/final-traversal/review.md",
+      "sha256": "1872e6409c4b6bcd79f2d9907bdc7d8285f6fd7a7b0090eb563b9d3d2d2bfc25",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-walk-math-factor-r24/.evidence/combined-qualification-r24/report-v4.md",
+      "sha256": "56575252651b396b9abad7bba2c080c839b1ae05a24f6f4c1af86fac3eb400ca",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-walk-math-factor-r24/.evidence/combined-qualification-r24/v4-evidence.sha256",
+      "sha256": "999bd997071815fceff6ebab22eb8a6c09b8aeb13265ad22b480c3afd60e84d1",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-walk-math-factor-r24/.evidence/combined-qualification-r24/v4-frozen.json",
+      "sha256": "5876ebcc1aebcdef7b28fe0dfb414f980d5618369b22a1b144bbd4d0cb37b33d",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/citations/final-traversal/packet.md",
+      "sha256": "d6de0692ee4087fdfafc18843280b6dcde461d16a5036f8a8d93b30a2cd12bb2",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/citations/final-traversal/receipt.sha256",
+      "sha256": "66f1236343db8a47061634e7d7828579e3aff9a489722096b11402e851d38f39",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/shipped-compat.command.json",
+      "sha256": "958d8fb04adab6c9739b9c9a2b731c1e3fed2551a720cf33c1112d90c442db1d",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/shipped-compat.stdout",
+      "sha256": "6e3086f646f593813d3bffe82f7f26c4904b959aaa2cbd5088fd295a351a2e68",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/current-compat.command.json",
+      "sha256": "69fea5b12a628819e73d5874e8d295f858d9523923a79d174aab580b6248b603",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/current-compat.stdout",
+      "sha256": "0bece74f87b0af7fe9af021b47ca2c67aa585581d042d4fbbe2f3c5def42981f",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/ready.json",
+      "sha256": "80a02e33c21800d0ed0f845e7e1fbf58b8b7ebdbaeca1bf49db3912680139616",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/taint-ready.json",
+      "sha256": "aeedc311f16225c15b55721247b361b9c5d90ceebd3b6587cedae3397cfa72f6",
+      "match": true
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-recovery-refinement-r24/.evidence/recovery-refinement-r24/report.md",
+      "sha256": "e08095dbd3bb8d77cb0b40bb302559ce6875d71c1bee3d511db5b5809201ff11",
+      "match": true
+    }
+  ],
+  "beadSync": {
+    "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/bead-sync.json",
+    "sha256": "e72692f1574ddb4102859eb3920acb7732b73c0d31aa7b180dbbeb925b6266e0",
+    "exit": 0
+  },
+  "beadStatuses": [
+    {
+      "id": "vb-eirmk.75.8.25.28",
+      "status": "in_progress",
+      "assignee": "priorlewis43@gmail.com"
+    },
+    {
+      "id": "vb-wnvj0",
+      "status": "in_progress",
+      "assignee": "Lewis"
+    },
+    {
+      "id": "vb-og12k",
+      "status": "in_progress",
+      "assignee": "Lewis"
+    },
+    {
+      "id": "vb-god2f.6",
+      "status": "in_progress",
+      "assignee": "Lewis"
+    },
+    {
+      "id": "vb-m4l84",
+      "status": "closed",
+      "assignee": "Lewis"
+    },
+    {
+      "id": "vb-god2f.7",
+      "status": "closed",
+      "assignee": "Lewis"
+    }
+  ],
+  "jobs": "All three subagents completed; no verifier/Cargo jobs remain; root sync completed",
+  "mainPublication": "Not performed here; central is single main writer",
+  "unfinished": [
+    "Current r18 taint revision df46 cfg-gates SlotCell out of ghost builds. Central-owned .7 is closed for its standalone target, but owning-core composition now fails E0432. The aggregate deliberately does not edit/revert this taint source. Reconcile this integration blocker before claiming V4 on current main.",
+    "Actual public WorkflowError/RuntimeError error graphs contain CoreError -> chrono DateTime<Utc>. Pinned Verus translates unsupported unused enum payloads too. No new trust/opaque type/body assumption, dependency, compiler feature or public representation change was authorized. Public .28 and actual recovery .6 return proofs remain OPEN.",
+    "No protected registry/gate edits were made. Direct owning proof registry wiring, post-integration joined moon ci and central publication remain unverified.",
+    "The first independent CODE adapter wrote compiled output into author out/v4-marking. Source/logs were unaffected; that compiled artifact is explicitly excluded. Corrected CODE replay used its own output and passed197/0. No compiled-library publication claim."
+  ]
+}

@@ -1,0 +1,250 @@
+[
+  {
+    "path": ".beads/vb-eirmk.60/canonical-formal-repair-contract.md",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "1d320eaa7aaccb8d169289f63be08c9a4cf0a52c65af509a15886de7698bba2a",
+    "bytes": 5012,
+    "archive": "formal3c/original-commit/.beads/vb-eirmk.60/canonical-formal-repair-contract.md"
+  },
+  {
+    "path": ".evidence/formal-native-r27/commands.txt",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "bfee8cbda1567d368e59b6ec4765fa8ed12ab1c4a0d2a4b278fdac7f600bd8ec",
+    "bytes": 2796,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/commands.txt"
+  },
+  {
+    "path": ".evidence/formal-native-r27/commit-proposal.txt",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "91d13004cb2899d81dbfb89abe760fc51684715cdd4ceef4ea882f65f132017e",
+    "bytes": 219,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/commit-proposal.txt"
+  },
+  {
+    "path": ".evidence/formal-native-r27/drift.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "92ef926662e0c39d44dda8409c575cb4da4d81a2485dd9398a73cb603ef315a4",
+    "bytes": 151,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/drift.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/evidence.sha256",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "b5a22494971241dd9f14ecd03b7a25d6e74ee3478d2b4d4e425852c50f97f969",
+    "bytes": 2342,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/evidence.sha256"
+  },
+  {
+    "path": ".evidence/formal-native-r27/first-verus.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "367531f1397bc23a262dcdce117fd8e94cd269ea4b96b824a7d4d49cae56e58d",
+    "bytes": 256,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/first-verus.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/format-check.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2",
+    "bytes": 20,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/format-check.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native-build.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "1bd6a32b04b55b860724bc5065df88a4822946b3a97ca0b1c80607fddf6b6bef",
+    "bytes": 167,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native-build.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native-parity-build.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "c6f4baa40a8070b27669e9ccb06429361db69b444ab6a8fde283a1a2bf7ff382",
+    "bytes": 196,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native-parity-build.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native-parity.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "5d829cf74bf9e82f5e7e574ea5d7fafae32cb1772804311ae8e634ff40de05d7",
+    "bytes": 147,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native-parity.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native-parity.rs",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "ed67bf08cd7df09961729df6c52aa6c5b89c6edb4d5134cedaa9c4da5a28cb9f",
+    "bytes": 7538,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native-parity.rs.txt"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/artifacts.sha256.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "319c7019c75d4c479afa51db34e4072a9a6525d6a4d01d7a5fd450c2186009de",
+    "bytes": 207,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/artifacts.sha256.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/artifacts.tsv.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "fc0e44d7b16bf96e79f95245ef83093e069258c3f1c1816463a55942eaca5f8b",
+    "bytes": 126,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/artifacts.tsv.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/build.jsonl.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "10e106a09583798ea1e713bf24cd5908daaac9f20bfaed2057e8fea7da7a198d",
+    "bytes": 5928,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/build.jsonl.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/build.stderr.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "21b7ada78099c7e514c3dfce73c41d75b4ea284368c806164b5908bd71f2823c",
+    "bytes": 91,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/build.stderr.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/compiler.txt.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "71bc27799ed57065f5e6ea4cf888b9a43a6c69767f5673b43349c36e71878582",
+    "bytes": 171,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/compiler.txt.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/source-after.sha256.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "c624b9c6edd0a11f3637e2875eb2bb72ece81e1614a68a00b5c41165de24cb92",
+    "bytes": 159639,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/source-after.sha256.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/source-before.sha256.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "c624b9c6edd0a11f3637e2875eb2bb72ece81e1614a68a00b5c41165de24cb92",
+    "bytes": 159639,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/source-before.sha256.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/native/validate-artifact.sha256.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "f0cfe139a017c2450dc5c9d073b3fc04dc60aa36c1a2528fc8b07c4777b4c402",
+    "bytes": 133,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/native/validate-artifact.sha256.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/no-cheating-verus.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "b17f9e581846e75236644bea9f825fb926e147deee762e9f447f6938b6010e09",
+    "bytes": 62,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/no-cheating-verus.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/production-binding.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "ac221ff055669674f5d43f897dd3e0a53873d240c59bc5f4954d2dc6d3857941",
+    "bytes": 432,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/production-binding.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/proof.patch.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "7f425a774261e35ca9dddcc3a1a6174f168f47584640b45f4e5e9d1595c8d0c0",
+    "bytes": 7699,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/proof.patch.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/report.md",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "b1128b1d0d7ed64f2a30da32fa155fa2fb15a76b22964e2f31668ba264d98d67",
+    "bytes": 5535,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/report.md"
+  },
+  {
+    "path": ".evidence/formal-native-r27/scoped-verus.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "b17f9e581846e75236644bea9f825fb926e147deee762e9f447f6938b6010e09",
+    "bytes": 62,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/scoped-verus.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/second-verus.log.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "bf653183894c2ba012ba7a3360eb88bc7985732c14fbbf06f84ed2de18c7a219",
+    "bytes": 300,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/second-verus.log.gz"
+  },
+  {
+    "path": ".evidence/formal-native-r27/source-callpath.md",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "a77176eb49003ac506fbd3170a7139323c1ce32c4ca0e3f3b2d27a2c442e94cf",
+    "bytes": 2605,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/source-callpath.md"
+  },
+  {
+    "path": ".evidence/formal-native-r27/source.sha256",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "2dbc69c3ac77e4fe38e21151312b865264fef7a56d766b863068c5f261970c5c",
+    "bytes": 1140,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/source.sha256"
+  },
+  {
+    "path": ".evidence/formal-native-r27/trust-markers.txt.gz",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": null,
+    "postimage_sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2",
+    "bytes": 20,
+    "archive": "formal3c/original-commit/.evidence/formal-native-r27/trust-markers.txt.gz"
+  },
+  {
+    "path": "verification/verus/extern_idempotency_decision.rs",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": "39dfd095fe6219e53d8ecc49973276aceeefad95a57da13bde9305187dc9ea78",
+    "postimage_sha256": "3ca691ce45b91b7040271870fe646c684e748c24e6497d677fb7cb73176c40df",
+    "bytes": 526,
+    "archive": "formal3c/original-commit/verification/verus/extern_idempotency_decision.rs.txt"
+  },
+  {
+    "path": "verification/verus/idempotency_decision.rs",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": "2913a2127ac110bbb1f6a219972fe83352b8ca5972313170225ba32028765655",
+    "postimage_sha256": "dad85480e4caae2734adbdc667b67570a2f4ab21d321ead1ba9269a448bb7308",
+    "bytes": 4684,
+    "archive": "formal3c/original-commit/verification/verus/idempotency_decision.rs.txt"
+  },
+  {
+    "path": "verification/verus/production_inner/idempotency_decision_production.rs",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "preimage_sha256": "2823b30fe0234876580b80a97b28200b6776794382ca4b4e22b55faf6a48357a",
+    "postimage_sha256": "ea21e6e173032177f6015438cde65fc6d5ae804383cc0a4fe2a15c52baf18fda",
+    "bytes": 8479,
+    "archive": "formal3c/original-commit/verification/verus/production_inner/idempotency_decision_production.rs.txt"
+  }
+]

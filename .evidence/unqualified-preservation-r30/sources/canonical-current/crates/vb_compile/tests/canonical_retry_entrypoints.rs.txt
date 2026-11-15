@@ -1,0 +1,136 @@
+use vb_compile::{
+    ArtifactVerificationError, CompileError, CompileErrors, compile_workflow,
+    compile_workflow_with_contracts, verify_compiled_artifact,
+};
+use vb_core::action::ActionName;
+use vb_core::{ActionContract, ActionId, Idempotency as I, RetrySafety as R, SideEffect as S};
+use vb_validate::idempotency_contract::{
+    IdempotencyContractError, IdempotencyContractErrors, IdempotencyContractViolation,
+};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+fn source(attempts: Option<u16>) -> String {
+    let retry = attempts.map_or_else(String::new, |count| {
+        format!("    try_again: {{max_attempts: {count}}}\n")
+    });
+    format!(
+        "version: velvet-ballistics/v1\nname: canonical_entrypoint\nwhen: {{manual: {{}}}}\nsteps:\n  - id: seed\n    set: {{output: value, value: '1'}}\n  - id: work\n{retry}    do: {{action: '0', input: '$step.seed'}}\n  - id: done\n    finish: {{result: '$step.work'}}\n"
+    )
+}
+
+fn contract(idempotency: I, side_effect: S, retry_safety: R) -> ActionContract {
+    ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::from_static_infallible("entry.action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 2048,
+        timeout_ms: 1000,
+        idempotency,
+        side_effect,
+        retry_safety,
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn check(
+    candidate: ActionContract,
+    attempts: Option<u16>,
+    expected: Result<(), CompileErrors>,
+) -> TestResult {
+    let source = source(attempts);
+    let contracts = [candidate];
+    let from_source = compile_workflow_with_contracts(source.as_bytes(), &contracts);
+    assert_eq!(from_source.map(|_| ()), expected);
+    let structural = compile_workflow(source.as_bytes())?;
+    let from_ir = verify_compiled_artifact(&structural, &contracts);
+    match (from_ir, expected) {
+        (Ok(verified), Ok(())) => assert_eq!(verified.contracts(), &contracts),
+        (Err(ArtifactVerificationError::Compilation(actual)), Err(expected)) => {
+            assert_eq!(actual, expected);
+        }
+        (actual, expected) => {
+            return Err(format!("compiled entrypoint mismatch: {actual:?}, {expected:?}").into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn both_public_entrypoints_allow_nonretry_but_refuse_repeated_forbidden_action() -> TestResult {
+    let candidate = contract(I::AtLeastOnceExternal, S::ExternalWrite, R::NotRetrySafe);
+    for attempts in [None, Some(1)] {
+        check(candidate.clone(), attempts, Ok(()))?;
+    }
+    let violation = IdempotencyContractViolation::SideEffectingRetryUnsafe {
+        action: ActionId::new(0),
+        side_effect: S::ExternalWrite,
+        idempotency: I::AtLeastOnceExternal,
+        retry_safety: R::NotRetrySafe,
+    };
+    check(
+        candidate,
+        Some(2),
+        Err(CompileErrors(vec![CompileError::WorkflowIdempotency(
+            IdempotencyContractError::IdempotencyViolations(IdempotencyContractErrors(Box::new([
+                violation,
+            ]))),
+        )])),
+    )
+}
+
+#[test]
+fn both_public_entrypoints_accept_consistent_pure_read_and_keyed_write_retries() -> TestResult {
+    for (idempotency, effect, safety) in [
+        (I::DeterministicPure, S::Pure, R::Idempotent),
+        (I::IdempotentExternal, S::ExternalRead, R::Idempotent),
+        (
+            I::IdempotentExternal,
+            S::ExternalRead,
+            R::RequiresIdempotencyKey,
+        ),
+        (I::IdempotentExternal, S::ExternalWrite, R::Idempotent),
+        (
+            I::IdempotentExternal,
+            S::ExternalWrite,
+            R::RequiresIdempotencyKey,
+        ),
+        (
+            I::AtLeastOnceExternal,
+            S::ExternalWrite,
+            R::RequiresIdempotencyKey,
+        ),
+    ] {
+        check(contract(idempotency, effect, safety), Some(2), Ok(()))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn both_public_entrypoints_refuse_unsupported_and_unknown_declarations_without_retry() -> TestResult
+{
+    for (effect, safety) in [
+        (S::LocalRead, R::Idempotent),
+        (S::LocalWrite, R::RequiresIdempotencyKey),
+        (S::Process, R::NotRetrySafe),
+        (S::UnsafeShell, R::RequiresIdempotencyKey),
+        (S::ExternalRead, R::Unknown),
+        (S::Pure, R::Unknown),
+    ] {
+        check(
+            contract(I::IdempotentExternal, effect, safety),
+            None,
+            Err(CompileErrors(vec![CompileError::IdempotencyViolation {
+                action: ActionId::new(0),
+                side_effect: effect,
+                reason: format!(
+                    "invalid idempotency classification: IdempotentExternal/{effect:?}/{safety:?}"
+                )
+                .into_boxed_str(),
+            }])),
+        )?;
+    }
+    Ok(())
+}

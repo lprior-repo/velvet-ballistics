@@ -1,0 +1,102 @@
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+pub(super) open spec fn together_start(node: &crate::workflow::CompiledNode) -> bool {
+    matches!(&node.kind, CompiledNodeKind::TogetherStart { .. } | CompiledNodeKind::TogetherConcurrentStart { .. })
+}
+
+spec fn start_ids_before(nodes: Seq<crate::workflow::CompiledNode>, end: nat) -> Seq<u16>
+    decreases end
+{
+    if end == 0 || end > nodes.len() { Seq::empty() }
+    else {
+        let previous = start_ids_before(nodes, (end-1) as nat);
+        let row = nodes[end as int - 1];
+        if together_start(&row) { previous.push(row.id.raw_spec()) } else { previous }
+    }
+}
+}
+
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+spec fn branch_result(
+    nodes: Seq<crate::workflow::CompiledNode>, keys: Set<u16>,
+    entry: StepIdx, join: StepIdx, outer: StepIdx,
+) -> Option<StepIdx> {
+    let start = entry.raw_spec() as usize;
+    let stop = join.raw_spec() as usize;
+    if start >= nodes.len() || stop >= nodes.len() || !expected_contains_walk(nodes, keys, start, stop, outer) {
+        None
+    } else {
+        Some(expected_find_walk(nodes, keys, start, stop, outer))
+    }
+}
+
+spec fn first_branch_from(
+    nodes: Seq<crate::workflow::CompiledNode>, keys: Set<u16>,
+    entries: Seq<StepIdx>, join: StepIdx, outer: StepIdx, index: nat,
+) -> Option<StepIdx>
+    decreases entries.len() - index
+{
+    if index >= entries.len() { None }
+    else {
+        match branch_result(nodes, keys, entries[index as int], join, outer) {
+            Some(inner) => Some(inner),
+            None => first_branch_from(nodes, keys, entries, join, outer, index + 1),
+        }
+    }
+}
+
+spec fn node_result(
+    nodes: Seq<crate::workflow::CompiledNode>, keys: Set<u16>, node: &crate::workflow::CompiledNode,
+) -> Option<StepIdx> {
+    match &node.kind {
+        CompiledNodeKind::TogetherStart { branches, join } | CompiledNodeKind::TogetherConcurrentStart { branches, join }
+            => first_branch_from(nodes, keys, branches@, *join, node.id, 0),
+        _ => None,
+    }
+}
+
+spec fn first_outer_from(
+    nodes: Seq<crate::workflow::CompiledNode>, keys: Set<u16>, index: nat,
+) -> Option<(StepIdx, StepIdx)>
+    decreases nodes.len() - index
+{
+    if index >= nodes.len() { None }
+    else {
+        let node = nodes[index as int];
+        match node_result(nodes, keys, &node) {
+            Some(inner) => Some((node.id, inner)),
+            None => first_outer_from(nodes, keys, index + 1),
+        }
+    }
+}
+
+spec fn first_pair(nodes: Seq<crate::workflow::CompiledNode>) -> Option<(StepIdx, StepIdx)> {
+    let starts = start_ids_before(nodes, nodes.len());
+    if starts.len() < 2 { None } else { first_outer_from(nodes, starts.to_set(), 0) }
+}
+}
+
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+proof fn record_start_prefix(nodes: Seq<CompiledNode>, index: nat)
+    requires index < nodes.len()
+    ensures ({
+        let previous = start_ids_before(nodes, index);
+        let next = start_ids_before(nodes, index + 1);
+        let row = nodes[index as int];
+        if together_start(&row) {
+            next.to_set() == previous.to_set().insert(row.id.raw_spec()) &&
+            (next.len() >= 2) == !previous.to_set().is_empty()
+        } else { next == previous }
+    })
+{
+    let previous = start_ids_before(nodes,index);
+    if previous.len() > 0 {
+        assert(previous.to_set().contains(previous[0]));
+    } else {
+        assert(previous =~= Seq::<u16>::empty());
+    }
+    previous.lemma_push_to_set_commute(nodes[index as int].id.raw_spec());
+}
+}

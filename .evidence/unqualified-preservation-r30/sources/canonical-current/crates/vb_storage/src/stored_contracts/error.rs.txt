@@ -1,0 +1,40 @@
+use vb_core::{ActionId, IdempotencyViolation, SideEffect};
+
+/// A cold record cannot be decoded, represented or projected into an active declaration.
+#[derive(Debug, thiserror::Error)]
+pub enum StoredContractError {
+    /// The original postcard record is malformed.
+    #[error("historical contract codec: {0}")]
+    Codec(#[from] postcard::Error),
+    /// A record or declaration count exceeds its existing storage/domain bound.
+    #[error("historical contract record exceeds its bound")]
+    BoundExceeded,
+    /// The complete record contains a suffix.
+    #[error("historical contract record has trailing bytes")]
+    TrailingBytes,
+    /// Re-encoding does not reproduce the original canonical writer bytes.
+    #[error("historical contract record has noncanonical encoding")]
+    NoncanonicalEncoding,
+    /// A bounded cold allocation failed.
+    #[error("historical contract allocation failed")]
+    Allocation,
+    /// Coarse historical declarations do not determine a permitted canonical tuple.
+    #[error("action {action:?} has no supported historical classification projection")]
+    UnsupportedHistoricalClassification { action: ActionId },
+    /// Actual registered observations establish a classification forbidden by the policy.
+    #[error("action {action:?} has forbidden attested classification {side_effect:?}")]
+    ForbiddenAttestedClassification {
+        action: ActionId,
+        side_effect: SideEffect,
+    },
+    /// A canonical declaration has no proven lossless old representation.
+    #[error("action {action:?} has no supported historical wire representation")]
+    UnsupportedCanonicalRepresentation { action: ActionId },
+    /// Canonical classification must pass the exhaustive domain implication first.
+    #[error("action {action:?} has invalid canonical classification: {source}")]
+    InvalidCanonicalClassification {
+        action: ActionId,
+        #[source]
+        source: IdempotencyViolation,
+    },
+}

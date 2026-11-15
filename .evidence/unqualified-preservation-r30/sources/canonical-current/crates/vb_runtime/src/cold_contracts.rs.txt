@@ -1,0 +1,37 @@
+use vb_core::{ActionContract, RuntimePolicy};
+use vb_storage::{AcceptedArtifact, HistoricalArtifactError, JournalError};
+
+pub(crate) fn project(artifact: &AcceptedArtifact) -> Result<Box<[ActionContract]>, JournalError> {
+    verify(artifact)?.try_canonical().map_err(Into::into)
+}
+
+pub(crate) fn verify(
+    artifact: &AcceptedArtifact,
+) -> Result<vb_storage::VerifiedHistoricalArtifact, JournalError> {
+    let policy = match &artifact.verification.evidence {
+        vb_core::artifact::ArtifactEvidence::Verified(base) => base.admission_policy,
+        vb_core::artifact::ArtifactEvidence::Packed(packed) => packed.base.admission_policy,
+        vb_core::artifact::ArtifactEvidence::Unverified => {
+            return Err(JournalError::ArtifactMalformed);
+        }
+    };
+    let bytes = postcard::to_allocvec(artifact).map_err(JournalError::PostcardEncodeFailed)?;
+    vb_storage::verify_retained_artifact(&bytes, policy).map_err(identity_error)
+}
+
+pub(crate) fn project_for_policy(
+    artifact: &AcceptedArtifact,
+    policy: RuntimePolicy,
+) -> Result<Box<[ActionContract]>, JournalError> {
+    let bytes = postcard::to_allocvec(artifact).map_err(JournalError::PostcardEncodeFailed)?;
+    let verified = vb_storage::verify_retained_artifact(&bytes, policy).map_err(identity_error)?;
+    verified.try_canonical().map_err(Into::into)
+}
+
+fn identity_error(error: HistoricalArtifactError) -> JournalError {
+    match error {
+        HistoricalArtifactError::Artifact(error) => error,
+        HistoricalArtifactError::Contract(error) => error.into(),
+        _ => JournalError::ArtifactMalformed,
+    }
+}

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: MIT
+// WEAK PRODUCTION BINDING: verified projection, not direct production inclusion.
+// BINDING LEDGER:
+//   - `retry_requirement` <- crates/vb_core/src/action/retry_requirement.rs:15-45
+//   - `is_contract_idempotency_accepted` <- crates/vb_storage/src/admission.rs:200-202
+//   - `is_statically_idempotent_contract` <- crates/vb_validate/src/idempotency_contract.rs:152-167
+#![forbid(unsafe_code)]
+
+#[path = "production_inner/idempotency_decision_production.rs"]
+pub mod prod;
+
+pub use prod::*;

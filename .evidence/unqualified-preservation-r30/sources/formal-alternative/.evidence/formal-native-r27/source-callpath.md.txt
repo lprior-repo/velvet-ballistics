@@ -1,0 +1,13 @@
+# PO-VERUS-017 production/projection bridge
+
+Production core types: crates/vb_core/src/action/contract.rs:10-53 contains Idempotency, SideEffect and RetrySafety. ActionContract at lines119-145 has additional metadata omitted by the four-field decision projection; native parity varies that metadata and both action-ID boundaries. No wire serialization or layout equality is claimed.
+
+Production calculation: crates/vb_core/src/action/retry_requirement.rs:15-45 matches the three classifications, returns Unconditional, StableKey, legal Forbidden or InvalidClassification with the same three fields. The verified core_decision::retry_requirement and its private invalid_classification project exactly these branches. Const qualification and derives are omitted; no runtime branch is selected by verifier-only configuration.
+
+Production storage: crates/vb_storage/src/admission.rs:200-202 calls vb_core::retry_requirement(contract).is_ok(). validate_idempotency_contracts at183-198 actually invokes it and preserves typed invalid classification. admission/canonical_verification.rs::validate_declarations at54-64 invokes this validator before the workflow retry gate; canonical_payload at66-90 invokes declarations before old-wire representability. The public validation-only validate_workflow_action_contracts at44-52 invokes the same storage helper and workflow gate without persistence or authority. The native parity executable exercises that path. The verified storage wrapper has the same boolean result relation.
+
+Production validator: crates/vb_validate/src/idempotency_contract.rs:152-167 calls shared retry_requirement, maps every legal requirement to Ok(()), and maps invalidity to InvalidContract carrying action ID and all three declarations. The projection desugars the standard Result combinators to their two arms and verifies both acceptance and exact error-field preservation. The native executable calls this actual function and compares both paths.
+
+HistoricalMain: crates/vb_storage/src/historical/contracts.rs::validate_legacy_tuples is separate, remains unchanged and is not interpreted through this canonical declaration model. Raw old types, old ABI/identity and effect authority are outside this proof.
+
+Residual trust: these are verified executable projection bodies, not direct inclusion of the production bodies. Source identity, callgraph/field mapping, native comparison and the identifier drift gate are independent evidence for the manual bridge. They do not mathematically prove that bridge. Independent CODE/formal review and the mandatory binding gate remain unresolved.

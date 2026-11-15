@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "flock",
+    "--shared",
+    "target/moon-locks/source-mutation.lock",
+    "env",
+    "TMPDIR=/home/lewis/src/isoloated/vb-taxonomy60-cli-ipc-r29/target/tmp",
+    "RUSTC_WRAPPER=",
+    "RUSTFLAGS=-Dwarnings",
+    "CARGO_BUILD_JOBS=2",
+    "timeout",
+    "10m",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "nextest",
+    "run",
+    "--cargo-quiet",
+    "-p",
+    "velvet-ballistics",
+    "-p",
+    "vb_ipc",
+    "--all-features",
+    "--test-threads",
+    "4"
+  ],
+  "cwd": "/home/lewis/src/isoloated/vb-taxonomy60-cli-ipc-r29",
+  "started": "2026-11-15T20:35:49.853Z"
+}

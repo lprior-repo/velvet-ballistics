@@ -1,0 +1,160 @@
+use serde::{Serialize, de::DeserializeOwned};
+use std::path::{Path, PathBuf};
+use vb_core::artifact::{ArtifactEvidence, ObligationClosure, ObligationKind};
+use vb_core::{RuntimePolicy, WorkflowDigest};
+use vb_storage::{AcceptedArtifact, StoredActionRegistry};
+
+pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+pub(super) type Observation = (
+    String,
+    Vec<u8>,
+    Vec<u8>,
+    String,
+    String,
+    String,
+    Option<Vec<u8>>,
+    Option<Vec<u8>>,
+    Option<Vec<u8>>,
+);
+
+pub(super) fn root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/historical-main")
+}
+
+pub(super) fn decode<T: DeserializeOwned + Serialize>(bytes: &[u8]) -> TestResult<T> {
+    let (value, rest) = postcard::take_from_bytes(bytes)?;
+    assert!(rest.is_empty());
+    assert_eq!(postcard::to_allocvec(&value)?, bytes);
+    Ok(value)
+}
+
+pub(super) fn bytes(path: &str) -> TestResult<Vec<u8>> {
+    Ok(std::fs::read(root().join(path))?)
+}
+pub(super) fn artifact(path: &str) -> TestResult<AcceptedArtifact> {
+    decode(&bytes(path)?)
+}
+pub(super) fn observations() -> TestResult<Vec<Observation>> {
+    decode(&bytes("oracle45-slices.postcard")?)
+}
+pub(super) fn hash(bytes: &[u8]) -> WorkflowDigest {
+    WorkflowDigest::from_bytes(blake3::hash(bytes).into())
+}
+
+pub(super) fn rebind(artifact: &mut AcceptedArtifact) -> TestResult {
+    artifact.digest = vb_storage::admission::accepted_artifact_digest(artifact)?;
+    artifact.verification.digest = artifact.digest;
+    Ok(())
+}
+
+pub(super) fn replace_registry(
+    artifact: &mut AcceptedArtifact,
+    raw: &[u8],
+    policy: RuntimePolicy,
+) -> TestResult {
+    artifact.action_contracts = StoredActionRegistry::decode_exact(raw)?;
+    let digest = artifact.action_contracts.ordered_digest()?;
+    let base = match &mut artifact.verification.evidence {
+        ArtifactEvidence::Verified(base) => base.as_mut(),
+        ArtifactEvidence::Packed(packed) => {
+            packed.packs.iter_mut().try_for_each(|pack| -> TestResult {
+                pack.manifest = vb_core::action_pack::ManifestDigest::from_digest(
+                    artifact
+                        .action_contracts
+                        .get(usize::from(pack.action.get()))
+                        .ok_or("contract")?
+                        .abi_digest()?,
+                );
+                Ok(())
+            })?;
+            &mut packed.base
+        }
+        ArtifactEvidence::Unverified => return Err("verified oracle required".into()),
+    };
+    base.admission_policy = policy;
+    base.action_contract_digest = digest;
+    let entry = base
+        .ledger
+        .iter_mut()
+        .find(|entry| entry.obligation == ObligationKind::EffectSafety)
+        .ok_or("effect ledger")?;
+    let ObligationClosure::ExternalAssumption {
+        evidence_digest, ..
+    } = &mut entry.closure
+    else {
+        return Err("old nonempty assumption required".into());
+    };
+    *evidence_digest = digest;
+    rebind(artifact)
+}
+
+pub(super) fn extract(name: &str, target: &Path) -> TestResult {
+    std::fs::create_dir(target)?;
+    let output = std::process::Command::new("timeout")
+        .args([
+            "10s",
+            "tar",
+            "--extract",
+            "--gzip",
+            "--no-same-owner",
+            "--no-same-permissions",
+            "--file",
+        ])
+        .arg(root().join(format!("{name}.tar.gz")))
+        .arg("--directory")
+        .arg(target)
+        .output()?;
+    if !output.status.success() {
+        return Err(format!(
+            "fixture extraction: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
+    }
+    let output = std::process::Command::new("timeout")
+        .args(["10s", "sha256sum", "--check", "--quiet"])
+        .arg(root().join(format!("{name}.sha256")))
+        .current_dir(target)
+        .output()?;
+    if !output.status.success() {
+        return Err(format!(
+            "fixture byte identity: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
+    }
+    Ok(())
+}
+
+pub(super) fn counter(root: &Path) -> TestResult<Vec<u8>> {
+    let database = fjall::Database::builder(root.join("journal")).open()?;
+    let space = database.keyspace("artifact_acceptance", fjall::KeyspaceCreateOptions::default)?;
+    Ok(space.get(b"last_issued")?.ok_or("counter")?.to_vec())
+}
+
+pub(super) fn register_rows(root: &Path, name: &str) -> TestResult<Vec<(Vec<u8>, Vec<u8>)>> {
+    let database = fjall::Database::builder(root.join("register")).open()?;
+    let space = database.keyspace(name, fjall::KeyspaceCreateOptions::default)?;
+    Ok(space
+        .iter()
+        .map(|guard| {
+            let (key, value) = guard.into_inner()?;
+            Ok((key.to_vec(), value.to_vec()))
+        })
+        .collect::<Result<Vec<_>, fjall::Error>>()?)
+}
+
+pub(super) fn append_suffix(root: &Path, name: &str) -> TestResult {
+    let database = fjall::Database::builder(root.join("register")).open()?;
+    let space = database.keyspace(name, fjall::KeyspaceCreateOptions::default)?;
+    let (key, value) = space
+        .iter()
+        .next()
+        .ok_or("existing fixture row")?
+        .into_inner()?;
+    let mut changed = value.to_vec();
+    changed.push(0);
+    space.insert(key, changed)?;
+    database.persist(fjall::PersistMode::SyncAll)?;
+    Ok(())
+}

@@ -1,0 +1,185 @@
+vstd::prelude::verus! {
+
+spec fn value_code(kind: &K) -> Option<u32> {
+    match kind {
+        K::Nop => Some(0u32),
+        K::SetConst { .. } => Some(1u32),
+        K::Copy { .. } => Some(2u32),
+        K::EvalExpr { .. } => Some(3u32),
+        K::BuildObject { .. } => Some(4u32),
+        K::BuildList { .. } => Some(5u32),
+        K::Do { .. } => Some(6u32),
+        K::Choose { .. } => Some(7u32),
+        K::ChooseSlot { .. } => Some(8u32),
+        _ => None,
+    }
+}
+
+fn value_code_exec(kind: &K) -> (out: Option<u32>)
+    ensures
+        out == value_code(kind),
+{
+    match kind {
+        K::Nop => Some(0u32),
+        K::SetConst { .. } => Some(1u32),
+        K::Copy { .. } => Some(2u32),
+        K::EvalExpr { .. } => Some(3u32),
+        K::BuildObject { .. } => Some(4u32),
+        K::BuildList { .. } => Some(5u32),
+        K::Do { .. } => Some(6u32),
+        K::Choose { .. } => Some(7u32),
+        K::ChooseSlot { .. } => Some(8u32),
+        _ => None,
+    }
+}
+
+spec fn iteration_code(kind: &K) -> Option<u32> {
+    match kind {
+        K::ForEachStart { .. } => Some(9u32),
+        K::ForEachNext { .. } => Some(10u32),
+        K::ForEachJoin { .. } => Some(11u32),
+        K::CollectStart { .. } => Some(15u32),
+        K::CollectPage { .. } => Some(16u32),
+        K::CollectNext { .. } => Some(17u32),
+        K::CollectFinish { .. } => Some(18u32),
+        K::ReduceStart { .. } => Some(19u32),
+        K::ReduceNext { .. } => Some(20u32),
+        K::ReduceFinish { .. } => Some(21u32),
+        K::RepeatStart { .. } => Some(22u32),
+        K::RepeatAttempt { .. } => Some(23u32),
+        K::RepeatCheck { .. } => Some(24u32),
+        K::RepeatFinish { .. } => Some(25u32),
+        K::ForEachConcurrentStart { .. } => Some(34u32),
+        _ => None,
+    }
+}
+
+fn iteration_code_exec(kind: &K) -> (out: Option<u32>)
+    ensures
+        out == iteration_code(kind),
+{
+    match kind {
+        K::ForEachStart { .. } => Some(9u32),
+        K::ForEachNext { .. } => Some(10u32),
+        K::ForEachJoin { .. } => Some(11u32),
+        K::CollectStart { .. } => Some(15u32),
+        K::CollectPage { .. } => Some(16u32),
+        K::CollectNext { .. } => Some(17u32),
+        K::CollectFinish { .. } => Some(18u32),
+        K::ReduceStart { .. } => Some(19u32),
+        K::ReduceNext { .. } => Some(20u32),
+        K::ReduceFinish { .. } => Some(21u32),
+        K::RepeatStart { .. } => Some(22u32),
+        K::RepeatAttempt { .. } => Some(23u32),
+        K::RepeatCheck { .. } => Some(24u32),
+        K::RepeatFinish { .. } => Some(25u32),
+        K::ForEachConcurrentStart { .. } => Some(34u32),
+        _ => None,
+    }
+}
+
+spec fn group_code(kind: &K) -> Option<u32> {
+    match kind {
+        K::TogetherStart { .. } => Some(12u32),
+        K::TogetherBranch { .. } => Some(13u32),
+        K::TogetherJoin { .. } => Some(14u32),
+        K::TogetherConcurrentStart { .. } => Some(35u32),
+        K::FirstSuccessStart { .. } => Some(36u32),
+        K::ConcurrentLaneEnd { .. } => Some(37u32),
+        K::ConcurrentGroupJoin { .. } => Some(38u32),
+        _ => None,
+    }
+}
+
+fn group_code_exec(kind: &K) -> (out: Option<u32>)
+    ensures
+        out == group_code(kind),
+{
+    match kind {
+        K::TogetherStart { .. } => Some(12u32),
+        K::TogetherBranch { .. } => Some(13u32),
+        K::TogetherJoin { .. } => Some(14u32),
+        K::TogetherConcurrentStart { .. } => Some(35u32),
+        K::FirstSuccessStart { .. } => Some(36u32),
+        K::ConcurrentLaneEnd { .. } => Some(37u32),
+        K::ConcurrentGroupJoin { .. } => Some(38u32),
+        _ => None,
+    }
+}
+
+spec fn control_code(kind: &K) -> Option<u32> {
+    match kind {
+        K::WaitUntil { .. } => Some(26u32),
+        K::WaitEvent { .. } => Some(27u32),
+        K::Ask { .. } => Some(28u32),
+        K::AskResume { .. } => Some(29u32),
+        K::RetryCheck { .. } => Some(30u32),
+        K::ErrorHandler { .. } => Some(31u32),
+        K::Jump { .. } => Some(32u32),
+        K::Finish { .. } => Some(33u32),
+        _ => None,
+    }
+}
+
+fn control_code_exec(kind: &K) -> (out: Option<u32>)
+    ensures
+        out == control_code(kind),
+{
+    match kind {
+        K::WaitUntil { .. } => Some(26u32),
+        K::WaitEvent { .. } => Some(27u32),
+        K::Ask { .. } => Some(28u32),
+        K::AskResume { .. } => Some(29u32),
+        K::RetryCheck { .. } => Some(30u32),
+        K::ErrorHandler { .. } => Some(31u32),
+        K::Jump { .. } => Some(32u32),
+        K::Finish { .. } => Some(33u32),
+        _ => None,
+    }
+}
+
+proof fn discriminant_families_cover(kind: &K)
+    ensures
+        value_code(kind).is_some() || iteration_code(kind).is_some() || group_code(kind).is_some()
+            || control_code(kind).is_some(),
+{
+}
+
+spec fn native_disc(kind: &K) -> u32 {
+    if let Some(code) = value_code(kind) {
+        code
+    } else if let Some(code) = iteration_code(kind) {
+        code
+    } else if let Some(code) = group_code(kind) {
+        code
+    } else if let Some(code) = control_code(kind) {
+        code
+    } else {
+        0u32
+    }
+}
+
+fn disc(kind: &K) -> (out: u32)
+    ensures
+        out == native_disc(kind),
+{
+    proof {
+        discriminant_families_cover(kind);
+    }
+    if let Some(code) = value_code_exec(kind) {
+        return code;
+    }
+    if let Some(code) = iteration_code_exec(kind) {
+        return code;
+    }
+    if let Some(code) = group_code_exec(kind) {
+        return code;
+    }
+    if let Some(code) = control_code_exec(kind) {
+        return code;
+    }
+    assert(false);
+    0u32
+}
+
+} // verus!

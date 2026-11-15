@@ -1,0 +1,91 @@
+use crate::stored_contracts::wire::ColdActionContract as ActionContract;
+use crate::{AcceptedArtifact, JournalError, StoredActionRegistry, VerificationProof};
+use vb_core::action_pack::{ActionPack, PackedArtifactEvidence};
+use vb_core::artifact::{
+    ArtifactEvidence, ArtifactVerificationEvidence, AssumptionId, ObligationClosure,
+    ObligationKind, VerificationLedgerEntry,
+};
+use vb_core::{RuntimePolicy, WorkflowDigest, WorkflowParts};
+
+#[path = "../admission/verification/ledger.rs"]
+mod ledger;
+
+pub(crate) fn digest(bytes: &[u8]) -> WorkflowDigest {
+    WorkflowDigest::from_bytes(blake3::hash(bytes).into())
+}
+
+pub(crate) struct ProofSubject<'a> {
+    pub(crate) parts: &'a WorkflowParts,
+    pub(crate) ir: &'a [u8],
+    pub(crate) contracts: &'a StoredActionRegistry,
+}
+
+pub(crate) fn expected(
+    subject: ProofSubject<'_>,
+    policy: RuntimePolicy,
+    packs: Option<&[ActionPack]>,
+    verifier: WorkflowDigest,
+) -> Result<VerificationProof, JournalError> {
+    let base = evidence(&subject, policy, verifier)?;
+    let mut proof = VerificationProof::new(WorkflowDigest::from_bytes([0; 32]), 0, false);
+    proof.bounded_claimed = true;
+    proof.idempotency_verified_claimed = true;
+    proof.evidence = match packs {
+        None => ArtifactEvidence::Verified(Box::new(base)),
+        Some(packs) => ArtifactEvidence::Packed(Box::new(PackedArtifactEvidence {
+            base,
+            packs: packs.to_vec().into_boxed_slice(),
+        })),
+    };
+    Ok(proof)
+}
+
+fn evidence(
+    subject: &ProofSubject<'_>,
+    policy: RuntimePolicy,
+    verifier: WorkflowDigest,
+) -> Result<ArtifactVerificationEvidence, JournalError> {
+    let policy_digest = policy_digest(subject.parts)?;
+    let payload_digest = digest(subject.ir);
+    let action_contract_digest = subject.contracts.ordered_digest()?;
+    let closure = ledger::effect_closure(&subject.contracts.0, verifier)?;
+    let ledger = ledger::obligation_ledger(policy_digest, verifier, closure)?;
+    Ok(ArtifactVerificationEvidence {
+        schema_version: 3,
+        payload_digest,
+        workflow_digest: subject.parts.digest,
+        action_contract_digest,
+        policy_digest,
+        admission_policy: policy,
+        verifier_digest: verifier,
+        ledger,
+    })
+}
+
+fn policy_digest(parts: &WorkflowParts) -> Result<WorkflowDigest, JournalError> {
+    Ok(digest(
+        &postcard::to_allocvec(&parts.resource_contract)
+            .map_err(JournalError::PostcardEncodeFailed)?,
+    ))
+}
+
+pub(crate) fn compare(
+    artifact: &AcceptedArtifact,
+    parts: &WorkflowParts,
+    expected: &VerificationProof,
+) -> Result<(), JournalError> {
+    let mut actual = artifact.verification.clone();
+    actual.digest = expected.digest;
+    let ir = postcard::to_allocvec(parts).map_err(JournalError::PostcardEncodeFailed)?;
+    let policy = policy_digest(parts)?;
+    if artifact.source_digest != parts.digest
+        || artifact.policy_digest != policy
+        || artifact.ir != ir
+        || actual != *expected
+        || artifact.required_capabilities
+            != super::contracts::required_capabilities(&artifact.action_contracts)?
+    {
+        return Err(JournalError::ArtifactMalformed);
+    }
+    Ok(())
+}

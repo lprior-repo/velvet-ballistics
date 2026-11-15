@@ -1,0 +1,101 @@
+use super::helpers::*;
+use vb_core::{ActionId, Capability};
+use vb_storage::{StoredActionRegistry, StoredContractError};
+
+#[test]
+fn old_native_slice_oracle_preserves_all_verdicts_and_rejects_the_original_array_shape()
+-> TestResult {
+    let original: Vec<Observation> = decode(&bytes("oracle45.postcard")?)?;
+    let corrected = observations()?;
+    assert_eq!(original.len(), 45);
+    assert_eq!(corrected.len(), original.len());
+    original
+        .iter()
+        .zip(&corrected)
+        .try_for_each(|(old, new)| -> TestResult {
+            assert_eq!(
+                (
+                    &old.0, &old.1, &old.3, &old.4, &old.5, &old.6, &old.7, &old.8
+                ),
+                (
+                    &new.0, &new.1, &new.3, &new.4, &new.5, &new.6, &new.7, &new.8
+                )
+            );
+            assert_eq!(
+                old.2, old.1,
+                "one-element native array has no sequence prefix"
+            );
+            assert!(matches!(
+                StoredActionRegistry::decode_exact(&old.2),
+                Err(StoredContractError::TrailingBytes)
+            ));
+            assert_eq!(new.2.first(), Some(&1));
+            assert_eq!(new.2.get(1..), Some(old.1.as_slice()));
+            Ok(())
+        })
+}
+
+#[test]
+fn distinct_actual_old_fields_preserve_metadata_bytes_abi_and_registry_identity() -> TestResult {
+    let raw_record = bytes("layout-sentinel.contract")?;
+    let raw_registry = bytes("layout-sentinel.registry")?;
+    let stored = StoredActionRegistry::decode_exact(&raw_registry)?;
+    assert_eq!(stored.len(), 1);
+    let contract = stored.get(0).ok_or("layout record")?;
+    assert_eq!(contract.id(), ActionId::new(7));
+    assert_eq!(contract.name().as_str(), "historical.layout");
+    assert_eq!(contract.input_slot_count(), 2);
+    assert_eq!(contract.output_slot_count(), 3);
+    assert_eq!(contract.max_input_bytes(), 64);
+    assert_eq!(contract.max_output_bytes(), 128);
+    assert_eq!(contract.timeout_ms(), 513);
+    assert_eq!(
+        contract.required_capabilities(),
+        &[Capability::new("layout.read".into(), ActionId::new(7))]
+    );
+    assert_eq!(contract.wire_bytes()?, raw_record);
+    assert_eq!(contract.abi_digest()?, hash(&raw_record));
+    assert_eq!(stored.wire_bytes()?, raw_registry);
+    assert_eq!(stored.ordered_digest()?, hash(&raw_registry));
+    let canonical = contract.try_canonical()?;
+    assert_eq!(
+        (canonical.input_slot_count, canonical.output_slot_count),
+        (2, 3)
+    );
+    assert_eq!(
+        (canonical.max_input_bytes, canonical.max_output_bytes),
+        (64, 128)
+    );
+    Ok(())
+}
+
+#[test]
+fn unknown_original_enum_tags_refuse_at_each_actual_old_native_offset() -> TestResult {
+    let raw_record = bytes("layout-sentinel.contract")?;
+    let offsets: [u32; 3] = decode(&bytes("layout-sentinel-offsets.postcard")?)?;
+    offsets
+        .into_iter()
+        .zip([3_u8, 5, 3])
+        .try_for_each(|(offset, first_unknown)| -> TestResult {
+            [first_unknown, 127]
+                .into_iter()
+                .try_for_each(|unknown| -> TestResult {
+                    let mut changed = raw_record.clone();
+                    let tag = changed
+                        .get_mut(usize::try_from(offset)?)
+                        .ok_or("native tag offset")?;
+                    assert_eq!(*tag, 0);
+                    *tag = unknown;
+                    let mut registry = vec![1];
+                    registry.extend_from_slice(&changed);
+                    assert!(
+                        matches!(
+                            StoredActionRegistry::decode_exact(&registry),
+                            Err(StoredContractError::Codec(postcard::Error::SerdeDeCustom))
+                        ),
+                        "tag offset {offset}, discriminant {unknown}"
+                    );
+                    Ok(())
+                })
+        })
+}

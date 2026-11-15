@@ -1,0 +1,83 @@
+use super::*;
+use vb_core::{
+    BranchIdx, ExprIdx, MaxAttempts,
+    workflow::{BranchContinuation, ErrorSink, ExprBranch, SlotBranch},
+};
+
+#[test]
+fn body_entry_and_first_branch_edges_reach_forbidden_action_with_harmless_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    for kind in [
+        K::CollectPage {
+            collector_slot: slot(),
+            body: step(2),
+            done: step(3),
+        },
+        K::RepeatStart {
+            max_attempts: MaxAttempts::try_new(1)?,
+            body: step(2),
+            done: step(3),
+        },
+        K::RepeatAttempt {
+            attempt_slot: slot(),
+            body: step(2),
+            done: step(3),
+        },
+        K::ErrorHandler {
+            body: step(2),
+            handler: step(3),
+            error_slot: ErrorSink::Discard,
+        },
+        K::TogetherStart {
+            branches: Box::new([step(2), step(3)]),
+            join: step(3),
+        },
+        K::TogetherBranch {
+            branch: BranchIdx::new(0),
+            entry: step(2),
+            join: step(3),
+            accumulator: slot(),
+        },
+    ] {
+        check_kind_with_next(kind, step(3), true);
+    }
+    Ok(())
+}
+
+#[test]
+fn repeat_done_edge_reaches_forbidden_action_without_implicit_continuation() {
+    check_kind_with_next(
+        K::RepeatCheck {
+            attempt_slot: slot(),
+            done: step(2),
+        },
+        step(3),
+        true,
+    );
+}
+
+#[test]
+fn complementary_choose_edges_reach_forbidden_action_without_implicit_continuation() {
+    check_kind_with_next(
+        K::Choose {
+            branches: Box::new([ExprBranch {
+                condition: ExprIdx::new(0),
+                target: step(3),
+            }]),
+            otherwise: BranchContinuation::Target(step(2)),
+        },
+        step(3),
+        true,
+    );
+    check_kind_with_next(
+        K::ChooseSlot {
+            branches: Box::new([SlotBranch {
+                condition: slot(),
+                target: step(2),
+            }]),
+            otherwise: BranchContinuation::Target(step(3)),
+        },
+        step(3),
+        true,
+    );
+}

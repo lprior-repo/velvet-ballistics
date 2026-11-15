@@ -1,0 +1,110 @@
+#![forbid(unsafe_code)]
+
+#[path = "../../verification/verus/idempotency_decision.rs"]
+pub mod proof;
+
+use vb_core as actual;
+use vb_validate::idempotency_contract as validate;
+use proof::{Idempotency as MI, RetrySafety as MR, SideEffect as MS};
+
+type Check<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+fn workflow(action: actual::ActionId) -> Check<actual::CompiledWorkflow> {
+    use actual::workflow::{CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, InputSlotKind, ResourceContract, WorkflowParts, node};
+    let parts = WorkflowParts {
+        semantic_source_identity: None, source_metadata: None, name: "formal-native-parity".into(),
+        digest: actual::WorkflowDigest::from_bytes([0; 32]),
+        nodes: Box::from([
+            node(actual::StepIdx::ZERO, CompiledNodeKind::Do { action, input: actual::SlotIdx::ZERO }, Some(actual::SlotIdx::new(1)), Some(actual::StepIdx::new(1))),
+            node(actual::StepIdx::new(1), CompiledNodeKind::Finish { result: actual::SlotIdx::new(1) }, None, None),
+        ]),
+        expressions: Box::new([]), accessors: Box::new([]), constants: Box::new([]),
+        slot_count: 2, symbols_count: 0, entry: actual::StepIdx::ZERO, step_names: Box::new([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([CompiledInputSlot { slot: actual::SlotIdx::ZERO, kind: InputSlotKind::Any, constraint: CompiledInputConstraint::required() }]),
+    };
+    Ok(actual::CompiledWorkflow::try_from_parts(parts)?)
+}
+
+fn native_class(contract: &actual::ActionContract) -> Check<u8> {
+    match actual::retry_requirement(contract) {
+        Ok(actual::RetryRequirement::Unconditional) => Ok(0),
+        Ok(actual::RetryRequirement::StableKey) => Ok(1),
+        Ok(actual::RetryRequirement::Forbidden) => Ok(2),
+        Err(actual::IdempotencyViolation::InvalidClassification { idempotency, side_effect, retry_safety })
+            if idempotency == contract.idempotency && side_effect == contract.side_effect && retry_safety == contract.retry_safety => Ok(3),
+        _ => Err("unexpected production result or invalid error fields".into()),
+    }
+}
+
+fn mirror_class(contract: &proof::ActionContract) -> Check<u8> {
+    match proof::retry_requirement(contract) {
+        Ok(proof::RetryRequirement::Unconditional) => Ok(0),
+        Ok(proof::RetryRequirement::StableKey) => Ok(1),
+        Ok(proof::RetryRequirement::Forbidden) => Ok(2),
+        Err(proof::IdempotencyViolation::InvalidClassification { idempotency, side_effect, retry_safety })
+            if idempotency == contract.idempotency && side_effect == contract.side_effect && retry_safety == contract.retry_safety => Ok(3),
+        _ => Err("unexpected projection invalid error fields".into()),
+    }
+}
+
+fn check_wrappers(contract: &actual::ActionContract, mirror: &proof::ActionContract, class: u8) -> Check {
+    let accepted = class != 3;
+    if proof::is_contract_idempotency_accepted(mirror) != accepted {
+        return Err("mirror storage wrapper disagrees with policy".into());
+    }
+    match proof::is_statically_idempotent_contract(mirror) {
+        Ok(()) if accepted => {},
+        Err(proof::IdempotencyContractViolation::InvalidContract { action, side_effect, idempotency, retry_safety })
+            if !accepted && action == mirror.id && side_effect == mirror.side_effect && idempotency == mirror.idempotency && retry_safety == mirror.retry_safety => {},
+        _ => return Err("mirror validator error or acceptance differs".into()),
+    }
+    match validate::is_statically_idempotent_contract(contract) {
+        Ok(()) if accepted => {},
+        Err(validate::IdempotencyContractViolation::InvalidContract { action, side_effect, idempotency, retry_safety })
+            if !accepted && action == contract.id && side_effect == contract.side_effect && idempotency == contract.idempotency && retry_safety == contract.retry_safety => {},
+        _ => return Err("actual validator error or acceptance differs".into()),
+    }
+    match vb_storage::admission::validate_workflow_action_contracts(&workflow(contract.id)?, std::slice::from_ref(contract)) {
+        Ok(()) if accepted => {},
+        Err(vb_storage::JournalError::ArtifactContractRepresentation(vb_storage::StoredContractError::InvalidCanonicalClassification { action, source }))
+            if !accepted && action == contract.id && source == actual::IdempotencyViolation::InvalidClassification {
+                idempotency: contract.idempotency, side_effect: contract.side_effect, retry_safety: contract.retry_safety,
+            } => {},
+        result => return Err(format!("actual storage path mismatch: {result:?}").into()),
+    }
+    Ok(())
+}
+
+fn main() -> Check {
+    let identities = [(actual::Idempotency::DeterministicPure, MI::DeterministicPure), (actual::Idempotency::IdempotentExternal, MI::IdempotentExternal), (actual::Idempotency::AtLeastOnceExternal, MI::AtLeastOnceExternal)];
+    let effects = [(actual::SideEffect::Pure, MS::Pure), (actual::SideEffect::LocalRead, MS::LocalRead), (actual::SideEffect::LocalWrite, MS::LocalWrite), (actual::SideEffect::ExternalRead, MS::ExternalRead), (actual::SideEffect::ExternalWrite, MS::ExternalWrite), (actual::SideEffect::Process, MS::Process), (actual::SideEffect::UnsafeShell, MS::UnsafeShell)];
+    let safeties = [(actual::RetrySafety::Idempotent, MR::Idempotent), (actual::RetrySafety::RequiresIdempotencyKey, MR::RequiresIdempotencyKey), (actual::RetrySafety::NotRetrySafe, MR::NotRetrySafe), (actual::RetrySafety::Unknown, MR::Unknown)];
+    let mut checked = 0usize;
+    let mut counts = [0usize; 4];
+    for profile in [0u16, u16::MAX] {
+        for (idempotency, mi) in identities {
+            for (side_effect, me) in effects {
+                for (retry_safety, mr) in safeties {
+                    let id = actual::ActionId::new(profile);
+                    let contract = actual::ActionContract {
+                        id, name: actual::action::ActionName::new(if profile == 0 { "formal.zero" } else { "formal.max" })?,
+                        input_slot_count: if profile == 0 { 1 } else { u16::MAX }, output_slot_count: if profile == 0 { 1 } else { u16::MAX },
+                        max_input_bytes: if profile == 0 { 1 } else { u32::MAX }, max_output_bytes: if profile == 0 { 1 } else { u32::MAX },
+                        timeout_ms: if profile == 0 { 1 } else { u64::MAX }, idempotency, side_effect, retry_safety,
+                        required_capabilities: if profile == 0 { Box::new([]) } else { Box::from([actual::capability::Capability::new("formal.capability".into(), id)]) },
+                    };
+                    let mirror = proof::ActionContract { id: proof::ActionId(profile), idempotency: mi, side_effect: me, retry_safety: mr };
+                    let native = native_class(&contract)?;
+                    if native != mirror_class(&mirror)? { return Err(format!("class mismatch {idempotency:?}/{side_effect:?}/{retry_safety:?}").into()); }
+                    check_wrappers(&contract, &mirror, native)?;
+                    checked = checked.checked_add(1).ok_or("case counter overflow")?;
+                    let count = counts.get_mut(usize::from(native)).ok_or("class outside bounded domain")?;
+                    *count = count.checked_add(1).ok_or("class counter overflow")?;
+                }
+            }
+        }
+    }
+    println!("NATIVE_PROJECTION_PARITY cases={checked} metadata_profiles=2 class_counts={counts:?} exact_error_fields=true storage_path=true validator_path=true");
+    Ok(())
+}

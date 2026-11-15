@@ -1,0 +1,225 @@
+vstd::prelude::verus! {
+
+spec fn native_result(
+    q: &NativeParts,
+    idx: usize,
+    stop: usize,
+    outer: StepIdx,
+    keys: Set<u16>,
+    v: Set<usize>,
+) -> TogetherWalkVisit {
+    if !can_visit(q.nodes@.len(), idx, stop, v) {
+        TogetherWalkVisit::Continue
+    } else if idx > 65535 {
+        TogetherWalkVisit::Overflow
+    } else if is_nested_start(keys, idx, outer) {
+        TogetherWalkVisit::Found(StepIdx::from_raw_spec(idx as u16))
+    } else {
+        TogetherWalkVisit::Continue
+    }
+}
+
+spec fn native_next_visited(q: &NativeParts, idx: usize, stop: usize, v: Set<usize>) -> Set<usize> {
+    if idx >= q.nodes@.len() || idx == stop {
+        v
+    } else {
+        v.insert(idx)
+    }
+}
+
+spec fn native_next_stack(
+    q: &NativeParts,
+    idx: usize,
+    stop: usize,
+    outer: StepIdx,
+    keys: Set<u16>,
+    v: Set<usize>,
+    stack: Seq<usize>,
+) -> Seq<usize> {
+    if can_visit(q.nodes@.len(), idx, stop, v) && idx <= 65535 && !is_nested_start(
+        keys,
+        idx,
+        outer,
+    ) {
+        successor_stack(&q.nodes@[idx as int], stack)
+    } else {
+        stack
+    }
+}
+
+spec fn stored_image(p: &NativeParts, out: &LegacyParts) -> bool {
+    &&& out.nodes_len as int == if p.nodes@.len() <= u32::MAX as int {
+        p.nodes@.len() as int
+    } else {
+        u32::MAX as int
+    }
+    &&& out.nodes_meta@.len() == p.nodes@.len()
+    &&& out.kind_targets@.len() == p.nodes@.len()
+    &&& forall|j: int|
+        0 <= j < p.nodes@.len() ==> #[trigger] observed(
+            &p.nodes@[j],
+            out.nodes_meta@[j],
+            out.kind_targets@[j]@,
+        )
+}
+
+// Captures the only width obstruction to full equality for arbitrary private usize visits.
+spec fn unrepresentable_visit(q: &NativeParts, idx: usize, stop: usize, v: Set<usize>) -> bool {
+    q.nodes@.len() > u32::MAX && idx >= u32::MAX && idx < q.nodes@.len() && idx != stop
+        && !v.contains(idx)
+}
+
+struct VisitState {
+    idx: usize,
+    stop: usize,
+    outer: StepIdx,
+    keys: Set<u16>,
+    visited: Set<usize>,
+    stack: Seq<usize>,
+}
+
+#[verifier::inline]
+spec fn visit_state(
+    idx: usize,
+    stop: usize,
+    outer: StepIdx,
+    keys: Set<u16>,
+    visited: Set<usize>,
+    stack: Seq<usize>,
+) -> VisitState {
+    VisitState { idx, stop, outer, keys, visited, stack }
+}
+
+#[verifier::inline]
+spec fn stack_agreement(q: &NativeParts, l: &LegacyParts, s: VisitState) -> bool {
+    next_stack(l, s.idx, s.stop, s.outer.raw_spec() as u32, s.keys, s.visited, s.stack)
+        == native_next_stack(q, s.idx, s.stop, s.outer, s.keys, s.visited, s.stack)
+}
+
+#[verifier::inline]
+spec fn ordinary_visit_agreement(q: &NativeParts, l: &LegacyParts, s: VisitState) -> bool {
+    !unrepresentable_visit(q, s.idx, s.stop, s.visited) ==> (projected_result(
+        l,
+        s.idx,
+        s.stop,
+        s.outer.raw_spec() as u32,
+        s.keys,
+        s.visited,
+    ) == native_result(q, s.idx, s.stop, s.outer, s.keys, s.visited) && next_visited(
+        l,
+        s.idx,
+        s.stop,
+        s.visited,
+    ) == native_next_visited(q, s.idx, s.stop, s.visited))
+}
+
+#[verifier::inline]
+spec fn exceptional_visit_agreement(q: &NativeParts, l: &LegacyParts, s: VisitState) -> bool {
+    unrepresentable_visit(q, s.idx, s.stop, s.visited) ==> (projected_result(
+        l,
+        s.idx,
+        s.stop,
+        s.outer.raw_spec() as u32,
+        s.keys,
+        s.visited,
+    ) == TogetherWalkVisit::Continue && native_result(q, s.idx, s.stop, s.outer, s.keys, s.visited)
+        == TogetherWalkVisit::Overflow && next_visited(l, s.idx, s.stop, s.visited) == s.visited
+        && native_next_visited(q, s.idx, s.stop, s.visited) == s.visited.insert(s.idx))
+}
+
+#[verifier::inline]
+spec fn simulation_post(q: &NativeParts, l: &LegacyParts, s: VisitState) -> bool {
+    stack_agreement(q, l, s) && ordinary_visit_agreement(q, l, s) && exceptional_visit_agreement(
+        q,
+        l,
+        s,
+    )
+}
+
+proof fn row_successor_image(q: &NativeParts, l: &LegacyParts, idx: usize, stack: Seq<usize>)
+    requires
+        stored_image(q, l),
+        idx < q.nodes@.len(),
+    ensures
+        decoded(l.nodes_meta@[idx as int], l.kind_targets@[idx as int]@, stack) == successor_stack(
+            &q.nodes@[idx as int],
+            stack,
+        ),
+{
+    assert(observed(
+        &q.nodes@[idx as int],
+        l.nodes_meta@[idx as int],
+        l.kind_targets@[idx as int]@,
+    ));
+}
+
+proof fn simulation(
+    q: &NativeParts,
+    l: &LegacyParts,
+    idx: usize,
+    stop: usize,
+    outer: StepIdx,
+    keys: Set<u16>,
+    v: Set<usize>,
+    stack: Seq<usize>,
+)
+    requires
+        stored_image(q, l),
+    ensures
+        simulation_post(q, l, visit_state(idx, stop, outer, keys, v, stack)),
+{
+    if idx < q.nodes@.len() {
+        row_successor_image(q, l, idx, stack);
+    }
+    if v.contains(idx) {
+        assert(v.insert(idx) =~= v);
+    }
+}
+
+#[verifier::inline]
+spec fn constructed_visit(q: &NativeParts, l: &LegacyParts, s: VisitState) -> bool {
+    &&& stored_image(q, l)
+    &&& stack_agreement(q, l, s)
+    &&& ordinary_visit_agreement(q, l, s)
+    &&& s.idx <= 65535 ==> !unrepresentable_visit(q, s.idx, s.stop, s.visited)
+}
+
+fn constructed_simulation(
+    q: &NativeParts,
+    base: LegacyParts,
+    template: Meta,
+    idx: usize,
+    stop: usize,
+    outer: StepIdx,
+    keys: &std::collections::BTreeSet<u16>,
+    v: &std::collections::BTreeSet<usize>,
+    stack: &Vec<usize>,
+) -> (out: LegacyParts)
+    ensures
+        constructed_visit(q, &out, visit_state(idx, stop, outer, keys@, v@, stack@)),
+{
+    let out = project_nested_table(q, base, template);
+    proof {
+        simulation(q, &out, idx, stop, outer, keys@, v@, stack@);
+    }
+    out
+}
+
+fn native_step_check(
+    q: &NativeParts,
+    keys: &std::collections::BTreeSet<u16>,
+    idx: usize,
+    stop: usize,
+    outer: StepIdx,
+    v: &mut std::collections::BTreeSet<usize>,
+    stack: &mut Vec<usize>,
+) -> (out: TogetherWalkVisit)
+    ensures
+        out == native_result(q, idx, stop, outer, keys@, old(v)@),
+        final(v)@ == native_next_visited(q, idx, stop, old(v)@),
+        final(stack)@ == native_next_stack(q, idx, stop, outer, keys@, old(v)@, old(stack)@),
+{
+    visit_together_node(&q.nodes, keys, idx, stop, outer, v, stack)
+}
+
+} // verus!

@@ -1,0 +1,209 @@
+use super::helpers::*;
+use vb_core::action_pack::CapabilityScopeSpec;
+use vb_core::{ActionTicket, RuntimePolicy, SideEffect};
+use vb_storage::executor::{ExecutorCatalog, ExecutorError, FjallRegister};
+use vb_storage::{
+    ArtifactVerifierFamily, HistoricalArtifactError, StoredContractError, verify_retained_artifact,
+};
+
+#[test]
+fn genuine_retained_envelopes_remain_byte_exact_cold_data_with_explicit_projection_outcomes()
+-> TestResult {
+    [
+        "none-safe",
+        "writes-key-required",
+        "sends",
+        "creates",
+        "destroys",
+    ]
+    .into_iter()
+    .try_for_each(|name| -> TestResult {
+        let raw = bytes(&format!("{name}.artifact"))?;
+        let artifact: vb_storage::AcceptedArtifact = decode(&raw)?;
+        let policy = match &artifact.verification.evidence {
+            vb_core::artifact::ArtifactEvidence::Verified(base) => base.admission_policy,
+            vb_core::artifact::ArtifactEvidence::Packed(packed) => packed.base.admission_policy,
+            _ => return Err("actual accepted fixture required".into()),
+        };
+        let checked = verify_retained_artifact(&raw, policy)?;
+        assert_eq!(checked.original_bytes(), raw);
+        assert_eq!(
+            checked.verifier_family(),
+            ArtifactVerifierFamily::HistoricalMain
+        );
+        assert_eq!(checked.digest(), artifact.digest);
+        assert_eq!(postcard::to_allocvec(checked.artifact())?, raw);
+        match name {
+            "none-safe" => assert_eq!(
+                checked
+                    .try_canonical()?
+                    .first()
+                    .ok_or("pure contract")?
+                    .side_effect,
+                SideEffect::Pure
+            ),
+            "writes-key-required" => assert!(matches!(
+                checked.try_canonical(),
+                Err(StoredContractError::ForbiddenAttestedClassification {
+                    side_effect: SideEffect::LocalWrite,
+                    ..
+                })
+            )),
+            _ => assert!(matches!(
+                checked.try_canonical(),
+                Err(StoredContractError::UnsupportedHistoricalClassification { .. })
+            )),
+        }
+        Ok(())
+    })
+}
+
+#[test]
+fn existing_receipt_reconciles_without_an_escaping_grant_or_new_effect_and_raw_bindings_stay_exact()
+-> TestResult {
+    let scratch = tempfile::tempdir()?;
+    let path = scratch.path().join("committed");
+    extract("committed-register", &path)?;
+    let raw = std::fs::read(path.join("artifact.postcard"))?;
+    let checked = verify_retained_artifact(&raw, RuntimePolicy::Strict)?;
+    let ticket: ActionTicket = decode(&std::fs::read(path.join("ticket.postcard"))?)?;
+    let expected: vb_core::action_pack::ReceiptDigest =
+        decode(&std::fs::read(path.join("receipt-digest.postcard"))?)?;
+    let before_counter = counter(&path)?;
+    let before_rows = register_rows(&path, "register_receipts_v1")?;
+    assert_eq!(
+        before_rows,
+        decode::<Vec<(Vec<u8>, Vec<u8>)>>(&std::fs::read(path.join("raw-receipt-rows.postcard"))?)?
+    );
+    let journal = vb_storage::FjallJournal::open(&path.join("journal"), None)?;
+    let prefix = journal.events_for_run_full(ticket.run)?;
+    let scope = CapabilityScopeSpec {
+        namespace: 15,
+        key: 29,
+    };
+    {
+        let mut adapter = FjallRegister::open(&path.join("register"), 8)?;
+        let receipt = checked.reconcile_receipt(&mut adapter, ticket, scope, 42)?;
+        assert_eq!(receipt.digest(), expected);
+        assert_eq!(receipt.value(), 42);
+        assert_eq!(receipt.effect_ordinal(), 1);
+        assert_eq!(adapter.effect_count()?, 1);
+        assert_eq!(adapter.value(scope)?, Some(42));
+        assert!(matches!(
+            checked.reconcile_receipt(&mut adapter, ticket, scope, 43),
+            Err(HistoricalArtifactError::Executor(
+                ExecutorError::ReceiptConflict
+            ))
+        ));
+        assert!(matches!(
+            checked.reconcile_receipt(
+                &mut adapter,
+                ticket,
+                CapabilityScopeSpec { key: 30, ..scope },
+                42
+            ),
+            Err(HistoricalArtifactError::Executor(
+                ExecutorError::Unauthorized
+            ))
+        ));
+        assert_eq!(adapter.effect_count()?, 1);
+    }
+    assert_eq!(journal.events_for_run_full(ticket.run)?, prefix);
+    assert_eq!(
+        journal
+            .compiled_ir(checked.digest())?
+            .ok_or("original artifact")?
+            .ir,
+        raw
+    );
+    drop(journal);
+    assert_eq!(counter(&path)?, before_counter);
+    assert_eq!(register_rows(&path, "register_receipts_v1")?, before_rows);
+    let mut reopened = FjallRegister::open(&path.join("register"), 8)?;
+    assert_eq!(
+        checked
+            .reconcile_receipt(&mut reopened, ticket, scope, 42)?
+            .digest(),
+        expected
+    );
+    assert_eq!(reopened.effect_count()?, 1);
+    Ok(())
+}
+
+#[test]
+fn genuine_pending_zero_receipt_stays_missing_and_canonical_catalog_cannot_mint_old_local_authority()
+-> TestResult {
+    let scratch = tempfile::tempdir()?;
+    let path = scratch.path().join("pending");
+    extract("pending-zero", &path)?;
+    let raw = std::fs::read(path.join("artifact.postcard"))?;
+    let checked = verify_retained_artifact(&raw, RuntimePolicy::Strict)?;
+    let ticket: ActionTicket = decode(&std::fs::read(path.join("ticket.postcard"))?)?;
+    let catalog = ExecutorCatalog::run_registered_conformance()?;
+    let scope = CapabilityScopeSpec {
+        namespace: 15,
+        key: 29,
+    };
+    let before_counter = counter(&path)?;
+    let journal = vb_storage::FjallJournal::open(&path.join("journal"), None)?;
+    let prefix = journal.events_for_run_full(ticket.run)?;
+    let mut adapter = FjallRegister::open(&path.join("register"), 8)?;
+    assert!(matches!(
+        checked.reconcile_receipt(&mut adapter, ticket, scope, 42),
+        Err(HistoricalArtifactError::Executor(
+            ExecutorError::ReceiptMissing
+        ))
+    ));
+    assert!(matches!(
+        catalog.issue_register_grant(checked.artifact(), ticket, scope),
+        Err(ExecutorError::Contract(
+            StoredContractError::ForbiddenAttestedClassification {
+                side_effect: SideEffect::LocalWrite,
+                ..
+            }
+        ))
+    ));
+    assert_eq!(adapter.effect_count()?, 0);
+    assert_eq!(adapter.value(scope)?, None);
+    assert_eq!(journal.events_for_run_full(ticket.run)?, prefix);
+    drop(journal);
+    assert_eq!(counter(&path)?, before_counter);
+    Ok(())
+}
+
+#[test]
+fn suffixes_in_actual_receipt_and_metadata_rows_fail_before_reconciliation_changes_any_effect()
+-> TestResult {
+    ["register_receipts_v1", "register_metadata_v1"]
+        .into_iter()
+        .try_for_each(|space| -> TestResult {
+            let scratch = tempfile::tempdir()?;
+            let path = scratch.path().join("malformed");
+            extract("committed-register", &path)?;
+            let checked = verify_retained_artifact(
+                &std::fs::read(path.join("artifact.postcard"))?,
+                RuntimePolicy::Strict,
+            )?;
+            let ticket: ActionTicket = decode(&std::fs::read(path.join("ticket.postcard"))?)?;
+            append_suffix(&path, space)?;
+            let before = register_rows(&path, space)?;
+            {
+                let mut adapter = FjallRegister::open(&path.join("register"), 8)?;
+                assert!(matches!(
+                    checked.reconcile_receipt(
+                        &mut adapter,
+                        ticket,
+                        CapabilityScopeSpec {
+                            namespace: 15,
+                            key: 29
+                        },
+                        42
+                    ),
+                    Err(HistoricalArtifactError::Executor(ExecutorError::Corrupt))
+                ));
+                assert_eq!(adapter.effect_count()?, 1);
+            }
+            assert_eq!(register_rows(&path, space)?, before);
+            Ok(())
+        })
+}

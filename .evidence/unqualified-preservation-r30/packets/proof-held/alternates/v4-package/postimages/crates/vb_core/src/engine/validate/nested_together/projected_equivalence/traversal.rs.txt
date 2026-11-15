@@ -1,0 +1,186 @@
+vstd::prelude::verus! {
+
+spec fn native_summary(q: &NativeParts, n: nat) -> (Set<u16>, nat)
+    decreases n,
+{
+    if n == 0 || n > q.nodes@.len() {
+        (Set::empty(), 0nat)
+    } else {
+        let prev = native_summary(q, (n - 1) as nat);
+        let node = &q.nodes@[n - 1];
+        if matches!(&node.kind,K::TogetherStart{..}|K::TogetherConcurrentStart{..}) {
+            (prev.0.insert(node.id.raw_spec()), prev.1 + 1)
+        } else {
+            prev
+        }
+    }
+}
+
+proof fn summary_simulation(q: &NativeParts, p: &LegacyParts, n: nat)
+    requires
+        stored_image(q, p),
+        n <= q.nodes@.len(),
+    ensures
+        projected_summary(p, n) == native_summary(q, n),
+    decreases n,
+{
+    if n > 0 {
+        summary_simulation(q, p, (n - 1) as nat);
+        assert(observed(&q.nodes@[n - 1], p.nodes_meta@[n - 1], p.kind_targets@[n - 1]@));
+    }
+}
+
+spec fn raw_result(s: Option<StepIdx>) -> Option<u32> {
+    match s {
+        Some(x) => Some(x.raw_spec() as u32),
+        None => None,
+    }
+}
+
+spec fn narrow(s: Seq<usize>) -> bool {
+    forall|i: int| 0 <= i < s.len() ==> #[trigger] s[i] <= 65535
+}
+
+proof fn branch_entries_narrow(branches: Seq<StepIdx>, prefix: Seq<usize>)
+    requires
+        narrow(prefix),
+    ensures
+        narrow(prefix + branches.map_values(|s: StepIdx| s.raw_spec() as usize)),
+{
+    let b = branches.map_values(|s: StepIdx| s.raw_spec() as usize);
+    assert forall|i: int| 0 <= i < b.len() implies #[trigger] b[i] <= 65535 by {
+        assert(b[i] == branches[i].raw_spec() as usize);
+    }
+}
+
+proof fn native_successors_narrow(n: &Node, prefix: Seq<usize>)
+    requires
+        narrow(prefix),
+    ensures
+        narrow(successor_stack(n, prefix)),
+{
+    let entries = match &n.kind {
+        K::ForEachConcurrentStart { body, .. }
+        | K::ForEachStart { body, .. }
+        | K::ReduceStart { body, .. }
+        | K::CollectStart { body, .. }
+        | K::RepeatStart { body, .. } => prefix.push(body.raw_spec() as usize),
+        K::TogetherStart { branches, .. }
+        | K::TogetherConcurrentStart { branches, .. }
+        | K::FirstSuccessStart { branches, .. } => {
+            let b = branches@.map_values(|s: StepIdx| s.raw_spec() as usize);
+            branch_entries_narrow(branches@, prefix);
+            prefix + b
+        },
+        _ => prefix,
+    };
+    assert(narrow(entries));
+    if let Next::Step(x) = n.routing.next {
+        assert(narrow(entries.push(x.raw_spec() as usize)));
+    }
+}
+
+proof fn weight_image(q: &NativeParts, p: &LegacyParts, v: Set<usize>, i: int)
+    requires
+        stored_image(q, p),
+        0 <= i <= q.nodes@.len(),
+    ensures
+        legacy_weight(p, v, i) == walk_weight_from(q.nodes@, v, i),
+    decreases q.nodes@.len() - i,
+{
+    if i < q.nodes@.len() {
+        assert(observed(&q.nodes@[i], p.nodes_meta@[i], p.kind_targets@[i]@));
+        assert(decoded(p.nodes_meta@[i], p.kind_targets@[i]@, Seq::empty()) == successor_stack(
+            &q.nodes@[i],
+            Seq::empty(),
+        ));
+        weight_image(q, p, v, i + 1);
+    }
+}
+
+#[verifier::inline]
+spec fn constructive_result(
+    q: &NativeParts,
+    start: StepIdx,
+    stop: StepIdx,
+    outer: StepIdx,
+    halt: bool,
+) -> Option<u32> {
+    raw_result(
+        walk_reference(
+            q.nodes@,
+            native_summary(q, q.nodes@.len()).0,
+            seq![start.raw_spec() as usize],
+            stop.raw_spec() as usize,
+            outer,
+            Set::empty(),
+            1 + walk_weight_from(q.nodes@, Set::empty(), 0) as int,
+            halt,
+        ),
+    )
+}
+
+#[verifier::inline]
+spec fn initial_projected_walk(
+    q: &NativeParts,
+    l: &LegacyParts,
+    start: StepIdx,
+    stop: StepIdx,
+    outer: StepIdx,
+    halt: bool,
+) -> WalkState {
+    walk_state(
+        native_summary(q, q.nodes@.len()).0,
+        seq![start.raw_spec() as usize],
+        stop.raw_spec() as usize,
+        outer,
+        Set::empty(),
+        1 + legacy_weight(l, Set::empty(), 0) as int,
+        halt,
+    )
+}
+
+proof fn initial_walk_agrees(
+    q: &NativeParts,
+    l: &LegacyParts,
+    start: StepIdx,
+    stop: StepIdx,
+    outer: StepIdx,
+    halt: bool,
+)
+    requires
+        stored_image(q, l),
+    ensures
+        projected_summary(l, q.nodes@.len()) == native_summary(q, q.nodes@.len()),
+        projected_walk_value(l, initial_projected_walk(q, l, start, stop, outer, halt))
+            == constructive_result(q, start, stop, outer, halt),
+{
+    summary_simulation(q, l, q.nodes@.len());
+    weight_image(q, l, Set::empty(), 0);
+    assert(narrow(seq![start.raw_spec() as usize]));
+    walk_state_agrees(q, l, initial_projected_walk(q, l, start, stop, outer, halt));
+}
+
+fn constructive_walk(
+    q: &NativeParts,
+    p: LegacyParts,
+    m: Meta,
+    start: StepIdx,
+    stop: StepIdx,
+    outer: StepIdx,
+    halt: bool,
+) -> (out: Option<u32>)
+    ensures
+        out == constructive_result(q, start, stop, outer, halt),
+{
+    let l = project_nested_table(q, p, m);
+    let (keys, _count) = project_keys(&l);
+    let i = start.as_usize();
+    let j = stop.as_usize();
+    proof {
+        initial_walk_agrees(q, &l, start, stop, outer, halt);
+    }
+    legacy_walk(&l, &keys, i, j, u32::from(outer.get()), halt)
+}
+
+} // verus!

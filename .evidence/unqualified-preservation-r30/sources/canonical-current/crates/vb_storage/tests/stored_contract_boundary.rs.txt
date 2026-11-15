@@ -1,0 +1,18 @@
+#![forbid(unsafe_code)]
+
+#[path = "stored_contract_boundary/bounds.rs"]
+mod bounds;
+#[path = "stored_contract_boundary/catalog.rs"]
+mod catalog;
+#[path = "stored_contract_boundary/helpers.rs"]
+mod helpers;
+#[path = "stored_contract_boundary/native_oracle.rs"]
+mod native_oracle;
+#[path = "stored_contract_boundary/refusals.rs"]
+mod refusals;
+#[path = "stored_contract_boundary/retained.rs"]
+mod retained;
+#[path = "stored_contract_boundary/wire_layout.rs"]
+mod wire_layout;
+#[path = "stored_contract_boundary/writer.rs"]
+mod writer;

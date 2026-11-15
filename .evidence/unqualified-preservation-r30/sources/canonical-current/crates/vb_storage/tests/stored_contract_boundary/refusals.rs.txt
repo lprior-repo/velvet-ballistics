@@ -1,0 +1,199 @@
+use super::helpers::*;
+use vb_core::action_pack::{
+    ConformanceReportDigest, ExecutorVersionDigest, IdempotencyClass, ManifestDigest,
+    ReceiptSchemaDigest, RecoveryClass,
+};
+use vb_core::artifact::{ArtifactEvidence, ObligationClosure, ObligationKind};
+use vb_core::{ActionId, RuntimePolicy, WorkflowDigest};
+use vb_storage::executor::ExecutorError;
+use vb_storage::{
+    HistoricalArtifactError, JournalError, StoredActionRegistry, StoredContractError,
+    verify_retained_artifact,
+};
+
+#[test]
+fn original_pack_binding_guards_refuse_independent_rehashed_mutations() -> TestResult {
+    [
+        "manifest",
+        "executor-version",
+        "receipt-schema",
+        "conformance",
+        "timeout",
+        "idempotency",
+        "recovery",
+        "action",
+        "empty",
+        "duplicate",
+    ]
+    .into_iter()
+    .try_for_each(|case| -> TestResult {
+        let mut value = artifact("writes-key-required.artifact")?;
+        let ArtifactEvidence::Packed(packed) = &mut value.verification.evidence else {
+            return Err("packed fixture".into());
+        };
+        if case == "empty" {
+            packed.packs = Box::new([]);
+        } else if case == "duplicate" {
+            let pack = packed.packs.first().ok_or("pack")?.clone();
+            packed.packs = Box::new([pack.clone(), pack]);
+        } else {
+            let pack = packed.packs.first_mut().ok_or("pack")?;
+            let zero = WorkflowDigest::from_bytes([0; 32]);
+            match case {
+                "manifest" => pack.manifest = ManifestDigest::from_digest(zero),
+                "executor-version" => {
+                    pack.executor_version = ExecutorVersionDigest::from_digest(zero)
+                }
+                "receipt-schema" => pack.receipt_schema = ReceiptSchemaDigest::from_digest(zero),
+                "conformance" => {
+                    pack.duplicate_ticket_test = ConformanceReportDigest::from_digest(zero)
+                }
+                "timeout" => pack.timeout.timeout_ms = 0,
+                "idempotency" => pack.idempotency = IdempotencyClass::ProviderEnforced,
+                "recovery" => pack.recovery = RecoveryClass::RetrySameKey,
+                "action" => pack.action = ActionId::new(1),
+                _ => return Err("case".into()),
+            }
+        }
+        rebind(&mut value)?;
+        assert!(
+            matches!(
+                verify_retained_artifact(&postcard::to_allocvec(&value)?, RuntimePolicy::Strict),
+                Err(HistoricalArtifactError::Executor(
+                    ExecutorError::PackMismatch
+                ))
+            ),
+            "{case}"
+        );
+        Ok(())
+    })
+}
+
+#[test]
+fn original_expected_proof_policy_capabilities_and_assumption_guards_refuse_rehashed_forgeries()
+-> TestResult {
+    [
+        "ledger",
+        "source",
+        "policy",
+        "capabilities",
+        "contracts",
+        "payload",
+    ]
+    .into_iter()
+    .try_for_each(|case| -> TestResult {
+        let mut value = artifact("none-safe.artifact")?;
+        match case {
+            "source" => value.source_digest = WorkflowDigest::from_bytes([0; 32]),
+            "policy" => value.policy_digest = WorkflowDigest::from_bytes([0; 32]),
+            "capabilities" => value.required_capabilities = Box::new([]),
+            _ => {
+                let ArtifactEvidence::Verified(base) = &mut value.verification.evidence else {
+                    return Err("verified fixture".into());
+                };
+                match case {
+                    "ledger" => {
+                        let effect = base
+                            .ledger
+                            .iter_mut()
+                            .find(|entry| entry.obligation == ObligationKind::EffectSafety)
+                            .ok_or("effect")?;
+                        effect.closure = ObligationClosure::RuntimeValidated {
+                            verifier_digest: base.verifier_digest,
+                        };
+                    }
+                    "contracts" => {
+                        base.action_contract_digest = WorkflowDigest::from_bytes([0; 32])
+                    }
+                    "payload" => base.payload_digest = WorkflowDigest::from_bytes([0; 32]),
+                    _ => return Err("case".into()),
+                }
+            }
+        }
+        rebind(&mut value)?;
+        assert!(
+            matches!(
+                verify_retained_artifact(&postcard::to_allocvec(&value)?, RuntimePolicy::Strict),
+                Err(HistoricalArtifactError::Artifact(
+                    JournalError::ArtifactMalformed
+                ))
+            ),
+            "{case}"
+        );
+        Ok(())
+    })
+}
+
+#[test]
+fn full_envelope_registry_framing_tags_versions_and_bounds_are_checked_before_authority()
+-> TestResult {
+    let original = bytes("writes-key-required.artifact")?;
+    let mut suffix = original.clone();
+    suffix.push(0);
+    assert!(matches!(
+        verify_retained_artifact(&suffix, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::Contract(
+            StoredContractError::TrailingBytes
+        ))
+    ));
+    let end = original.len().checked_sub(1).ok_or("bytes")?;
+    assert!(
+        verify_retained_artifact(original.get(..end).ok_or("range")?, RuntimePolicy::Strict)
+            .is_err()
+    );
+    assert!(matches!(
+        StoredActionRegistry::decode_exact(&[0x81, 0x80, 0x04]),
+        Err(StoredContractError::Codec(_))
+    ));
+    let mut registry = bytes("registry45.postcard")?;
+    registry.push(0);
+    assert!(matches!(
+        StoredActionRegistry::decode_exact(&registry),
+        Err(StoredContractError::TrailingBytes)
+    ));
+    let mut value = artifact("writes-key-required.artifact")?;
+    let ArtifactEvidence::Packed(packed) = &mut value.verification.evidence else {
+        return Err("packed fixture".into());
+    };
+    packed.base.schema_version = 65_535;
+    rebind(&mut value)?;
+    assert!(matches!(
+        verify_retained_artifact(&postcard::to_allocvec(&value)?, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::Artifact(
+            JournalError::UnsupportedSchemaVersion { version: 65_535 }
+        ))
+    ));
+    Ok(())
+}
+
+#[test]
+fn blocked_recovery_remains_blocked_after_full_valid_historical_pack_verification() -> TestResult {
+    let mut value = artifact("writes-key-required.artifact")?;
+    let ArtifactEvidence::Packed(packed) = &mut value.verification.evidence else {
+        return Err("packed fixture".into());
+    };
+    packed.packs.first_mut().ok_or("pack")?.recovery = RecoveryClass::Blocked;
+    rebind(&mut value)?;
+    let checked = verify_retained_artifact(&postcard::to_allocvec(&value)?, RuntimePolicy::Strict)?;
+    let scratch = tempfile::tempdir()?;
+    let path = scratch.path().join("blocked");
+    extract("committed-register", &path)?;
+    let ticket = decode(&std::fs::read(path.join("ticket.postcard"))?)?;
+    let mut adapter = vb_storage::executor::FjallRegister::open(&path.join("register"), 8)?;
+    assert!(matches!(
+        checked.reconcile_receipt(
+            &mut adapter,
+            ticket,
+            vb_core::action_pack::CapabilityScopeSpec {
+                namespace: 15,
+                key: 29
+            },
+            42
+        ),
+        Err(HistoricalArtifactError::Executor(
+            ExecutorError::PackMismatch
+        ))
+    ));
+    assert_eq!(adapter.effect_count()?, 1);
+    Ok(())
+}

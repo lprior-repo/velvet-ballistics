@@ -1,0 +1,151 @@
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+use vb_core::{ActionContract, ActionId, ActionTicket, CapabilitySet, RunId, RuntimePolicy};
+use vb_runtime::admission::{AcceptedArtifactStore, ArtifactEnvelopeError, StorageArtifactStore};
+use vb_runtime::journal::StorageRuntimeJournal;
+use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+use vb_storage::executor::FjallRegister;
+use vb_storage::{AcceptedArtifact, FjallJournal, VerifiedHistoricalArtifact};
+
+#[path = "workflow.rs"]
+mod workflow;
+pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+pub(super) fn output() -> TestResult<vb_core::ActionOutputReady> {
+    workflow::output()
+}
+
+pub(super) struct Fixture {
+    pub(super) shard: Shard,
+    pub(super) journal: Arc<FjallJournal>,
+    pub(super) store: Arc<LookupFaultStore>,
+    pub(super) register: FjallRegister,
+    pub(super) scope: vb_core::action_pack::CapabilityScopeSpec,
+    pub(super) run: RunId,
+    pub(super) ticket: ActionTicket,
+    _directory: tempfile::TempDir,
+}
+
+impl Fixture {
+    pub(super) fn new() -> TestResult<Self> {
+        let directory = tempfile::tempdir()?;
+        let journal = Arc::new(FjallJournal::open(&directory.path().join("journal"), None)?);
+        let workflow = workflow::workflow()?;
+        let contracts = Box::from([workflow::contract()?]);
+        let accepted = vb_storage::submit_artifact_with_contracts(
+            &journal,
+            &workflow,
+            RuntimePolicy::Strict,
+            &contracts,
+        )?;
+        let packed = vb_storage::verify_retained_artifact(
+            include_bytes!(
+                "../../../vb_storage/tests/fixtures/historical-main/writes-key-required.artifact"
+            ),
+            RuntimePolicy::Strict,
+        )?;
+        assert_ne!(packed.digest(), accepted.digest);
+        let vb_core::artifact::ArtifactEvidence::Packed(evidence) =
+            &packed.artifact().verification.evidence
+        else {
+            return Err("authentic Packed fixture missing evidence".into());
+        };
+        let pack = evidence.packs.first().ok_or("pack missing")?;
+        assert_eq!(pack.action, ActionId::new(0));
+        let scope = pack.scope;
+        assert!(matches!(
+            packed.try_canonical(),
+            Err(
+                vb_storage::StoredContractError::ForbiddenAttestedClassification {
+                    side_effect: vb_core::SideEffect::LocalWrite,
+                    ..
+                }
+            )
+        ));
+        let store = Arc::new(LookupFaultStore {
+            inner: StorageArtifactStore::new(Arc::clone(&journal)),
+            packed,
+            armed: AtomicBool::new(false),
+            returned: AtomicBool::new(false),
+        });
+        assert!(store.executor_catalog().is_none());
+        let mut shard = Shard::new_with_journal_and_artifact_store(
+            ShardConfig {
+                policy: RuntimePolicy::Strict,
+                step_budget_per_tick: 16,
+                ..ShardConfig::default()
+            },
+            StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
+            store.clone(),
+        )?;
+        let run = RunId::new(81_092);
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(42))]),
+            caps: CapabilitySet::empty(),
+            action_contracts: contracts,
+        })?;
+        assert_eq!(shard.tick(), Ok(true));
+        let ticket = shard
+            .pending_action_get(run)
+            .ok_or("real pending ticket missing")?;
+        assert_eq!(ticket.action, ActionId::new(0));
+        assert_eq!(
+            shard
+                .run_state_get(run)
+                .ok_or("run missing")?
+                .admission
+                .as_ref()
+                .ok_or("admission missing")?
+                .artifact_digest(),
+            accepted.digest
+        );
+        let register = FjallRegister::open(&directory.path().join("register"), 4)?;
+        assert_eq!(register.effect_count()?, 0);
+        assert_eq!(register.value(scope)?, None);
+        Ok(Self {
+            shard,
+            journal,
+            store,
+            register,
+            scope,
+            run,
+            ticket,
+            _directory: directory,
+        })
+    }
+}
+
+pub(super) struct LookupFaultStore {
+    inner: StorageArtifactStore,
+    packed: VerifiedHistoricalArtifact,
+    armed: AtomicBool,
+    returned: AtomicBool,
+}
+
+impl LookupFaultStore {
+    pub(super) fn arm(&self) {
+        self.armed.store(true, Ordering::SeqCst);
+    }
+
+    pub(super) fn returned_packed(&self) -> bool {
+        self.returned.load(Ordering::SeqCst)
+    }
+}
+
+impl AcceptedArtifactStore for LookupFaultStore {
+    fn load_accepted_artifact(
+        &self,
+        digest: vb_core::WorkflowDigest,
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        if self.armed.load(Ordering::SeqCst) {
+            // Inject an authentic historical record at the wrong lookup key only after admission.
+            self.returned.store(true, Ordering::SeqCst);
+            return Ok(self.packed.artifact().clone());
+        }
+        self.inner.load_accepted_artifact(digest)
+    }
+}

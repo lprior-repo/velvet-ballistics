@@ -1,0 +1,252 @@
+use super::*;
+use vstd::prelude::*;
+
+verus! {
+
+pub(crate) open spec fn projected_summary(p: &LegacyParts, n: nat) -> (Set<u16>, nat)
+    decreases n,
+{
+    if n == 0 || n > p.nodes_meta@.len() {
+        (Set::empty(), 0nat)
+    } else {
+        let prev = projected_summary(p, (n - 1) as nat);
+        let m = p.nodes_meta@[n - 1];
+        if m.kind_disc == 12 || m.kind_disc == 35 {
+            (
+                if m.id <= 65535 {
+                    prev.0.insert(m.id as u16)
+                } else {
+                    prev.0
+                },
+                prev.1 + 1,
+            )
+        } else {
+            prev
+        }
+    }
+}
+
+pub(crate) fn project_keys(p: &LegacyParts) -> (out: (std::collections::BTreeSet<u16>, usize))
+    ensures
+        out.0@ == projected_summary(p, p.nodes_meta@.len()).0,
+        out.1 as int == projected_summary(p, p.nodes_meta@.len()).1,
+{
+    let mut k = std::collections::BTreeSet::new();
+    let mut count = 0usize;
+    let mut i = 0usize;
+    while i < p.nodes_meta.len()
+        invariant
+            i <= p.nodes_meta@.len(),
+            count <= i,
+            k@ == projected_summary(p, i as nat).0,
+            count as int == projected_summary(p, i as nat).1,
+        decreases p.nodes_meta@.len() - i,
+    {
+        if let Some(row) = p.nodes_meta.get(i) {
+            if row.kind_disc == 12 || row.kind_disc == 35 {
+                if let Some(next) = count.checked_add(1) {
+                    count = next;
+                } else {
+                    assert(false);
+                }
+                if let Ok(id) = u16::try_from(row.id) {
+                    k.insert(id);
+                }
+            }
+        }
+        assert(projected_summary(p, (i + 1) as nat).0 == k@);
+        if let Some(next) = i.checked_add(1) {
+            i = next;
+        } else {
+            assert(false);
+        }
+    }
+    (k, count)
+}
+
+pub(crate) open spec fn one_branch(
+    p: &LegacyParts,
+    k: Set<u16>,
+    entry: u32,
+    join: u32,
+    outer: u32,
+) -> Option<(u32, u32)> {
+    if entry >= p.nodes_len || join >= p.nodes_len {
+        None
+    } else {
+        let fuel = 1 + legacy_weight(p, Set::empty(), 0) as int;
+        if legacy_reference(
+            p,
+            k,
+            seq![entry as usize],
+            join as usize,
+            outer,
+            Set::empty(),
+            fuel,
+            false,
+        ).is_some() {
+            Some(
+                (
+                    outer,
+                    match legacy_reference(
+                        p,
+                        k,
+                        seq![entry as usize],
+                        join as usize,
+                        outer,
+                        Set::empty(),
+                        fuel,
+                        true,
+                    ) {
+                        Some(x) => x,
+                        None => outer,
+                    },
+                ),
+            )
+        } else {
+            None
+        }
+    }
+}
+
+pub(crate) open spec fn branches_from(
+    p: &LegacyParts,
+    k: Set<u16>,
+    t: Seq<u32>,
+    outer: u32,
+    i: int,
+) -> Option<(u32, u32)>
+    decreases t.len() - i,
+{
+    if i < 0 || i + 1 >= t.len() {
+        None
+    } else {
+        match one_branch(p, k, t[i], t.last(), outer) {
+            Some(x) => Some(x),
+            None => branches_from(p, k, t, outer, i + 1),
+        }
+    }
+}
+
+pub(crate) open spec fn outer_result(p: &LegacyParts, k: Set<u16>, i: int) -> Option<(u32, u32)> {
+    let m = p.nodes_meta@[i];
+    if (m.kind_disc == 12 || m.kind_disc == 35) && i < p.kind_targets@.len() {
+        branches_from(p, k, p.kind_targets@[i]@, m.id, 0)
+    } else {
+        None
+    }
+}
+
+pub(crate) open spec fn outer_from(p: &LegacyParts, k: Set<u16>, i: int) -> Option<(u32, u32)>
+    decreases p.nodes_meta@.len() - i,
+{
+    if i < 0 || i >= p.nodes_meta@.len() {
+        None
+    } else {
+        match outer_result(p, k, i) {
+            Some(x) => Some(x),
+            None => outer_from(p, k, i + 1),
+        }
+    }
+}
+
+pub(crate) fn project_branches(
+    p: &LegacyParts,
+    k: &std::collections::BTreeSet<u16>,
+    t: &[u32],
+    outer: u32,
+) -> (out: Option<(u32, u32)>)
+    ensures
+        out == branches_from(p, k@, t@, outer, 0),
+{
+    let Some(join) = t.last() else {
+        return None;
+    };
+    let cap = match t.len().checked_sub(1) {
+        Some(entries) => entries,
+        None => 0usize,
+    };
+    let mut i = 0usize;
+    while i < cap
+        invariant
+            i <= cap,
+            cap + 1 == t@.len(),
+            *join == t@.last(),
+            branches_from(p, k@, t@, outer, 0) == branches_from(p, k@, t@, outer, i as int),
+        decreases cap - i,
+    {
+        if let Some(entry) = t.get(i) {
+            if *entry < p.nodes_len && *join < p.nodes_len {
+                let a = as_index(*entry);
+                let b = as_index(*join);
+                if legacy_walk(p, k, a, b, outer, false).is_some() {
+                    let inner = match legacy_walk(p, k, a, b, outer, true) {
+                        Some(x) => x,
+                        None => outer,
+                    };
+                    return Some((outer, inner));
+                }
+            }
+        }
+        if let Some(next) = i.checked_add(1) {
+            i = next;
+        } else {
+            assert(false);
+        }
+    }
+    None
+}
+
+pub closed spec fn projected_pair(p: &LegacyParts) -> Option<(u32, u32)> {
+    let sum = projected_summary(p, p.nodes_meta@.len());
+    if sum.1 < 2 {
+        None
+    } else {
+        outer_from(p, sum.0, 0)
+    }
+}
+
+pub(crate) proof fn unfold_pair(p: &LegacyParts)
+    ensures
+        projected_pair(p) == if projected_summary(p, p.nodes_meta@.len()).1 < 2 {
+            None::<(u32, u32)>
+        } else {
+            outer_from(p, projected_summary(p, p.nodes_meta@.len()).0, 0)
+        },
+{
+}
+
+pub(crate) fn projected_first_pair(p: &LegacyParts) -> (out: Option<(u32, u32)>)
+    ensures
+        out == projected_pair(p),
+{
+    let (k, count) = project_keys(p);
+    if count < 2 {
+        return None;
+    }
+    let mut i = 0usize;
+    while i < p.nodes_meta.len()
+        invariant
+            i <= p.nodes_meta@.len(),
+            projected_pair(p) == outer_from(p, k@, i as int),
+        decreases p.nodes_meta@.len() - i,
+    {
+        if let Some(m) = p.nodes_meta.get(i) {
+            if m.kind_disc == 12 || m.kind_disc == 35 {
+                if let Some(t) = p.kind_targets.get(i) {
+                    if let Some(pair) = project_branches(p, &k, t, m.id) {
+                        return Some(pair);
+                    }
+                }
+            }
+        }
+        if let Some(next) = i.checked_add(1) {
+            i = next;
+        } else {
+            assert(false);
+        }
+    }
+    None
+}
+
+} // verus!

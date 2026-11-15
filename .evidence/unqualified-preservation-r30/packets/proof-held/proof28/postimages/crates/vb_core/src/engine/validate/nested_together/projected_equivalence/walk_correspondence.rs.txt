@@ -1,0 +1,196 @@
+vstd::prelude::verus! {
+
+struct WalkState {
+    keys: Set<u16>,
+    stack: Seq<usize>,
+    stop: usize,
+    outer: StepIdx,
+    visited: Set<usize>,
+    fuel: int,
+    halt: bool,
+}
+
+#[verifier::inline]
+spec fn walk_state(
+    keys: Set<u16>,
+    stack: Seq<usize>,
+    stop: usize,
+    outer: StepIdx,
+    visited: Set<usize>,
+    fuel: int,
+    halt: bool,
+) -> WalkState {
+    WalkState { keys, stack, stop, outer, visited, fuel, halt }
+}
+
+#[verifier::inline]
+spec fn native_walk_value(q: &NativeParts, w: WalkState) -> Option<u32> {
+    raw_result(
+        walk_reference(q.nodes@, w.keys, w.stack, w.stop, w.outer, w.visited, w.fuel, w.halt),
+    )
+}
+
+#[verifier::inline]
+spec fn projected_walk_value(p: &LegacyParts, w: WalkState) -> Option<u32> {
+    legacy_reference(
+        p,
+        w.keys,
+        w.stack,
+        w.stop,
+        w.outer.raw_spec() as u32,
+        w.visited,
+        w.fuel,
+        w.halt,
+    )
+}
+
+#[verifier::inline]
+spec fn walk_agreement(q: &NativeParts, p: &LegacyParts, w: WalkState) -> bool {
+    projected_walk_value(p, w) == native_walk_value(q, w)
+}
+
+#[verifier::inline]
+spec fn walk_admissible(q: &NativeParts, w: WalkState) -> bool {
+    q.nodes@.len() <= u32::MAX || narrow(w.stack)
+}
+
+#[verifier::inline]
+spec fn active_visit(w: WalkState) -> VisitState {
+    visit_state(w.stack.last(), w.stop, w.outer, w.keys, w.visited, w.stack.drop_last())
+}
+
+#[verifier::inline]
+spec fn next_walk_state(q: &NativeParts, w: WalkState) -> WalkState {
+    let a = active_visit(w);
+    walk_state(
+        w.keys,
+        native_next_stack(q, a.idx, a.stop, a.outer, a.keys, a.visited, a.stack),
+        w.stop,
+        w.outer,
+        native_next_visited(q, a.idx, a.stop, a.visited),
+        w.fuel - 1,
+        w.halt,
+    )
+}
+
+proof fn narrow_transition(q: &NativeParts, w: WalkState)
+    requires
+        narrow(w.stack),
+        w.stack.len() > 0,
+    ensures
+        walk_admissible(q, next_walk_state(q, w)),
+{
+    let a = active_visit(w);
+    assert(w.stack[w.stack.len() - 1] <= 65535);
+    assert(narrow(a.stack));
+    if can_visit(q.nodes@.len(), a.idx, a.stop, a.visited) && a.idx <= 65535 && !is_nested_start(
+        a.keys,
+        a.idx,
+        a.outer,
+    ) {
+        native_successors_narrow(&q.nodes@[a.idx as int], a.stack);
+    }
+}
+
+#[verifier::inline]
+spec fn native_marking_agrees(q: &NativeParts, w: WalkState) -> bool {
+    let a = active_visit(w);
+    native_next_visited(q, a.idx, a.stop, a.visited) == if can_visit(
+        q.nodes@.len(),
+        a.idx,
+        a.stop,
+        a.visited,
+    ) {
+        a.visited.insert(a.idx)
+    } else {
+        a.visited
+    }
+}
+
+proof fn walk_visit_image(q: &NativeParts, p: &LegacyParts, w: WalkState)
+    requires
+        stored_image(q, p),
+        walk_admissible(q, w),
+        w.stack.len() > 0,
+    ensures
+        simulation_post(q, p, active_visit(w)),
+        native_marking_agrees(q, w),
+        !unrepresentable_visit(q, w.stack.last(), w.stop, w.visited),
+        walk_admissible(q, next_walk_state(q, w)),
+{
+    let a = active_visit(w);
+    simulation(q, p, a.idx, a.stop, a.outer, a.keys, a.visited, a.stack);
+    if q.nodes@.len() > u32::MAX {
+        assert(w.stack[w.stack.len() - 1] <= 65535);
+        narrow_transition(q, w);
+    }
+    if a.idx < q.nodes@.len() && a.idx != a.stop && a.visited.contains(a.idx) {
+        assert(a.visited.insert(a.idx) =~= a.visited);
+    }
+}
+
+proof fn walk_step_image(q: &NativeParts, p: &LegacyParts, w: WalkState)
+    requires
+        stored_image(q, p),
+        walk_admissible(q, w),
+        w.fuel > 0,
+        w.stack.len() > 0,
+    ensures
+        walk_admissible(q, next_walk_state(q, w)),
+        walk_agreement(q, p, next_walk_state(q, w)) ==> walk_agreement(q, p, w),
+{
+    walk_visit_image(q, p, w);
+    let a = active_visit(w);
+    match crate::nested_legacy::nested_projection::projected_result(
+        p,
+        a.idx,
+        a.stop,
+        a.outer.raw_spec() as u32,
+        a.keys,
+        a.visited,
+    ) {
+        Visit::Found(raw) => {
+            StepIdx::raw_roundtrip(raw);
+        },
+        _ => {},
+    }
+    reveal(legacy_reference);
+    reveal(walk_reference_in_context);
+}
+
+proof fn walk_state_agrees(q: &NativeParts, p: &LegacyParts, w: WalkState)
+    requires
+        stored_image(q, p),
+        walk_admissible(q, w),
+    ensures
+        walk_agreement(q, p, w),
+    decreases w.fuel,
+{
+    if w.fuel > 0 && w.stack.len() > 0 {
+        walk_step_image(q, p, w);
+        walk_state_agrees(q, p, next_walk_state(q, w));
+    }
+}
+
+// Arbitrary legacy fuel need not cover the native walk to establish each bounded semantics equal.
+proof fn walks_agree(
+    q: &NativeParts,
+    p: &LegacyParts,
+    keys: Set<u16>,
+    s: Seq<usize>,
+    stop: usize,
+    outer: StepIdx,
+    v: Set<usize>,
+    fuel: int,
+    halt: bool,
+)
+    requires
+        stored_image(q, p),
+        q.nodes@.len() <= u32::MAX || narrow(s),
+    ensures
+        walk_agreement(q, p, walk_state(keys, s, stop, outer, v, fuel, halt)),
+{
+    walk_state_agrees(q, p, walk_state(keys, s, stop, outer, v, fuel, halt));
+}
+
+} // verus!

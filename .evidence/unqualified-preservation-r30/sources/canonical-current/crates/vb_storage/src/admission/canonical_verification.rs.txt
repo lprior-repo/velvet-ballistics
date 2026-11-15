@@ -1,0 +1,145 @@
+use super::*;
+use crate::{HistoricalArtifactError, StoredActionRegistry};
+use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest, WorkflowParts};
+
+pub(crate) const EVIDENCE_VERSION: u16 = 3;
+
+#[path = "canonical_fingerprint.rs"]
+mod fingerprint;
+
+struct CanonicalPayload {
+    policy_digest: WorkflowDigest,
+    ir: Vec<u8>,
+    verification: VerificationProof,
+    contracts: StoredActionRegistry,
+}
+
+/// Validate canonical declarations and persist only their proven lossless historical inverse.
+pub fn prepare_compiled_artifact(
+    workflow: &CompiledWorkflow,
+    policy: RuntimePolicy,
+    contracts: &[ActionContract],
+) -> Result<AcceptedArtifact, JournalError> {
+    match policy {
+        RuntimePolicy::Strict | RuntimePolicy::Journaled | RuntimePolicy::Relaxed => {}
+        _ => return Err(JournalError::ArtifactMalformed),
+    }
+    let payload = canonical_payload(workflow, policy, contracts)?;
+    let mut artifact = AcceptedArtifact {
+        digest: zero_workflow_digest(),
+        source_digest: workflow.digest(),
+        policy_digest: payload.policy_digest,
+        verification: payload.verification,
+        ir: payload.ir,
+        accepted_at_seq: EventSeq::new(0),
+        required_capabilities: required_capabilities_from_contracts(contracts)?,
+        action_contracts: payload.contracts,
+        artifact_version: crate::compat::CURRENT_IR_VERSION,
+    };
+    bind_artifact_digest(&mut artifact)?;
+    Ok(artifact)
+}
+
+/// Validate workflow declarations without encoding, persistence, or execution authority.
+pub fn validate_workflow_action_contracts(
+    workflow: &CompiledWorkflow,
+    contracts: &[ActionContract],
+) -> Result<(), JournalError> {
+    let parts = crate::historical::workflow::checked_parts(workflow)?;
+    validate_idempotency_contracts(contracts)?;
+    vb_validate::idempotency_contract::validate_workflow_idempotency_contracts(&parts, contracts)
+        .map_err(JournalError::ArtifactIdempotencyValidation)
+}
+
+fn validate_declarations(
+    parts: &WorkflowParts,
+    contracts: &[ActionContract],
+) -> Result<(), JournalError> {
+    vb_validate::shared::validate_with_contracts(parts, contracts)
+        .map_err(JournalError::ArtifactValidation)?;
+    vb_core::action::validate_action_registry(contracts)
+        .map_err(JournalError::ArtifactActionRegistry)?;
+    validate_idempotency_contracts(contracts)?;
+    vb_validate::idempotency_contract::validate_workflow_idempotency_contracts(parts, contracts)
+        .map_err(JournalError::ArtifactIdempotencyValidation)
+}
+
+fn canonical_payload(
+    workflow: &CompiledWorkflow,
+    policy: RuntimePolicy,
+    contracts: &[ActionContract],
+) -> Result<CanonicalPayload, JournalError> {
+    let parts = crate::historical::workflow::checked_parts(workflow)?;
+    validate_declarations(&parts, contracts)?;
+    let stored = StoredActionRegistry::try_from_canonical(contracts)?;
+    crate::historical::workflow::check_digest(&parts, workflow.digest())?;
+    let ir = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+    let subject = crate::historical::proof::ProofSubject {
+        parts: &parts,
+        ir: &ir,
+        contracts: &stored,
+    };
+    Ok(CanonicalPayload {
+        policy_digest: compute_policy_digest(workflow)?,
+        verification: crate::historical::proof::expected(subject, policy, None, verifier_digest())?,
+        ir,
+        contracts: stored,
+    })
+}
+
+/// Verify supported raw identity first, then require a permitted canonical projection.
+pub fn verify_accepted_artifact(
+    artifact: &AcceptedArtifact,
+) -> Result<CompiledWorkflow, JournalError> {
+    let policy = match &artifact.verification.evidence {
+        vb_core::artifact::ArtifactEvidence::Verified(base) => base.admission_policy,
+        vb_core::artifact::ArtifactEvidence::Packed(packed) => packed.base.admission_policy,
+        vb_core::artifact::ArtifactEvidence::Unverified => return Err(classify_evidence_held(1)),
+    };
+    verify_accepted_artifact_for_policy(artifact, policy)
+}
+
+/// Exact family/evidence checks do not permit an unsupported historical classification to activate.
+pub fn verify_accepted_artifact_for_policy(
+    artifact: &AcceptedArtifact,
+    policy: RuntimePolicy,
+) -> Result<CompiledWorkflow, JournalError> {
+    let bytes = postcard::to_allocvec(artifact).map_err(JournalError::PostcardEncodeFailed)?;
+    let verified = crate::verify_retained_artifact(&bytes, policy).map_err(journal_error)?;
+    let canonical = verified.try_canonical()?;
+    vb_core::action::validate_action_registry(&canonical)
+        .map_err(JournalError::ArtifactActionRegistry)?;
+    Ok(verified.workflow().clone())
+}
+
+pub(crate) fn verifier_digest() -> WorkflowDigest {
+    fingerprint::digest()
+}
+
+pub(crate) fn journal_error(error: HistoricalArtifactError) -> JournalError {
+    match error {
+        HistoricalArtifactError::Artifact(error) => error,
+        HistoricalArtifactError::Contract(error) => error.into(),
+        HistoricalArtifactError::Executor(_)
+        | HistoricalArtifactError::UnknownVerifierFamily { .. }
+        | HistoricalArtifactError::UnsupportedCanonicalPack
+        | HistoricalArtifactError::HistoricalSourceMismatch => JournalError::ArtifactMalformed,
+    }
+}
+
+pub(crate) fn classify_evidence_held(held: u16) -> JournalError {
+    let input = crate::compat::wire_version_inputs(
+        crate::compat::CompatBoundary::ArtifactEnvelope,
+        held,
+        EVIDENCE_VERSION,
+        held == 1 || held == 2,
+        false,
+    );
+    match crate::compat::classify(input).class {
+        crate::compat::CompatibilityClass::MigrationRequired => JournalError::MigrationRequired {
+            from: held,
+            to: EVIDENCE_VERSION,
+        },
+        _ => JournalError::UnsupportedSchemaVersion { version: held },
+    }
+}

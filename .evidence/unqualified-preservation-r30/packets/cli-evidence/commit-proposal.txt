@@ -1,0 +1,10 @@
+fix(cli): project verified canonical action contracts
+
+Preserve retained artifact identities while inspecting canonical declarations.
+
+- crates/velvet_ballistics/src/replay/event_to_json/continuation_tests/support.rs
+- crates/velvet_ballistics/src/semantic_diff_baseline.rs
+- crates/velvet_ballistics/tests/cli_integration/part_a.rs
+- crates/workspace_tests/tests/cli/action_discovery_names.rs
+- crates/workspace_tests/tests/cli/explain_execution_plan.rs
+- crates/workspace_tests/tests/cli/workflow_semantic_diff.rs

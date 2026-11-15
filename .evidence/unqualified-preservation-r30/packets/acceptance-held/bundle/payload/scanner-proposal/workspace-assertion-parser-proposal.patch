@@ -1,0 +1,40 @@
+--- a/scripts/check-workspace-assertions.rs
++++ b/scripts/check-workspace-assertions.rs
+@@ -185,6 +185,7 @@ fn dependency_names(manifest: &str) -> BTreeSet<String> {
+         }
+         if let Some((name, rest)) = trimmed.split_once('=') {
+-            let dep_name = name.trim();
++            let raw_name = name.trim();
++            let dep_name = raw_name.strip_suffix(".workspace").map_or(raw_name, |base| base);
+             if !dep_name.is_empty() {
+                 names.insert(dep_name.to_owned());
+             }
+@@ -256,2 +256,28 @@ fn main() {
+     std::process::exit(check_workspace_assertions_driver::run());
+ }
++
++#[cfg(test)]
++mod dependency_names_tests {
++    use super::dependency_names;
++
++    #[test]
++    fn workspace_dependency_key_is_normalized() {
++        let names = dependency_names("[dependencies]\nserde_json.workspace = true\n");
++        assert!(names.contains("serde_json"));
++    }
++
++    #[test]
++    fn plain_dependency_name_is_preserved() {
++        let names = dependency_names("[dependencies]\nserde_json = \"1\"\n");
++        assert!(names.contains("serde_json"));
++    }
++
++    #[test]
++    fn renamed_package_alias_and_package_name_are_preserved() {
++        let names = dependency_names(
++            "[dependencies]\njson_alias = { package = \"serde_json\", version = \"1\" }\n",
++        );
++        assert!(names.contains("json_alias"));
++        assert!(names.contains("serde_json"));
++    }
++}

@@ -1,0 +1,287 @@
+#![forbid(unsafe_code)]
+
+//! Action execution helpers for runtime engine.
+
+use vb_core::action::{
+    ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
+    Idempotency, propagate_action_taint,
+};
+use vb_core::capability::CapabilitySet;
+use vb_core::engine::EngineError;
+use vb_core::errors::CoreError;
+use vb_core::frame::RunFrame;
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
+use vb_core::value::Taint;
+
+use crate::admission::check_capability;
+use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
+mod retry_helpers;
+use self::retry_helpers::{next_retry_attempt, next_retry_sequence};
+
+#[allow(clippy::too_many_arguments)]
+pub fn execute_do(
+    run: &RunFrame,
+    step: StepIdx,
+    action: ActionId,
+    input: SlotIdx,
+    seq: SeqNo,
+    _contract: &ActionContract,
+    registry_contracts: &[ActionContract],
+    granted: &CapabilitySet,
+    retry_policy: RetryPolicy,
+    state_run_attempt: u16,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    validate_action_dispatch(run, step, action, input, registry_contracts, granted)?;
+    Ok(RuntimeSignal::AwaitingAction(action_ticket(
+        run,
+        step,
+        action,
+        seq,
+        retry_policy,
+        state_run_attempt,
+    )))
+}
+
+fn validate_action_dispatch(
+    run: &RunFrame,
+    step: StepIdx,
+    action: ActionId,
+    input: SlotIdx,
+    registry_contracts: &[ActionContract],
+    granted: &CapabilitySet,
+) -> RuntimeEngineResult<()> {
+    let resolved = resolve_registry_contract(action, registry_contracts)?;
+    crate::action_policy::execution(resolved).map_err(RuntimeEngineError::Idempotency)?;
+    let input_taint = run.read_taint(input).map_err(RuntimeEngineError::Core)?;
+    validate_action_input(step, resolved, input_taint)?;
+    validate_action_capabilities(action, resolved, granted)?;
+    let output_taint = propagate_action_taint(resolved.idempotency, input_taint);
+    validate_output_taint(step, input_taint, output_taint)
+}
+fn resolve_registry_contract(
+    action: ActionId,
+    registry_contracts: &[ActionContract],
+) -> RuntimeEngineResult<&ActionContract> {
+    registry_contracts
+        .get(usize::from(action.get()))
+        .filter(|contract| contract.id == action)
+        .ok_or_else(|| ActionError::UnknownAction { action }.into())
+}
+
+fn validate_action_input(
+    step: StepIdx,
+    contract: &ActionContract,
+    input_taint: Taint,
+) -> RuntimeEngineResult<()> {
+    if contract.idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
+        return Err(RuntimeEngineError::TaintViolation { step });
+    }
+    Ok(())
+}
+
+fn validate_action_capabilities(
+    action: ActionId,
+    contract: &ActionContract,
+    granted: &CapabilitySet,
+) -> RuntimeEngineResult<()> {
+    for required in contract.required_capabilities.iter() {
+        if let Err(crate::admission::AdmissionError::CapabilityDenied {
+            required: req,
+            granted: grant,
+            ..
+        }) = check_capability(action, required, granted)
+        {
+            return Err(RuntimeEngineError::Core(EngineError::CapabilityDenied {
+                action,
+                required: req,
+                granted: grant,
+            }));
+        }
+    }
+    Ok(())
+}
+
+fn validate_output_taint(
+    step: StepIdx,
+    input_taint: Taint,
+    output_taint: Taint,
+) -> RuntimeEngineResult<()> {
+    if output_taint == Taint::Clean && input_taint != Taint::Clean {
+        return Err(RuntimeEngineError::TaintViolation { step });
+    }
+    Ok(())
+}
+
+fn action_ticket(
+    run: &RunFrame,
+    step: StepIdx,
+    action: ActionId,
+    seq: SeqNo,
+    retry_policy: RetryPolicy,
+    state_run_attempt: u16,
+) -> ActionTicket {
+    ActionTicket {
+        run: run.run_id(),
+        step,
+        seq,
+        action,
+        run_attempt: state_run_attempt,
+        attempt: 1,
+        idempotency_key: compute_idempotency_key(run.run_id(), state_run_attempt, seq, action),
+        capacity: retry_policy.max_attempts,
+        fencing_token: 0,
+    }
+}
+
+pub fn execute_do_without_contract(
+    run: &RunFrame,
+    step: StepIdx,
+    action: ActionId,
+    input: SlotIdx,
+    seq: SeqNo,
+    granted: &CapabilitySet,
+    retry_policy: RetryPolicy,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    // BH-FIX: Even without a contract, we must read input taint and enforce
+    // taint checking. Without a contract we assume the most conservative
+    // idempotency (DeterministicPure), which means secret inputs are rejected.
+    // Uninitialized slots are treated as Clean (no data = no taint).
+    let input_taint = match run.read_taint(input) {
+        Ok(t) => t,
+        Err(CoreError::SlotUninitialized { .. }) => Taint::Clean,
+        Err(e) => return Err(RuntimeEngineError::Core(e)),
+    };
+    if input_taint != Taint::Clean {
+        return Err(RuntimeEngineError::TaintViolation { step });
+    }
+
+    let required = vb_core::capability::Capability::new("__contract_required__".into(), action);
+    let _ = retry_policy;
+    let _ = seq;
+    Err(RuntimeEngineError::Core(EngineError::CapabilityDenied {
+        action,
+        required,
+        granted: granted.clone(),
+    }))
+}
+
+/// Backward-compatible execute_retry_check.
+pub fn execute_retry_check(
+    current_attempt: u16,
+    policy: RetryPolicy,
+    body: StepIdx,
+    exhausted: StepIdx,
+) -> StepIdx {
+    if current_attempt < policy.max_attempts {
+        body
+    } else {
+        exhausted
+    }
+}
+
+/// Backward-compatible execute_error_handler.
+pub fn execute_error_handler(failure: &ActionFailure, handler: StepIdx, body: StepIdx) -> StepIdx {
+    if failure.retry_policy == vb_core::action::RetryPolicy::Retryable
+        || failure.code != ActionFailureCode::Unknown
+    {
+        handler
+    } else {
+        body
+    }
+}
+
+/// Resumes an action outcome into the run frame.
+///
+/// When a retryable failure occurs, the original ticket is used to build a
+/// retry ticket with the correct action ID, incremented sequence number,
+/// incremented attempt count, and recomputed idempotency key.
+pub fn resume_action_outcome(
+    original_ticket: &ActionTicket,
+    outcome: ActionOutcome,
+    contract: &ActionContract,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    crate::action_policy::execution(contract).map_err(RuntimeEngineError::Idempotency)?;
+    match outcome {
+        ActionOutcome::Ready(_ready) => Ok(RuntimeSignal::Continue),
+        ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(ticket)),
+        ActionOutcome::Failed(failure) => resume_failed_action(original_ticket, failure, contract),
+        #[allow(unreachable_code)]
+        _ => Err(RuntimeEngineError::Core(
+            EngineError::InternalInvariantViolation {
+                reason: "unknown_action_outcome".into(),
+            },
+        )),
+    }
+}
+
+fn resume_failed_action(
+    original_ticket: &ActionTicket,
+    failure: ActionFailure,
+    contract: &ActionContract,
+) -> RuntimeEngineResult<RuntimeSignal> {
+    if failure.retry_policy != vb_core::action::RetryPolicy::Retryable
+        || contract.retry_safety == vb_core::RetrySafety::NotRetrySafe
+    {
+        return Err(non_retryable_action_error());
+    }
+    crate::action_policy::retry(contract).map_err(RuntimeEngineError::Idempotency)?;
+    if original_ticket.attempt >= original_ticket.capacity {
+        return Err(RuntimeEngineError::RetryExhausted {
+            action: original_ticket.action,
+            attempts: original_ticket.attempt,
+        });
+    }
+    Ok(RuntimeSignal::AwaitingAction(retry_ticket(
+        original_ticket,
+    )?))
+}
+
+fn non_retryable_action_error() -> RuntimeEngineError {
+    RuntimeEngineError::Core(EngineError::UnsupportedPrimitive {
+        primitive: "action_failed_non_retryable".into(),
+    })
+}
+
+fn retry_ticket(original_ticket: &ActionTicket) -> RuntimeEngineResult<ActionTicket> {
+    let next_seq = next_retry_sequence(original_ticket)?;
+    let next_attempt = next_retry_attempt(original_ticket)?;
+    Ok(ActionTicket {
+        run: original_ticket.run,
+        step: original_ticket.step,
+        seq: next_seq,
+        action: original_ticket.action,
+        run_attempt: original_ticket.run_attempt,
+        attempt: next_attempt,
+        idempotency_key: compute_idempotency_key(
+            original_ticket.run,
+            original_ticket.run_attempt,
+            next_seq,
+            original_ticket.action,
+        ),
+        capacity: original_ticket.capacity,
+        fencing_token: 0,
+    })
+}
+/// Computes a deterministic idempotency key from run, sequence, and action.
+///
+/// Uses wrapping multiply-add hashing (FNV-1a-inspired) to mix all three
+/// inputs into a u128 without bit-field overlap or silent fallback degradation.
+pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    vb_core::action::compute_action_idempotency_key(run, run_attempt, seq, action)
+}
+
+/// Resolves an action contract from the registry.
+pub fn resolve_contract(
+    action: ActionId,
+    contracts: &[ActionContract],
+) -> RuntimeEngineResult<&ActionContract> {
+    let index = usize::from(action.get());
+    contracts
+        .get(index)
+        .filter(|c| c.id == action)
+        .ok_or(ActionError::UnknownAction { action })
+        .map_err(RuntimeEngineError::Action)
+}
+
+#[cfg(test)]
+mod tests;

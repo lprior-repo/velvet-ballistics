@@ -1,0 +1,11 @@
+{
+  "command": [
+    "node",
+    "verify-current-source-postimages"
+  ],
+  "tip": "04641a289c52ed28cdfea70a3a9d85befa3edb6e",
+  "source_count": 6,
+  "mismatches": [],
+  "exit": 0,
+  "git_status": " M crates/velvet_ballistics/src/replay/event_to_json/continuation_tests/support.rs\n M crates/velvet_ballistics/src/semantic_diff_baseline.rs\n M crates/velvet_ballistics/tests/cli_integration/part_a.rs\n M crates/workspace_tests/tests/cli/action_discovery_names.rs\n M crates/workspace_tests/tests/cli/explain_execution_plan.rs\n M crates/workspace_tests/tests/cli/workflow_semantic_diff.rs\n"
+}

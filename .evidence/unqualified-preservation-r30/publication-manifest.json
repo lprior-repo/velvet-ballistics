@@ -1,0 +1,3192 @@
+{
+  "base": "881258ecc458a71cd5a4238706600f73c7d4d4e9",
+  "scope": "Preservation artifacts only; all active source unchanged",
+  "manifest_sha256": "ea48ac05da92ac1c1f0c009d7044e0ee30426a97a4f2ed58fdb97ed083515828",
+  "files": [
+    {
+      "path": ".evidence/unqualified-preservation-r30/manifest.json",
+      "bytes": 765795,
+      "sha256": "ea48ac05da92ac1c1f0c009d7044e0ee30426a97a4f2ed58fdb97ed083515828"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/archive.sha256",
+      "bytes": 89,
+      "sha256": "12d032ddc80ac4a9d58c348d8be5336873df588190af72e53ea935ef4dbd3314"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/manifest.json",
+      "bytes": 7390,
+      "sha256": "f40091c77ce775dd0d65229176b57d4f8eb7fc900093385d4c4f4d0c543fb9ff"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/payload/mutation-generated/crates/vb_core/proptest-regressions/engine/expr_eval/tests.txt",
+      "bytes": 763,
+      "sha256": "97227053693e962f8b4ecf3a66a77511e2c03ba29f1d8530f2a68f406a82866e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/payload/mutation-generated/crates/vb_core/proptest-regressions/engine/tests/integration_error_routing_behavior/proptest_properties.txt",
+      "bytes": 399,
+      "sha256": "8b58bfe83da931e3baf9d218ac5b35cfe877f26436b4f8d540ccc9e04c848781"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/payload/mutation-generated/crates/vb_core/proptest-regressions/workflow/proptest_collect_budget.txt",
+      "bytes": 507,
+      "sha256": "3bdd79f54a857b819758247e25a09669d9e9a48a6ac83bb5d0feae464b87f764"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/payload/mutation-generated/crates/vb_core/proptest-regressions/workflow/proptest_collect_traversal.txt",
+      "bytes": 507,
+      "sha256": "ccc489d1615528941cca9438ba566fdeaf5d2b7363da10ed8740889d1a8b2ff6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/payload/scanner-proposal/workspace-assertion-parser-proposal.patch",
+      "bytes": 1441,
+      "sha256": "3461b59487e0fc99e96388b11258cffe1a3ab270ec12eb723faa6ebd2bf913c6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/README.md",
+      "bytes": 1230,
+      "sha256": "399158089077068d6d274244a43c019e60b483548babbf0e72b45af5f868eb1f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/bundle/SHA256SUMS",
+      "bytes": 981,
+      "sha256": "9527cb4bbe4237f60ec0f8502ee29e3b6a81a6c92c10459c16342fd597789ff8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/held-source-r25.tar.gz",
+      "bytes": 4548,
+      "sha256": "578384a19e33c69a20fb982152d26c394e06daff8ef5868932a375cf9b64db3e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/acceptance-held/verification.json",
+      "bytes": 646,
+      "sha256": "d95bc5b1db732165e0ba78ea15b44dd616584e2096057133a0587316c57f7e62"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/baseline-native.command.json",
+      "bytes": 612,
+      "sha256": "ecb55401b40aec1e4f16132b7d92c5da55d36b359a5a747ff5fd60ba59ada0a1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/baseline-native.result.json",
+      "bytes": 78,
+      "sha256": "f30af74fd45c2e31b39ab5da3613c1dd0be7ec856821dad386e4b1d6136c780a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/baseline-native.stderr.log",
+      "bytes": 2061,
+      "sha256": "de05197529b27ae7137d9b2cf1e39d6413df3cde3b01e43a4f79cde5e57ca87e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/baseline-native.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/bead-before.json",
+      "bytes": 22856,
+      "sha256": "143df5404dd102752d5365b86f8717d60ae834f81620c15a24ef86c083e14984"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/bead-update.json",
+      "bytes": 783,
+      "sha256": "b1289da2df4605a5518431b97f6e94e1b80ef77d62ba2ca390c6a966b45aaf9c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/candidate.patch.gz",
+      "bytes": 3349,
+      "sha256": "5bfe49c84f37209dc6939a488b9e40af954e5903efdb3b6e8bddfa8cc683bda4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/commit-proposal.txt",
+      "bytes": 516,
+      "sha256": "878b19831dd97304973bd12582cea0f9ba72d357a0a7768cf2ed76dc7813ce36"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/contract.md",
+      "bytes": 1349,
+      "sha256": "c0b8b05cac73c981b0b22167b36f48a97f939f43233d980c4bf92d55a90b12fa"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/diff-check.json",
+      "bytes": 198,
+      "sha256": "589d1a0a9293b7895e17dd29b2bfe63046d9cc5765808c0daa48de4964ad5225"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/final-native.command.json",
+      "bytes": 612,
+      "sha256": "1c4ffcd69f8d79e3ead3ccb4308b7fa5e52e770222329751843d637315f5a437"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/final-native.result.json",
+      "bytes": 76,
+      "sha256": "d067216b85de6b6f791cdbdb48a49d6b9378826f579cd2dd3f78550c2794dfca"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/final-native.stderr.log",
+      "bytes": 236483,
+      "sha256": "8eaf6d1d8fa061ea8d65afb955573d383dd6747af2989e74d8fbbd344fbbe150"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/final-native.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/final-source-integrity.json",
+      "bytes": 594,
+      "sha256": "0e9374ff5a73ca89e9fdd35aa34ffb1fa8393dd908d960d3a505634e760cd923"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/format-check.command.json",
+      "bytes": 538,
+      "sha256": "f5b78e7bde94e7040098613a4bcfc9b4caeb3130180b066168688ae5bd363e8e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/format-check.result.json",
+      "bytes": 76,
+      "sha256": "6e1552dedff0e5687dba82d0d83d08261f557ad749f660ab12f21353c400538e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/format-check.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/format-check.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-after-adapters.command.json",
+      "bytes": 612,
+      "sha256": "15308fdab3e29068cb75e838ccc807d9f0d4086651617fd801b9134453a83ada"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-after-adapters.result.json",
+      "bytes": 78,
+      "sha256": "c3b373263719e2debf22513b980684db525eda266bb96986b0e04776d6605702"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-after-adapters.stderr.log",
+      "bytes": 99808,
+      "sha256": "e3fbbfe490b302303580c1d0bfc49c837f1b60c8f18b5c74df68b8e0c286461f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-after-adapters.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-diagnostic-all.command.json",
+      "bytes": 634,
+      "sha256": "f851d4dd6356ca5defa71b7adc3b15243cddb27837f75b2fde67c2ab6ab0c9a9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-diagnostic-all.result.json",
+      "bytes": 78,
+      "sha256": "2a900cd504759e0983a6b07a016d760233bcd23e92712b17f5a2eecbbe34021a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-diagnostic-all.stderr.log",
+      "bytes": 247306,
+      "sha256": "86e03b879498681429773ead44165e16160674b1a1b845e97e733437a74b928b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/native-diagnostic-all.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/preimage/00-crates__velvet_ballistics__src__replay__event_to_json__continuation_tests__support.rs",
+      "bytes": 4081,
+      "sha256": "26a0c7bad0b0f82c64a2e011b2de1034f8dce515997e1ddf7f4160059d275140"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/preimage/01-crates__velvet_ballistics__src__semantic_diff_baseline.rs",
+      "bytes": 5787,
+      "sha256": "de896e7e0799517c03c340fe6ee0d6c3ee45399d812d74583c67a409f45c8461"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/preimage/02-crates__velvet_ballistics__tests__cli_integration__part_a.rs.gz",
+      "bytes": 2414,
+      "sha256": "8bdc711a648c02a5a263eda7c25c222c146ecef13a9ae43a47f275d2f7f66c95"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/preimage/03-crates__workspace_tests__tests__cli__action_discovery_names.rs",
+      "bytes": 4880,
+      "sha256": "549ce696fb831a3bf8014d93138b3f3763def278dd2927ea2cead0e5ea776c81"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/preimage/04-crates__workspace_tests__tests__cli__explain_execution_plan.rs",
+      "bytes": 12645,
+      "sha256": "4711eb5e8479293124c76755601c0a2abed4dd6d1afae78740aa0c3506163411"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/preimage/05-crates__workspace_tests__tests__cli__workflow_semantic_diff.rs",
+      "bytes": 26175,
+      "sha256": "222a4966a7becb49d425b60aa0991e2afd659ef8677f8d06ad88958e0d103e1f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/REPORT.md",
+      "bytes": 1730,
+      "sha256": "3da730627d28db0ef77a3cd8d77625773221ba5acd2b4f236ee0bb3407fc9ff8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/run-cargo.cjs",
+      "bytes": 1106,
+      "sha256": "80d6aed89c16ec720a791ccc0831ee04c495deeb4bed36d96a4e965f520ac379"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/SHA256SUMS",
+      "bytes": 6395,
+      "sha256": "52eb802c5ff27660cbd31bcfa88c3c7bb8a77492c8f3f063a26a7948597a0b62"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source-bindings.json",
+      "bytes": 7455,
+      "sha256": "f6b2872b86f1ee92f0ffeb148a928f58eb33b6bfb592a10cb678d34407980625"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source-clippy.command.json",
+      "bytes": 1329,
+      "sha256": "c11ced80dc0c70b58e56c6be3b41840d078c714f461217286c0fbccbcc7a7da6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source-clippy.result.json",
+      "bytes": 76,
+      "sha256": "ab5ea0d0a79e428ae3841386c451f5139f09cb30f15966d805d2895903234c31"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source-clippy.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source-clippy.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source/00-crates__velvet_ballistics__src__replay__event_to_json__continuation_tests__support.rs",
+      "bytes": 4110,
+      "sha256": "642efca1787fb2c30a33a22ad5e1a441b617556723e002e245f9b32b911b614e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source/01-crates__velvet_ballistics__src__semantic_diff_baseline.rs",
+      "bytes": 6641,
+      "sha256": "55b469008cd944ae8c2cc26c268b55e237c7bb3db74df53e02ba3137330468ea"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source/02-crates__velvet_ballistics__tests__cli_integration__part_a.rs",
+      "bytes": 20240,
+      "sha256": "c688da97306b58bbd2f39c336c90be8d9e083db5af4380d2544881ab16d110e3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source/03-crates__workspace_tests__tests__cli__action_discovery_names.rs",
+      "bytes": 5003,
+      "sha256": "11b799a7ca9d32a157686756ce632b86bb9bcac6d3a9025659f8aa4c81f4b3dd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source/04-crates__workspace_tests__tests__cli__explain_execution_plan.rs",
+      "bytes": 12651,
+      "sha256": "3e9c28b3b8fc8dc1a12d986dd69180f62559f60e0b2ccd64ba8159249bcb6519"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/source/05-crates__workspace_tests__tests__cli__workflow_semantic_diff.rs",
+      "bytes": 28299,
+      "sha256": "04cf1dee66d84b08f97ef7173113bd7e554bc9e2f8447cd4b2894d7d68ac177c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/cli-evidence/write-probe.txt",
+      "bytes": 36,
+      "sha256": "f355bee45f321a5166c1a3bfc4d461edeb7c05b12ee374947a1b7f0c5b17e1cf"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/already-landed.json",
+      "bytes": 2141,
+      "sha256": "92350540ff5558dd9a613541bffe8217d63068c9964bb88b777dc27790aa9d84"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/483e93a82dc3/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+      "bytes": 6436,
+      "sha256": "cfc8837f4485892afd85df5e452865bc2bdd80a6abeb6f102f5bac340fe9b463"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/483e93a82dc3/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+      "bytes": 3518,
+      "sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/483e93a82dc3/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+      "bytes": 5357,
+      "sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/483e93a82dc3/source-bindings.json",
+      "bytes": 1724,
+      "sha256": "c9ef9b9f026737c3da119b34aff81269a96173c6438761251aa17baae3a200b0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/483e93a82dc3/source.patch.gz",
+      "bytes": 2667,
+      "sha256": "7e077c8bf524ef16435d6b5e41d7bf1203622b1546786b3c15d31bba032c0cea"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+      "bytes": 6624,
+      "sha256": "97a3bad02c4cc079f33bd75336ed80fe58a5f112c744fa8a21f8717e80830496"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+      "bytes": 2703,
+      "sha256": "e4ae38c6bf7edc3c5c6d3adeb243fc3eed8e96f5114917b641da1ce0ca4def9f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+      "bytes": 5385,
+      "sha256": "69836dc9c0c3cfb67748d12850fa3d061e3308c1577f0893f263b563a81055c6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/engine/validate/nested_together/walk_spec.rs.txt",
+      "bytes": 5453,
+      "sha256": "b897c1fbf0e7fc892ddc19b545c059defaf937701bc97150e81dc1958d1b05ea"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/engine/validate/nested_together/walk_weight.rs.txt",
+      "bytes": 3076,
+      "sha256": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/engine/validate/nested_together/walk.rs.txt",
+      "bytes": 8858,
+      "sha256": "3667bca4b37e7f0fbe84e3d7c0a7fc8e197106ac5a8abad82be536fee885b980"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/ids/mod.rs.txt",
+      "bytes": 4503,
+      "sha256": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/ids/parts/chunk_001_custom_types.rs.txt",
+      "bytes": 7512,
+      "sha256": "69a1cbe6e8ff886c952675072ae0be7f5485c3a2ad268a4ccbcc2af02e7a31cd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/workflow/input_slot.rs.txt",
+      "bytes": 6281,
+      "sha256": "ce01e3e228d9b004f321ed33777e33b252d2f6dec9ad017faa6702a17efabe7a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/workflow/node_kind.rs.txt",
+      "bytes": 6309,
+      "sha256": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/workflow/node.rs.txt",
+      "bytes": 6593,
+      "sha256": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/workflow/retry_policy.rs.txt",
+      "bytes": 1298,
+      "sha256": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/postimages/crates/vb_core/src/workflow/route_enums.rs.txt",
+      "bytes": 3379,
+      "sha256": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/source-bindings.json",
+      "bytes": 7118,
+      "sha256": "7b243b6ccade47da064601ee18d09cf89693af83e3af270cbc0afba9948b7d70"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/f89791e26d87/source.patch.gz",
+      "bytes": 8895,
+      "sha256": "0a7d89aeec967ba7576fd1be79bf463bbc68337ed59ac57c2f5fe6e7757a6fbf"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+      "bytes": 6436,
+      "sha256": "cfc8837f4485892afd85df5e452865bc2bdd80a6abeb6f102f5bac340fe9b463"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/engine/validate/nested_together/cursor_proof.rs.txt",
+      "bytes": 5924,
+      "sha256": "603367937c3d6151db5c1930233b212c5d8a54fb7195fa0627f8ac23f79d3634"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+      "bytes": 3518,
+      "sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+      "bytes": 5357,
+      "sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/engine/validate/nested_together/walk_spec.rs.txt",
+      "bytes": 7622,
+      "sha256": "c9d8701e780b3c40cd8f480f8316c8a442e218cfacce83502be2b0ac130b55ff"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/engine/validate/nested_together/walk_weight.rs.txt",
+      "bytes": 3076,
+      "sha256": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/engine/validate/nested_together/walk.rs.txt",
+      "bytes": 6669,
+      "sha256": "5e742f393352eb47b17b2db4e74b797694c4c3441279bbc5b36d200430769c7f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/ids/mod.rs.txt",
+      "bytes": 4503,
+      "sha256": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/ids/parts/chunk_001_custom_types.rs.txt",
+      "bytes": 7512,
+      "sha256": "69a1cbe6e8ff886c952675072ae0be7f5485c3a2ad268a4ccbcc2af02e7a31cd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/workflow/input_slot.rs.txt",
+      "bytes": 6281,
+      "sha256": "ce01e3e228d9b004f321ed33777e33b252d2f6dec9ad017faa6702a17efabe7a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/workflow/node_kind.rs.txt",
+      "bytes": 6309,
+      "sha256": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/workflow/node.rs.txt",
+      "bytes": 6593,
+      "sha256": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/workflow/retry_policy.rs.txt",
+      "bytes": 1298,
+      "sha256": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/postimages/crates/vb_core/src/workflow/route_enums.rs.txt",
+      "bytes": 3379,
+      "sha256": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/qualified.json",
+      "bytes": 10122,
+      "sha256": "14eeb04372b44c4030d1b9f70d1f606ea2e1b77ffe854641ec991714cceb911a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/04e199828e74-native-commit-proposal.txt.gz",
+      "bytes": 221,
+      "sha256": "1ef8dbef950f0232d3501e53e67e7837da1004b632b3fba7ecf93161dac89609"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/1ecb3cee8b74-contract.md.gz",
+      "bytes": 1678,
+      "sha256": "e1a379d9bf25797372b3c21a7680bfc7784e132e142739de32c07e759f261c99"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/1f10f11e1061-cursor-negative.command.json.gz",
+      "bytes": 415,
+      "sha256": "abe932195a09f99335f8bf8ed5d5b4fd4176aa317065f2f747c5052d08b49b39"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/217fb9b76e70-package-tests.log.gz",
+      "bytes": 59783,
+      "sha256": "26a5442e8f2be44688800b93cd9142413dd19736efcc84e839d62d441f7310e0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/2fbc66874272-comments.patch.gz",
+      "bytes": 1635,
+      "sha256": "102da3a6d2b8831d59a3900af45e4e1e099575984eeb14e5bc752c69bf267cba"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/399c6e156f7d-cursor-negative.stdout.gz",
+      "bytes": 370,
+      "sha256": "88f1d1ac4c8bc76b693ea80d938e84880e4e57599454eaec3e42cfd0a60365ee"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/4309419b0ca3-citation-review.md.gz",
+      "bytes": 1486,
+      "sha256": "08aaf54e12cc2269558a10936b9d65c02da1f97605b171e5b8780efce28e3f0b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/498e3e7af20a-native-ready.json.gz",
+      "bytes": 2747,
+      "sha256": "ae479b3f9543a68732e5355f18f16761ec9cd2657583d2a0ad610584e5c1d49c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/4b95d88d3356-cursor-full-source.json.gz",
+      "bytes": 25229,
+      "sha256": "301acf6231b8cb312400489288609bb89a382a3c0f467af08e3c6a9cd4f0d735"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/4c8544647458-cursor-final.stdout.gz",
+      "bytes": 62,
+      "sha256": "678eab45893b39f6847b648474373a3c26cb38c554400379f9d6572d64a1b1b9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/532eda5552fe-cursor-final.command.json.gz",
+      "bytes": 415,
+      "sha256": "0aa9a7bcee765378ded0f0372e004edcdcaf145cf5d753af77df277b7389eaec"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/6fa5f1208212-receipt.sha256.gz",
+      "bytes": 546,
+      "sha256": "b81825775caff86e97ef1ca17d61a69d2ce8927eb992dc4ee31787cdabdb2417"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/705bc89d64cf-differential-candidate.log.gz",
+      "bytes": 15073,
+      "sha256": "e24e70f027c497afcfe05cbd9a61e2aee7bfda9e7f1f9863f552891699d76df8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/706e7106bab3-cursor-full-candidate.patch.gz",
+      "bytes": 9626,
+      "sha256": "7b10aa00029205090995441a647f9721b48a5b841f9aec3cde9985c93fbe8937"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/84aa82685feb-package-command.json.gz",
+      "bytes": 355,
+      "sha256": "a80dec06979a72d1de231c76a29f2b2fe2717fb79e5753bfd14b13ea3df9be6d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/94a8ed4dbfa1-review.md.gz",
+      "bytes": 1809,
+      "sha256": "c5783440f775e21e9d6ea2a99970b5892b1b5b38da12ac8681680925b7688198"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/97fb80bb4cb3-manifest.json.gz",
+      "bytes": 517,
+      "sha256": "4a260a2d2e8575392e2df5d5a6ca2ae2bdc8cb85fa7ca58f593e08e068e792ef"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/b0f59179c1d9-literals.log.gz",
+      "bytes": 136,
+      "sha256": "61298326b0611ee85b0cf2c84b30f5d5642419b309b006c02a01299e6f156407"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/c16b0905d874-source-length-snapshot.log.gz",
+      "bytes": 269,
+      "sha256": "2c81960e8b6b15fea3e33bec67f1310cc7ece63811467f8fceada6cd252235f0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/cdf314f97cc3-differential-baseline.log.gz",
+      "bytes": 15073,
+      "sha256": "e24e70f027c497afcfe05cbd9a61e2aee7bfda9e7f1f9863f552891699d76df8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/receipts/e2db03433cbe-differential.log.gz",
+      "bytes": 186,
+      "sha256": "053ae4d9519c916b3e782000c7376ec8d62454b494704c82aa6b002995368613"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/source-bindings.json",
+      "bytes": 7565,
+      "sha256": "29c3551402a71c86d8c7f9428155f35b4d20cd50454ac19254c514465722095b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/native14/source.patch.gz",
+      "bytes": 9626,
+      "sha256": "7b10aa00029205090995441a647f9721b48a5b841f9aec3cde9985c93fbe8937"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/changed-source-bindings.json",
+      "bytes": 16707,
+      "sha256": "553dc0c24806a7350da7885fd3fb27f2f5102345bff1602440798dfb13b4e4f5"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/original-frozen.json",
+      "bytes": 104593,
+      "sha256": "1e1f66343a8c23b8e731fda3b708a29a5b6ff937022d206cf6dc9aa1f1653141"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+      "bytes": 6491,
+      "sha256": "98aaf50f65c27d891e1016552dd328c7bb757ed8df1154d309f5e313946eb934"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together/cursor_proof.rs.txt",
+      "bytes": 5924,
+      "sha256": "603367937c3d6151db5c1930233b212c5d8a54fb7195fa0627f8ac23f79d3634"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence.rs.txt",
+      "bytes": 21039,
+      "sha256": "e6368cf3f353dad4aede0737996b31f0bc42456f53ebdd0c6a1dc0362605dd6a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+      "bytes": 3518,
+      "sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+      "bytes": 5357,
+      "sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together/walk_spec.rs.txt",
+      "bytes": 7622,
+      "sha256": "c9d8701e780b3c40cd8f480f8316c8a442e218cfacce83502be2b0ac130b55ff"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together/walk_weight.rs.txt",
+      "bytes": 3076,
+      "sha256": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/engine/validate/nested_together/walk.rs.txt",
+      "bytes": 6669,
+      "sha256": "5e742f393352eb47b17b2db4e74b797694c4c3441279bbc5b36d200430769c7f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/ids/mod.rs.txt",
+      "bytes": 4503,
+      "sha256": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/ids/parts/chunk_001_custom_types.rs.txt",
+      "bytes": 7617,
+      "sha256": "43d098a618307508901433702434968a6a017c1415e8178663a101b04fa91793"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/input_schema.rs.txt",
+      "bytes": 1673,
+      "sha256": "3bdbaf006a3629e35d8dfc9e5b94522d05417ded68d2eec14caf1e1244cb11d4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/lib.rs.txt",
+      "bytes": 6307,
+      "sha256": "52bd954f0a5102b7652f6a75b682b10b44f67eabbee865345747f7dc9ea0d863"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/value/finite.rs.txt",
+      "bytes": 3118,
+      "sha256": "38595eb17f3e188fa2e98b25c7e1196891bb16423a91bb099c9936055b90c92a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/value/slot.rs.txt",
+      "bytes": 3862,
+      "sha256": "ea88b1814be1d77c102d32d3845bf528621ee81e4df838ba5cfb5eda9882f463"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/constraints.rs.txt",
+      "bytes": 6257,
+      "sha256": "7dc4b9704a392e220b655eb2f37d09fde1cd5b4908e495d86d66f2bcaeee15a6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/expr_program.rs.txt",
+      "bytes": 5219,
+      "sha256": "add58d10e08713d4725cb6df6225d64990e2172d45c8f563fb63b7d9f3ecaf8a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/input_constraint.rs.txt",
+      "bytes": 4817,
+      "sha256": "c487caece84f4f1c73ed084e06e9071e6f421883356a0d68ecc36327c266be78"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/input_slot.rs.txt",
+      "bytes": 6701,
+      "sha256": "7293483134db56f861bf558b0a7583e03659f05d769fe7c5dc7d9e8583e23831"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/node_kind.rs.txt",
+      "bytes": 6309,
+      "sha256": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/node.rs.txt",
+      "bytes": 6593,
+      "sha256": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/parts.rs.txt",
+      "bytes": 2782,
+      "sha256": "50bb26333bb393813e2cdbf563912b85212adcdb5aeeb616a5ba5024afdd1a96"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/resource_contract.rs.txt",
+      "bytes": 7181,
+      "sha256": "16a9cf6d0d16730d379c7378809ccc2165290ec140afd2650088a7a4c41cae84"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/retry_policy.rs.txt",
+      "bytes": 1298,
+      "sha256": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/route_enums.rs.txt",
+      "bytes": 3379,
+      "sha256": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/crates/vb_core/src/workflow/source_metadata.rs.txt",
+      "bytes": 10945,
+      "sha256": "d2ac6bb225c1b73d38b1dfd58eda9f8078b9f09f91319b7e6a67e8995237a853"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/verification/verus/extern_try_from_parts.rs.txt",
+      "bytes": 135679,
+      "sha256": "77997d761fd6ea6e013ee2634b775d9b071141e6bd5e1f195d0dff78720f55a4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/verification/verus/nested_projection/fixtures.rs.txt",
+      "bytes": 3799,
+      "sha256": "3393b1af1586e01d57ce21178b0414a71d2ac0383757610846169efd74fa9272"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/verification/verus/nested_projection/mod.rs.txt",
+      "bytes": 5264,
+      "sha256": "dd5bbe96b2bb5bea4773e829d2789de8b0e477fe7159f6ff9d1c82d376dfe52c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/verification/verus/nested_projection/scan.rs.txt",
+      "bytes": 6790,
+      "sha256": "6d0926c9121fa9ff84cc8f92f991f5548733b357f40157dbb57b343fbaa99f50"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/verification/verus/nested_projection/walk.rs.txt",
+      "bytes": 5798,
+      "sha256": "303794a9d01920759d3653980ec6b9ee04d7377ddfba302aacbfb0d00986013f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/package/postimages/verification/verus/try_from_parts.rs.txt",
+      "bytes": 487974,
+      "sha256": "22f40940c8fdf889f178c06c60ccb32e5f060ed7f3b9311ca521217db3de5c96"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/changed-source-bindings.json",
+      "bytes": 17711,
+      "sha256": "b1b8ec876e1494bc73db1e20e9ffc5d72ba9e5482b36c2ad97b35738eb60c025"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/original-frozen.json",
+      "bytes": 104593,
+      "sha256": "f935b4fd10c62cc36e342a5494793aa99aa43e3d4ba60cdcb82d346d1674671d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+      "bytes": 6491,
+      "sha256": "98aaf50f65c27d891e1016552dd328c7bb757ed8df1154d309f5e313946eb934"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together/cursor_proof.rs.txt",
+      "bytes": 5924,
+      "sha256": "603367937c3d6151db5c1930233b212c5d8a54fb7195fa0627f8ac23f79d3634"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence.rs.txt",
+      "bytes": 21039,
+      "sha256": "e6368cf3f353dad4aede0737996b31f0bc42456f53ebdd0c6a1dc0362605dd6a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+      "bytes": 3518,
+      "sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+      "bytes": 5357,
+      "sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together/walk_spec.rs.txt",
+      "bytes": 7622,
+      "sha256": "c9d8701e780b3c40cd8f480f8316c8a442e218cfacce83502be2b0ac130b55ff"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together/walk_weight.rs.txt",
+      "bytes": 3076,
+      "sha256": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/engine/validate/nested_together/walk.rs.txt",
+      "bytes": 6669,
+      "sha256": "5e742f393352eb47b17b2db4e74b797694c4c3441279bbc5b36d200430769c7f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/ids/mod.rs.txt",
+      "bytes": 4503,
+      "sha256": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/ids/parts/chunk_001_custom_types.rs.txt",
+      "bytes": 7617,
+      "sha256": "43d098a618307508901433702434968a6a017c1415e8178663a101b04fa91793"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/input_schema.rs.txt",
+      "bytes": 1673,
+      "sha256": "3bdbaf006a3629e35d8dfc9e5b94522d05417ded68d2eec14caf1e1244cb11d4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/lib.rs.txt",
+      "bytes": 6307,
+      "sha256": "52bd954f0a5102b7652f6a75b682b10b44f67eabbee865345747f7dc9ea0d863"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/value/finite.rs.txt",
+      "bytes": 3118,
+      "sha256": "38595eb17f3e188fa2e98b25c7e1196891bb16423a91bb099c9936055b90c92a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/value/slot.rs.txt",
+      "bytes": 3862,
+      "sha256": "ea88b1814be1d77c102d32d3845bf528621ee81e4df838ba5cfb5eda9882f463"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/value/taint.rs.txt",
+      "bytes": 3486,
+      "sha256": "c9a8d701a313dcedb2886ef30c635bb7138ab86c12341d73d8a3572803e57080"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/constraints.rs.txt",
+      "bytes": 6257,
+      "sha256": "7dc4b9704a392e220b655eb2f37d09fde1cd5b4908e495d86d66f2bcaeee15a6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/expr_program.rs.txt",
+      "bytes": 5219,
+      "sha256": "add58d10e08713d4725cb6df6225d64990e2172d45c8f563fb63b7d9f3ecaf8a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/input_constraint.rs.txt",
+      "bytes": 4817,
+      "sha256": "c487caece84f4f1c73ed084e06e9071e6f421883356a0d68ecc36327c266be78"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/input_slot.rs.txt",
+      "bytes": 6701,
+      "sha256": "7293483134db56f861bf558b0a7583e03659f05d769fe7c5dc7d9e8583e23831"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/node_kind.rs.txt",
+      "bytes": 6309,
+      "sha256": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/node.rs.txt",
+      "bytes": 6593,
+      "sha256": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/parts.rs.txt",
+      "bytes": 2782,
+      "sha256": "50bb26333bb393813e2cdbf563912b85212adcdb5aeeb616a5ba5024afdd1a96"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/resource_contract.rs.txt",
+      "bytes": 7181,
+      "sha256": "16a9cf6d0d16730d379c7378809ccc2165290ec140afd2650088a7a4c41cae84"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/retry_policy.rs.txt",
+      "bytes": 1298,
+      "sha256": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/route_enums.rs.txt",
+      "bytes": 3379,
+      "sha256": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/crates/vb_core/src/workflow/source_metadata.rs.txt",
+      "bytes": 10945,
+      "sha256": "d2ac6bb225c1b73d38b1dfd58eda9f8078b9f09f91319b7e6a67e8995237a853"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/verification/verus/extern_try_from_parts.rs.txt",
+      "bytes": 135679,
+      "sha256": "77997d761fd6ea6e013ee2634b775d9b071141e6bd5e1f195d0dff78720f55a4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/verification/verus/nested_projection/fixtures.rs.txt",
+      "bytes": 3799,
+      "sha256": "3393b1af1586e01d57ce21178b0414a71d2ac0383757610846169efd74fa9272"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/verification/verus/nested_projection/mod.rs.txt",
+      "bytes": 5264,
+      "sha256": "dd5bbe96b2bb5bea4773e829d2789de8b0e477fe7159f6ff9d1c82d376dfe52c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/verification/verus/nested_projection/scan.rs.txt",
+      "bytes": 6790,
+      "sha256": "6d0926c9121fa9ff84cc8f92f991f5548733b357f40157dbb57b343fbaa99f50"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/verification/verus/nested_projection/walk.rs.txt",
+      "bytes": 5798,
+      "sha256": "303794a9d01920759d3653980ec6b9ee04d7377ddfba302aacbfb0d00986013f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/shipped-taint-package/postimages/verification/verus/try_from_parts.rs.txt",
+      "bytes": 487974,
+      "sha256": "22f40940c8fdf889f178c06c60ccb32e5f060ed7f3b9311ca521217db3de5c96"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/changed-source-bindings.json",
+      "bytes": 20587,
+      "sha256": "c2c0da113a074efe9232971d1966adf199ed1e76e6e141c425d264729171a45a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/original-frozen.json",
+      "bytes": 105938,
+      "sha256": "5876ebcc1aebcdef7b28fe0dfb414f980d5618369b22a1b144bbd4d0cb37b33d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+      "bytes": 6516,
+      "sha256": "0f3927307e67487fe6b799c8cd3692ccfd2e3b9a910d7330767c559dd525b696"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/cursor_proof.rs.txt",
+      "bytes": 5924,
+      "sha256": "603367937c3d6151db5c1930233b212c5d8a54fb7195fa0627f8ac23f79d3634"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence.rs.txt",
+      "bytes": 344,
+      "sha256": "cd425438bfede7df9b56b15d27b11f27744f6ef67d2a2cd1ac853f4b25bdbd54"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/construction.rs.txt",
+      "bytes": 5026,
+      "sha256": "c489d8e19ae4f251b00efaccbd3a87e6c51d11e4fa0ff5e5a92d6eba23053736"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/discriminants.rs.txt",
+      "bytes": 5540,
+      "sha256": "dd1335ecdeb96ccd1af70372b118d295a5ec2bb1ed8b653f18fbf369e56bc423"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/outer.rs.txt",
+      "bytes": 3842,
+      "sha256": "640c51f76ef12ec0375b5715ca1e43d812169f5257682324a597b52be5ea0b9c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/targets.rs.txt",
+      "bytes": 4055,
+      "sha256": "7d3984d81de5b74ac60344fbcb5e3ab70a7804f5cceb78e0e085268505decc20"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/traversal.rs.txt",
+      "bytes": 5229,
+      "sha256": "dd7f2712d37e4be91055a8db0389a662bd4389c890dc975f70df2323a94d20be"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/visits.rs.txt",
+      "bytes": 6266,
+      "sha256": "574ddff12c386133b59c475c35efe0582a746157e33812e447ebe82eb312df66"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/walk_correspondence.rs.txt",
+      "bytes": 5088,
+      "sha256": "cec320d520c725c1e20d421f4ad856068ea353de1c449589c92872a836c280a1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+      "bytes": 3518,
+      "sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+      "bytes": 5357,
+      "sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/walk_spec.rs.txt",
+      "bytes": 7622,
+      "sha256": "c9d8701e780b3c40cd8f480f8316c8a442e218cfacce83502be2b0ac130b55ff"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/walk_weight.rs.txt",
+      "bytes": 3076,
+      "sha256": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/engine/validate/nested_together/walk.rs.txt",
+      "bytes": 6669,
+      "sha256": "5e742f393352eb47b17b2db4e74b797694c4c3441279bbc5b36d200430769c7f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/ids/mod.rs.txt",
+      "bytes": 4503,
+      "sha256": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/ids/parts/chunk_001_custom_types.rs.txt",
+      "bytes": 7617,
+      "sha256": "43d098a618307508901433702434968a6a017c1415e8178663a101b04fa91793"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/input_schema.rs.txt",
+      "bytes": 1673,
+      "sha256": "3bdbaf006a3629e35d8dfc9e5b94522d05417ded68d2eec14caf1e1244cb11d4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/lib.rs.txt",
+      "bytes": 6357,
+      "sha256": "1a7dbd7da65929893c8ec9502101327be7804d78104bcc8b511c853cefa22ee4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/value/finite.rs.txt",
+      "bytes": 3118,
+      "sha256": "38595eb17f3e188fa2e98b25c7e1196891bb16423a91bb099c9936055b90c92a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/value/slot.rs.txt",
+      "bytes": 3862,
+      "sha256": "ea88b1814be1d77c102d32d3845bf528621ee81e4df838ba5cfb5eda9882f463"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/constraints.rs.txt",
+      "bytes": 6257,
+      "sha256": "7dc4b9704a392e220b655eb2f37d09fde1cd5b4908e495d86d66f2bcaeee15a6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/expr_program.rs.txt",
+      "bytes": 5219,
+      "sha256": "add58d10e08713d4725cb6df6225d64990e2172d45c8f563fb63b7d9f3ecaf8a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/input_constraint.rs.txt",
+      "bytes": 4817,
+      "sha256": "c487caece84f4f1c73ed084e06e9071e6f421883356a0d68ecc36327c266be78"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/input_slot.rs.txt",
+      "bytes": 6701,
+      "sha256": "7293483134db56f861bf558b0a7583e03659f05d769fe7c5dc7d9e8583e23831"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/node_kind.rs.txt",
+      "bytes": 6309,
+      "sha256": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/node.rs.txt",
+      "bytes": 6593,
+      "sha256": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/parts.rs.txt",
+      "bytes": 2782,
+      "sha256": "50bb26333bb393813e2cdbf563912b85212adcdb5aeeb616a5ba5024afdd1a96"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/resource_contract.rs.txt",
+      "bytes": 7181,
+      "sha256": "16a9cf6d0d16730d379c7378809ccc2165290ec140afd2650088a7a4c41cae84"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/retry_policy.rs.txt",
+      "bytes": 1298,
+      "sha256": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/route_enums.rs.txt",
+      "bytes": 3379,
+      "sha256": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/crates/vb_core/src/workflow/source_metadata.rs.txt",
+      "bytes": 10945,
+      "sha256": "d2ac6bb225c1b73d38b1dfd58eda9f8078b9f09f91319b7e6a67e8995237a853"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/verification/verus/extern_try_from_parts.rs.txt",
+      "bytes": 135679,
+      "sha256": "77997d761fd6ea6e013ee2634b775d9b071141e6bd5e1f195d0dff78720f55a4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/verification/verus/nested_projection/fixtures.rs.txt",
+      "bytes": 3799,
+      "sha256": "3393b1af1586e01d57ce21178b0414a71d2ac0383757610846169efd74fa9272"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/verification/verus/nested_projection/mod.rs.txt",
+      "bytes": 5264,
+      "sha256": "dd5bbe96b2bb5bea4773e829d2789de8b0e477fe7159f6ff9d1c82d376dfe52c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/verification/verus/nested_projection/scan.rs.txt",
+      "bytes": 6790,
+      "sha256": "6d0926c9121fa9ff84cc8f92f991f5548733b357f40157dbb57b343fbaa99f50"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/verification/verus/nested_projection/walk.rs.txt",
+      "bytes": 5798,
+      "sha256": "303794a9d01920759d3653980ec6b9ee04d7377ddfba302aacbfb0d00986013f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-package/postimages/verification/verus/try_from_parts.rs.txt",
+      "bytes": 487974,
+      "sha256": "22f40940c8fdf889f178c06c60ccb32e5f060ed7f3b9311ca521217db3de5c96"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/alternates/v4-vs-original181.patch.gz",
+      "bytes": 10817,
+      "sha256": "642c070202d309f02d2371006fa2d87aa0c3645c5b65ee2cb273eb50ef8388ec"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/excluded-artifacts.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/full-original.patch.gz",
+      "bytes": 390059,
+      "sha256": "c006895a26b956d9b32ba456b5de7d0a026e86aaa86f07076b5b960b576661b7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/HANDOFF.md",
+      "bytes": 2068,
+      "sha256": "1ced6f733592eae7765de5c8f89d4dc2197a90857d4737eb8f9c4fc63b294bb3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.beads/vb-eirmk.60/canonical-formal-repair-contract.md",
+      "bytes": 5012,
+      "sha256": "1d320eaa7aaccb8d169289f63be08c9a4cf0a52c65af509a15886de7698bba2a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/commands.txt",
+      "bytes": 2796,
+      "sha256": "bfee8cbda1567d368e59b6ec4765fa8ed12ab1c4a0d2a4b278fdac7f600bd8ec"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/commit-proposal.txt",
+      "bytes": 219,
+      "sha256": "91d13004cb2899d81dbfb89abe760fc51684715cdd4ceef4ea882f65f132017e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/drift.log.gz",
+      "bytes": 151,
+      "sha256": "92ef926662e0c39d44dda8409c575cb4da4d81a2485dd9398a73cb603ef315a4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/evidence.sha256",
+      "bytes": 2342,
+      "sha256": "b5a22494971241dd9f14ecd03b7a25d6e74ee3478d2b4d4e425852c50f97f969"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/first-verus.log.gz",
+      "bytes": 256,
+      "sha256": "367531f1397bc23a262dcdce117fd8e94cd269ea4b96b824a7d4d49cae56e58d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/format-check.log.gz",
+      "bytes": 20,
+      "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native-build.log.gz",
+      "bytes": 167,
+      "sha256": "1bd6a32b04b55b860724bc5065df88a4822946b3a97ca0b1c80607fddf6b6bef"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native-parity-build.log.gz",
+      "bytes": 196,
+      "sha256": "c6f4baa40a8070b27669e9ccb06429361db69b444ab6a8fde283a1a2bf7ff382"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native-parity.log.gz",
+      "bytes": 147,
+      "sha256": "5d829cf74bf9e82f5e7e574ea5d7fafae32cb1772804311ae8e634ff40de05d7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native-parity.rs.txt",
+      "bytes": 7538,
+      "sha256": "ed67bf08cd7df09961729df6c52aa6c5b89c6edb4d5134cedaa9c4da5a28cb9f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/artifacts.sha256.gz",
+      "bytes": 207,
+      "sha256": "319c7019c75d4c479afa51db34e4072a9a6525d6a4d01d7a5fd450c2186009de"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/artifacts.tsv.gz",
+      "bytes": 126,
+      "sha256": "fc0e44d7b16bf96e79f95245ef83093e069258c3f1c1816463a55942eaca5f8b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/build.jsonl.gz",
+      "bytes": 5928,
+      "sha256": "10e106a09583798ea1e713bf24cd5908daaac9f20bfaed2057e8fea7da7a198d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/build.stderr.gz",
+      "bytes": 91,
+      "sha256": "21b7ada78099c7e514c3dfce73c41d75b4ea284368c806164b5908bd71f2823c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/compiler.txt.gz",
+      "bytes": 171,
+      "sha256": "71bc27799ed57065f5e6ea4cf888b9a43a6c69767f5673b43349c36e71878582"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/source-after.sha256.gz",
+      "bytes": 159639,
+      "sha256": "c624b9c6edd0a11f3637e2875eb2bb72ece81e1614a68a00b5c41165de24cb92"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/source-before.sha256.gz",
+      "bytes": 159639,
+      "sha256": "c624b9c6edd0a11f3637e2875eb2bb72ece81e1614a68a00b5c41165de24cb92"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/native/validate-artifact.sha256.gz",
+      "bytes": 133,
+      "sha256": "f0cfe139a017c2450dc5c9d073b3fc04dc60aa36c1a2528fc8b07c4777b4c402"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/no-cheating-verus.log.gz",
+      "bytes": 62,
+      "sha256": "b17f9e581846e75236644bea9f825fb926e147deee762e9f447f6938b6010e09"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/production-binding.log.gz",
+      "bytes": 432,
+      "sha256": "ac221ff055669674f5d43f897dd3e0a53873d240c59bc5f4954d2dc6d3857941"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/proof.patch.gz",
+      "bytes": 7699,
+      "sha256": "7f425a774261e35ca9dddcc3a1a6174f168f47584640b45f4e5e9d1595c8d0c0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/report.md",
+      "bytes": 5535,
+      "sha256": "b1128b1d0d7ed64f2a30da32fa155fa2fb15a76b22964e2f31668ba264d98d67"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/scoped-verus.log.gz",
+      "bytes": 62,
+      "sha256": "b17f9e581846e75236644bea9f825fb926e147deee762e9f447f6938b6010e09"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/second-verus.log.gz",
+      "bytes": 300,
+      "sha256": "bf653183894c2ba012ba7a3360eb88bc7985732c14fbbf06f84ed2de18c7a219"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/source-callpath.md",
+      "bytes": 2605,
+      "sha256": "a77176eb49003ac506fbd3170a7139323c1ce32c4ca0e3f3b2d27a2c442e94cf"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/source.sha256",
+      "bytes": 1140,
+      "sha256": "2dbc69c3ac77e4fe38e21151312b865264fef7a56d766b863068c5f261970c5c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/.evidence/formal-native-r27/trust-markers.txt.gz",
+      "bytes": 20,
+      "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/verification/verus/extern_idempotency_decision.rs.txt",
+      "bytes": 526,
+      "sha256": "3ca691ce45b91b7040271870fe646c684e748c24e6497d677fb7cb73176c40df"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/verification/verus/idempotency_decision.rs.txt",
+      "bytes": 4684,
+      "sha256": "dad85480e4caae2734adbdc667b67570a2f4ab21d321ead1ba9269a448bb7308"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/original-commit/verification/verus/production_inner/idempotency_decision_production.rs.txt",
+      "bytes": 8479,
+      "sha256": "ea21e6e173032177f6015438cde65fc6d5ae804383cc0a4fe2a15c52baf18fda"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/formal3c/source-and-evidence-bindings.json",
+      "bytes": 11400,
+      "sha256": "ce9eb8b27dac22b7a3c5b65c8403b1b4065574e65e048d58d59761043dcf1dc5"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/groups.json",
+      "bytes": 7049,
+      "sha256": "b46571849d6b5bd105e7892e2bdeeb58c6136c6de8adab0f9530c7db9bbc7d4b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/manifest-v2.json",
+      "bytes": 108707,
+      "sha256": "9ae95c7efe0fbce2dd1d561965b2f7b463f44d1ab1fee6236178d68720574c59"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/manifest.json",
+      "bytes": 140357,
+      "sha256": "6a94d621a8d0f709040db742e3c294e7bc91552e1d3e998841b7c746c335d037"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/05b5b9b3d3ba-test-receipt.sha256.gz",
+      "bytes": 1592,
+      "sha256": "a0c25b5de55e30e7ae555a7b3a8aee4f2838b27a07ee26e689f5a840a25aecb2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/122be9d05b3c-packet.md.gz",
+      "bytes": 789,
+      "sha256": "d1782da9f2375309aae60a7c1811e66c37059e1b56f8a63f936f5f6e569a326c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/19931550932c-current-compat.stdout.gz",
+      "bytes": 489,
+      "sha256": "5b67642afda96f6076cc8d7dcc0e77127e344988401d21d12f26cb93c80915f8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/19a344328349-taint-ready.json.gz",
+      "bytes": 1086,
+      "sha256": "339ec4dcfe288e79a75626dcfe36f971448e502cf8f398760b9a6fa7866fe36a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/2171f2985311-current-compat.command.json.gz",
+      "bytes": 627,
+      "sha256": "33536d873fa80def8919df95ba1393eb59edce2bb76f499bbfe114d7ca4c3d53"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/305f87b5b9d2-shipped-compat.command.json.gz",
+      "bytes": 633,
+      "sha256": "8296aa6ba3249b86aafe0e5de1ad26738c1b1bd8419b21ea72c06221c93e4a73"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/31782810873e-test-review.md.gz",
+      "bytes": 1243,
+      "sha256": "786cb5285590334a5044bad02af77e55b7b9b1db973c508f22c4918ac1ae949c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/3665285cf48c-v4-evidence.sha256.gz",
+      "bytes": 1172,
+      "sha256": "999dae8d4a7b31012f3eaf1b9e0c8d34410ce4965e3e840582df763b6e9699de"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/3f6fbf4f20b0-report.md.gz",
+      "bytes": 4282,
+      "sha256": "a238ab58782a2a091823a46ab00128d8a3e9f98cb0abd531eaccbdb3c8ba8db1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/55765a7274b6-report-v4.md.gz",
+      "bytes": 4176,
+      "sha256": "13c1e6a4e984f16ffc2c76e7233b3e6af12a08626ed8fcc8ce92403f5ca260e6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/5732af49e0a8-v4-frozen.json.gz",
+      "bytes": 30822,
+      "sha256": "a4b552ee1beb88b2d139b4dd26299894b6d6074f2919c441a97f0a3d582124be"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/5add5068517a-test-suite-review.md.gz",
+      "bytes": 3799,
+      "sha256": "41fcdc0e28c8f5a13d10267787dbf1f7631e6a73a826f52e3471821b9ae093f6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/6055f83e6249-review.md.gz",
+      "bytes": 1221,
+      "sha256": "33db775b21726d8484b51fb39ce0744834c53dc275b7e74c1449e984399acfdd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/614b9ed28817-shipped-compat.stdout.gz",
+      "bytes": 1030,
+      "sha256": "bae297c47b4195ba7945793db78558270fe64c32ecef61c79b267115ad356b33"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/67937e1ffe26-commit-message.txt.gz",
+      "bytes": 801,
+      "sha256": "14ed000dd11b13ae94f7113a85dbc4231f179ae028add807c96b0ae0c39a2964"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/6970ffe053ad-combined.patch.gz",
+      "bytes": 41304,
+      "sha256": "80a79584b30d3be458e7e52246f7a6fe71e0844a10bd05f94071253dae71faa8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/7bb1831d645b-native14-qualified.json.gz",
+      "bytes": 3307,
+      "sha256": "b53a96dfdee1ff011b4d80d9fdca5749ccc2051c519ee36f11d574c3878cd695"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/8d32ed55a2f5-patch-check.stdout.gz",
+      "bytes": 719,
+      "sha256": "30993b92995c258030417bfb0a3c59d1a1ca3eb8d544e73a86a9c6354a38db51"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/8ec79afe307e-review.md.gz",
+      "bytes": 4041,
+      "sha256": "c4f3ae706309bc496dc6f37f97d4a1170ac1d2a3a9746bcde41b291dfba4ba53"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/9f05c6cf642a-files.json.gz",
+      "bytes": 5688,
+      "sha256": "7db5a385168674bfae85f80d05fd8892374a7180274f2973665eb3d6eacee891"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/b941600fab4e-review.md.gz",
+      "bytes": 1792,
+      "sha256": "7b53a1739ef948c2704cf62bda9d439a94aca2557b636aa460b9d855accdf063"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/bd4d71298fc9-review.md.gz",
+      "bytes": 4893,
+      "sha256": "05e0a967f98bb621d0f05441c07b3e0efbab7035f57e158716e796e53af94b4b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/c38d4711be9f-ready.json.gz",
+      "bytes": 837,
+      "sha256": "8bea49cb89357b932075c810cf34bab3ea69cf122e48435c79c102c9a521e154"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/c68964959988-receipt.sha256.gz",
+      "bytes": 288,
+      "sha256": "02adb721931633b691b34ece7c8c5b7a2f034fb1a68eb1f2ed93ecb641466ad4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/d062242951db-patch-check.command.json.gz",
+      "bytes": 184,
+      "sha256": "a9347b6160a82ff44c5ff4e434b73071e29c80a1c602be66b4fcc58869894492"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/bound-receipts/d95b2e2ad4c1-receipt.sha256.gz",
+      "bytes": 801,
+      "sha256": "de5f1717b3c73416f2f90a1dd4b8dec1fbbfa85126a8fd17262b1f643b222fd7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/combined.patch.gz",
+      "bytes": 41304,
+      "sha256": "80a79584b30d3be458e7e52246f7a6fe71e0844a10bd05f94071253dae71faa8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/original-files.json",
+      "bytes": 16511,
+      "sha256": "2f7cd16ca73df7eab7ac25381f7fdb4287b171c6da717bc290eb2d15a1c88696"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/original-handoff.json",
+      "bytes": 12568,
+      "sha256": "66dc31ddf7ad7220040c358ea8832839b4d89a3426bb059f2869853ab2e1cfe2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/original-receipt.json",
+      "bytes": 9158,
+      "sha256": "b7165214a9028f9aae5123146d6d443bee3b2e307af1ab74992f503fa0c30817"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+      "bytes": 6516,
+      "sha256": "0f3927307e67487fe6b799c8cd3692ccfd2e3b9a910d7330767c559dd525b696"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/cursor_proof.rs.txt",
+      "bytes": 5924,
+      "sha256": "603367937c3d6151db5c1930233b212c5d8a54fb7195fa0627f8ac23f79d3634"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence.rs.txt",
+      "bytes": 344,
+      "sha256": "cd425438bfede7df9b56b15d27b11f27744f6ef67d2a2cd1ac853f4b25bdbd54"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/construction.rs.txt",
+      "bytes": 5026,
+      "sha256": "c489d8e19ae4f251b00efaccbd3a87e6c51d11e4fa0ff5e5a92d6eba23053736"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/discriminants.rs.txt",
+      "bytes": 5540,
+      "sha256": "dd1335ecdeb96ccd1af70372b118d295a5ec2bb1ed8b653f18fbf369e56bc423"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/outer.rs.txt",
+      "bytes": 3842,
+      "sha256": "640c51f76ef12ec0375b5715ca1e43d812169f5257682324a597b52be5ea0b9c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/targets.rs.txt",
+      "bytes": 4055,
+      "sha256": "7d3984d81de5b74ac60344fbcb5e3ab70a7804f5cceb78e0e085268505decc20"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/traversal.rs.txt",
+      "bytes": 5229,
+      "sha256": "dd7f2712d37e4be91055a8db0389a662bd4389c890dc975f70df2323a94d20be"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/visits.rs.txt",
+      "bytes": 6266,
+      "sha256": "574ddff12c386133b59c475c35efe0582a746157e33812e447ebe82eb312df66"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/projected_equivalence/walk_correspondence.rs.txt",
+      "bytes": 5088,
+      "sha256": "cec320d520c725c1e20d421f4ad856068ea353de1c449589c92872a836c280a1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+      "bytes": 3518,
+      "sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+      "bytes": 5357,
+      "sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/walk_spec.rs.txt",
+      "bytes": 7622,
+      "sha256": "c9d8701e780b3c40cd8f480f8316c8a442e218cfacce83502be2b0ac130b55ff"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/walk_weight.rs.txt",
+      "bytes": 3076,
+      "sha256": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/engine/validate/nested_together/walk.rs.txt",
+      "bytes": 6669,
+      "sha256": "5e742f393352eb47b17b2db4e74b797694c4c3441279bbc5b36d200430769c7f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/ids/mod.rs.txt",
+      "bytes": 4503,
+      "sha256": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/ids/parts/chunk_001_custom_types.rs.txt",
+      "bytes": 7617,
+      "sha256": "43d098a618307508901433702434968a6a017c1415e8178663a101b04fa91793"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/input_schema.rs.txt",
+      "bytes": 1673,
+      "sha256": "3bdbaf006a3629e35d8dfc9e5b94522d05417ded68d2eec14caf1e1244cb11d4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/lib.rs.txt",
+      "bytes": 6357,
+      "sha256": "1a7dbd7da65929893c8ec9502101327be7804d78104bcc8b511c853cefa22ee4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/value/finite.rs.txt",
+      "bytes": 3118,
+      "sha256": "38595eb17f3e188fa2e98b25c7e1196891bb16423a91bb099c9936055b90c92a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/value/slot.rs.txt",
+      "bytes": 3862,
+      "sha256": "ea88b1814be1d77c102d32d3845bf528621ee81e4df838ba5cfb5eda9882f463"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/verification/kani/ids_kani_shard_index_bounds.rs.txt",
+      "bytes": 3283,
+      "sha256": "b876a1297bdb19cc8121a1ee241690d62943fa6dbf0c2d84b36f88c500835fb9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/constraints.rs.txt",
+      "bytes": 6257,
+      "sha256": "7dc4b9704a392e220b655eb2f37d09fde1cd5b4908e495d86d66f2bcaeee15a6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/expr_program.rs.txt",
+      "bytes": 5219,
+      "sha256": "add58d10e08713d4725cb6df6225d64990e2172d45c8f563fb63b7d9f3ecaf8a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/input_constraint.rs.txt",
+      "bytes": 4817,
+      "sha256": "c487caece84f4f1c73ed084e06e9071e6f421883356a0d68ecc36327c266be78"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/input_slot.rs.txt",
+      "bytes": 6701,
+      "sha256": "7293483134db56f861bf558b0a7583e03659f05d769fe7c5dc7d9e8583e23831"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/node_kind.rs.txt",
+      "bytes": 6309,
+      "sha256": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/node.rs.txt",
+      "bytes": 6593,
+      "sha256": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/parts.rs.txt",
+      "bytes": 2782,
+      "sha256": "50bb26333bb393813e2cdbf563912b85212adcdb5aeeb616a5ba5024afdd1a96"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/resource_contract.rs.txt",
+      "bytes": 7181,
+      "sha256": "16a9cf6d0d16730d379c7378809ccc2165290ec140afd2650088a7a4c41cae84"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/retry_policy.rs.txt",
+      "bytes": 1298,
+      "sha256": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/route_enums.rs.txt",
+      "bytes": 3379,
+      "sha256": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/crates/vb_core/src/workflow/source_metadata.rs.txt",
+      "bytes": 10945,
+      "sha256": "d2ac6bb225c1b73d38b1dfd58eda9f8078b9f09f91319b7e6a67e8995237a853"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/accepted_cli_digest_binding.rs.txt",
+      "bytes": 26038,
+      "sha256": "519c02ac6f2988807403a5c701b64fae8e47905bb7fa1fed330ca08d6d46c9b8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/admission_artifact_model.rs.txt",
+      "bytes": 56896,
+      "sha256": "8c09d98a066b7183ca20510a67b83d80f72c9f3560bd221664135af9a3e59394"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/budget_monotonic.rs.txt",
+      "bytes": 21308,
+      "sha256": "ac1f552dc6c8cffbe6b253e217fbcb905d4b3277e84cf4376b4d566684f76c15"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/collect_ir_structure.rs.txt",
+      "bytes": 61652,
+      "sha256": "badb9c9c061358ff60c698585aa00dfbcdf164d32d8732cc5191e1d728b79004"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/collect_lowering.rs.txt",
+      "bytes": 32837,
+      "sha256": "7f75af83ebc655a539ea3ad4e3e45dd4489b57caead75d7accb40898dbb4e565"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_budget_bounded.rs.txt",
+      "bytes": 12641,
+      "sha256": "c922e5c1c2670a25330bee4f9652f44ea529adecf02c981c3ff775d2877da319"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_budget_computation.rs.txt",
+      "bytes": 10746,
+      "sha256": "e75f5a18d9612808de8e49a39f4a1c69d9c0b584c8894a0214ba232b1df87881"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_budget_monotonic.rs.txt",
+      "bytes": 11157,
+      "sha256": "09399e7559b5c6bd86fa67a3e24336e748f97d6c5439d4b038752b8ce001195c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_collect_ir_structure.rs.txt",
+      "bytes": 24895,
+      "sha256": "b3ad353a0cb3209ad2da0534fff8352397f1350144f9df277c8baef4bd7669ea"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_collect_lowering.rs.txt",
+      "bytes": 27946,
+      "sha256": "8c744c068a09444802e6d142b43ffe441e0b9e79a9a1bbacba9a245e6409f907"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_error_parity.rs.txt",
+      "bytes": 5530,
+      "sha256": "b27f4f48bc3b310f87f0b8bf20df1a80d2009d54a00d42f3e357972b85db379f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_recovery_verification.rs.txt",
+      "bytes": 50340,
+      "sha256": "07487927cac88822256f064a6ee2b2b4c6fa810121a05dcb1e0f547b89627911"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_run_frame_invariant.rs.txt",
+      "bytes": 4402,
+      "sha256": "7b0477a98e7552fbd4cb5e7b65605e6f61c51f50cfc669356515e193247b81cd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_step_offset.rs.txt",
+      "bytes": 6698,
+      "sha256": "46b4f6a44c425abc3db74abbab563da3ed81b5a0943da78db2643ba43086a41d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_try_from_parts.rs.txt",
+      "bytes": 135683,
+      "sha256": "51f94d91c0d4c9046809ed6e9b3f0e5bbc59dd61b1f30798b95f880eded4ed00"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/extern_value_store_invariant.rs.txt",
+      "bytes": 20481,
+      "sha256": "b0444ea35f2e054a037b71c7c9af3425ef94170ee76bbcb9178b1410d243f643"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/idempotency_decision.rs.txt",
+      "bytes": 22363,
+      "sha256": "14785a1d9681d0fd411c0adf3418a41b5f18125257b57c3f38a1dbe1b18ab12b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/idempotency_replay_tracker.rs.txt",
+      "bytes": 35234,
+      "sha256": "5d3b72221ff3c40d1c3c484d24c7b132f266b8a60b9cc8c2577cabe0a5c4bd63"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/nested_projection/fixtures.rs.txt",
+      "bytes": 3799,
+      "sha256": "3393b1af1586e01d57ce21178b0414a71d2ac0383757610846169efd74fa9272"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/nested_projection/mod.rs.txt",
+      "bytes": 5264,
+      "sha256": "dd5bbe96b2bb5bea4773e829d2789de8b0e477fe7159f6ff9d1c82d376dfe52c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/nested_projection/scan.rs.txt",
+      "bytes": 6790,
+      "sha256": "6d0926c9121fa9ff84cc8f92f991f5548733b357f40157dbb57b343fbaa99f50"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/nested_projection/walk.rs.txt",
+      "bytes": 5798,
+      "sha256": "303794a9d01920759d3653980ec6b9ee04d7377ddfba302aacbfb0d00986013f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/_exit_code_production.rs.txt",
+      "bytes": 13789,
+      "sha256": "fd4ab2e2f49d567d9a00e3264dec5eeb15e9694bdbc83773059441c0f2a34ec4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/accepted_cli_digest_binding_production.rs.txt",
+      "bytes": 5542,
+      "sha256": "b2c03ca7ea59aad47f42187b7a888e0158fc24b7c7edbc53827f118c9ece94a3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/admission_artifact_production.rs.txt",
+      "bytes": 20151,
+      "sha256": "fd445869c83a027c05c472f1c40dc4ed636694ff71c5818d283b538607b0358a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/budget_bounded_production.rs.txt",
+      "bytes": 33658,
+      "sha256": "51d6db78405e2b8707b683417a13be49f08a5633477c8567ae888964a1fc8564"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/budget_computation_production.rs.txt",
+      "bytes": 25198,
+      "sha256": "fd7ab30f57eec107394f2f673a9b35e785955fdb5b1a6bcb24866ee98215960b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/budget_monotonic_production.rs.txt",
+      "bytes": 22838,
+      "sha256": "28306f05522cca4a916074ce1694a1e571a1b8a143f9793d157899043226c5c2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/emit_single_body_set_production.rs.txt",
+      "bytes": 10127,
+      "sha256": "0c5d2abaf4e63df680315f854e44c48ef1f5525ecfdc7ab66ade83984e5263b7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/error_parity_production.rs.txt",
+      "bytes": 31601,
+      "sha256": "4beabecd65ad3e5555f533c873b437bf0f76a51f5da7b0032205737138c81393"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/lower_canonical_collect_production.rs.txt",
+      "bytes": 4661,
+      "sha256": "0bdabd1e8f44d6a4c11bc3e6a82daacebd6fd8afa4d00c8a44a5dd930a394728"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/recovery_types_production.rs.txt",
+      "bytes": 16507,
+      "sha256": "ea6f5d8708a558f807709b43d3d44291ea2e7f66b2da0d1d161d80bfb5d0b688"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/run_frame_invariant_production.rs.txt",
+      "bytes": 21090,
+      "sha256": "44f5be1a906ce3daa2843db693cb22cab2f7300b0ce41646c3b838050b06322a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/step_offset_production.rs.txt",
+      "bytes": 9684,
+      "sha256": "66730a117325966f26870e1db847beba0e0fdcf94408e31f592b6fc8d3fe4e07"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/step_state_machine_production.rs.txt",
+      "bytes": 12805,
+      "sha256": "384151f79b17c77b224d4173c77408eebf531e7a8c7592e5645ecb1bac409970"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/try_from_parts_production_ids.rs.txt",
+      "bytes": 6267,
+      "sha256": "3743e1d0f8d47fe733d8f3bc110b5dace34efd9a64133ed6618e7a540f9ed22c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/try_from_parts_production.rs.txt",
+      "bytes": 1263,
+      "sha256": "80eab240026e53f83bbac8f615a9eb4255eb7b2eb06cd95b789aea2498a43b31"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/production_inner/v1_primitive_lowering_production.rs.txt",
+      "bytes": 27215,
+      "sha256": "28bdbcce47ff576dc56cfe617b8c4798590f79771b3657e1500090f6d56d685d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/step_offset.rs.txt",
+      "bytes": 17955,
+      "sha256": "49ece30f1e0a0a40b83849f185354562f04e142eec2ac4c72f5020cffa914fb7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/postimages/verification/verus/try_from_parts.rs.txt",
+      "bytes": 487974,
+      "sha256": "25eec0d0ee7b49499f2e53955a636874e13ff3b96af57eceffe2bfc0a4109b17"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/snapshot-vs-current-main.patch.gz",
+      "bytes": 52151,
+      "sha256": "0f07d71dcb28b4be3e059b6dd9e830a7bf9413f3747e81592c8f69af91388925"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/proof28/source-bindings.json",
+      "bytes": 43707,
+      "sha256": "0f6ddc90c826d1f81de0155613cc06c2f2b9283626de575ac866312cfbc9c6bb"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/README.md",
+      "bytes": 1058,
+      "sha256": "893cef9d07ab58e00073b06ccf0a5418157cc75b14564c178a340029d8c30468"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/snapshot-drift-pre-freeze.json",
+      "bytes": 28635,
+      "sha256": "ad8a0c5fb54f673a7411cd09c2dbc3bbffe2094cc12dc2bd047518415e8f4eb2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/proof-held/source-only-snapshot.json",
+      "bytes": 30036,
+      "sha256": "8e54d0323eca62a622787a967210bd6c7c8465e1855665a229a92979674f4221"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/candidate-a.patch.gz",
+      "bytes": 575,
+      "sha256": "b8c1b04312afba81d48e5e71734592132ccd98f699d58e5e0842c78a12aff0a7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/candidate-a.raw.patch.gz",
+      "bytes": 591,
+      "sha256": "f280ae1d406c6fbd02da81462fcfcdd554fd4ecf06ec6d2b9043bf2e9a86b50d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/manifest-v1.json",
+      "bytes": 6295,
+      "sha256": "4eb6bf82662740315c3de13a65888e45214469ceeb5e35d1566af5fa7925c605"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/README.md",
+      "bytes": 2072,
+      "sha256": "4c946e6bb73a71de5f0ff6c96443ef232bd0e48415538c3856245e5a4453073e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/taint-compat-contract.patch",
+      "bytes": 1684,
+      "sha256": "ae35567511263134e7e6de6c9b3339d9ac6a9956ff2f7cf82189db4cf5a01f97"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/taint-compat-unselected-evidence-v1.tar.gz",
+      "bytes": 1110259,
+      "sha256": "1aea329b5191bfbbdc6d5d4763982abf1924b3726de92c499a43dd87afd6ac63"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/validation-v1.json",
+      "bytes": 965,
+      "sha256": "12c39ed35976f6da0f3809992f4e869db139e861909b9d757c2890665f11b106"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/wal-false-green-evidence-v1.tar.gz",
+      "bytes": 6834,
+      "sha256": "d14d5d719fe47177010cfec860a26f94c84a21d210e80e7a2ef6d0b6983b2f44"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/packets/taint-wal-evidence/wal-unimplemented-contract.patch",
+      "bytes": 2162,
+      "sha256": "2ff691a313636bc2c42c311366fda106bb28f406f45f40d46a1784aae98eb5f3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/patches/canonical-current.patch.gz",
+      "bytes": 179087,
+      "sha256": "2ed31b6011a60532df8ca9f4292aef6a534fb47053c9b892c4b65835886e5c10"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/patches/cli-compatibility.patch.gz",
+      "bytes": 3649,
+      "sha256": "30f70559735c6f97bc463bcf06a57653f8e1cc0768f99e099a4ac6121108ab71"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/patches/formal-alternative.patch.gz",
+      "bytes": 390104,
+      "sha256": "8edb30c68616010fb11743de1b834cbc54522539119317af8be08d88350dfb79"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/patches/taint-compatibility-contract.patch.gz",
+      "bytes": 922,
+      "sha256": "a45700d08b15d81e9e21507a6e1ad293a529ff5215b207221aebd568c55942b0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/patches/wal-repair-design.patch.gz",
+      "bytes": 1139,
+      "sha256": "1dfcc76d1cac110b61917aeb9ad94c1a3609eae430ce1bba5fd9fc1366905e93"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/README.md",
+      "bytes": 4414,
+      "sha256": "555508c2cd4af6c8696078c47fe18916c0100d67536f6676ef8c1b40e1d6c26f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/src/artifact.rs.txt",
+      "bytes": 8037,
+      "sha256": "addfdcd444adef9954bb75cb50d6383908f65ccc1c530d474257eae24eebc672"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/src/artifact/retry_generation_tests.rs.txt",
+      "bytes": 13611,
+      "sha256": "d9c1fb73dd0e446d1dbb2cabe2e796f5ff4f8350280ab0d977a49f2f33f9f98e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/src/mod_compile_core.rs.txt",
+      "bytes": 9613,
+      "sha256": "dd3eeb8269e052f01e7e358ac2feca77cf18020d07abd0dd4074879f8483ac19"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/src/mod_compile_errors/codes.rs.txt",
+      "bytes": 10506,
+      "sha256": "f1340b9b2b853378072132ae23c79b267121092995a7b624491c56a6f1d56726"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/src/mod_compile_errors/kind.rs.txt",
+      "bytes": 11150,
+      "sha256": "45c5cc0bfa121aa14c5450d181027d97b43046550c88e8c100fd57dbd8d78b0e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/tests/canonical_retry_entrypoints.rs.txt",
+      "bytes": 4783,
+      "sha256": "9021bd00c1b350fd4f2b6bc0c0aa8cdf04edf29d3c6302297b84bbd380073971"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/tests/idempotency_parity.rs.txt",
+      "bytes": 6076,
+      "sha256": "9970b68edc8185a350ae84a7d6a606db35bcdb99c0ce2876652d08e9d443f1a2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_compile/tests/vb_eirmk_48_entry_qualification.rs.txt",
+      "bytes": 20122,
+      "sha256": "95bd6ee74207dafe42ceedb680a0cd26a00ee0f0a25536b3efbf4dc642134bdb"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action.rs.txt",
+      "bytes": 1481,
+      "sha256": "15728c397ebe06ba13d2955c904d80cdedc6e1fd8faa47a0f7f592213f6de79f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/contract.rs.txt",
+      "bytes": 4915,
+      "sha256": "0b24022f1b6a4095692f7a71de796eea7757a0adbbcdbfccc3476d14e08e2b2c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/retry_requirement.rs.txt",
+      "bytes": 1875,
+      "sha256": "79ebb403fb7cdce836a556c8527c6a70fcc0a31b7e4b7c7a53f389e2aa8c4465"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/tests.rs.txt",
+      "bytes": 1153,
+      "sha256": "a822a6368dc1fb96be594d197815308ea3736a1065ed6a0b50ba4513df740486"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/tests/contracts_and_idempotency.rs.txt",
+      "bytes": 13740,
+      "sha256": "431ef8d0ec2af8dc60fee8be276366c187da36e686f556ce2425d0bd8a6acf47"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/tests/dispatch_and_outcome.rs.txt",
+      "bytes": 13707,
+      "sha256": "614a28bbb6dad8f39ef4f527861d2c805f7b232eb90fd85d4da2692c1614114b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/tests/idempotency_verification.rs.txt",
+      "bytes": 13623,
+      "sha256": "67d1251c9809c1f89e273fafc7c09f1e93d7f5b472533fa2f7f86195e2f39d7d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/tests/ticket_and_serialization.rs.txt",
+      "bytes": 13526,
+      "sha256": "03555f232a97317bc24bf898cfc7bd0ede7a2874cbf937076f9d52ca156f951b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/action/validation.rs.txt",
+      "bytes": 6902,
+      "sha256": "0a1b34c9e1329d337df75ffb0e801bfe6b11a9ab781abb4f1450c5c35890f5b4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/engine/step/test_support.rs.txt",
+      "bytes": 7969,
+      "sha256": "43a1e97fc9846b728f05597ccb28430714afe9d6ac767f921a42f7986e542125"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/engine/tests/integration_capability_behavior.rs.txt",
+      "bytes": 41831,
+      "sha256": "5a5de3f422d0d31680ad345f1686405b335109257b07ddaaa081cd43f613bfe2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/engine/tests/integration_step_behavior/mod.rs.txt",
+      "bytes": 42317,
+      "sha256": "b82d1ca907a1b5e5a5696f9b956641ad45bf0a45bcc0e16bc047714c982a131f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/engine/tests/integration_taint_propagation.rs.txt",
+      "bytes": 2804,
+      "sha256": "e22374d212121e56276a74e7ebc3a435e2da7466ff670bfb99fce711992c5f22"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/lib.rs.txt",
+      "bytes": 6195,
+      "sha256": "b9e7b29d612896a0aa3af270822778939ff92344cb03d90b09e18ab888512bd9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/verification/kani/kani_idempotency_gates.rs.txt",
+      "bytes": 28246,
+      "sha256": "75331d40f4f6289106f7d0227f88434e5dd257648a9616c73af525e0ab5824fa"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/src/verification/kani/kani_workflow_arbitrary.rs.txt",
+      "bytes": 21174,
+      "sha256": "5b4e9379054ddd2669f6890f5026fd58ecf636a013e1122cc5195ce4791e4d70"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/tests/canonical_retry_policy.rs.txt",
+      "bytes": 5393,
+      "sha256": "d66992bae7616dd7393283c7aa5938a0862ec068007283bfc018464b4168d5eb"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/tests/idempotency_taint_view.rs.txt",
+      "bytes": 5346,
+      "sha256": "d4132909c2b10bb7dc76c46c2e27618e47a5c31663935e93960ac9c9649f809f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_core/tests/slot_flow_support/action_execution.rs.txt",
+      "bytes": 5279,
+      "sha256": "cde8abbc00af5e755b32e5c5dad8410267ecc2ff0d41dba2a48e82224bedee66"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/action_policy.rs.txt",
+      "bytes": 915,
+      "sha256": "b66eefdf318f808daaf43540aae46cee7f681cae49e8067324e49d92ae11c276"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/action/tests.rs.txt",
+      "bytes": 28212,
+      "sha256": "33eab416d5be16f6fc37e76f1fb9b61138df10b3c5e429608da11b221ce9f3b2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/admission/evidence_test_support.rs.txt",
+      "bytes": 4619,
+      "sha256": "5f9b13f14dbe899dcec59e0a97aac96e45d891f62421d0b51437a2f120225604"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs.txt",
+      "bytes": 9715,
+      "sha256": "ff44d7be85d547bc9bb726ec9055aca93bbf5037facd00d7700d84468435ebb3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/admission/parts/chunk_003_stores.rs.txt",
+      "bytes": 7476,
+      "sha256": "89be6be8252f4cfc27dbc398d7bdd752192add9331e0128f2db06a135c1c9b20"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/admission/parts/chunk_004_validation.rs.txt",
+      "bytes": 3717,
+      "sha256": "e620f2627785d820f6f7a89f555da0450c2a2ae4406f4e90883f002d82da88fc"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/admission/registered_verification_packed_tests.rs.txt",
+      "bytes": 3733,
+      "sha256": "e7aaf94c3db37fc99eb9eb37221d11c294ec3d7c548fbcc6026a4049a4bd2298"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/admission/registered_verification.rs.txt",
+      "bytes": 8349,
+      "sha256": "0d8533d274770888b40dc06f6002848ab9ef5c562dbf7bf2bd7828191fd1f5c3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/admission/version_compat_tests.rs.txt",
+      "bytes": 2896,
+      "sha256": "ee0bef97c581974090684d43cf77f3872d6d269d96318cd9b8f285e61fae5df9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/cold_contracts.rs.txt",
+      "bytes": 1609,
+      "sha256": "99741868817d2beceb80225995df02395023d540370ca7eb9bd429da8585a3e6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/action/mod.rs.txt",
+      "bytes": 9335,
+      "sha256": "537aaa91120cb86b7e0267f0710354e5cc7cfd869f512c6fddf2811d69beb94f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/action/tests.rs.txt",
+      "bytes": 14878,
+      "sha256": "f878ec33cec081059b260961a152d35e195fb92d059d94bbf4d4d75debe18219"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/drive/tests/cat_advanced.rs.txt",
+      "bytes": 9204,
+      "sha256": "912678ab6a55cfbfb130aaabe13a25af0b5a422399ea348f862fefec61eeb091"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/execute_tests/execute_dispatch.rs.txt",
+      "bytes": 28365,
+      "sha256": "7d57305193d5f3bbddc0b1725f078d6ad5fd13604c1463c87b7414b24b2a4435"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/tests/tests_blackhat.rs.txt",
+      "bytes": 21953,
+      "sha256": "642aaad31fa0311d8758aa7c9d9b385260217c178fb60bc580d2607560a56630"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/tests/tests_execute.rs.txt",
+      "bytes": 11679,
+      "sha256": "3815e1c2f98c0efad1f61231666101c58992b6b298557ec42272f810c772bc5d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/tests/tests_proptest_blackhat_review.rs.txt",
+      "bytes": 42967,
+      "sha256": "c80d73acdc323cafab7731764c17e412a69bad0c826767ac5f611e930eaf1050"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/engine/types/errors.rs.txt",
+      "bytes": 3997,
+      "sha256": "bd4fbfdedd9dcf1a2c41d91b73d23be8e73589faf422cb5729aa2423a688bea3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/error/diagnostics.rs.txt",
+      "bytes": 12908,
+      "sha256": "454bbd1b3995ba755308b64aa213c78947df032f4205c612d64986c76fd199ed"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/error/display.rs.txt",
+      "bytes": 5586,
+      "sha256": "ea16f097d128d96fa7dae898cf9860358135b184f288dd074e05528e78345144"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/error/display/dynamic.rs.txt",
+      "bytes": 8084,
+      "sha256": "6e8b99e6f1730ff50537f594be0e8c128efd53294cf581892a92aa099eeaaab4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/error/equality/core_groups.rs.txt",
+      "bytes": 3947,
+      "sha256": "0e9f965daefd41a74f9f270872d34080967a03a41706d1102a1370a0c3c77c32"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/error/mod.rs.txt",
+      "bytes": 16431,
+      "sha256": "3ce08ad617f3578eca20dd6bc87f9e2773ab16fc1f43d2a0e6b6077d55501561"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/lib.rs.txt",
+      "bytes": 3808,
+      "sha256": "6ea8d124f9806c724d1f641088cb807a860045fe59c84f0c77ec228088a1b638"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/primitives/retry.rs.txt",
+      "bytes": 10262,
+      "sha256": "517b436ef13568e4075a05fcd155e5d7bad1062c7636ff56d78cfca55347ffa8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/primitives/retry/tests.rs.txt",
+      "bytes": 41520,
+      "sha256": "936ede46755a26dd3f19842e5094bc51c6247a71a924533fa55b73bb8074c66e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/recovery.rs.txt",
+      "bytes": 10728,
+      "sha256": "87b186fd888c088b053c273fe2e8ad85af1b157f2fde53b55009597c01940d21"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/recovery/full.rs.txt",
+      "bytes": 9462,
+      "sha256": "ff074842e5780c60c34d30d1efda636800095fe137e9b473a370ff35020ae407"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/recovery/full/admission_tests.rs.txt",
+      "bytes": 30669,
+      "sha256": "4d345190f324f5d3f8830e7e5e4e7774452c5c787c813e81c9838a228736e24e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/recovery/full/admission.rs.txt",
+      "bytes": 8792,
+      "sha256": "067c49d820c5e5380103d842635d7ba2deb0d310738f159082db4e7a79485a91"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_checkpoint_tests.rs.txt",
+      "bytes": 26644,
+      "sha256": "7755a99697bbabf08a3a264a61208ceae3230eb3c4ba25346484655ee8fdf798"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_checkpoint.rs.txt",
+      "bytes": 11225,
+      "sha256": "a2e155e1ca2d8f8e82ed8c606d8b7864f98b60ac9f4910292255a3fcd4c4c2a3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_checkpoint/support.rs.txt",
+      "bytes": 6786,
+      "sha256": "205bf677c3c99ec905a7016b48bac8c641c26dda84cff3708e0841379983af08"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_continuation.rs.txt",
+      "bytes": 4971,
+      "sha256": "e87675336c3ba11dc3b2c80ccd81db329a7bd831f30d9ed910d33f5a31cc074f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_continuation/authority.rs.txt",
+      "bytes": 4437,
+      "sha256": "9106e3d73b9e9cc3487bc4a1a520f085abe116c480be3756742390e0315e6060"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_continuation/payload.rs.txt",
+      "bytes": 3196,
+      "sha256": "2c9b46359e97ea1cab133084dcd2f6c9e8d3f6e0f916fb086f035823c3b9a08a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_continuation/transport/preflight.rs.txt",
+      "bytes": 5363,
+      "sha256": "c596cc2588283f1be3ccc8e456d1ed123a9c34484fe868d5927663294240da51"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_continuation/transport/reference.rs.txt",
+      "bytes": 2174,
+      "sha256": "df1af3c56fc24bfcffae1b61efef6f60e4b57b8598c7d94c5f2aad48b7540b21"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/run_continuation/validation.rs.txt",
+      "bytes": 3853,
+      "sha256": "197f5f1f591f82d86904215611e0742cf3c0e52702bcc121450a9434d0f9b407"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/runtime_tests/helpers_and_recovery_tests.rs.txt",
+      "bytes": 18033,
+      "sha256": "8e1664c3fa1b4ea9b1b7e9aeb9a472c2e23167bfc54f8ddda860f76c6d920903"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/runtime_tests/quota_recovery_tests.rs.txt",
+      "bytes": 11203,
+      "sha256": "bd2d17de071e80ab3da99bbe5565e9b10e66a88d05fbb9333e325cd8d330a6e8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/runtime_tests/recovery_verifier_contract_tests.rs.txt",
+      "bytes": 11931,
+      "sha256": "34284ec89b25689240b409aa538826b7ddaf955b522722ca29d63f75e4e46a5c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/runtime/recovery_product.rs.txt",
+      "bytes": 10419,
+      "sha256": "796080a70a50537e49ef95e1fdbfb7e4a670fc27748ba6c19ffeb998e59f2273"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/runtime/registered_executor.rs.txt",
+      "bytes": 9071,
+      "sha256": "40c072f7fc5da03792c9c9d920f938dcae88470ab58fbbe3dafe0de141b09253"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/runtime/retry_recovery.rs.txt",
+      "bytes": 9596,
+      "sha256": "c3ddf1770b7a3aec659cff63f9341f31b87d3d4516b486387fc2ffc69e82e0ac"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/runtime/shutdown_fixtures.rs.txt",
+      "bytes": 6803,
+      "sha256": "5f5af824f56d5afa8265c104f56578bf33d073b622df9a555d6b0e52128b8cde"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/contract_validation.rs.txt",
+      "bytes": 6420,
+      "sha256": "3b61f7c4c22b2bb460e9f33ad75a2715dcb4587bcbf81d98796133e11d14bb68"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs.txt",
+      "bytes": 44680,
+      "sha256": "5956df29b0ff5ad9da739ea10f5da28b790808d87e8d3cf38c77f140bd250c6e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs.txt",
+      "bytes": 14116,
+      "sha256": "9183d2237d908ada56425dbb06cf56a0940aec1f6e73c94de28688bdf3bcc8fe"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle_tests/chunk_005_d.rs.txt",
+      "bytes": 45349,
+      "sha256": "64197a2655a248e29b075951ac5b00dcafc0d8d718ee919ad404cce429907540"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle_tests/chunk_008.rs.txt",
+      "bytes": 13781,
+      "sha256": "9e0cc5daa49b7ca08ed5387777aaad6ee81d81fee1594201dfb40c9f2f51d726"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs.txt",
+      "bytes": 32302,
+      "sha256": "bd97e1ffeec5bd59ecd69b985191383122869c7541c7437cb137e0c5fa624fb0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle_tests/secret_recovery_tests.rs.txt",
+      "bytes": 19239,
+      "sha256": "e806abba632b56e5949e493c0e52d43e1ab0d0df42e2f1e703907ca6ed8c81a1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle_tests/submission_pair_tests.rs.txt",
+      "bytes": 18242,
+      "sha256": "0ed083b975355c00fb54a2736df42846f88866e978616b2cbc52162acaf05ccd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle/chunk_001/recover_state.rs.txt",
+      "bytes": 4244,
+      "sha256": "4d4f3136cfba53859c5f3588df8f3bb745fd1ae3823451d24e8a0b890df63b89"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle/execution_binding.rs.txt",
+      "bytes": 3703,
+      "sha256": "6e70d59cc4d2e7692d0e7185d373191aee2e669c5192d898329cc323c475d75f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle/owned_activation/prefix.rs.txt",
+      "bytes": 6290,
+      "sha256": "f52b277961cb14f29687f2bed6c0fa92fa5e3a8b5709e77dd19346cda719e81e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/lifecycle/registered_completion.rs.txt",
+      "bytes": 3142,
+      "sha256": "18e625344a95a6d5be9dd90b9b5d2396e024fa2a1c2c92f67a77b094d6324c86"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/tests/test_fixtures.rs.txt",
+      "bytes": 1611,
+      "sha256": "b440fb29a3f1da57a8cf752a641a1e5cbaeb4700230f33485a945537a4a274b9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/src/shard/tests/tick_shard_tests.rs.txt",
+      "bytes": 46074,
+      "sha256": "3f9a5145971ec66a6602ba686025a226173d09c971f8fd802b373cd5bf383b12"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/canonical_action_policy.rs.txt",
+      "bytes": 7994,
+      "sha256": "1fd3516a35be1c9dba9e9d6f722ae93a136941f3dee5e39bb56d1cf5133ae7c9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/canonical_checkpoint_bytes.rs.txt",
+      "bytes": 3026,
+      "sha256": "be8f052531258182b9b8aa359dc3f7321081a268b92169eff10cb86d0a9b60e9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/canonical_guard_scenarios.rs.txt",
+      "bytes": 3015,
+      "sha256": "c8a6e6f26739191eeaa45991599938a3b913df694c2bc6bf8ede5ec6259c5b0e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/canonical_guard_scenarios/fixture.rs.txt",
+      "bytes": 5260,
+      "sha256": "3ad53f8f00b10767688434d87ffc520a287ade3cf018a5e3d388b9d71cb76f76"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/canonical_guard_scenarios/workflow.rs.txt",
+      "bytes": 2611,
+      "sha256": "595b241d70a9347e220711074c39c0949f81af3d020ee2aca48f51ddeb41cd38"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/fixtures/taxonomy60/none-safe/artifact.postcard.gz",
+      "bytes": 536,
+      "sha256": "647f1c52ab280a87f7b3fa5ff90dbe00efce7bd9d5500d9b1b328a798c565c93"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/fixtures/taxonomy60/none-safe/checkpoint.postcard.gz",
+      "bytes": 385,
+      "sha256": "fb9b926064d14f140eb1c289590a96a41fe91aeae9c8c7044e48d7322f2420ee"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/fixtures/taxonomy60/PROVENANCE.md.txt",
+      "bytes": 950,
+      "sha256": "f923355a0cbc83243d510546b47b704d5740df2b5ffec2382fe7b34a1e1011b7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/fixtures/taxonomy60/writes-key-required/artifact.postcard.gz",
+      "bytes": 679,
+      "sha256": "08a812d41a49310ab6a54a20f82a0f8d5f0d59a5115d7377a5a13b6556f17552"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_runtime/tests/fixtures/taxonomy60/writes-key-required/checkpoint.postcard.gz",
+      "bytes": 385,
+      "sha256": "1a1bf2efb342b4e93c3d5080d5dc7654e372f07e2f6e5fabb5a2deddd1952ae7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/admission.rs.txt",
+      "bytes": 10500,
+      "sha256": "d4b3c05753a2d88d652af9faf3981407aa1af2e5d45449ade6238b6af67babd9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/admission/canonical_fingerprint.rs.txt",
+      "bytes": 1682,
+      "sha256": "6835be40abcd7c53a3d06c5536296e026bf51e0918a044fd778b05a54042d8d7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/admission/canonical_verification.rs.txt",
+      "bytes": 5792,
+      "sha256": "570004b1b39819ce3958615bcf2a738e30d7b5c9a6c32012d999ffe950c3e449"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/error/codes.rs.txt",
+      "bytes": 18576,
+      "sha256": "984ba57cdf5fc4a3dc1fb480b6b6ca38a17acf6c3663738e2ca24d86c2f476ea"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/error/mod.rs.txt",
+      "bytes": 8394,
+      "sha256": "6c76509e4045dbf298d34f4e268a6d002b5ab1bee745c86162716fe685562e0a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/executor/canonical_catalog.rs.txt",
+      "bytes": 6904,
+      "sha256": "ef092b20502e6bcea392fdd32a093590a06cafadc1099cf68ee4d493977ba963"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/executor/error.rs.txt",
+      "bytes": 2749,
+      "sha256": "db2d25eff118583d6d358b646e216711482fb0aea1bc64bf539359d5407f1e58"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/executor/historical_identity.rs.txt",
+      "bytes": 225,
+      "sha256": "10d1e0b6ab5ac6119810f30d78bbb69c8585e51594f5f8230ddeac700d3e27e2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/executor/historical_receipt.rs.txt",
+      "bytes": 1858,
+      "sha256": "12867dd170eb1c8794fc530feefc8df5570f73888470d289c10323dc259dbc05"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/executor/historical_register.rs.txt",
+      "bytes": 938,
+      "sha256": "271a01cd722f40e1e8f8290fa41ff81e42ce13ab31bd149758f92bbb4e94364c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/executor/mod.rs.txt",
+      "bytes": 1037,
+      "sha256": "331e7dd8e1d7a5c4e2355496e9a185a7a528b7613a0453bcf403ab3bf9f163f4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/contracts.rs.txt",
+      "bytes": 2776,
+      "sha256": "ec2358c8084204c646459a390340d3e0a39f64fdcd2d7684bdb47baefe6d5d01"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/error.rs.txt",
+      "bytes": 1283,
+      "sha256": "59771e1eb93696d53bb6c778bcdb9c50357342e463e3c09e103a996f4a86cee3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/fingerprints.rs.txt",
+      "bytes": 3672,
+      "sha256": "2ea4ca72dd87a3eeedaf4ed04a831e82fb89fb0cc160b693339d548e2782e35f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/gate12.rs.txt",
+      "bytes": 4276,
+      "sha256": "d5506e580395724edd90ad84d02887a804d154f818b7f08cb1e4ef0863c44692"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_core/src/action/contract.rs.source.txt",
+      "bytes": 4022,
+      "sha256": "ffe26304f079a57aada696bd2339b3f3f16e7202281a23de055ea01d4dce8269"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_core/src/action/registry.rs.source.txt",
+      "bytes": 1900,
+      "sha256": "c957887bfb624a7ee67691fc20b366acfbae17942a3f9cb3bbba12c05fcdc48f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_core/src/budget.rs.source.txt",
+      "bytes": 9131,
+      "sha256": "1289a2673c7e3d91ffbfc86b9a95ef323f8e88066d78aa7fb95028e230d821e1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_core/src/workflow/mod.rs.source.txt",
+      "bytes": 3391,
+      "sha256": "cfbeacca80a1c548aa1c4765b885d276764aff0a42f90583938ec3be4ae54338"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/admission.rs.source.txt",
+      "bytes": 10575,
+      "sha256": "174f96056f08406b1f808d13c8d85cd9f96b493ddf115fef9ebf3181d0d0c724"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/admission/verification.rs.source.txt",
+      "bytes": 11125,
+      "sha256": "2deea708531893f5b721ee2764259bc294ad54b6a7e1c6e893529245dcccfa8f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/admission/verification/ledger.rs.source.txt",
+      "bytes": 2210,
+      "sha256": "d5e8933764be71964f4c2dca4a0034127520bb4e0610ff5da90e01a60421b504"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/executor/authority.rs.source.txt",
+      "bytes": 1309,
+      "sha256": "8f4ef76dd483184f4e877ee05274861ae3a52c5a10ff29e592b56f87b2178feb"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/executor/catalog.rs.source.txt",
+      "bytes": 9234,
+      "sha256": "4f54b10120dc77f2ff9203e702aa8b1b3a2aa27ab54c050c51ec15675c877717"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/executor/conformance.rs.source.txt",
+      "bytes": 7844,
+      "sha256": "a4051d4c928c2e910a7d127dc29a6a4d951b55a954de552fdc6ada8094f20cd0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/executor/receipt.rs.source.txt",
+      "bytes": 3106,
+      "sha256": "8f5e9b5de073f518ad3b58fc1de7d017720879be1e22d4bceb075bdc66d6baee"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_storage/src/executor/register.rs.source.txt",
+      "bytes": 6976,
+      "sha256": "f13ab0dc3c1b6c871bd1d0cc2f6d29482f493a8951933ae3fa95e710e480d20d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_07.rs.source.txt",
+      "bytes": 4588,
+      "sha256": "2e5fc475d781e7a4a3eae66add8bf4af28255656b3d79d3705282391a2aa0971"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_08.rs.source.txt",
+      "bytes": 3328,
+      "sha256": "1299c6e4da655ac1a337a19ede37d69cd3040bb34935e63e16f4b185e9652b51"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_09.rs.source.txt",
+      "bytes": 7467,
+      "sha256": "12479c7b9806c84b489bc4b84715be79828feaa68e01dd56c6fc33d60f40b71b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_10_refs.rs.source.txt",
+      "bytes": 1898,
+      "sha256": "2d7518bdefdc9ce22c80dfeb5cc5d92f3f650c9ee13b768af5a58e62d994f84b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_10.rs.source.txt",
+      "bytes": 13090,
+      "sha256": "986ce7618df1734f8cfbe29a75b0c02bfb8f46ff2d9141cc6262829d948fa97d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_11_spans.rs.source.txt",
+      "bytes": 5893,
+      "sha256": "04a24512a4574a73be34c582f993edc0dd47ec721bd19f7b53805ec5a9788dd6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_11.rs.source.txt",
+      "bytes": 11218,
+      "sha256": "2bcabbcace24157ac51ed8f587114b0ccee2611538ec723049150f795106af40"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_12.rs.source.txt",
+      "bytes": 5567,
+      "sha256": "fff7b08f80c241a4385da9934809a656b32cb60cae5464db881bff982a83a71a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_13.rs.source.txt",
+      "bytes": 334,
+      "sha256": "ddf998fda2d42f167ee45ed8f81dfdac4d182f1287c35a09c0ac635d0e91448f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_14.rs.source.txt",
+      "bytes": 782,
+      "sha256": "632e9a8fd70b219bed236c65d5de5f1ce94b21aa20f211dbc191e16bad5b45a5"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/gate_15.rs.source.txt",
+      "bytes": 1188,
+      "sha256": "43b32107b2a22f1c4856356b37cd162d45feebdee0f10670d27808c3958304cd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/gates/mod.rs.source.txt",
+      "bytes": 1874,
+      "sha256": "50f3fbd8aa01b25cc3a522e545a59837efbc5dcd9f868f7e1a4bc3282562db55"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/crates/vb_validate/src/shared.rs.source.txt",
+      "bytes": 6838,
+      "sha256": "b3a01f338360d8423cf557a0ddfde30f0ce6caf4a8efe59b4802d38dc5e94995"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/inputs/SHA256SUMS.txt",
+      "bytes": 2840,
+      "sha256": "94707ac55ac98bc79fe372407fa77cda56fc54b68ade2e33193f650e802b640a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/mod.rs.txt",
+      "bytes": 3488,
+      "sha256": "e0ff7dcf20a70dbd258127384916ad48ea66a9ab7c85f96fd575ab163decb2fa"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/packs.rs.txt",
+      "bytes": 3299,
+      "sha256": "6b6a9dda57918fb4b4b0bc610d0e68c053c9a94dec2d47126d0fb7ec2b218bbe"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/proof.rs.txt",
+      "bytes": 3201,
+      "sha256": "52e6dbe4ee0f0bdb3ed649b774dfb9bebbefb949f9f52524ab8a8f1bbdb0bd15"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/verification.rs.txt",
+      "bytes": 7254,
+      "sha256": "042868b8bb663810d6b62abd1818d850ce22cc509488ffa541e02d78cd76f25d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/historical/workflow.rs.txt",
+      "bytes": 4343,
+      "sha256": "f05a714579bf6002c59269ed95c3bd582e4b6f54af8fd26df4f337c3e79267cc"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/journal/admission.rs.txt",
+      "bytes": 1114,
+      "sha256": "bc943ad08246c16906e9c7af26876d8a10854848d3093bcdd51dd6f08b281fd2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/lib.rs.txt",
+      "bytes": 8786,
+      "sha256": "bb73cc1eff9ec0265fd54ffa1e3a7e8d8104a588ec91f77e7a90366d5fa83ef8"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/stored_contracts/bounded.rs.txt",
+      "bytes": 1810,
+      "sha256": "e8f31d698156afce9c5d78bd585e7af230852cf784b643a548e6c3f74642cd1c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/stored_contracts/error.rs.txt",
+      "bytes": 1951,
+      "sha256": "4cce8fe4b3e23d67d739ca3ae5c5583d0e8a4ed378a9e18de1b93b708a6d65bd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/stored_contracts/mod.rs.txt",
+      "bytes": 7193,
+      "sha256": "0b56e42c3ff4fb5dd7e20a002be587012187864347a90ccbacf1167306afab56"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/stored_contracts/view.rs.txt",
+      "bytes": 3966,
+      "sha256": "20d605b53413a4e120e6187d0477b64b40647a23521691a10cf3924c4e2c856d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/src/stored_contracts/wire.rs.txt",
+      "bytes": 1226,
+      "sha256": "9a8f03582165b9eee6af535b0984e45a56cab57db6fff975f3616bc69e5f75bc"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/committed-register.sha256.txt",
+      "bytes": 6280,
+      "sha256": "7fdb3955f6c611e79e9cdd60aabc8339bec8ffb6c69e3f43c19230943e928c93"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/committed-register.tar.gz.gz",
+      "bytes": 10339,
+      "sha256": "37ce134f2a7a6f81e2010998ee686262ea460c384aea83dcf8bab046c44cc17c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/creates.artifact.gz",
+      "bytes": 533,
+      "sha256": "b3fbf128a7eb173643058f26c61e83370094a72b754d531bb606d8f419852825"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/destroys.artifact.gz",
+      "bytes": 532,
+      "sha256": "f4e449389574a1b21f64fa0f32183e6684a8e1d99d983a0094c12f5ad782e59c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/layout-sentinel-offsets.postcard.txt",
+      "bytes": 3,
+      "sha256": "d719f06f8a111130dba45e76adcafd0d91de69a4d53f711b6057a750ee17e192"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/layout-sentinel.contract.gz",
+      "bytes": 59,
+      "sha256": "26861a7fe465ae8e146045e65874c9c8382f93b34a87eb9bf376afd4e3605a03"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/layout-sentinel.registry.gz",
+      "bytes": 60,
+      "sha256": "ac6c10e09a30c02ddd1fd3265f29e36fa1b12114850a349d58731233180b1ed9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/none-safe.artifact.gz",
+      "bytes": 536,
+      "sha256": "647f1c52ab280a87f7b3fa5ff90dbe00efce7bd9d5500d9b1b328a798c565c93"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/oracle45-slices.postcard.gz",
+      "bytes": 3348,
+      "sha256": "dff836a70d11af8826cb1be029750542f71993f6ff52b792aba3dfea8c259670"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/oracle45.postcard.gz",
+      "bytes": 3346,
+      "sha256": "ef7097d44d9f2a7b3918b4c99d427d2113005ba69f73df37ac99b8c7303a7c73"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/pending-zero.sha256.txt",
+      "bytes": 5140,
+      "sha256": "e461dc38d95fde637cbab1b0a086cf59b268aafcc0562ba83e1d6f15fb0693ce"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/pending-zero.tar.gz.gz",
+      "bytes": 9671,
+      "sha256": "e82bd213b99bcd0b628b2d87cbdf2bb452b74a492948ed941b2d7f51f6dfd564"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/registry45.postcard.gz",
+      "bytes": 189,
+      "sha256": "24a3c24f6d33fad458fd761b4954460bfa9f19631e0ae85960fd8268e2fec1f5"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/sends.artifact.gz",
+      "bytes": 533,
+      "sha256": "64598f459d2cc20caf3e37b9106f026e39356ba864b109707d3fa19dc1d91e81"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/workflow.postcard.gz",
+      "bytes": 138,
+      "sha256": "5cfefd1d3a91479e91a097e63e46c96be6d2ec641e736a42b267d56757d63c60"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/fixtures/historical-main/writes-key-required.artifact.gz",
+      "bytes": 679,
+      "sha256": "08a812d41a49310ab6a54a20f82a0f8d5f0d59a5115d7377a5a13b6556f17552"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary.rs.txt",
+      "bytes": 533,
+      "sha256": "d31524c147c5ef441b03456f9a6b11bab4b9b0d0642742f9a0704866dc10dff3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/bounds.rs.txt",
+      "bytes": 9033,
+      "sha256": "c24a7718adffc48af2d9fdf4ffefa8205a6eec67068765746c485bbffb90e861"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/catalog.rs.txt",
+      "bytes": 5145,
+      "sha256": "78216b4d5f421dfcff69ab0f66a3f93ddc363719ad0ff3a39fda448c0b507468"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/helpers.rs.txt",
+      "bytes": 5352,
+      "sha256": "fa379bc5f70c456aed5f33e42d6530583b3edf00cfb868c0bd2a10a231e1cf85"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/native_oracle.rs.txt",
+      "bytes": 5325,
+      "sha256": "f90b87ee201547438dbbac9e0e1da8714442166606dc3432049a2e4f2e98bad2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/refusals.rs.txt",
+      "bytes": 7432,
+      "sha256": "d2d32775a3b62b4ed8f0e1997b661d899b249a2e63a2b1e968289e6392474bd6"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/retained.rs.txt",
+      "bytes": 8039,
+      "sha256": "071407c993871b75153b3b93dea1ecdb2c1eb51a83ced672d853bf42a9e6f5f3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/wire_layout.rs.txt",
+      "bytes": 3900,
+      "sha256": "9225820d1038f1ff1c1fbe14ba1831cb836dcd6212ada4590b5db1af0ba204bf"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_storage/tests/stored_contract_boundary/writer.rs.txt",
+      "bytes": 7600,
+      "sha256": "b4f56dfdc25ff83c59f685020a80dd922a1e9795b607fb3557f6b380eae95896"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/benches/capability_schema.rs.txt",
+      "bytes": 3159,
+      "sha256": "0a2af17e0ce0fc814563fdbd1e083515cdc13bc6f838570f8c6af36d8ff5b7bc"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/src/gate_12_14_15/tests.rs.txt",
+      "bytes": 7801,
+      "sha256": "bb2e950e5b2cfa6ec3e9594e5c28bf00b2df816a725d0e26af031bc1a0b764c2"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/src/idempotency_contract.rs.txt",
+      "bytes": 10284,
+      "sha256": "80af91f45ef2d9f57863a7dca9f87566e2fb5f5b91f0fc78f05a3add8100d450"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/src/idempotency_contract/retry_reachability.rs.txt",
+      "bytes": 2970,
+      "sha256": "b0ce933f04b74a7c51df66dffa8b6f560171352b207f6c904f8d4d23110c5867"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/src/idempotency_contract/retry_reachability/targets.rs.txt",
+      "bytes": 4759,
+      "sha256": "08862882b5326ce514bc5c1aadf4d655a99e9ca52d9608427b52ecfe14bfbe88"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/src/verification/kani_idempotency_contract.rs.txt",
+      "bytes": 4481,
+      "sha256": "7a35473faa04ef31a0e08df6d051c793f5e391c97af78c626c18afa993192aff"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/tests/canonical_retry_reachability.rs.txt",
+      "bytes": 5620,
+      "sha256": "8c48dcac9b97568ea28798b3ce9630eed28ddfab2d7fdfbbce62c52d3ced294d"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/tests/canonical_retry_reachability/mod.rs.txt",
+      "bytes": 6939,
+      "sha256": "8eaf0598e49c73936d7476f8512c601d4b0b98fdbfbc3b9b733e7248c76e9beb"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/tests/canonical_retry_reachability/positive_edges.rs.txt",
+      "bytes": 2121,
+      "sha256": "85860f73c7238caedc7e19fc943887d59bb0996550ecf64846bb9881b0bf6665"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/tests/capability_contract_schema.rs.txt",
+      "bytes": 12063,
+      "sha256": "71ff1e030164c464d6bb025e0521e4d1fb8dd610b468b2f53f104c5a2631030e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/tests/idempotency_contract_red.proptest-regressions.txt",
+      "bytes": 391,
+      "sha256": "749006e43df872531a3aed1c271a5cbbd47d8697ab387f1f0fd097dc3bd54140"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/vb_validate/tests/idempotency_contract_red.rs.txt",
+      "bytes": 27034,
+      "sha256": "11fe045b453c1360fe2b2b941c122c11296aba33ef33fdef0d771686fdb3abbc"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/velvet_ballistics/src/action_specs.rs.txt",
+      "bytes": 10099,
+      "sha256": "c249924a53e80320a33a131e982097077375057a45223b0ca8ac34ac41e7bfa1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/velvet_ballistics/src/action_specs/canonical_tests.rs.txt",
+      "bytes": 3119,
+      "sha256": "16ad881a3d492163830f6f486c68d71612030198e52929a486521b78b8cbc8d1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/velvet_ballistics/src/ipc_startup_recovery_tests.rs.txt",
+      "bytes": 10133,
+      "sha256": "1a80a0ff307d0b99018fc3e10573610b976c3c4947d28b5d953a9890e9804668"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs.txt",
+      "bytes": 18836,
+      "sha256": "cfa2ea260713ab23921b7410686f1cd0ba1682557034eb3a66012dd4ecad9d2b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/velvet_ballistics/tests/durable_retry_cli.rs.txt",
+      "bytes": 10839,
+      "sha256": "6a3b620786e8386b8b2f5429e39eba1db77c1217feab7fb696478d1c805d7a4b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/velvet_ballistics/tests/f1_secret_recovery_cli.rs.txt",
+      "bytes": 11707,
+      "sha256": "7125282db62c8e8217c0acacf1952716ecc45e5513fbb6d6535d864d5b97e558"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/velvet_ballistics/tests/incident_runtime_report/runtime_fixture.rs.txt",
+      "bytes": 6815,
+      "sha256": "a32fca1dee876dcabc82410a12eb37d6daf997cfa9612a97d2c98b8b51334ed1"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/workspace_tests/tests/vb_f1_owned_continuation_common/support.rs.txt",
+      "bytes": 7654,
+      "sha256": "335d823c8af36784cf9966e687487a730ff69b6483b74a569abea8ecb5df8b0a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/workspace_tests/tests/vb_f1_owned_continuation_transport.rs.txt",
+      "bytes": 1611,
+      "sha256": "2aafddc3f412e0f81b8baf5a0fab11d5f0120cfbc5fbc3e18fecb61a39d62873"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/workspace_tests/tests/vb_f1_owned_continuation_transport/action_fixture.rs.txt",
+      "bytes": 7314,
+      "sha256": "fed9fbe525b873066a2f3c9fd549118db40a71720aa770fbe6b5e59e77150192"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/workspace_tests/tests/vb_f1_owned_continuation_transport/contracts.rs.txt",
+      "bytes": 2362,
+      "sha256": "a0ed33e869559f59e85efdee4f054aeed7bc20e359cab031582e7aaf8752c429"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/canonical-current/crates/workspace_tests/tests/vb_f1_owned_continuation_transport/identity_guards.rs.txt",
+      "bytes": 5521,
+      "sha256": "c928d16c482d7dca83322eda04f18a96212ecf1379216dd72e373da298c07bd9"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/cli-compatibility/crates/velvet_ballistics/src/replay/event_to_json/continuation_tests/support.rs.txt",
+      "bytes": 4110,
+      "sha256": "642efca1787fb2c30a33a22ad5e1a441b617556723e002e245f9b32b911b614e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/cli-compatibility/crates/velvet_ballistics/src/semantic_diff_baseline.rs.txt",
+      "bytes": 6641,
+      "sha256": "55b469008cd944ae8c2cc26c268b55e237c7bb3db74df53e02ba3137330468ea"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/cli-compatibility/crates/velvet_ballistics/tests/cli_integration/part_a.rs.txt",
+      "bytes": 20240,
+      "sha256": "c688da97306b58bbd2f39c336c90be8d9e083db5af4380d2544881ab16d110e3"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/cli-compatibility/crates/workspace_tests/tests/cli/action_discovery_names.rs.txt",
+      "bytes": 5003,
+      "sha256": "11b799a7ca9d32a157686756ce632b86bb9bcac6d3a9025659f8aa4c81f4b3dd"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/cli-compatibility/crates/workspace_tests/tests/cli/explain_execution_plan.rs.txt",
+      "bytes": 12651,
+      "sha256": "3e9c28b3b8fc8dc1a12d986dd69180f62559f60e0b2ccd64ba8159249bcb6519"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/cli-compatibility/crates/workspace_tests/tests/cli/workflow_semantic_diff.rs.txt",
+      "bytes": 28299,
+      "sha256": "04cf1dee66d84b08f97ef7173113bd7e554bc9e2f8447cd4b2894d7d68ac177c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.beads/vb-eirmk.60/canonical-formal-repair-contract.md.txt",
+      "bytes": 5012,
+      "sha256": "1d320eaa7aaccb8d169289f63be08c9a4cf0a52c65af509a15886de7698bba2a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/commands.txt.txt",
+      "bytes": 2796,
+      "sha256": "bfee8cbda1567d368e59b6ec4765fa8ed12ab1c4a0d2a4b278fdac7f600bd8ec"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/commit-proposal.txt.txt",
+      "bytes": 219,
+      "sha256": "91d13004cb2899d81dbfb89abe760fc51684715cdd4ceef4ea882f65f132017e"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/drift.log.gz.gz",
+      "bytes": 174,
+      "sha256": "590e5caff48f038f42448454e47f6156d63cd2c8b4290c730f62f51418fc5784"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/evidence.sha256.txt",
+      "bytes": 2342,
+      "sha256": "b5a22494971241dd9f14ecd03b7a25d6e74ee3478d2b4d4e425852c50f97f969"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/first-verus.log.gz.gz",
+      "bytes": 279,
+      "sha256": "4a3bc0982c759c84ea685a2c3aefb0f6adafd900ab2c97f0d155d2484f2ba9ed"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/format-check.log.gz.gz",
+      "bytes": 30,
+      "sha256": "18b0b1cba808d51bf6771f0ed7d275ab3560f672c8e018482dc3e94c2c37d48a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native-build.log.gz.gz",
+      "bytes": 190,
+      "sha256": "c4d2c0cbfd423e6bdf5ca034d39371049d91afb1e5b9a7f4a779e1a351284d44"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native-parity-build.log.gz.gz",
+      "bytes": 219,
+      "sha256": "f2e459aebd2d1e84d77b1aca3e40f03c3ebbe3ee3154f9e261486b50c46d47a7"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native-parity.log.gz.gz",
+      "bytes": 170,
+      "sha256": "34fb914e6c004f4124aedc3726dccb18e654236099cc3ef67c08dc9078d6dcf4"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native-parity.rs.txt",
+      "bytes": 7538,
+      "sha256": "ed67bf08cd7df09961729df6c52aa6c5b89c6edb4d5134cedaa9c4da5a28cb9f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/artifacts.sha256.gz.gz",
+      "bytes": 230,
+      "sha256": "0af02cbb3465370f68afb127c9c26c53568b870cf8c9dcd761c8426d8164079a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/artifacts.tsv.gz.gz",
+      "bytes": 149,
+      "sha256": "73260676b43e93b145759e1fc9decf2a80138ec6ee301d6c20443fda77215406"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/build.jsonl.gz.gz",
+      "bytes": 5951,
+      "sha256": "00d21b029b182a9d23239090c3c3f17cd193b0801ea1921b726c7d220069b9ab"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/build.stderr.gz.gz",
+      "bytes": 110,
+      "sha256": "b2a2fed18f36e125ef6d2d78aeb568e92342dfc5cba9692931087b763986d74f"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/compiler.txt.gz.gz",
+      "bytes": 194,
+      "sha256": "926bab5a4509484582ba7787452deedc84fcd6ed7df317bc61a7d460394b72e0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/source-after.sha256.gz.gz",
+      "bytes": 159707,
+      "sha256": "ccf3b38d8dcd00ea0607a5b9726afe03cd8d8f2db19288c256808835588f6d28"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/source-before.sha256.gz.gz",
+      "bytes": 159707,
+      "sha256": "ccf3b38d8dcd00ea0607a5b9726afe03cd8d8f2db19288c256808835588f6d28"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/native/validate-artifact.sha256.gz.gz",
+      "bytes": 156,
+      "sha256": "4a2ccf8782f2c6332f6b2510ead6cc43e0dc7164ae3de398830ea7b1a479a288"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/no-cheating-verus.log.gz.gz",
+      "bytes": 79,
+      "sha256": "2b95148e1e8b987e82ae1196fc18a5518bb235dad16fb90b387029419873261a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/production-binding.log.gz.gz",
+      "bytes": 455,
+      "sha256": "45666039cab81c428c6d3e3e6a8cb27a5bf58dde5157cddc010704d597205dc0"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/proof.patch.gz.gz",
+      "bytes": 7722,
+      "sha256": "8ab14003e681ed95c184e4d0eca375d794fb00074ec32572a6709856affc54dc"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/report.md.txt",
+      "bytes": 5535,
+      "sha256": "b1128b1d0d7ed64f2a30da32fa155fa2fb15a76b22964e2f31668ba264d98d67"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/scoped-verus.log.gz.gz",
+      "bytes": 79,
+      "sha256": "2b95148e1e8b987e82ae1196fc18a5518bb235dad16fb90b387029419873261a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/second-verus.log.gz.gz",
+      "bytes": 323,
+      "sha256": "193056a20a43819ef607f944d2e3f51496ca3b8a0a59dfefedcd9f082fa591de"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/source-callpath.md.txt",
+      "bytes": 2605,
+      "sha256": "a77176eb49003ac506fbd3170a7139323c1ce32c4ca0e3f3b2d27a2c442e94cf"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/source.sha256.txt",
+      "bytes": 1140,
+      "sha256": "2dbc69c3ac77e4fe38e21151312b865264fef7a56d766b863068c5f261970c5c"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/.evidence/formal-native-r27/trust-markers.txt.gz.gz",
+      "bytes": 30,
+      "sha256": "18b0b1cba808d51bf6771f0ed7d275ab3560f672c8e018482dc3e94c2c37d48a"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/verification/verus/extern_idempotency_decision.rs.txt",
+      "bytes": 526,
+      "sha256": "3ca691ce45b91b7040271870fe646c684e748c24e6497d677fb7cb73176c40df"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/verification/verus/idempotency_decision.rs.txt",
+      "bytes": 4684,
+      "sha256": "dad85480e4caae2734adbdc667b67570a2f4ab21d321ead1ba9269a448bb7308"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/formal-alternative/verification/verus/production_inner/idempotency_decision_production.rs.txt",
+      "bytes": 8479,
+      "sha256": "ea21e6e173032177f6015438cde65fc6d5ae804383cc0a4fe2a15c52baf18fda"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/taint-compatibility-contract/.beads/vb-god2f.7.1/contract.md.txt",
+      "bytes": 1482,
+      "sha256": "348c0f25f15eda3e12e74c261f75bbdf312d10108615060ed5c0084ed5e209b5"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/sources/wal-repair-design/.beads/vb-2h1z2/wal-repair-contract.md.txt",
+      "bytes": 1937,
+      "sha256": "f896451f84622b429dc9e1e43c60e6987dabea3f8773476e0258224b1415b46b"
+    },
+    {
+      "path": ".evidence/unqualified-preservation-r30/verify-preservation.cjs",
+      "bytes": 1300,
+      "sha256": "8dc0433a48bf4be00e83628f2434577d480450b71fe4aaa0bdf926b3cfd319e0"
+    }
+  ],
+  "source_refs": [
+    {
+      "id": "canonical-current",
+      "base": "5ef82f5c44ca72c1ebb7608ac53a7b4c52ad04f9",
+      "tip": "32b0c6586553e553519041962c89ca160265be81",
+      "branch": "codex/velvet-held-canonical-r30",
+      "compare_url": "https://github.com/lprior-repo/velvet-ballistics/compare/5ef82f5c44ca72c1ebb7608ac53a7b4c52ad04f9...codex/velvet-held-canonical-r30",
+      "status": "UNQUALIFIED: fixture/guard/partial IR compatibility source frozen; final helper split not verified, formal/runtime projections and integrated acceptance remain incomplete"
+    },
+    {
+      "id": "cli-compatibility",
+      "base": "c05fd5253aa0a997e91b8cfb9e105d83078325a5",
+      "tip": "04641a289c52ed28cdfea70a3a9d85befa3edb6e",
+      "branch": "codex/velvet-held-cli-r30",
+      "compare_url": "https://github.com/lprior-repo/velvet-ballistics/compare/c05fd5253aa0a997e91b8cfb9e105d83078325a5...codex/velvet-held-cli-r30",
+      "status": "UNQUALIFIED independent review/integration; exact scoped native1868/1868, source Clippy/fmt passed"
+    },
+    {
+      "id": "formal-alternative",
+      "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+      "tip": "3c17340dbcd30e7e3673ac455dac7c01ea77d6e4",
+      "branch": "codex/velvet-held-formal-r30",
+      "compare_url": "https://github.com/lprior-repo/velvet-ballistics/compare/cbaf0c038c21fce34ae8ffac58984662c48f0ac2...codex/velvet-held-formal-r30",
+      "status": "BLOCKED: scoped projection Verus21/0 and native parity168/168 do not close production binding; mandatory gate rejects shape"
+    },
+    {
+      "id": "taint-compatibility-contract",
+      "base": "af7f13aa5b5e0bc7390903183b1d81f97598ee4e",
+      "tip": "2a2dca41c26e2fb2f33bcfb188dcff5267f402a0",
+      "branch": "codex/velvet-held-taint-boundary-r30",
+      "compare_url": "https://github.com/lprior-repo/velvet-ballistics/compare/af7f13aa5b5e0bc7390903183b1d81f97598ee4e...codex/velvet-held-taint-boundary-r30",
+      "status": "BLOCKED: contract-only; unselected source candidate and full667-input graph preserved in packet, actual Verus compiler ICE"
+    },
+    {
+      "id": "wal-repair-design",
+      "base": "af7f13aa5b5e0bc7390903183b1d81f97598ee4e",
+      "tip": "29c4dfbb0e30eca72e78d1005f88b9164f2adf89",
+      "branch": "codex/velvet-held-wal-design-r30",
+      "compare_url": "https://github.com/lprior-repo/velvet-ballistics/compare/af7f13aa5b5e0bc7390903183b1d81f97598ee4e...codex/velvet-held-wal-design-r30",
+      "status": "BLOCKED/DESIGN ONLY: no Rust implementation; original helper compilation failure silently reports test pass; no actual kill/reopen proof"
+    },
+    {
+      "id": "proof28-exact-held-postimages",
+      "base": "881258ecc458a71cd5a4238706600f73c7d4d4e9",
+      "tip": "91052bc37e76ac312d94b13da4d1d007801b7e40",
+      "branch": "codex/velvet-held-proof28-r30",
+      "compare_url": "https://github.com/lprior-repo/velvet-ballistics/compare/881258ecc458a71cd5a4238706600f73c7d4d4e9...codex/velvet-held-proof28-r30",
+      "status": "UNQUALIFIED source-only snapshot of exact73 held postimages; includes explicit PR503 drift, must not replace accepted main"
+    }
+  ]
+}

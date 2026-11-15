@@ -1,0 +1,101 @@
+//! Existing constructor witnesses for nested and sequential groups.
+use super::*;
+use vstd::prelude::*;
+
+verus! {
+
+pub(crate) proof fn nested_fixture(parts: &LegacyParts)
+    requires
+        parts.nodes_meta.len() == 5,
+        parts.nodes_len == 5,
+        parts.kind_targets.len() == 5,
+        parts.kind_targets[0].len() == 2,
+        parts.kind_targets[0][0] == 1u32,
+        parts.kind_targets[0][1] == 4u32,
+        parts.kind_targets[1].len() == 2,
+        parts.kind_targets[1][0] == 2u32,
+        parts.kind_targets[1][1] == 3u32,
+        parts.kind_targets[2].len() == 0,
+        parts.kind_targets[3].len() == 0,
+        parts.kind_targets[4].len() == 0,
+        parts.nodes_meta[0].kind_disc == 12u32,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 12u32,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 0u32,
+        parts.nodes_meta[2].has_next == 1,
+        parts.nodes_meta[2].next_step == 3u32,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 14u32,
+        parts.nodes_meta[3].has_next == 1,
+        parts.nodes_meta[3].next_step == 4u32,
+        parts.nodes_meta[3].has_on_error == 0,
+        parts.nodes_meta[3].id == 3u32,
+        parts.nodes_meta[4].kind_disc == 14u32,
+        parts.nodes_meta[4].has_next == 0,
+        parts.nodes_meta[4].has_on_error == 0,
+        parts.nodes_meta[4].id == 4u32,
+    ensures
+        projected_pair(parts) == Some((0u32, 1u32)),
+{
+    unfold_pair(parts);
+    reveal_with_fuel(projected_summary, 6);
+    reveal_with_fuel(outer_from, 6);
+    reveal_with_fuel(branches_from, 3);
+    reveal_with_fuel(legacy_weight, 6);
+    reveal_with_fuel(legacy_reference, 4);
+}
+
+pub(crate) proof fn sequential_fixture(parts: &LegacyParts)
+    requires
+        parts.nodes_meta.len() == 5,
+        parts.nodes_len == 5,
+        parts.kind_targets.len() == 5,
+        parts.kind_targets[0].len() == 2,
+        parts.kind_targets[0][0] == 1u32,
+        parts.kind_targets[0][1] == 2u32,
+        parts.kind_targets[1].len() == 0,
+        parts.kind_targets[2].len() == 2,
+        parts.kind_targets[2][0] == 3u32,
+        parts.kind_targets[2][1] == 4u32,
+        parts.kind_targets[3].len() == 0,
+        parts.kind_targets[4].len() == 0,
+        parts.nodes_meta[0].kind_disc == 12u32,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 0u32,
+        parts.nodes_meta[1].has_next == 1,
+        parts.nodes_meta[1].next_step == 2u32,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 12u32,
+        parts.nodes_meta[2].has_next == 0,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 0u32,
+        parts.nodes_meta[3].has_next == 1,
+        parts.nodes_meta[3].next_step == 4u32,
+        parts.nodes_meta[3].has_on_error == 0,
+        parts.nodes_meta[3].id == 3u32,
+        parts.nodes_meta[4].kind_disc == 14u32,
+        parts.nodes_meta[4].has_next == 0,
+        parts.nodes_meta[4].has_on_error == 0,
+        parts.nodes_meta[4].id == 4u32,
+    ensures
+        projected_pair(parts) == None::<(u32, u32)>,
+{
+    unfold_pair(parts);
+    reveal_with_fuel(projected_summary, 6);
+    reveal_with_fuel(outer_from, 6);
+    reveal_with_fuel(branches_from, 3);
+    reveal_with_fuel(legacy_weight, 6);
+    reveal_with_fuel(legacy_reference, 4);
+}
+
+} // verus!

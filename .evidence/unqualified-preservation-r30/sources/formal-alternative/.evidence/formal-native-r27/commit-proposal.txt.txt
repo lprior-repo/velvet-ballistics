@@ -1,0 +1,5 @@
+test(verus): model canonical idempotency policy
+
+- verification/verus/idempotency_decision.rs
+- verification/verus/extern_idempotency_decision.rs
+- verification/verus/production_inner/idempotency_decision_production.rs

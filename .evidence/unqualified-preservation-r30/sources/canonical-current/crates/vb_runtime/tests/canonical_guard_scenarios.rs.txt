@@ -1,0 +1,79 @@
+#![forbid(unsafe_code)]
+
+#[path = "canonical_guard_scenarios/fixture.rs"]
+mod fixture;
+
+use fixture::{Fixture, TestResult};
+use vb_runtime::{RuntimeError, shard::ShardCommand};
+
+#[test]
+fn catalogless_packed_lookup_fault_refuses_generic_completion_without_mutation() -> TestResult {
+    let mut fixture = Fixture::new()?;
+    let state = fixture
+        .shard
+        .run_state_get(fixture.run)
+        .ok_or("run missing")?
+        .clone();
+    let pending = fixture.shard.pending_boundary_snapshot(0, 16);
+    let events = fixture.journal.events_for_run_full(fixture.run)?;
+    let effects = fixture.register.effect_count()?;
+    let target = fixture.register.value(fixture.scope)?;
+    fixture.store.arm();
+    fixture.shard.enqueue(ShardCommand::ActionCompleted {
+        ticket: fixture.ticket,
+        output: fixture::output()?,
+    })?;
+    assert_eq!(
+        fixture.shard.tick(),
+        Err(RuntimeError::InvalidActionCompletion)
+    );
+    assert!(fixture.store.returned_packed());
+    assert_eq!(fixture.shard.run_state_get(fixture.run), Some(&state));
+    assert_eq!(fixture.shard.pending_boundary_snapshot(0, 16), pending);
+    assert_eq!(
+        fixture.shard.pending_action_get(fixture.run),
+        Some(fixture.ticket)
+    );
+    assert_eq!(fixture.journal.events_for_run_full(fixture.run)?, events);
+    assert_eq!(fixture.register.effect_count()?, effects);
+    assert_eq!(fixture.register.value(fixture.scope)?, target);
+    Ok(())
+}
+
+#[test]
+fn catalogless_unarmed_pure_store_accepts_its_real_pending_completion() -> TestResult {
+    let mut fixture = Fixture::new()?;
+    let events = fixture.journal.events_for_run_full(fixture.run)?;
+    let effects = fixture.register.effect_count()?;
+    fixture.shard.enqueue(ShardCommand::ActionCompleted {
+        ticket: fixture.ticket,
+        output: fixture::output()?,
+    })?;
+    assert_eq!(fixture.shard.tick(), Ok(true));
+    assert!(!fixture.store.returned_packed());
+    assert_eq!(fixture.shard.pending_action_get(fixture.run), None);
+    assert!(fixture.shard.run_state_get(fixture.run).is_none());
+    let after = fixture.journal.events_for_run_full(fixture.run)?;
+    assert_eq!(after.get(..events.len()), Some(events.as_slice()));
+    let value = after
+        .iter()
+        .find_map(|event| match event {
+            vb_storage::JournalEvent::ActionCompletedEnvelope {
+                ticket,
+                output,
+                value,
+                ..
+            } if *ticket == fixture.ticket && *output == vb_core::SlotIdx::new(1) => Some(value),
+            _ => None,
+        })
+        .ok_or("completion output missing")?;
+    assert_eq!(
+        postcard::from_bytes::<vb_core::SlotValue>(value)?,
+        vb_core::SlotValue::I64(42)
+    );
+    assert!(after.iter().any(|event| matches!(event,
+        vb_storage::JournalEvent::RunFinished { run, result, .. }
+            if *run == fixture.run && *result == vb_core::SlotIdx::new(1))));
+    assert_eq!(fixture.register.effect_count()?, effects);
+    Ok(())
+}

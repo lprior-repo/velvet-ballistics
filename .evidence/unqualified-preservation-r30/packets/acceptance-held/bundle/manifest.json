@@ -1,0 +1,117 @@
+{
+  "schema": "acceptance-held-source-preservation-v1",
+  "status": "ARCHIVE_ONLY_UNQUALIFIED_DO_NOT_ACTIVATE",
+  "created_utc": "2026-11-15 20:42:31 UTC",
+  "owner_bead": "vb-eirmk.11",
+  "source_pin": "26b0d312b225ff1d809e03dc78b799e0371e1562",
+  "payload_count": 5,
+  "payloads": [
+    {
+      "source": "/home/lewis/src/isoloated/vb-master-boundary-proposal-r25/.evidence/boundary-proposal-r25/workspace-assertion-parser-proposal.patch",
+      "member": "payload/scanner-proposal/workspace-assertion-parser-proposal.patch",
+      "sha256": "3461b59487e0fc99e96388b11258cffe1a3ab270ec12eb723faa6ebd2bf913c6",
+      "status": "HELD_UNQUALIFIED_SCANNER_PROPOSAL",
+      "activation_allowed": false,
+      "reason": "Dependency-scope policy unresolved; appended tests not registered in canonical wrapper; landing approval withheld.",
+      "bytes": 1441,
+      "copied_sha256": "3461b59487e0fc99e96388b11258cffe1a3ab270ec12eb723faa6ebd2bf913c6"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/vb-master-mutants-r25/crates/vb_core/proptest-regressions/engine/expr_eval/tests.txt",
+      "member": "payload/mutation-generated/crates/vb_core/proptest-regressions/engine/expr_eval/tests.txt",
+      "repository_relative_path": "crates/vb_core/proptest-regressions/engine/expr_eval/tests.txt",
+      "sha256": "97227053693e962f8b4ecf3a66a77511e2c03ba29f1d8530f2a68f406a82866e",
+      "status": "UNQUALIFIED_MUTATION_GENERATED_DO_NOT_ACTIVATE",
+      "activation_allowed": false,
+      "reason": "Generated while running intentionally mutated production code; not reviewed or promoted as a genuine production regression.",
+      "bytes": 763,
+      "copied_sha256": "97227053693e962f8b4ecf3a66a77511e2c03ba29f1d8530f2a68f406a82866e"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/vb-master-mutants-r25/crates/vb_core/proptest-regressions/engine/tests/integration_error_routing_behavior/proptest_properties.txt",
+      "member": "payload/mutation-generated/crates/vb_core/proptest-regressions/engine/tests/integration_error_routing_behavior/proptest_properties.txt",
+      "repository_relative_path": "crates/vb_core/proptest-regressions/engine/tests/integration_error_routing_behavior/proptest_properties.txt",
+      "sha256": "8b58bfe83da931e3baf9d218ac5b35cfe877f26436b4f8d540ccc9e04c848781",
+      "status": "UNQUALIFIED_MUTATION_GENERATED_DO_NOT_ACTIVATE",
+      "activation_allowed": false,
+      "reason": "Generated while running intentionally mutated production code; not reviewed or promoted as a genuine production regression.",
+      "bytes": 399,
+      "copied_sha256": "8b58bfe83da931e3baf9d218ac5b35cfe877f26436b4f8d540ccc9e04c848781"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/vb-master-mutants-r25/crates/vb_core/proptest-regressions/workflow/proptest_collect_budget.txt",
+      "member": "payload/mutation-generated/crates/vb_core/proptest-regressions/workflow/proptest_collect_budget.txt",
+      "repository_relative_path": "crates/vb_core/proptest-regressions/workflow/proptest_collect_budget.txt",
+      "sha256": "3bdd79f54a857b819758247e25a09669d9e9a48a6ac83bb5d0feae464b87f764",
+      "status": "UNQUALIFIED_MUTATION_GENERATED_DO_NOT_ACTIVATE",
+      "activation_allowed": false,
+      "reason": "Generated while running intentionally mutated production code; not reviewed or promoted as a genuine production regression.",
+      "bytes": 507,
+      "copied_sha256": "3bdd79f54a857b819758247e25a09669d9e9a48a6ac83bb5d0feae464b87f764"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/vb-master-mutants-r25/crates/vb_core/proptest-regressions/workflow/proptest_collect_traversal.txt",
+      "member": "payload/mutation-generated/crates/vb_core/proptest-regressions/workflow/proptest_collect_traversal.txt",
+      "repository_relative_path": "crates/vb_core/proptest-regressions/workflow/proptest_collect_traversal.txt",
+      "sha256": "ccc489d1615528941cca9438ba566fdeaf5d2b7363da10ed8740889d1a8b2ff6",
+      "status": "UNQUALIFIED_MUTATION_GENERATED_DO_NOT_ACTIVATE",
+      "activation_allowed": false,
+      "reason": "Generated while running intentionally mutated production code; not reviewed or promoted as a genuine production regression.",
+      "bytes": 507,
+      "copied_sha256": "ccc489d1615528941cca9438ba566fdeaf5d2b7363da10ed8740889d1a8b2ff6"
+    }
+  ],
+  "scanner": {
+    "affected_source": "scripts/check-workspace-assertions.rs",
+    "production_patch_applied": false,
+    "code_test_controls_only": true,
+    "landing_approved": false
+  },
+  "excluded_landed_source": {
+    "path": "fuzz/fuzz_targets/tooling_kani_list_args.rs",
+    "candidate": "df814811495832e6788bb25dafbfe716e6c0881e",
+    "verified_main": "881258ecc458a71cd5a4238706600f73c7d4d4e9",
+    "source_sha256": "da16f55c66e3d68adbaa28fff6e200b54b527b4a4411ab2ee10e2c06199251dd"
+  },
+  "inventory_scope": "Source-only inventory from the existing frozen acceptance handoff; no additional repository/PR audit. No additional held implementation candidate was listed there. Intentional mutant diffs and evidence-only control harnesses remain referenced by retained receipt manifests, not offered as implementation candidates.",
+  "existing_metadata_diagnostic": "The retained mutation input-manifest.json failed JSON parsing. Its bytes were not modified; the recorded four-entry SHA256 manifest was parsed and every original/copy checksum independently verified instead.",
+  "relevant_receipt_references": [
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-mutants-r25/.evidence/master-mutants-r25/mutation-generated-proptest-regressions.sha256",
+      "sha256": "649b62ce0bc6e7dcebcc6e056f9ac8d1b5660eec4335ba184cac052cf6c0bde8"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-mutants-r25/.evidence/master-mutants-r25/run-summary.md",
+      "sha256": "08f72e52195cec59cac1dc238b060a983d1a69e34e1e881e3fae6e668f453dcd"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-mutants-r25/.evidence/master-mutants-r25/mutants-out-sha256.txt",
+      "sha256": "b9473143d5499d51a520c4fd89b6806a0eaef78165256c413d8bb233db6d5ce3"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-mutants-r25/.evidence/master-mutants-r25/input-manifest.json",
+      "sha256": "00b1eb7613bbdc889452333ecd55d3d82a6ce980cbe2674fc061dc977c73db4d"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-boundary-code-review-r25/.evidence/boundary-code-review-r25/report.md",
+      "sha256": "ac4f3185c7fbf48d59573d11bb1233cc9f14ce9046482b30c0ed491af8d7b575"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-boundary-test-review-r25/.evidence/boundary-test-review-r25/review.md",
+      "sha256": "6d923c86f449badadb0b957919280d2d25cb51fec7cc957f7ab40dc6e8ceb946"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-miri-r25/.evidence/miri-r25/handoff-r25.md",
+      "sha256": "d2f3dff8721c0e2731c6b0a58213ceef9089096f064e016334f3278f21feff93"
+    },
+    {
+      "path": "/home/lewis/src/isoloated/vb-master-miri-r25/.evidence/miri-r25/handoff-artifacts.sha256",
+      "sha256": "01d5239e646b90997ba0c554e50730b5497dee71cff4114dd008d906ae05ae43"
+    }
+  ],
+  "archive_intent": "Remote preservation in a DRAFT PR by the sole preservation writer; do not apply the patch or activate regression files.",
+  "source_work": false,
+  "new_verification_campaign": false,
+  "cleanup": false,
+  "main_changed": false
+}
