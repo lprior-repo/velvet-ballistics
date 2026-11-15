@@ -7,6 +7,9 @@
 #[path = "vb_7x0ol_probe_registered_executor/policy_dispatch.rs"]
 mod policy_dispatch;
 
+#[path = "vb_7x0ol_probe_registered_executor/retained_taxonomy.rs"]
+mod retained_taxonomy;
+
 #[path = "vb_7x0ol_probe_registered_executor/runtime_parity.rs"]
 mod runtime_parity;
 

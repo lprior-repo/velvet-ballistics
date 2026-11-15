@@ -1,0 +1,25 @@
+verification/verus/production_inner/execute_do_production.rs:127:#[verifier::external]
+verification/verus/production_inner/execute_do_production.rs:222:// file attaches `assume_specification` bridges and exercises each through an
+verification/verus/production_inner/execute_do_production.rs:236:#[verifier::external]
+verification/verus/production_inner/execute_do_production.rs:251:#[verifier::external]
+verification/verus/production_inner/execute_do_production.rs:271:#[verifier::external]
+verification/verus/production_inner/execute_do_production.rs:333:#[verifier::external]
+verification/verus/production_inner/execute_do_production.rs:376:#[verifier::external]
+verification/verus/production_inner/execute_do_production.rs:397:#[verifier::external]
+verification/verus/extern_runtime_execute_do.rs:16:// `assume_specification`, and every proof below the bridge exercises
+verification/verus/extern_runtime_execute_do.rs:22:// The production mirror bodies are `#[verifier::external]` so Verus
+verification/verus/extern_runtime_execute_do.rs:24:// `assume_specification` in the companion spec file. Drift between
+verification/verus/vb_runtime_execute_do_spec.rs:6:// assume_specification to pure projections defined in
+verification/verus/vb_runtime_execute_do_spec.rs:44:// `assume_specification` and exercises them through an exec wrapper.
+verification/verus/vb_runtime_execute_do_spec.rs:354:// assume_specification bridge: binds the production exec fn to a spec fn
+verification/verus/vb_runtime_execute_do_spec.rs:357:// `assume_specification` is the Verus-native way to attach a spec
+verification/verus/vb_runtime_execute_do_spec.rs:364:// file; Verus accepts the ensures via `assume_specification` but does not
+verification/verus/vb_runtime_execute_do_spec.rs:367:pub assume_specification[ production::execute_do_pure_decision ](
+verification/verus/vb_runtime_execute_do_spec.rs:402:// assume_specification bridges for the 6 remaining production exec wrappers
+verification/verus/vb_runtime_execute_do_spec.rs:405:// Each `assume_specification` below mirrors the production decision fn in
+verification/verus/vb_runtime_execute_do_spec.rs:409:pub assume_specification[ production::execute_do_without_contract_pure_decision ](
+verification/verus/vb_runtime_execute_do_spec.rs:417:pub assume_specification[ production::execute_retry_check_pure_decision ](
+verification/verus/vb_runtime_execute_do_spec.rs:427:pub assume_specification[ production::execute_error_handler_pure_decision ](
+verification/verus/vb_runtime_execute_do_spec.rs:442:pub assume_specification[ production::resume_action_outcome_pure_decision ](
+verification/verus/vb_runtime_execute_do_spec.rs:466:pub assume_specification[ production::compute_idempotency_key_pure ](
+verification/verus/vb_runtime_execute_do_spec.rs:480:pub assume_specification[ production::resolve_contract_pure_decision ](

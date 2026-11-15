@@ -1,0 +1,11 @@
+────────────
+ Nextest run ID 47474051-55cf-40bc-9724-73cfd0b9e299 with nextest profile: default
+    Starting 6 tests across 1 binary
+        PASS [   0.003s] (1/6) vb_runtime::action_resume_contract resume_refuses_retryable_unsafe_effects_before_issuing_another_ticket
+        PASS [   0.004s] (2/6) vb_runtime::action_resume_contract resume_preserves_permitted_retry_and_pure_bypass_outcomes
+        PASS [   0.004s] (3/6) vb_runtime::action_resume_contract resume_refuses_unsafe_effects_before_sequence_overflow
+        PASS [   0.004s] (4/6) vb_runtime::action_resume_contract resume_refuses_nonretryable_failure_for_every_current_contract_class
+        PASS [   0.004s] (5/6) vb_runtime::action_resume_contract resume_reports_exhaustion_before_sequence_overflow_for_permitted_retry
+        PASS [   0.004s] (6/6) vb_runtime::action_resume_contract resume_reports_sequence_overflow_for_permitted_retry_below_capacity
+────────────
+     Summary [   0.008s] 6 tests run: 6 passed, 0 skipped

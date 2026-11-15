@@ -1,0 +1,6 @@
+────────────
+ Nextest run ID 844d7acf-e8a0-4a19-afbf-b3dc262442f9 with nextest profile: default
+    Starting 1 test across 1 binary (11 tests skipped)
+        PASS [   1.297s] (1/1) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor retained_taxonomy::retained_taxonomy_authority_characterization_archive
+────────────
+     Summary [   1.297s] 1 test run: 1 passed, 11 skipped

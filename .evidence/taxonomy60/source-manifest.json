@@ -1,0 +1,94 @@
+{
+  "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "canonical_status": "BLOCKED: exhaustive MASTER65 implications do not admit the actual local Fjall executor",
+  "cold_adapter_implemented": false,
+  "source_count": 7,
+  "source": [
+    {
+      "path": "crates/vb_runtime/src/engine/action/mod.rs",
+      "sha256": "0e5595ca10b06f72f57a2d794060c1a89ebcf4979cc35d543047cc274f3fcdee"
+    },
+    {
+      "path": "crates/vb_runtime/tests/action_resume_contract.rs",
+      "sha256": "e86e2ad8c7a4561f7e48755ce5d677d3010383c7503ecf08750e03bb918315f3"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "sha256": "94245d6952ac5d9bb2f2c6a14350bf47be55699b5df2d44c5378499eef92fd96"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/retained_retry.rs",
+      "sha256": "e4bb1abe9e0a112c263ef773e7cb65223658fab63e7a8e389444fbe8762ce013"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/retained_taxonomy.rs",
+      "sha256": "5ee141df8f502beb724147e75c673cbe0bb17cddfe492e402e2fefeb2f309928"
+    },
+    {
+      "path": "verification/verus/production_inner/execute_do_production.rs",
+      "sha256": "af94cfc37c850fa8deeb5ada51557f30f626b5262d2b238466bab5b2e57f80a9"
+    },
+    {
+      "path": "verification/verus/vb_runtime_execute_do_spec.rs",
+      "sha256": "19d5f2f91513f98ff5e87becde11ee816182ad60b96097350e558f7d8f6ba6e3"
+    }
+  ],
+  "bindings": [
+    {
+      "path": ".evidence/taxonomy60/retained-v3.sha256",
+      "sha256": "4730cca9ffe0b73ccf6a8aae13ccbd623a82ec88fa0224ab6f4ec71edb505ee0"
+    },
+    {
+      "path": ".evidence/taxonomy60/retry-retained-v1.sha256",
+      "sha256": "b931713b960084afeaa36f7b5965134ea6f47ddb8df2a9f72f0a85f65c0efe2b"
+    },
+    {
+      "path": ".evidence/taxonomy60/identity-owner-manifest.json",
+      "sha256": "c24ef98120bd56e801b2698669324f9c5618836db5e8c3a226d32a650200e8ca"
+    },
+    {
+      "path": ".evidence/taxonomy60/unsafe-retry-CODE-review-amended.md.gz",
+      "sha256": "d9a0c7e6ac43c6c4e35e3f0a6d026c495a3a1ba09b2e6f9a53c1f87d3b5a3115"
+    },
+    {
+      "path": ".evidence/taxonomy60/unsafe-retry-Verus-review-amended.md.gz",
+      "sha256": "7dd3f245298ea3d2de1cafd7902c550555f75c8db80eb0dfb0161bcd5054af30"
+    },
+    {
+      "path": ".evidence/taxonomy60/retained-fixture-CODE-review.md.gz",
+      "sha256": "1434aa1b50ff20c954c6e8a20ca029836a2527fbc84c6b8e217738052d1c3f35"
+    },
+    {
+      "path": ".evidence/taxonomy60/test-suite-review.md",
+      "sha256": "25903691e9527109631617cee8b163937b60dc0326ef84787976173b3b2c6cc8"
+    },
+    {
+      "path": ".evidence/taxonomy60/followup-test-suite-review.md",
+      "sha256": "d6d7426a5156e66c3d5df5a672d149ddaf65a3492d8e559742165aeca37b6200"
+    }
+  ],
+  "parent_observed_native_tests": {
+    "combined": 47,
+    "existing_helper": 29,
+    "failures": 0
+  },
+  "parent_observed_verus": {
+    "verified": 34,
+    "errors": 0,
+    "strong_bindings": 0,
+    "weak_bindings": 34,
+    "vacuum_bindings": 0,
+    "native_proof_closed": false
+  },
+  "archived_files": {
+    "original": 284,
+    "retry": 131,
+    "total": 415,
+    "all_unchanged": true
+  },
+  "identity_owner_sources": {
+    "count": 25,
+    "all_unchanged": true
+  },
+  "joined_ci_owner": "central integration"
+}

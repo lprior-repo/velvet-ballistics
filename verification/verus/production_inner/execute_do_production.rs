@@ -284,18 +284,20 @@ pub const fn execute_error_handler_pure_decision(
 
 /// Mirrors the discriminated output set of
 /// `vb_runtime::engine::action::resume_action_outcome`
-/// at crates/vb_runtime/src/engine/action/mod.rs:138-200.
+/// at crates/vb_runtime/src/engine/action/mod.rs:197-236.
 ///
 /// The production body matches on `ActionOutcome` and produces one of:
 ///
 ///   - `ActionOutcome::Ready(_)`         -> Ok(Continue)
 ///   - `ActionOutcome::Suspended(_)`     -> Ok(AwaitingAction)
-///   - `ActionOutcome::Failed(_)` with retryable + capacity > attempt
+///   - `ActionOutcome::Failed(_)` with retryable + permitted contract + capacity > attempt
 ///                                       -> Ok(AwaitingAction(retry_ticket))
-///   - `ActionOutcome::Failed(_)` with retryable + capacity <= attempt
+///   - `ActionOutcome::Failed(_)` with retryable + permitted contract + capacity <= attempt
 ///                                       -> Err(RetryExhausted)
-///   - `ActionOutcome::Failed(_)` non-retryable
+///   - `ActionOutcome::Failed(_)` non-retryable or nonpure unsafe contract
 ///                                       -> Err(Core(UnsupportedPrimitive))
+///   - permitted retry below capacity with sequence/attempt overflow
+///                                       -> Err(Core(InternalInvariantViolation))
 ///   - any other future variant           -> Err(Core(InternalInvariantViolation))
 ///
 /// This enum enumerates every reachable (Ok, Err) kind so the spec-level
@@ -320,6 +322,8 @@ pub enum SpecResumeKind {
 ///   - `attempt`                  : u16 (current attempt count)
 ///   - `capacity`                 : u16 (max attempts allowed)
 ///   - `retry_policy_disc`        : 0=Retryable, 1=NonRetryable
+///   - `side_effect_is_none`      : contract.side_effect == SideEffect::None
+///   - `retry_safety_disc`        : 0=Safe, 1=KeyRequired, 2=Unsafe; future values refuse
 ///   - `seq_would_overflow`       : true iff `seq.checked_add(1).is_none()`
 ///   - `attempt_would_overflow`   : true iff `attempt.checked_add(1).is_none()`
 ///
@@ -332,6 +336,8 @@ pub const fn resume_action_outcome_pure_decision(
     attempt: u16,
     capacity: u16,
     retry_policy_disc: u8,
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
     seq_would_overflow: bool,
     attempt_would_overflow: bool,
 ) -> SpecResumeKind {
@@ -342,16 +348,16 @@ pub const fn resume_action_outcome_pure_decision(
         1 => SpecResumeKind::AwaitingAction,
         // ActionOutcome::Failed(_) -> retry/exhausted/unsupported
         2 => {
-            if retry_policy_disc == 0 {
-                // Retryable: build a retry ticket iff attempt < capacity
-                // and neither seq nor attempt would overflow.
-                if attempt < capacity && !seq_would_overflow && !attempt_would_overflow {
-                    SpecResumeKind::AwaitingAction
-                } else {
-                    SpecResumeKind::ErrRetryExhausted
-                }
-            } else {
+            if retry_policy_disc != 0
+                || (!side_effect_is_none && retry_safety_disc != 0 && retry_safety_disc != 1)
+            {
                 SpecResumeKind::ErrUnsupportedPrimitive
+            } else if attempt >= capacity {
+                SpecResumeKind::ErrRetryExhausted
+            } else if seq_would_overflow || attempt_would_overflow {
+                SpecResumeKind::ErrInternalInvariantViolation
+            } else {
+                SpecResumeKind::AwaitingAction
             }
         }
         // Future variant catch-all mirrors production's `_ =>` arm.

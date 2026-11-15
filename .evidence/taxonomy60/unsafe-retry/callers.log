@@ -1,0 +1,47 @@
+────────────
+ Nextest run ID 22a8d948-c2ec-42ea-91de-83d9e1d1f680 with nextest profile: default
+    Starting 42 tests across 2 binaries (2609 tests skipped)
+        PASS [   0.002s] ( 1/42) vb_runtime engine::action::tests::error_handler_routes_to_body_on_unknown_non_retryable
+        PASS [   0.003s] ( 2/42) vb_runtime engine::action::tests::error_handler_routes_to_handler_on_unknown_retryable
+        PASS [   0.003s] ( 3/42) vb_runtime engine::action::tests::error_handler_routes_to_handler_on_retryable_failure
+        PASS [   0.004s] ( 4/42) vb_runtime engine::action::tests::error_handler_routes_to_handler_on_non_unknown_code
+        PASS [   0.002s] ( 5/42) vb_runtime engine::action::tests::idempotency_key_differs_for_different_action
+        PASS [   0.003s] ( 6/42) vb_runtime engine::action::tests::execute_do_succeeds_when_required_capability_is_granted
+        PASS [   0.002s] ( 7/42) vb_runtime engine::action::tests::idempotency_key_differs_for_different_runs
+        PASS [   0.004s] ( 8/42) vb_runtime engine::action::tests::execute_do_returns_capability_denied_when_required_capability_not_granted
+        PASS [   0.003s] ( 9/42) vb_runtime engine::action::tests::idempotency_key_differs_for_different_seq
+        PASS [   0.003s] (10/42) vb_runtime engine::action::tests::idempotency_key_is_deterministic
+        PASS [   0.003s] (11/42) vb_runtime engine::action::tests::idempotency_key_no_overlap_collision
+        PASS [   0.003s] (12/42) vb_runtime engine::action::tests::idempotency_key_with_large_values
+        PASS [   0.003s] (13/42) vb_runtime engine::action::tests::idempotency_key_with_zero_inputs_is_deterministic
+        PASS [   0.003s] (14/42) vb_runtime engine::action::tests::resolve_contract_finds_matching_contract_by_index_and_id
+        PASS [   0.002s] (15/42) vb_runtime engine::action::tests::resolve_contract_rejects_when_index_matches_but_id_differs
+        PASS [   0.003s] (16/42) vb_runtime engine::action::tests::resolve_contract_rejects_id_mismatch
+        PASS [   0.003s] (17/42) vb_runtime engine::action::tests::resolve_contract_returns_first_contract
+        PASS [   0.003s] (18/42) vb_runtime engine::action::tests::resolve_contract_returns_unknown_for_empty_registry
+        PASS [   0.003s] (19/42) vb_runtime engine::action::tests::resume_capacity_one_never_retries
+        PASS [   0.003s] (20/42) vb_runtime engine::action::tests::resolve_contract_returns_last_contract
+        PASS [   0.003s] (21/42) vb_runtime engine::action::tests::resume_retries_when_attempt_below_capacity
+        PASS [   0.002s] (22/42) vb_runtime engine::action::tests::resume_returns_retry_exhausted_when_capacity_reached
+        PASS [   0.002s] (23/42) vb_runtime engine::action::tests::retry_check_default_policy_exhausts_at_three
+        PASS [   0.003s] (24/42) vb_runtime engine::action::tests::retry_check_default_policy_allows_two_retries
+        PASS [   0.002s] (25/42) vb_runtime engine::action::tests::retry_check_routes_to_body_at_max_minus_one
+        PASS [   0.003s] (26/42) vb_runtime engine::action::tests::retry_check_never_policy_always_exhausts_after_one
+        PASS [   0.003s] (27/42) vb_runtime engine::action::tests::retry_check_routes_to_body_when_below_max
+        PASS [   0.003s] (28/42) vb_runtime engine::action::tests::retry_check_routes_to_exhausted_above_max
+        PASS [   0.002s] (29/42) vb_runtime engine::action::tests::retry_check_routes_to_exhausted_at_max
+        PASS [   0.002s] (30/42) vb_runtime engine::tests::bh_resume_action_outcome_ready_preserves_secret_taint
+        PASS [   0.005s] (31/42) vb_runtime engine::tests::bh_resume_action_outcome_failed_retryable_preserves_signal_structure
+        PASS [   0.003s] (32/42) vb_runtime engine::tests::bh_resume_action_outcome_ready_preserves_derived_taint
+        PASS [   0.004s] (33/42) vb_runtime engine::tests::bh_resume_action_outcome_ready_clean_taint_preserved
+        PASS [   0.002s] (34/42) vb_runtime engine::tests::resume_action_outcome_ready_continues_execution
+        PASS [   0.003s] (35/42) vb_runtime engine::tests::bh_resume_action_outcome_suspended_preserves_ticket_fields
+        PASS [   0.003s] (36/42) vb_runtime engine::tests::resume_action_outcome_failed_non_retryable_returns_error
+        PASS [   0.004s] (37/42) vb_runtime engine::tests::blackhat_engine::bh_eng_11_retry_ticket_uses_frame_run_id
+        PASS [   0.002s] (38/42) vb_runtime::action_resume_contract resume_refuses_nonretryable_failure_for_every_current_contract_class
+        PASS [   0.002s] (39/42) vb_runtime::action_resume_contract resume_preserves_permitted_retry_and_pure_bypass_outcomes
+        PASS [   0.004s] (40/42) vb_runtime engine::tests::resume_action_outcome_retryable_failure_propagates_original_ticket_fields
+        PASS [   0.003s] (41/42) vb_runtime engine::tests::resume_action_outcome_suspended_returns_awaiting
+        PASS [   0.002s] (42/42) vb_runtime::action_resume_contract resume_refuses_retryable_unsafe_effects_before_issuing_another_ticket
+────────────
+     Summary [   0.033s] 42 tests run: 42 passed, 2609 skipped

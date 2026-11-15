@@ -297,12 +297,14 @@ pub open spec fn spec_resume_kind_valid(kind: SpecResumeKind) -> bool {
 }
 
 /// Spec-side mirror of `resume_action_outcome_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:194-215.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:197-236.
 pub open spec fn spec_resume_action_outcome_decision(
     outcome_disc: u8,
     attempt: u16,
     capacity: u16,
     retry_policy_disc: u8,
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
     seq_would_overflow: bool,
     attempt_would_overflow: bool,
 ) -> SpecResumeKind {
@@ -311,14 +313,15 @@ pub open spec fn spec_resume_action_outcome_decision(
     } else if outcome_disc == 1 {
         SpecResumeKind::AwaitingAction
     } else if outcome_disc == 2 {
-        if retry_policy_disc == 0 {
-            if attempt < capacity && !seq_would_overflow && !attempt_would_overflow {
-                SpecResumeKind::AwaitingAction
-            } else {
-                SpecResumeKind::ErrRetryExhausted
-            }
-        } else {
+        if retry_policy_disc != 0 || (!side_effect_is_none && retry_safety_disc != 0
+            && retry_safety_disc != 1) {
             SpecResumeKind::ErrUnsupportedPrimitive
+        } else if attempt >= capacity {
+            SpecResumeKind::ErrRetryExhausted
+        } else if seq_would_overflow || attempt_would_overflow {
+            SpecResumeKind::ErrInternalInvariantViolation
+        } else {
+            SpecResumeKind::AwaitingAction
         }
     } else {
         SpecResumeKind::ErrInternalInvariantViolation
@@ -441,6 +444,8 @@ pub assume_specification[ production::resume_action_outcome_pure_decision ](
     attempt: u16,
     capacity: u16,
     retry_policy_disc: u8,
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
     seq_would_overflow: bool,
     attempt_would_overflow: bool,
 ) -> (kind: SpecResumeKind)
@@ -450,6 +455,8 @@ pub assume_specification[ production::resume_action_outcome_pure_decision ](
             attempt,
             capacity,
             retry_policy_disc,
+            side_effect_is_none,
+            retry_safety_disc,
             seq_would_overflow,
             attempt_would_overflow,
         ),
@@ -732,12 +739,14 @@ pub exec fn checked_prod_execute_error_handler(
 
 /// Production-bound exec wrapper that exercises
 /// `resume_action_outcome_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action/mod.rs:194-215.
+/// crates/vb_runtime/src/engine/action/mod.rs:197-236.
 pub exec fn checked_prod_resume_action_outcome(
     outcome_disc: u8,
     attempt: u16,
     capacity: u16,
     retry_policy_disc: u8,
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
     seq_would_overflow: bool,
     attempt_would_overflow: bool,
 ) -> (kind: SpecResumeKind)
@@ -750,6 +759,8 @@ pub exec fn checked_prod_resume_action_outcome(
             attempt,
             capacity,
             retry_policy_disc,
+            side_effect_is_none,
+            retry_safety_disc,
             seq_would_overflow,
             attempt_would_overflow,
         ),
@@ -760,6 +771,8 @@ pub exec fn checked_prod_resume_action_outcome(
         attempt,
         capacity,
         retry_policy_disc,
+        side_effect_is_none,
+        retry_safety_disc,
         seq_would_overflow,
         attempt_would_overflow,
     );
@@ -768,6 +781,8 @@ pub exec fn checked_prod_resume_action_outcome(
         attempt,
         capacity,
         retry_policy_disc,
+        side_effect_is_none,
+        retry_safety_disc,
         seq_would_overflow,
         attempt_would_overflow,
     ));
@@ -1090,34 +1105,51 @@ pub proof fn proof_execute_error_handler_branch(
 }
 
 /// Non-vacuous: `resume_action_outcome` Ready case maps to Continue.
-pub proof fn proof_resume_ready_is_continue()
+pub proof fn proof_resume_ready_is_continue(side_effect_is_none: bool, retry_safety_disc: u8)
     ensures
-        spec_resume_action_outcome_decision(0, 0, 0, 0, false, false) == SpecResumeKind::Continue,
+        spec_resume_action_outcome_decision(
+            0,
+            0,
+            0,
+            0,
+            side_effect_is_none,
+            retry_safety_disc,
+            false,
+            false,
+        ) == SpecResumeKind::Continue,
 {
     reveal(spec_resume_action_outcome_decision);
 }
 
 /// Non-vacuous: `resume_action_outcome` Suspended case maps to AwaitingAction.
-pub proof fn proof_resume_suspended_is_awaiting()
+pub proof fn proof_resume_suspended_is_awaiting(side_effect_is_none: bool, retry_safety_disc: u8)
     ensures
-        spec_resume_action_outcome_decision(1, 0, 0, 0, false, false)
-            == SpecResumeKind::AwaitingAction,
+        spec_resume_action_outcome_decision(
+            1,
+            0,
+            0,
+            0,
+            side_effect_is_none,
+            retry_safety_disc,
+            false,
+            false,
+        ) == SpecResumeKind::AwaitingAction,
 {
     reveal(spec_resume_action_outcome_decision);
 }
 
-/// Non-vacuous: `resume_action_outcome` Failed-retryable-with-capacity maps to AwaitingAction.
+/// Pure actions retain the bypass even when the contract declares Unsafe.
 pub proof fn proof_resume_failed_retryable_with_capacity_is_awaiting(attempt: u16, capacity: u16)
     requires
         attempt < capacity,
     ensures
-        spec_resume_action_outcome_decision(2, attempt, capacity, 0, false, false)
+        spec_resume_action_outcome_decision(2, attempt, capacity, 0, true, 2, false, false)
             == SpecResumeKind::AwaitingAction,
 {
     reveal(spec_resume_action_outcome_decision);
 }
 
-/// Non-vacuous: `resume_action_outcome` Failed-retryable-exhausted maps to ErrRetryExhausted.
+/// Capacity exhaustion precedes overflow; below capacity, overflow is an invariant error.
 pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(attempt: u16, capacity: u16)
     ensures
         spec_resume_action_outcome_decision(
@@ -1125,18 +1157,104 @@ pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(attempt:
             attempt,
             capacity,
             0,
+            false,  // side_effect_is_none
+            0,  // Safe
             true,  // seq_would_overflow
             false,
-        ) == SpecResumeKind::ErrRetryExhausted,
+        ) == if attempt >= capacity {
+            SpecResumeKind::ErrRetryExhausted
+        } else {
+            SpecResumeKind::ErrInternalInvariantViolation
+        },
 {
     reveal(spec_resume_action_outcome_decision);
 }
 
 /// Non-vacuous: `resume_action_outcome` Failed-non-retryable maps to ErrUnsupportedPrimitive.
-pub proof fn proof_resume_failed_non_retryable_is_unsupported()
+pub proof fn proof_resume_failed_non_retryable_is_unsupported(
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
+)
     ensures
-        spec_resume_action_outcome_decision(2, 0, 0, 1, false, false)
+        spec_resume_action_outcome_decision(
+            2,
+            0,
+            0,
+            1,
+            side_effect_is_none,
+            retry_safety_disc,
+            false,
+            false,
+        ) == SpecResumeKind::ErrUnsupportedPrimitive,
+{
+    reveal(spec_resume_action_outcome_decision);
+}
+
+/// Both current permitted safety classes preserve side-effecting retry behavior.
+pub proof fn proof_resume_permitted_safety_with_capacity_is_awaiting(
+    attempt: u16,
+    capacity: u16,
+    retry_safety_disc: u8,
+)
+    requires
+        attempt < capacity,
+        retry_safety_disc <= 1,
+    ensures
+        spec_resume_action_outcome_decision(
+            2,
+            attempt,
+            capacity,
+            0,
+            false,
+            retry_safety_disc,
+            false,
+            false,
+        ) == SpecResumeKind::AwaitingAction,
+{
+    reveal(spec_resume_action_outcome_decision);
+}
+
+/// Unsafe side effects refuse before any capacity or overflow decision.
+pub proof fn proof_resume_nonpure_unsafe_is_unsupported(
+    attempt: u16,
+    capacity: u16,
+    seq_would_overflow: bool,
+    attempt_would_overflow: bool,
+)
+    ensures
+        spec_resume_action_outcome_decision(
+            2,
+            attempt,
+            capacity,
+            0,
+            false,
+            2,
+            seq_would_overflow,
+            attempt_would_overflow,
+        ) == SpecResumeKind::ErrUnsupportedPrimitive,
+{
+    reveal(spec_resume_action_outcome_decision);
+}
+
+/// A consumed retry budget cannot hide the contract refusal.
+pub proof fn proof_resume_unsafe_refusal_precedes_exhaustion(attempt: u16)
+    ensures
+        spec_resume_action_outcome_decision(2, attempt, attempt, 0, false, 2, true, true)
             == SpecResumeKind::ErrUnsupportedPrimitive,
+{
+    reveal(spec_resume_action_outcome_decision);
+}
+
+/// Sequence overflow during an otherwise permitted retry is an invariant error.
+pub proof fn proof_resume_permitted_sequence_overflow_is_invariant_error(
+    attempt: u16,
+    capacity: u16,
+)
+    requires
+        attempt < capacity,
+    ensures
+        spec_resume_action_outcome_decision(2, attempt, capacity, 0, false, 0, true, false)
+            == SpecResumeKind::ErrInternalInvariantViolation,
 {
     reveal(spec_resume_action_outcome_decision);
 }

@@ -4,7 +4,7 @@
 
 use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
-    Idempotency, propagate_action_taint,
+    Idempotency, SideEffect, propagate_action_taint,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::engine::EngineError;
@@ -197,14 +197,12 @@ pub fn execute_error_handler(failure: &ActionFailure, handler: StepIdx, body: St
 pub fn resume_action_outcome(
     original_ticket: &ActionTicket,
     outcome: ActionOutcome,
-    _contract: &ActionContract,
+    contract: &ActionContract,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match outcome {
         ActionOutcome::Ready(_ready) => Ok(RuntimeSignal::Continue),
         ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(ticket)),
-        ActionOutcome::Failed(failure) => {
-            resume_failed_action(original_ticket, failure.retry_policy)
-        }
+        ActionOutcome::Failed(failure) => resume_failed_action(original_ticket, failure, contract),
         #[allow(unreachable_code)]
         _ => Err(RuntimeEngineError::Core(
             EngineError::InternalInvariantViolation {
@@ -216,9 +214,13 @@ pub fn resume_action_outcome(
 
 fn resume_failed_action(
     original_ticket: &ActionTicket,
-    retry_policy: vb_core::action::RetryPolicy,
+    failure: ActionFailure,
+    contract: &ActionContract,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    if retry_policy != vb_core::action::RetryPolicy::Retryable {
+    if failure.retry_policy != vb_core::action::RetryPolicy::Retryable
+        || (contract.side_effect != SideEffect::None
+            && !crate::primitives::retry::is_failure_retriable(&failure, contract.retry_safety))
+    {
         return Err(non_retryable_action_error());
     }
     if original_ticket.attempt >= original_ticket.capacity {

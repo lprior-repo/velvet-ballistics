@@ -1,0 +1,9 @@
+crates/vb_storage/src/executor/catalog.rs: OK
+crates/vb_storage/src/executor/register.rs: OK
+crates/vb_storage/src/executor/receipt.rs: OK
+crates/vb_storage/src/executor/authority.rs: OK
+crates/vb_storage/src/executor/conformance.rs: OK
+crates/vb_storage/src/admission/verification.rs: OK
+crates/vb_storage/src/admission/verification/ledger.rs: OK
+crates/vb_core/src/action/contract.rs: OK
+crates/vb_runtime/src/run_checkpoint.rs: OK

@@ -1,0 +1,42 @@
+────────────
+ Nextest run ID 1aedd814-259c-4e61-a6a8-98ed13266bec with nextest profile: default
+    Starting 37 tests across 3 binaries
+        PASS [   0.003s] ( 1/37) vb_runtime::action_resume_contract resume_refuses_retryable_unsafe_effects_before_issuing_another_ticket
+        PASS [   0.003s] ( 2/37) vb_runtime::action_resume_contract resume_refuses_nonretryable_failure_for_every_current_contract_class
+        PASS [   0.004s] ( 3/37) vb_runtime::action_resume_contract resume_preserves_permitted_retry_and_pure_bypass_outcomes
+        PASS [   1.238s] ( 4/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_fails_closed_for_store_dependent_fjall_pending_action_after_reopen
+        PASS [   1.243s] ( 5/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_fails_closed_for_store_dependent_fjall_open_ask_after_reopen
+        PASS [   1.239s] ( 6/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_rejects_action_abi_digest_mismatch
+        PASS [   1.242s] ( 7/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_rehydrates_fjall_pending_action_ticket_after_reopen
+        PASS [   3.858s] ( 8/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_rejects_capability_mismatch
+        PASS [   3.867s] ( 9/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_rejects_admission_policy_mismatch
+        PASS [   3.997s] (10/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_rejects_workflow_source_digest_mismatch
+        PASS [   4.000s] (11/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recover_and_resume_rejects_source_digest_as_artifact_digest
+        PASS [   9.205s] (12/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recovered_fjall_owned_arena_ask_resumes_after_reopen
+        PASS [   9.346s] (13/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recovered_fjall_open_ask_can_answer_after_reopen
+        PASS [   9.339s] (14/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen
+        PASS [   9.207s] (15/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recovered_fjall_pending_action_can_complete_after_reopen
+        PASS [   6.059s] (16/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery runtime_records_actual_action_abi_at_schedule_boundary
+        PASS [   7.061s] (17/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recovered_fjall_wait_timer_resumes_after_reopen
+        PASS [   7.076s] (18/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery recovered_fjall_timed_ask_can_answer_after_reopen
+        PASS [   7.198s] (19/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery runtime_recover_product_refines_pending_asks_to_resumable_timer
+        PASS [  13.523s] (20/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery runtime_recover_product_cannot_resume_witness_carries_through_for_store_missing
+        PASS [   6.482s] (21/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery runtime_recover_product_refines_pending_timers_to_resumable_timer
+        PASS [   6.473s] (22/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery runtime_recovers_bound_gate_and_blocks_resume_after_fjall_reopen
+        PASS [   1.835s] (23/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest
+        PASS [   1.600s] (24/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist
+        PASS [   1.592s] (25/37) velvet-ballistics-workspace-tests::runtime_fjall_pending_action_recovery strict_submit_rejects_unbound_action_abi_before_ticket_persist
+        PASS [   5.060s] (26/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor execute_registered_action_commits_one_effect_and_completes_run
+        PASS [   7.280s] (27/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor execute_registered_action_rejects_mismatched_grant_artifact
+        PASS [   7.270s] (28/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor policy_dispatch::changed_policy::after_scheduling_policy_change_to_deny
+        PASS [   7.315s] (29/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor policy_dispatch::allowed::allowed_policy_permits_effect_and_records_decision
+        PASS [   5.455s] (30/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor policy_dispatch::reconcile::reconcile_ignores_policy_change_after_effect
+        PASS [   2.586s] (31/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor recovery_of_pending_registered_action_blocked_pack_rejects
+        PASS [   2.873s] (32/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor policy_dispatch::unconfigured::unconfigured_policy_denies_execution
+        PASS [   3.313s] (33/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor reconcile_registered_action_reads_receipt_without_new_effect
+        PASS [   1.834s] (34/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor recovery_of_pending_registered_action_reconcile_pack_is_resumable
+        PASS [   1.642s] (35/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor retained_taxonomy::retained_taxonomy_authority_characterization_archive
+        PASS [   2.450s] (36/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor runtime_parity::cold_reopen_reads_durable_receipt_without_new_effect
+        PASS [   2.370s] (37/37) velvet-ballistics-workspace-tests::vb_7x0ol_probe_registered_executor runtime_parity::duplicate_runtime_dispatch_returns_same_receipt_and_one_effect
+────────────
+     Summary [  42.538s] 37 tests run: 37 passed, 0 skipped

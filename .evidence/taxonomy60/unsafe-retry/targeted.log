@@ -1,0 +1,37 @@
+────────────
+ Nextest run ID 356ebcf5-a140-430d-aca4-246dbca7c9e7 with nextest profile: default
+    Starting 32 tests across 2 binaries (2619 tests skipped)
+        PASS [   0.002s] ( 1/32) vb_runtime engine::action::tests::error_handler_routes_to_body_on_unknown_non_retryable
+        PASS [   0.002s] ( 2/32) vb_runtime engine::action::tests::error_handler_routes_to_handler_on_retryable_failure
+        PASS [   0.003s] ( 3/32) vb_runtime engine::action::tests::error_handler_routes_to_handler_on_unknown_retryable
+        PASS [   0.003s] ( 4/32) vb_runtime engine::action::tests::error_handler_routes_to_handler_on_non_unknown_code
+        PASS [   0.002s] ( 5/32) vb_runtime engine::action::tests::idempotency_key_differs_for_different_action
+        PASS [   0.003s] ( 6/32) vb_runtime engine::action::tests::execute_do_returns_capability_denied_when_required_capability_not_granted
+        PASS [   0.003s] ( 7/32) vb_runtime engine::action::tests::idempotency_key_differs_for_different_runs
+        PASS [   0.003s] ( 8/32) vb_runtime engine::action::tests::execute_do_succeeds_when_required_capability_is_granted
+        PASS [   0.002s] ( 9/32) vb_runtime engine::action::tests::idempotency_key_is_deterministic
+        PASS [   0.002s] (10/32) vb_runtime engine::action::tests::idempotency_key_with_large_values
+        PASS [   0.003s] (11/32) vb_runtime engine::action::tests::idempotency_key_differs_for_different_seq
+        PASS [   0.003s] (12/32) vb_runtime engine::action::tests::idempotency_key_no_overlap_collision
+        PASS [   0.002s] (13/32) vb_runtime engine::action::tests::idempotency_key_with_zero_inputs_is_deterministic
+        PASS [   0.003s] (14/32) vb_runtime engine::action::tests::resolve_contract_finds_matching_contract_by_index_and_id
+        PASS [   0.002s] (15/32) vb_runtime engine::action::tests::resolve_contract_rejects_id_mismatch
+        PASS [   0.002s] (16/32) vb_runtime engine::action::tests::resolve_contract_rejects_when_index_matches_but_id_differs
+        PASS [   0.003s] (17/32) vb_runtime engine::action::tests::resolve_contract_returns_first_contract
+        PASS [   0.002s] (18/32) vb_runtime engine::action::tests::resolve_contract_returns_last_contract
+        PASS [   0.002s] (19/32) vb_runtime engine::action::tests::resume_capacity_one_never_retries
+        PASS [   0.003s] (20/32) vb_runtime engine::action::tests::resolve_contract_returns_unknown_for_empty_registry
+        PASS [   0.003s] (21/32) vb_runtime engine::action::tests::resume_retries_when_attempt_below_capacity
+        PASS [   0.002s] (22/32) vb_runtime engine::action::tests::resume_returns_retry_exhausted_when_capacity_reached
+        PASS [   0.002s] (23/32) vb_runtime engine::action::tests::retry_check_default_policy_allows_two_retries
+        PASS [   0.002s] (24/32) vb_runtime engine::action::tests::retry_check_default_policy_exhausts_at_three
+        PASS [   0.002s] (25/32) vb_runtime engine::action::tests::retry_check_never_policy_always_exhausts_after_one
+        PASS [   0.002s] (26/32) vb_runtime engine::action::tests::retry_check_routes_to_body_when_below_max
+        PASS [   0.003s] (27/32) vb_runtime engine::action::tests::retry_check_routes_to_body_at_max_minus_one
+        PASS [   0.002s] (28/32) vb_runtime engine::action::tests::retry_check_routes_to_exhausted_above_max
+        PASS [   0.002s] (29/32) vb_runtime::action_resume_contract resume_refuses_nonretryable_failure_for_every_current_contract_class
+        PASS [   0.002s] (30/32) vb_runtime::action_resume_contract resume_preserves_permitted_retry_and_pure_bypass_outcomes
+        PASS [   0.002s] (31/32) vb_runtime::action_resume_contract resume_refuses_retryable_unsafe_effects_before_issuing_another_ticket
+        PASS [   0.002s] (32/32) vb_runtime engine::action::tests::retry_check_routes_to_exhausted_at_max
+────────────
+     Summary [   0.021s] 32 tests run: 32 passed, 2619 skipped

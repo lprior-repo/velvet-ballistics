@@ -1,0 +1,233 @@
+{
+  "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "files": [
+    {
+      "path": "crates/vb_core/src/action/contract.rs",
+      "owners": [
+        "retained wire record"
+      ],
+      "sha256": "ffe26304f079a57aada696bd2339b3f3f16e7202281a23de055ea01d4dce8269",
+      "base_sha256": "ffe26304f079a57aada696bd2339b3f3f16e7202281a23de055ea01d4dce8269",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_core/src/action/registry.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "c957887bfb624a7ee67691fc20b366acfbae17942a3f9cb3bbba12c05fcdc48f",
+      "base_sha256": "c957887bfb624a7ee67691fc20b366acfbae17942a3f9cb3bbba12c05fcdc48f",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_core/src/budget.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "1289a2673c7e3d91ffbfc86b9a95ef323f8e88066d78aa7fb95028e230d821e1",
+      "base_sha256": "1289a2673c7e3d91ffbfc86b9a95ef323f8e88066d78aa7fb95028e230d821e1",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_core/src/workflow/mod.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "cfbeacca80a1c548aa1c4765b885d276764aff0a42f90583938ec3be4ae54338",
+      "base_sha256": "cfbeacca80a1c548aa1c4765b885d276764aff0a42f90583938ec3be4ae54338",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_runtime/src/run_checkpoint.rs",
+      "owners": [
+        "retained wire record"
+      ],
+      "sha256": "ce38c01e506c9be11c25cb7f85d69294b3dab6b9bf738e33ea2f14edfb6e57cc",
+      "base_sha256": "ce38c01e506c9be11c25cb7f85d69294b3dab6b9bf738e33ea2f14edfb6e57cc",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_storage/src/admission/verification.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "2deea708531893f5b721ee2764259bc294ad54b6a7e1c6e893529245dcccfa8f",
+      "base_sha256": "2deea708531893f5b721ee2764259bc294ad54b6a7e1c6e893529245dcccfa8f",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_storage/src/admission/verification/ledger.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "d5e8933764be71964f4c2dca4a0034127520bb4e0610ff5da90e01a60421b504",
+      "base_sha256": "d5e8933764be71964f4c2dca4a0034127520bb4e0610ff5da90e01a60421b504",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_storage/src/executor/authority.rs",
+      "owners": [
+        "crates/vb_storage/src/executor/catalog.rs"
+      ],
+      "sha256": "8f4ef76dd483184f4e877ee05274861ae3a52c5a10ff29e592b56f87b2178feb",
+      "base_sha256": "8f4ef76dd483184f4e877ee05274861ae3a52c5a10ff29e592b56f87b2178feb",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_storage/src/executor/catalog.rs",
+      "owners": [
+        "crates/vb_storage/src/executor/catalog.rs"
+      ],
+      "sha256": "4f54b10120dc77f2ff9203e702aa8b1b3a2aa27ab54c050c51ec15675c877717",
+      "base_sha256": "4f54b10120dc77f2ff9203e702aa8b1b3a2aa27ab54c050c51ec15675c877717",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_storage/src/executor/conformance.rs",
+      "owners": [
+        "crates/vb_storage/src/executor/catalog.rs"
+      ],
+      "sha256": "a4051d4c928c2e910a7d127dc29a6a4d951b55a954de552fdc6ada8094f20cd0",
+      "base_sha256": "a4051d4c928c2e910a7d127dc29a6a4d951b55a954de552fdc6ada8094f20cd0",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_storage/src/executor/receipt.rs",
+      "owners": [
+        "crates/vb_storage/src/executor/catalog.rs",
+        "crates/vb_storage/src/executor/catalog.rs"
+      ],
+      "sha256": "8f5e9b5de073f518ad3b58fc1de7d017720879be1e22d4bceb075bdc66d6baee",
+      "base_sha256": "8f5e9b5de073f518ad3b58fc1de7d017720879be1e22d4bceb075bdc66d6baee",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_storage/src/executor/register.rs",
+      "owners": [
+        "crates/vb_storage/src/executor/catalog.rs"
+      ],
+      "sha256": "f13ab0dc3c1b6c871bd1d0cc2f6d29482f493a8951933ae3fa95e710e480d20d",
+      "base_sha256": "f13ab0dc3c1b6c871bd1d0cc2f6d29482f493a8951933ae3fa95e710e480d20d",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_07.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "2e5fc475d781e7a4a3eae66add8bf4af28255656b3d79d3705282391a2aa0971",
+      "base_sha256": "2e5fc475d781e7a4a3eae66add8bf4af28255656b3d79d3705282391a2aa0971",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_08.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "1299c6e4da655ac1a337a19ede37d69cd3040bb34935e63e16f4b185e9652b51",
+      "base_sha256": "1299c6e4da655ac1a337a19ede37d69cd3040bb34935e63e16f4b185e9652b51",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_09.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "12479c7b9806c84b489bc4b84715be79828feaa68e01dd56c6fc33d60f40b71b",
+      "base_sha256": "12479c7b9806c84b489bc4b84715be79828feaa68e01dd56c6fc33d60f40b71b",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_10_refs.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "2d7518bdefdc9ce22c80dfeb5cc5d92f3f650c9ee13b768af5a58e62d994f84b",
+      "base_sha256": "2d7518bdefdc9ce22c80dfeb5cc5d92f3f650c9ee13b768af5a58e62d994f84b",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_10.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "986ce7618df1734f8cfbe29a75b0c02bfb8f46ff2d9141cc6262829d948fa97d",
+      "base_sha256": "986ce7618df1734f8cfbe29a75b0c02bfb8f46ff2d9141cc6262829d948fa97d",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_11_spans.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "04a24512a4574a73be34c582f993edc0dd47ec721bd19f7b53805ec5a9788dd6",
+      "base_sha256": "04a24512a4574a73be34c582f993edc0dd47ec721bd19f7b53805ec5a9788dd6",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_11.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "2bcabbcace24157ac51ed8f587114b0ccee2611538ec723049150f795106af40",
+      "base_sha256": "2bcabbcace24157ac51ed8f587114b0ccee2611538ec723049150f795106af40",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_12.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "fff7b08f80c241a4385da9934809a656b32cb60cae5464db881bff982a83a71a",
+      "base_sha256": "fff7b08f80c241a4385da9934809a656b32cb60cae5464db881bff982a83a71a",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_13.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "ddf998fda2d42f167ee45ed8f81dfdac4d182f1287c35a09c0ac635d0e91448f",
+      "base_sha256": "ddf998fda2d42f167ee45ed8f81dfdac4d182f1287c35a09c0ac635d0e91448f",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_14.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "632e9a8fd70b219bed236c65d5de5f1ce94b21aa20f211dbc191e16bad5b45a5",
+      "base_sha256": "632e9a8fd70b219bed236c65d5de5f1ce94b21aa20f211dbc191e16bad5b45a5",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/gate_15.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "43b32107b2a22f1c4856356b37cd162d45feebdee0f10670d27808c3958304cd",
+      "base_sha256": "43b32107b2a22f1c4856356b37cd162d45feebdee0f10670d27808c3958304cd",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/gates/mod.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "50f3fbd8aa01b25cc3a522e545a59837efbc5dcd9f868f7e1a4bc3282562db55",
+      "base_sha256": "50f3fbd8aa01b25cc3a522e545a59837efbc5dcd9f868f7e1a4bc3282562db55",
+      "unchanged": true
+    },
+    {
+      "path": "crates/vb_validate/src/shared.rs",
+      "owners": [
+        "crates/vb_storage/src/admission/verification.rs"
+      ],
+      "sha256": "b3a01f338360d8423cf557a0ddfde30f0ce6caf4a8efe59b4802d38dc5e94995",
+      "base_sha256": "b3a01f338360d8423cf557a0ddfde30f0ce6caf4a8efe59b4802d38dc5e94995",
+      "unchanged": true
+    }
+  ],
+  "count": 25,
+  "all_unchanged": true
+}

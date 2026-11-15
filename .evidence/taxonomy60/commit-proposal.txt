@@ -1,0 +1,15 @@
+fix(runtime): enforce action retry contracts
+
+Retain issued artifact and checkpoint identities while applying the
+existing retry classification at outcome resumption.
+
+- .beads/vb-eirmk.60/contract.md
+- .beads/vb-eirmk.60/unsafe-retry-contract.md
+- crates/vb_runtime/src/engine/action/mod.rs
+- crates/vb_runtime/tests/action_resume_contract.rs
+- crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs
+- crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/retained_retry.rs
+- crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/retained_taxonomy.rs
+- verification/verus/production_inner/execute_do_production.rs
+- verification/verus/vb_runtime_execute_do_spec.rs
+- .evidence/taxonomy60/** (73 files)
