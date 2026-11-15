@@ -844,6 +844,21 @@ pub struct SpecWorkflowParts {
     /// projection treats a missing entry (a `node_kinds` shorter
     /// than `nodes_meta`) as `Nop` for the tail nodes.
     pub node_kinds: Vec<SpecNodeKind>,
+    /// Per-node concurrent branch-step inventory consumed by
+    /// `concurrent_start_entries::validate`
+    /// (crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26), the
+    /// start-entries check of `validate_node`
+    /// (crates/vb_core/src/workflow/validate.rs:152-172), run after the
+    /// concurrent-pair check and before the kind-ref inventory.
+    /// `concurrent_branches[i]` is node i's branch entry steps in
+    /// production order, for a `TogetherConcurrentStart` /
+    /// `FirstSuccessStart` only: a `ForEachConcurrentStart` reads its
+    /// single `body` entry from its `node_kinds` entry, so it carries
+    /// no entry here. The projection treats a missing entry (a
+    /// `concurrent_branches` shorter than `nodes_meta`) as no branch
+    /// payload, so the start-entries check is vacuous for the tail
+    /// nodes.
+    pub concurrent_branches: Vec<Vec<u32>>,
     /// Symbol inventory of the constant pool consumed by
     /// `validate_constants_symbols` (workflow/validate_refs.rs:166-176).
     /// `constants_symbols` lists, in pool order, the `SymbolId`
@@ -1642,6 +1657,190 @@ pub fn concurrent_join_error(
     }
     if node.next_step >= parts.nodes_len {
         return Some(SpecWorkflowError::StepOutOfBounds);
+    }
+    None
+}
+
+/// Pure projection of `concurrent_start_entries::validate`
+/// (`crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26`), the
+/// start-entries check run inside `validate_node`
+/// (`crates/vb_core/src/workflow/validate.rs:152-172`) for the three
+/// concurrent start kinds, after the concurrent-pair check and before
+/// `concurrent_lane_walk::check_start`. `validate` is only invoked for
+/// the three start kinds, so a kind inventory entry of any other kind
+/// returns `None`; a missing kind entry means the node carries no
+/// start-entries payload, so the check is vacuous. A
+/// `ForEachConcurrentStart` reads its single `body` entry from its kind
+/// entry; a `TogetherConcurrentStart` / `FirstSuccessStart` reads its
+/// `branches` list from the `concurrent_branches` inventory, and a
+/// missing branches entry makes the check vacuous for that node. The
+/// `validate_kind` twin
+/// (`crates/vb_core/src/workflow/concurrent/start_entries.rs:51-82`,
+/// reached through `kind_refs::validate`,
+/// `crates/vb_core/src/workflow/concurrent/kind_refs.rs:6-22`) adds no
+/// rejection beyond the pair check and this check: its foreach-input,
+/// body-step, join-step, empty-branch, and fanout arms are each implied
+/// by an earlier check, so it is not modelled separately.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn start_entries_error(parts: &SpecWorkflowParts, index: usize) -> Option<SpecWorkflowError> {
+    let src = match parts.nodes_meta.get(index) {
+        Some(meta) => meta,
+        None => return None,
+    };
+    match parts.node_kinds.get(index) {
+        Some(SpecNodeKind::ForEachConcurrentStart {
+            input,
+            item_slot,
+            limit,
+            at_once,
+            body,
+            join,
+        }) => {
+            if let Some(err) = foreach_concurrent_input_error(
+                *input,
+                *item_slot,
+                *limit,
+                *at_once,
+                parts.slot_count,
+                parts.resource_contract.max_fanout,
+            ) {
+                return Some(err);
+            }
+            concurrent_entries_error(
+                parts,
+                src.id as usize,
+                std::slice::from_ref(body),
+                *join as usize,
+            )
+        }
+        Some(SpecNodeKind::TogetherConcurrentStart { join, .. })
+        | Some(SpecNodeKind::FirstSuccessStart { join, .. }) => {
+            let branches = match parts.concurrent_branches.get(index) {
+                Some(branches) => branches,
+                None => return None,
+            };
+            concurrent_entries_error(parts, src.id as usize, branches, *join as usize)
+        }
+        Some(_) => None,
+        None => None,
+    }
+}
+
+/// Pure projection of `validate_foreach_input`
+/// (`crates/vb_core/src/workflow/concurrent/start_entries.rs:28-49`):
+/// the input and item slots against `slot_count` (`validate_slot`,
+/// `crates/vb_core/src/workflow/validate_refs.rs:56-62`), the limit
+/// against `MAX_LIST_ITEMS_PER_VALUE` (`validate_reduce_limit`,
+/// `crates/vb_core/src/workflow/resource_limits.rs:6-16`,
+/// `crates/vb_core/src/limits.rs:71`), then the `at_once` nonzero and
+/// fanout caps, in production order. The `usize::try_from(limit)` arm
+/// of `validate_reduce_limit` cannot fire for a `u32` limit, so only
+/// the 65535 cap is modelled.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn foreach_concurrent_input_error(
+    input: u32,
+    item_slot: u32,
+    limit: u32,
+    at_once: u32,
+    slot_count: u32,
+    max_fanout: u32,
+) -> Option<SpecWorkflowError> {
+    if input >= slot_count {
+        return Some(SpecWorkflowError::SlotOutOfBounds);
+    }
+    if item_slot >= slot_count {
+        return Some(SpecWorkflowError::SlotOutOfBounds);
+    }
+    if limit > 65535 {
+        return Some(SpecWorkflowError::ResourceContractExceeded);
+    }
+    if at_once == 0 {
+        return Some(SpecWorkflowError::ResourceContractExceeded);
+    }
+    if at_once > max_fanout {
+        return Some(SpecWorkflowError::ResourceContractExceeded);
+    }
+    None
+}
+
+/// Pure projection of `validate_concurrent_entries`
+/// (`crates/vb_core/src/workflow/concurrent/start_entries.rs:84-110`):
+/// the empty-branch-table and fanout caps, then the per-entry step
+/// bound and region-range check in entry order, then the uniqueness
+/// scan (`validate_concurrent_entry_uniqueness`,
+/// `crates/vb_core/src/workflow/concurrent/start_entries.rs:112-123`).
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn concurrent_entries_error(
+    parts: &SpecWorkflowParts,
+    src: usize,
+    entries: &[u32],
+    join: usize,
+) -> Option<SpecWorkflowError> {
+    if entries.is_empty() {
+        return Some(SpecWorkflowError::EmptyBranchTable);
+    }
+    if entries.len() > parts.resource_contract.max_fanout as usize {
+        return Some(SpecWorkflowError::ResourceContractExceeded);
+    }
+    for entry in entries {
+        if let Some(err) = concurrent_entry_error(parts, src, *entry as usize, join) {
+            return Some(err);
+        }
+    }
+    concurrent_entries_unique_error(entries)
+}
+
+/// Pure projection of one entry of `validate_concurrent_entries`
+/// (`crates/vb_core/src/workflow/concurrent/start_entries.rs:84-110`):
+/// the entry step against the node count (`validate_step`,
+/// `crates/vb_core/src/workflow/validate_refs.rs:48-54`), then the
+/// region range (the entry strictly between the start and the join),
+/// else `LoopRegionCrossing`.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn concurrent_entry_error(
+    parts: &SpecWorkflowParts,
+    src: usize,
+    entry: usize,
+    join: usize,
+) -> Option<SpecWorkflowError> {
+    if entry >= parts.nodes_len as usize {
+        return Some(SpecWorkflowError::StepOutOfBounds);
+    }
+    if !(entry > src && entry < join) {
+        return Some(SpecWorkflowError::LoopRegionCrossing);
+    }
+    None
+}
+
+/// Pure projection of `validate_concurrent_entry_uniqueness`
+/// (`crates/vb_core/src/workflow/concurrent/start_entries.rs:112-123`):
+/// the first entry repeating an earlier entry is unpaired.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn concurrent_entries_unique_error(entries: &[u32]) -> Option<SpecWorkflowError> {
+    for (index, entry) in entries.iter().enumerate() {
+        if entries.iter().take(index).any(|prior| prior == entry) {
+            return Some(SpecWorkflowError::LoopRegionUnpaired);
+        }
     }
     None
 }
@@ -2949,7 +3148,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // too; a missing entry (a `node_kinds` shorter than
     // `nodes_meta`) means the node carries no local-resource
     // payload, so its `local_resources` check is vacuous, and no
-    // concurrent-pair payload, so its pair check is vacuous.
+    // concurrent-pair payload, so its pair check is vacuous. The
+    // concurrent-branches inventory is per node too; a missing
+    // entry (a `concurrent_branches` shorter than `nodes_meta`)
+    // means the node carries no branch payload, so its
+    // start-entries check is vacuous.
     let empty_refs: Vec<SpecKindRef> = Vec::new();
     for (index, meta) in parts.nodes_meta.iter().enumerate() {
         // validate_node_id (workflow/validate.rs:133-146), before
@@ -2964,12 +3167,17 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         // validate_node_common (workflow/validate.rs:201-209),
         // then the concurrent-pair check for a concurrent start,
         // lane-end, or join node (workflow/validate.rs:152-172),
-        // then the kind-ref inventory and the branch-target alias
-        // checks: production order inside validate_node.
+        // then the concurrent start-entries check for a concurrent
+        // start node (workflow/validate.rs:152-172), then the
+        // kind-ref inventory and the branch-target alias checks:
+        // production order inside validate_node.
         if let Some(err) = validate_node_common(*meta, parts.slot_count, node_count) {
             return SpecValidationResult::Err(err);
         }
         if let Some(err) = concurrent_pair_error(parts, index) {
+            return SpecValidationResult::Err(err);
+        }
+        if let Some(err) = start_entries_error(parts, index) {
             return SpecValidationResult::Err(err);
         }
         let per_node_err = validate_node_kind_alias(

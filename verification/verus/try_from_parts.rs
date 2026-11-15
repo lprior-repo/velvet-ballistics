@@ -688,6 +688,229 @@ pub open spec fn spec_concurrent_join_error(
     }
 }
 
+/// Spec-level mirror of `concurrent_start_entries::validate`
+/// (crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26), the
+/// start-entries check run inside `validate_node`
+/// (crates/vb_core/src/workflow/validate.rs:152-172) for the three
+/// concurrent start kinds, after the concurrent-pair check and before
+/// the kind-ref inventory. `validate` is only invoked for the three
+/// start kinds, so any other kind returns `None`; a missing kind
+/// inventory entry means the node carries no start-entries payload,
+/// so the check is vacuous. A `ForEachConcurrentStart` reads its
+/// single `body` entry from its kind entry; a
+/// `TogetherConcurrentStart` / `FirstSuccessStart` reads its
+/// `branches` list from the `concurrent_branches` inventory, and a
+/// missing branches entry makes the check vacuous for that node. The
+/// `validate_kind` twin
+/// (crates/vb_core/src/workflow/concurrent/start_entries.rs:51-82,
+/// reached through `kind_refs::validate`,
+/// crates/vb_core/src/workflow/concurrent/kind_refs.rs:6-22) adds no
+/// rejection beyond the pair check and this check: its foreach-input,
+/// body-step, join-step, empty-branch, and fanout arms are each implied
+/// by an earlier check, so it is not modelled separately.
+pub open spec fn spec_concurrent_start_entries_error(
+    parts: &SpecWorkflowParts,
+    i: int,
+) -> Option<SpecWorkflowError> {
+    if i < 0 || i >= parts.nodes_meta.len() || i >= parts.node_kinds.len() {
+        None
+    } else {
+        let src = parts.nodes_meta[i].id as int;
+        match parts.node_kinds[i] {
+            SpecNodeKind::ForEachConcurrentStart {
+                input,
+                item_slot,
+                limit,
+                at_once,
+                body,
+                join,
+            } => {
+                let input_err = spec_foreach_concurrent_input_error(
+                    input as int,
+                    item_slot as int,
+                    limit as int,
+                    at_once as int,
+                    parts.slot_count as int,
+                    parts.resource_contract.max_fanout as int,
+                );
+                if input_err != None::<SpecWorkflowError> {
+                    input_err
+                } else if 1 > (parts.resource_contract.max_fanout as int) {
+                    Some(SpecWorkflowError::ResourceContractExceeded)
+                } else {
+                    spec_concurrent_entry_error(parts, src, body as int, join as int)
+                }
+            },
+            SpecNodeKind::TogetherConcurrentStart { join, .. } => {
+                if i >= parts.concurrent_branches.len() {
+                    None
+                } else {
+                    spec_concurrent_entries_error(
+                        parts,
+                        src,
+                        &parts.concurrent_branches[i],
+                        join as int,
+                    )
+                }
+            },
+            SpecNodeKind::FirstSuccessStart { join, .. } => {
+                if i >= parts.concurrent_branches.len() {
+                    None
+                } else {
+                    spec_concurrent_entries_error(
+                        parts,
+                        src,
+                        &parts.concurrent_branches[i],
+                        join as int,
+                    )
+                }
+            },
+            _ => None,
+        }
+    }
+}
+
+/// Spec-level mirror of `validate_foreach_input`
+/// (crates/vb_core/src/workflow/concurrent/start_entries.rs:28-49):
+/// the input and item slots against `slot_count` (`validate_slot`,
+/// crates/vb_core/src/workflow/validate_refs.rs:56-62), the limit
+/// against `MAX_LIST_ITEMS_PER_VALUE` (`validate_reduce_limit`,
+/// crates/vb_core/src/workflow/resource_limits.rs:6-16,
+/// crates/vb_core/src/limits.rs:71), then the `at_once` nonzero and
+/// fanout caps, in production order. The `usize::try_from(limit)` arm
+/// of `validate_reduce_limit` cannot fire for a `u32` limit, so only
+/// the 65535 cap is modelled.
+pub open spec fn spec_foreach_concurrent_input_error(
+    input: int,
+    item_slot: int,
+    limit: int,
+    at_once: int,
+    slot_count: int,
+    max_fanout: int,
+) -> Option<SpecWorkflowError> {
+    if input >= slot_count {
+        Some(SpecWorkflowError::SlotOutOfBounds)
+    } else if item_slot >= slot_count {
+        Some(SpecWorkflowError::SlotOutOfBounds)
+    } else if limit > 65535 {
+        Some(SpecWorkflowError::ResourceContractExceeded)
+    } else if at_once == 0 {
+        Some(SpecWorkflowError::ResourceContractExceeded)
+    } else if at_once > max_fanout {
+        Some(SpecWorkflowError::ResourceContractExceeded)
+    } else {
+        None
+    }
+}
+
+/// Spec-level mirror of `validate_concurrent_entries`
+/// (crates/vb_core/src/workflow/concurrent/start_entries.rs:84-110):
+/// the empty-branch-table and fanout caps, then the per-entry step
+/// bound and region-range check in entry order, then the uniqueness
+/// scan (`validate_concurrent_entry_uniqueness`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:112-123).
+pub open spec fn spec_concurrent_entries_error(
+    parts: &SpecWorkflowParts,
+    src: int,
+    entries: &Vec<u32>,
+    join: int,
+) -> Option<SpecWorkflowError> {
+    if entries.len() == 0 {
+        Some(SpecWorkflowError::EmptyBranchTable)
+    } else if entries.len() > (parts.resource_contract.max_fanout as int) {
+        Some(SpecWorkflowError::ResourceContractExceeded)
+    } else {
+        spec_concurrent_entries_walk_error(parts, src, entries, join, 0)
+    }
+}
+
+/// Spec-level mirror of the per-entry loop of
+/// `validate_concurrent_entries`
+/// (crates/vb_core/src/workflow/concurrent/start_entries.rs:92-110):
+/// walks `entries` from index `j` and returns the first entry's step
+/// or region-range failure, or the uniqueness failure once every
+/// entry passes, or `None` when the whole list validates.
+pub open spec fn spec_concurrent_entries_walk_error(
+    parts: &SpecWorkflowParts,
+    src: int,
+    entries: &Vec<u32>,
+    join: int,
+    j: int,
+) -> Option<SpecWorkflowError>
+    decreases entries.len() - j
+{
+    if j < 0 || j >= entries.len() {
+        spec_concurrent_entries_unique_error(entries, 0)
+    } else {
+        let entry_err = spec_concurrent_entry_error(parts, src, entries[j] as int, join);
+        if entry_err != None::<SpecWorkflowError> {
+            entry_err
+        } else {
+            spec_concurrent_entries_walk_error(parts, src, entries, join, j + 1)
+        }
+    }
+}
+
+/// Spec-level mirror of one entry of `validate_concurrent_entries`
+/// (crates/vb_core/src/workflow/concurrent/start_entries.rs:84-110):
+/// the entry step against the node count (`validate_step`,
+/// crates/vb_core/src/workflow/validate_refs.rs:48-54), then the
+/// region range (the entry strictly between the start and the join),
+/// else `LoopRegionCrossing`.
+pub open spec fn spec_concurrent_entry_error(
+    parts: &SpecWorkflowParts,
+    src: int,
+    entry: int,
+    join: int,
+) -> Option<SpecWorkflowError> {
+    if entry >= (parts.nodes_len as int) {
+        Some(SpecWorkflowError::StepOutOfBounds)
+    } else if !(entry > src && entry < join) {
+        Some(SpecWorkflowError::LoopRegionCrossing)
+    } else {
+        None
+    }
+}
+
+/// Spec-level mirror of `validate_concurrent_entry_uniqueness`
+/// (crates/vb_core/src/workflow/concurrent/start_entries.rs:112-123):
+/// walks `entries` from index `i` and returns `LoopRegionUnpaired`
+/// for the first entry repeating an earlier entry, or `None` when
+/// every entry is unique.
+pub open spec fn spec_concurrent_entries_unique_error(
+    entries: &Vec<u32>,
+    i: int,
+) -> Option<SpecWorkflowError>
+    decreases entries.len() - i
+{
+    if i < 0 || i >= entries.len() {
+        None
+    } else if spec_concurrent_entries_contains(entries, entries[i], 0, i) {
+        Some(SpecWorkflowError::LoopRegionUnpaired)
+    } else {
+        spec_concurrent_entries_unique_error(entries, i + 1)
+    }
+}
+
+/// Spec-level helper for the uniqueness scan: whether `value` occurs
+/// in `entries[j..end]`.
+pub open spec fn spec_concurrent_entries_contains(
+    entries: &Vec<u32>,
+    value: u32,
+    j: int,
+    end: int,
+) -> bool
+    decreases end - j
+{
+    if j < 0 || j >= end || j >= entries.len() {
+        false
+    } else if entries[j] == value {
+        true
+    } else {
+        spec_concurrent_entries_contains(entries, value, j + 1, end)
+    }
+}
+
 /// Spec-level mirror of the step-1e per-node loop: walks the node
 /// table from index `i`; for each node checks `validate_node_id`
 /// before `validate_node` (workflow/validate.rs:21-47), returning
@@ -695,18 +918,23 @@ pub open spec fn spec_concurrent_join_error(
 /// node validates. The kind-ref inventory is per node; a missing
 /// entry (a `kind_refs` shorter than `nodes_meta`) means the node
 /// carries no kind-payload references, so its kind-ref walk is
-/// vacuous and only the common bounds, branch-table, pair, and
-/// alias checks apply. The pair check runs after the common
-/// bounds and before the kind-ref inventory, in production
+/// vacuous and only the common bounds, branch-table, pair,
+/// start-entries, and alias checks apply. The pair check runs after
+/// the common bounds and before the kind-ref inventory, in production
 /// `validate_node` order (workflow/validate.rs:152-172); a missing
 /// kind entry (a `node_kinds` shorter than `nodes_meta`) means
 /// the node carries no concurrent-pair payload, so that check is
-/// vacuous. After those checks each node runs the
-/// `local_resources` check (workflow/validate/local_resources.rs:4-23), the
-/// last check of `validate_node` (workflow/validate.rs:152-172); a
-/// missing kind entry (a `node_kinds` shorter than `nodes_meta`)
-/// means the node carries no local-resource payload, so that check
-/// is vacuous.
+/// vacuous. The start-entries check runs after the pair check and
+/// before the kind-ref inventory, in the same production order; a
+/// missing kind entry means the node carries no start-entries
+/// payload, and a missing `concurrent_branches` entry means a
+/// `TogetherConcurrentStart` / `FirstSuccessStart` carries no branch
+/// payload, so that check is vacuous. After those checks each node
+/// runs the `local_resources` check
+/// (workflow/validate/local_resources.rs:4-23), the last check of
+/// `validate_node` (workflow/validate.rs:152-172); a missing kind
+/// entry (a `node_kinds` shorter than `nodes_meta`) means the node
+/// carries no local-resource payload, so that check is vacuous.
 pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<SpecWorkflowError>
     decreases parts.nodes_meta.len() - i
 {
@@ -728,17 +956,22 @@ pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<S
                 let pair_err = spec_concurrent_pair_error(parts, i);
                 if pair_err != None::<SpecWorkflowError> {
                     pair_err
-                } else if i < parts.kind_refs.len() {
-                    validate_node_kind_alias_spec(
-                        parts.nodes_meta[i],
-                        &parts.kind_refs[i],
-                        parts.slot_count as int,
-                        parts.nodes_len as int,
-                        parts.expressions_len as int,
-                        parts.constants_len as int,
-                    )
                 } else {
-                    spec_branch_target_alias_error(parts.nodes_meta[i])
+                    let entries_err = spec_concurrent_start_entries_error(parts, i);
+                    if entries_err != None::<SpecWorkflowError> {
+                        entries_err
+                    } else if i < parts.kind_refs.len() {
+                        validate_node_kind_alias_spec(
+                            parts.nodes_meta[i],
+                            &parts.kind_refs[i],
+                            parts.slot_count as int,
+                            parts.nodes_len as int,
+                            parts.expressions_len as int,
+                            parts.constants_len as int,
+                        )
+                    } else {
+                        spec_branch_target_alias_error(parts.nodes_meta[i])
+                    }
                 }
             };
             if node_err != None::<SpecWorkflowError> {
@@ -10091,6 +10324,308 @@ pub proof fn lemma_concurrent_pair_before_accessor_path(parts: &SpecWorkflowPart
     assert(spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep));
     assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
         SpecWorkflowError::LoopRegionUnpaired,
+    ));
+}
+
+/// Lemma 198: the concurrent start-entries input-slot rejection. A
+/// `ForEachConcurrentStart` node whose input slot is out of bounds is
+/// rejected with `SlotOutOfBounds` (production
+/// `concurrent_start_entries::validate`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26, via
+/// `validate_foreach_input`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:28-49, and
+/// `validate_slot`,
+/// crates/vb_core/src/workflow/validate_refs.rs:56-62).
+pub proof fn lemma_concurrent_start_entries_input_rejected(parts: &SpecWorkflowParts, i: int)
+    requires
+        i == 0,
+        i < parts.nodes_meta.len(),
+        i < parts.node_kinds.len(),
+        parts.nodes_meta[i].id as int == i,
+        parts.node_kinds[i] == (SpecNodeKind::ForEachConcurrentStart {
+            input: 5u32,
+            item_slot: 0u32,
+            limit: 1u32,
+            at_once: 1u32,
+            body: 1u32,
+            join: 2u32,
+        }),
+        parts.slot_count == 1u32,
+    ensures
+        spec_concurrent_start_entries_error(parts, i) == Some(SpecWorkflowError::SlotOutOfBounds),
+{
+    assert(spec_concurrent_start_entries_error(parts, i)
+        == Some(SpecWorkflowError::SlotOutOfBounds));
+}
+
+/// Lemma 199: the concurrent start-entries at-once rejection. A
+/// `ForEachConcurrentStart` node with `at_once` zero is rejected with
+/// `ResourceContractExceeded` (production
+/// `concurrent_start_entries::validate`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26, via
+/// `validate_foreach_input`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:28-49).
+pub proof fn lemma_concurrent_start_entries_at_once_rejected(parts: &SpecWorkflowParts, i: int)
+    requires
+        i == 0,
+        i < parts.nodes_meta.len(),
+        i < parts.node_kinds.len(),
+        parts.nodes_meta[i].id as int == i,
+        parts.node_kinds[i] == (SpecNodeKind::ForEachConcurrentStart {
+            input: 0u32,
+            item_slot: 0u32,
+            limit: 1u32,
+            at_once: 0u32,
+            body: 1u32,
+            join: 2u32,
+        }),
+        parts.slot_count == 1u32,
+        parts.resource_contract.max_fanout == 2u32,
+    ensures
+        spec_concurrent_start_entries_error(parts, i)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_concurrent_start_entries_error(parts, i)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 200: the concurrent start-entries limit rejection. A
+/// `ForEachConcurrentStart` node whose limit exceeds
+/// `MAX_LIST_ITEMS_PER_VALUE` is rejected with
+/// `ResourceContractExceeded` (production
+/// `concurrent_start_entries::validate`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26, via
+/// `validate_foreach_input`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:28-49, and
+/// `validate_reduce_limit`,
+/// crates/vb_core/src/workflow/resource_limits.rs:6-16).
+pub proof fn lemma_concurrent_start_entries_limit_rejected(parts: &SpecWorkflowParts, i: int)
+    requires
+        i == 0,
+        i < parts.nodes_meta.len(),
+        i < parts.node_kinds.len(),
+        parts.nodes_meta[i].id as int == i,
+        parts.node_kinds[i] == (SpecNodeKind::ForEachConcurrentStart {
+            input: 0u32,
+            item_slot: 0u32,
+            limit: 65536u32,
+            at_once: 1u32,
+            body: 1u32,
+            join: 2u32,
+        }),
+        parts.slot_count == 1u32,
+        parts.resource_contract.max_fanout == 2u32,
+    ensures
+        spec_concurrent_start_entries_error(parts, i)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_concurrent_start_entries_error(parts, i)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 201: the concurrent start-entries empty-branch rejection. A
+/// `TogetherConcurrentStart` node with no branch entries is rejected
+/// with `EmptyBranchTable` (production
+/// `concurrent_start_entries::validate`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26, via
+/// `validate_concurrent_entries`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:84-110).
+pub proof fn lemma_concurrent_start_entries_empty_rejected(parts: &SpecWorkflowParts, i: int)
+    requires
+        i == 0,
+        i < parts.nodes_meta.len(),
+        i < parts.node_kinds.len(),
+        i < parts.concurrent_branches.len(),
+        parts.nodes_meta[i].id as int == i,
+        parts.node_kinds[i] == (SpecNodeKind::TogetherConcurrentStart {
+            branch_count: 0u32,
+            join: 2u32,
+        }),
+        parts.concurrent_branches[i].len() == 0,
+        parts.resource_contract.max_fanout == 2u32,
+    ensures
+        spec_concurrent_start_entries_error(parts, i) == Some(SpecWorkflowError::EmptyBranchTable),
+{
+    assert(spec_concurrent_start_entries_error(parts, i)
+        == Some(SpecWorkflowError::EmptyBranchTable));
+}
+
+/// Lemma 202: the concurrent start-entries range rejection. A
+/// `TogetherConcurrentStart` node whose branch entry does not lie
+/// strictly between the start and the join is rejected with
+/// `LoopRegionCrossing` (production
+/// `concurrent_start_entries::validate`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26, via
+/// `validate_concurrent_entries`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:84-110).
+pub proof fn lemma_concurrent_start_entries_range_rejected(parts: &SpecWorkflowParts, i: int)
+    requires
+        i == 0,
+        i < parts.nodes_meta.len(),
+        i < parts.node_kinds.len(),
+        i < parts.concurrent_branches.len(),
+        parts.nodes_meta[i].id as int == i,
+        parts.node_kinds[i] == (SpecNodeKind::TogetherConcurrentStart {
+            branch_count: 1u32,
+            join: 2u32,
+        }),
+        parts.concurrent_branches[i].len() == 1,
+        parts.concurrent_branches[i][0] == 2u32,
+        parts.nodes_len == 3u32,
+        parts.resource_contract.max_fanout == 2u32,
+    ensures
+        spec_concurrent_start_entries_error(parts, i)
+            == Some(SpecWorkflowError::LoopRegionCrossing),
+{
+    assert(spec_concurrent_start_entries_error(parts, i)
+        == Some(SpecWorkflowError::LoopRegionCrossing));
+}
+
+/// Lemma 203: the concurrent start-entries duplicate rejection. A
+/// `TogetherConcurrentStart` node whose branch entries repeat a step
+/// is rejected with `LoopRegionUnpaired` (production
+/// `concurrent_start_entries::validate`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:8-26, via
+/// `validate_concurrent_entry_uniqueness`,
+/// crates/vb_core/src/workflow/concurrent/start_entries.rs:112-123).
+pub proof fn lemma_concurrent_start_entries_duplicate_rejected(parts: &SpecWorkflowParts, i: int)
+    requires
+        i == 0,
+        i < parts.nodes_meta.len(),
+        i < parts.node_kinds.len(),
+        i < parts.concurrent_branches.len(),
+        parts.nodes_meta[i].id as int == i,
+        parts.node_kinds[i] == (SpecNodeKind::TogetherConcurrentStart {
+            branch_count: 2u32,
+            join: 3u32,
+        }),
+        parts.concurrent_branches[i].len() == 2,
+        parts.concurrent_branches[i][0] == 1u32,
+        parts.concurrent_branches[i][1] == 1u32,
+        parts.nodes_len == 4u32,
+        parts.resource_contract.max_fanout == 2u32,
+    ensures
+        spec_concurrent_start_entries_error(parts, i)
+            == Some(SpecWorkflowError::LoopRegionUnpaired),
+{
+    assert(spec_concurrent_entries_contains(&parts.concurrent_branches[i], 1u32, 0, 1));
+    assert(spec_concurrent_entries_unique_error(&parts.concurrent_branches[i], 1)
+        == Some(SpecWorkflowError::LoopRegionUnpaired));
+    assert(spec_concurrent_entries_unique_error(&parts.concurrent_branches[i], 0)
+        == Some(SpecWorkflowError::LoopRegionUnpaired));
+    assert(spec_concurrent_entries_walk_error(parts, 0, &parts.concurrent_branches[i], 3, 2)
+        == Some(SpecWorkflowError::LoopRegionUnpaired));
+    assert(spec_concurrent_entries_walk_error(parts, 0, &parts.concurrent_branches[i], 3, 1)
+        == Some(SpecWorkflowError::LoopRegionUnpaired));
+    assert(spec_concurrent_entries_walk_error(parts, 0, &parts.concurrent_branches[i], 3, 0)
+        == Some(SpecWorkflowError::LoopRegionUnpaired));
+    assert(spec_concurrent_start_entries_error(parts, i)
+        == Some(SpecWorkflowError::LoopRegionUnpaired));
+}
+
+/// Lemma 204: the concurrent start-entries rejection at the top level.
+/// A workflow whose per-node validation reports `LoopRegionCrossing`
+/// is rejected with `LoopRegionCrossing`: the mirror runs the
+/// per-node loop after the accessor-root check and before the
+/// accessor-path check (production `validate_parts`,
+/// crates/vb_core/src/workflow/validate.rs:21-47; extern Step 1e).
+pub proof fn lemma_concurrent_start_entries_top_level_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing),
+    ensures
+        try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+            SpecWorkflowError::LoopRegionCrossing,
+        ),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing));
+    assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+        SpecWorkflowError::LoopRegionCrossing,
+    ));
+}
+
+/// Lemma 205: the concurrent start-entries rejection runs before the
+/// accessor-path check. A workflow whose per-node validation reports
+/// `LoopRegionCrossing` and whose accessor paths are also invalid is
+/// rejected with `LoopRegionCrossing`: the mirror runs the per-node
+/// loop before the accessor-path scan (production `validate_parts`,
+/// crates/vb_core/src/workflow/validate.rs:21-47; extern Steps 1e-1f).
+pub proof fn lemma_concurrent_start_entries_before_accessor_path(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing),
+        spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep),
+    ensures
+        try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+            SpecWorkflowError::LoopRegionCrossing,
+        ),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing));
+    assert(spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep));
+    assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+        SpecWorkflowError::LoopRegionCrossing,
     ));
 }
 
