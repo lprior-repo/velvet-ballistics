@@ -145,6 +145,13 @@ fn check_accessor_path(
 /// a `CompileError` with source-location context.
 fn map_validation_error(reference: &str, error: &vb_validate::ValidationError) -> CompileError {
     match error {
+        vb_validate::ValidationError::SecretNotDeclared { secret } => {
+            CompileError::UnknownReferenceName {
+                kind: "secrets",
+                reference: Box::from(reference),
+                name: Box::from(secret.as_str()),
+            }
+        }
         vb_validate::ValidationError::UnknownReference { .. } => {
             let Some(body) = reference.strip_prefix('$') else {
                 return CompileError::UnknownReferenceRoot {

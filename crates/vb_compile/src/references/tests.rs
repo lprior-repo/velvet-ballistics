@@ -370,10 +370,11 @@ steps:
             error,
             CompileError::UnknownReferenceName {
                 kind: "secrets",
-                ..
-            }
+                name,
+                reference,
+            } if name.as_ref() == "api_key" && reference.as_ref() == "$secrets.api_key"
         ),
-        "undeclared secret did not produce UnknownReferenceName with kind=secrets",
+        "undeclared secret did not preserve exact UnknownReferenceName",
     )
 }
 
