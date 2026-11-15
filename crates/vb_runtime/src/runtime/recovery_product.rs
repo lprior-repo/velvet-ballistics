@@ -1,5 +1,7 @@
 #[path = "recovery_product/attempts.rs"]
 mod attempts;
+#[path = "recovery_product/immediate_retry.rs"]
+mod immediate_retry;
 
 impl Runtime {
     /// Builds a typed durable recovery product without mutating shard state.
@@ -206,6 +208,7 @@ impl Runtime {
         if let Some(product) = self.retry_timer_recovery_product(run, &prefix, &recovered)? {
             return Ok(product);
         }
+        immediate_retry::validate(&prefix.events, &recovered.workflow)?;
         attempts::validate_owned_run_attempts(
             &prefix.events,
             &recovered.workflow,
