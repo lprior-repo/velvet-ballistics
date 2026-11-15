@@ -37,6 +37,10 @@ tempfile.workspace = true
 workspace = true
 
 [[test]]
+name = "deliver_filename_boundaries"
+path = "../workspace_tests/tests/cli/deliver_filename_boundaries.rs"
+
+[[test]]
 name = "submit_input_boundary"
 path = "../workspace_tests/tests/cli/submit_input_boundary.rs"
 
