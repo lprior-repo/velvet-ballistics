@@ -2485,17 +2485,17 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // `validate_transitions_nonzero` (workflow/resource_limits.rs:142-149).
     // The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
-    // true inventory lengths. Each is checked against its contract
-    // cap in production `validate_resource_usage` order; a
-    // violation collapses to ResourceContractExceeded or
-    // ResourceContractTooLarge, and the projection returns the
-    // first one that fires.
+    // true inventory lengths. Every TooLarge arm above runs before
+    // any usage arm below, matching production
+    // `validate_resource_contract` (workflow/resource_limits.rs:124-135:
+    // `check_resource_contract_limits`, then
+    // `validate_resource_usage`); the usage arms run in
+    // `validate_resource_usage` order. A violation collapses to
+    // ResourceContractExceeded or ResourceContractTooLarge, and the
+    // projection returns the first one that fires.
     let contract = parts.resource_contract;
     if contract.max_steps > 1000 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
-    }
-    if parts.nodes_len > contract.max_steps {
-        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
     if contract.max_slots > 65535 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
@@ -2508,18 +2508,6 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     if contract.max_expressions > 4096 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
-    }
-    if parts.slot_count > contract.max_slots {
-        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
-    }
-    if parts.constants_len > contract.max_constants {
-        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
-    }
-    if parts.accessors_len > contract.max_accessors {
-        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
-    }
-    if parts.expressions_len > contract.max_expressions {
-        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
     if contract.max_expr_stack > 64 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
@@ -2556,6 +2544,21 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     if contract.max_journal_batch_bytes > 16777216 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if parts.nodes_len > contract.max_steps {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
+    }
+    if parts.slot_count > contract.max_slots {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
+    }
+    if parts.constants_len > contract.max_constants {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
+    }
+    if parts.accessors_len > contract.max_accessors {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
+    }
+    if parts.expressions_len > contract.max_expressions {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
     for expression in &parts.expressions {
         if expression.max_stack > contract.max_expr_stack {
