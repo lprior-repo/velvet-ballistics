@@ -825,6 +825,29 @@ pub open spec fn spec_accessor_path_error(
     }
 }
 
+/// Spec-level mirror of the step-1d accessor loop: walks
+/// `parts.accessors` from index `i` and returns `Some(SlotOutOfBounds)`
+/// for the first accessor whose root is at or beyond `slot_count`,
+/// or `None` when every root validates. Production checks each
+/// accessor root against the slot count in accessor order
+/// (`validate_accessors`, workflow/validate_refs.rs:107-115), after
+/// the expression check and before the per-node loop
+/// (workflow/validate.rs:21-47).
+pub open spec fn spec_accessors_root_error(
+    parts: &SpecWorkflowParts,
+    i: int,
+) -> Option<SpecWorkflowError>
+    decreases parts.accessors.len() - i
+{
+    if i < 0 || i >= parts.accessors.len() {
+        None
+    } else if (parts.accessors[i].root as int) >= parts.slot_count as int {
+        Some(SpecWorkflowError::SlotOutOfBounds)
+    } else {
+        spec_accessors_root_error(parts, i + 1)
+    }
+}
+
 /// Spec-level mirror of the step-1f accessor loop: walks
 /// `parts.accessors` from index `i` and returns the first
 /// accessor-path error in accessor order, or `None` when every
@@ -2643,12 +2666,12 @@ pub open spec fn spec_nested_together_error(parts: &SpecWorkflowParts) -> Option
 /// resolve through the spec mirror rather than the opaque body.
 /// The mirror preserves the production validator's top-level guard
 /// order (empty nodes, resource contract, entry bounds, expressions,
-/// per-node validation, then the per-inventory checks) so the first
-/// error agrees with production `validate_parts` and the extern
-/// projection's Step 1 order; the per-step detail inside the later
-/// stages stays collapsed. (The full per-step projection is in
-/// `extern_try_from_parts.rs` and is opaque to Verus; this mirror is
-/// the contract layer the spec proofs reason about.)
+/// accessor roots, per-node validation, then the per-inventory checks) so the first error agrees with production
+/// `validate_parts` and the extern projection's Step 1 order; the
+/// per-step detail inside the later stages stays collapsed. (The
+/// full per-step projection is in `extern_try_from_parts.rs` and is
+/// opaque to Verus; this mirror is the contract layer the spec
+/// proofs reason about.)
 pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if parts.nodes_meta.len() == 0 {
         SpecValidationResult::Err(SpecWorkflowError::EmptyNodes)
@@ -2704,6 +2727,8 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds)
     } else if spec_exprs_error(parts, 0) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_exprs_error(parts, 0).unwrap())
+    } else if spec_accessors_root_error(parts, 0) != None::<SpecWorkflowError> {
+        SpecValidationResult::Err(spec_accessors_root_error(parts, 0).unwrap())
     } else if spec_nodes_error(parts, 0) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_nodes_error(parts, 0).unwrap())
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
@@ -2939,6 +2964,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -3015,6 +3041,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Entry out of bounds: skip (already required in range).
     } else if spec_exprs_error(parts, 0) != None::<SpecWorkflowError> {
         // Expressions: skip (already required valid).
+    } else if spec_accessors_root_error(parts, 0) != None::<SpecWorkflowError> {
+        // Accessor roots: skip (already required valid).
     } else if spec_nodes_error(parts, 0) != None::<SpecWorkflowError> {
         // Per-node validation: skip (already required valid).
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
@@ -3873,6 +3901,7 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -3941,6 +3970,7 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -4016,6 +4046,7 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -4163,6 +4194,7 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -4260,6 +4292,7 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -4388,6 +4421,7 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -4501,6 +4535,7 @@ pub proof fn lemma_reachability_unreachable_rejected(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -4625,6 +4660,7 @@ pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -5814,6 +5850,7 @@ pub proof fn lemma_budget_pairing_before_budget(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -5872,6 +5909,7 @@ pub proof fn lemma_budget_before_input_slots(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -5932,6 +5970,7 @@ pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowPa
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -6475,6 +6514,7 @@ pub proof fn lemma_accessor_path_before_reachability(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep),
         spec_reachability_error(parts) == Some(SpecWorkflowError::UnreachableNode),
@@ -6775,6 +6815,7 @@ pub proof fn lemma_symbols_before_reachability(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == Some(SpecWorkflowError::SymbolOutOfBounds),
@@ -6827,6 +6868,7 @@ pub proof fn lemma_symbols_within_bounds_reaches_reachability(parts: &SpecWorkfl
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -7145,6 +7187,7 @@ pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.expressions_len == parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -7358,6 +7401,7 @@ pub proof fn lemma_contract_limits_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -7710,6 +7754,7 @@ pub proof fn lemma_byte_budget_limits_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -8015,6 +8060,7 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_at_cap_accepted(parts: &Spe
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -8444,6 +8490,7 @@ pub proof fn lemma_transitions_limit_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -8634,6 +8681,7 @@ pub proof fn lemma_steps_limit_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -8687,6 +8735,7 @@ pub proof fn lemma_slots_limit_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
         spec_symbols_error(parts) == None::<SpecWorkflowError>,
@@ -8741,6 +8790,7 @@ pub proof fn lemma_node_id_top_level_rejected(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == Some(SpecWorkflowError::NodeIdMismatch),
     ensures
         try_from_parts_pure_spec(parts)
@@ -8748,6 +8798,7 @@ pub proof fn lemma_node_id_top_level_rejected(parts: &SpecWorkflowParts)
 {
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::NodeIdMismatch));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::NodeIdMismatch));
@@ -8788,6 +8839,7 @@ pub proof fn lemma_per_node_slot_top_level_rejected(parts: &SpecWorkflowParts)
         parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
         spec_nodes_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds),
     ensures
         try_from_parts_pure_spec(parts)
@@ -8795,7 +8847,105 @@ pub proof fn lemma_per_node_slot_top_level_rejected(parts: &SpecWorkflowParts)
 {
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds));
+}
+
+/// Lemma 173: the accessor-root rejection at the top level. A
+/// workflow whose accessor-root scan reports `SlotOutOfBounds` is
+/// rejected with `SlotOutOfBounds`: the mirror runs the accessor-root
+/// check after the expression check and before the accessor-path
+/// check (production `validate_parts`, workflow/validate.rs:21-47;
+/// extern Step 1d).
+pub proof fn lemma_accessor_root_top_level_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds));
+}
+
+/// Lemma 174: the accessor-root check runs before the accessor-path
+/// check. A workflow whose accessor roots are out of bounds and
+/// whose accessor paths are also invalid is rejected with
+/// `SlotOutOfBounds`: the mirror runs the root scan after the
+/// expression check and before the path scan (production
+/// `validate_parts`, workflow/validate.rs:21-47; extern Steps 1d-1f).
+pub proof fn lemma_accessor_root_before_accessor_path(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds),
+        spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds));
+    assert(spec_accessors_path_error(parts, 0)
+        == Some(SpecWorkflowError::AccessorPathTooDeep));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds));
 }
