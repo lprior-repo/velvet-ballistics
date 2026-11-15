@@ -103,7 +103,7 @@ pub fn extract_payload(
     read_buffer: &mut Vec<u8>,
     total_len: usize,
 ) -> Result<Vec<u8>, IpcServerError> {
-    if read_buffer.len() < total_len {
+    if total_len < IPC_HEADER_LEN || read_buffer.len() < total_len {
         return Err(IpcServerError::IncompleteFrame);
     }
     // Keep unread bytes in the connection buffer and return only the consumed payload.
