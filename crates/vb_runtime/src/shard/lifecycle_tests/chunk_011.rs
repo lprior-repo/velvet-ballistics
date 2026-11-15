@@ -116,6 +116,77 @@ fn compat_gate_blocks_submit_with_journaled_replay_only_decision() {
 }
 
 #[test]
+fn queued_resume_preserves_initial_state_after_compatibility_gate_blocks_start() {
+    let (_temp, journal) = compat_gate_temp_journal();
+    let run = RunId::new(91_005);
+    compat_gate_journal_replay_only(&journal, run, EventSeq::ZERO);
+    let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), shared)
+        .expect("valid test configuration");
+    shard
+        .seed_journal_sequence(run, EventSeq::new(1))
+        .expect("seed journal sequence past the decision");
+    compat_gate_submit_suspended(&mut shard, run);
+    assert_eq!(shard.tick(), Err(compat_gate_blocked_error(run)));
+    assert_eq!(
+        shard.runtime_state_get(run),
+        Some(super::super::RuntimeState::Initial)
+    );
+    assert!(shard.run_state_contains(run));
+
+    let events_before = journal.events_for_run(run).expect("read journal events");
+    let counters_before = shard.counters().snapshot();
+    let pending_actions_before = shard.pending_action_clone();
+    let pending_timers_before = shard.pending_timer_count();
+    assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+
+    let error = shard.tick().expect_err("initial run must not resume");
+    assert_eq!(
+        error,
+        RuntimeError::NotResumable {
+            run,
+            current_state: super::super::RuntimeState::Initial,
+        }
+    );
+    assert_ne!(
+        error,
+        RuntimeError::NotResumable {
+            run: RunId::new(91_006),
+            current_state: super::super::RuntimeState::Initial,
+        }
+    );
+    assert_ne!(
+        error,
+        RuntimeError::NotResumable {
+            run,
+            current_state: super::super::RuntimeState::Running,
+        }
+    );
+    assert_eq!(
+        error.diagnostic_code(),
+        RuntimeError::UNSUPPORTED_OPERATION_CODE
+    );
+    assert_eq!(error.symbolic_code().as_str(), "UNSUPPORTED_OPERATION");
+    assert_eq!(error.runtime_code(), None);
+    assert_eq!(
+        error.to_string(),
+        format!("run {run:?} cannot resume from state Initial")
+    );
+    assert_eq!(
+        shard.runtime_state_get(run),
+        Some(super::super::RuntimeState::Initial)
+    );
+    assert!(shard.run_state_contains(run));
+    assert_eq!(shard.pending_action_clone(), pending_actions_before);
+    assert_eq!(shard.pending_timer_count(), pending_timers_before);
+    assert_eq!(
+        journal.events_for_run(run).expect("read journal events after resume"),
+        events_before
+    );
+    assert_eq!(shard.counters().snapshot(), counters_before);
+}
+
+#[test]
 fn compat_gate_blocks_resume_with_journaled_replay_only_decision() {
     let (_temp, journal) = compat_gate_temp_journal();
     let run = RunId::new(91_002);

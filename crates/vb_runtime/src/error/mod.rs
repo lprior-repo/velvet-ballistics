@@ -35,6 +35,13 @@ pub enum RuntimeError {
     },
     /// Run identifier not found.
     RunNotFound,
+    /// An active run cannot resume from its current lifecycle state.
+    NotResumable {
+        /// Run whose current state does not permit resuming.
+        run: RunId,
+        /// Current runtime state of the run.
+        current_state: RuntimeState,
+    },
     /// Active run capacity for a shard has been exhausted.
     ActiveRunCapacityExceeded {
         /// Configured active-run capacity.

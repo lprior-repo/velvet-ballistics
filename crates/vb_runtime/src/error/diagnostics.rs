@@ -176,6 +176,7 @@ impl RuntimeError {
             Self::SecretUnavailable => Self::SECRET_UNAVAILABLE_CODE,
             Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
             Self::RunAlreadyExists => Self::RUN_ALREADY_EXISTS_CODE,
+            Self::NotResumable { .. } => Self::UNSUPPORTED_OPERATION_CODE,
             Self::UnsupportedOperation { .. } => Self::UNSUPPORTED_OPERATION_CODE,
             Self::ShutdownInProgress => Self::SHUTDOWN_IN_PROGRESS_CODE,
             Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
