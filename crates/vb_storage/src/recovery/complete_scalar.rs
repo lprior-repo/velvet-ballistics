@@ -1,7 +1,8 @@
 //! Complete bound scalar traces replay actual activations, including repeated Ask boundaries.
 use super::{
-    RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState as S, RecoveryError,
-    RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryResult, UnsupportedRecoveryState,
+    RecoveredPendingAction, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState as S,
+    RecoveryError, RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryResult,
+    UnsupportedRecoveryState,
 };
 use crate::{JournalEvent as E, RunInputBinding, RunPolicyPin};
 use vb_core::{
@@ -73,6 +74,7 @@ pub fn replay_complete_scalar(
     let frame = driver::replay(events, plan)?;
     let summary = super::replay::summarize_recovery_events(events)?.summary();
     let mut steps = Vec::new();
+    let mut pending_actions = Vec::new();
     for raw in 0..plan.node_count() {
         let step = StepIdx::new(raw);
         let state = match frame
@@ -80,7 +82,15 @@ pub fn replay_complete_scalar(
             .map_err(|e| invalid(step, e.to_string()))?
         {
             StepState::Pending => continue,
-            StepState::Running => S::Running,
+            StepState::Running => {
+                if let Some(K::Do { action, .. }) = plan.node(step).map(|node| &node.kind) {
+                    pending_actions.push(RecoveredPendingAction {
+                        action: *action,
+                        step,
+                    });
+                }
+                S::Running
+            }
             StepState::Succeeded => S::Succeeded,
             StepState::Failed => S::Failed,
             StepState::Asking => S::Asking,
@@ -102,7 +112,7 @@ pub fn replay_complete_scalar(
         pc: frame.pc(),
         steps,
         slots,
-        pending_actions: Vec::new(),
+        pending_actions,
         unsupported: UnsupportedRecoveryState::SUPPORTED,
     });
     Ok(Some(CompleteScalarReplay { frame, seed }))
@@ -143,6 +153,7 @@ fn eligible(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<bool> {
         return Ok(false);
     }
     let mut repeated = false;
+    let mut actions = false;
     for raw in 0..plan.node_count() {
         let node = plan
             .node(StepIdx::new(raw))
@@ -155,6 +166,9 @@ fn eligible(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<bool> {
             | K::RepeatAttempt { .. }
             | K::RepeatCheck { .. }
             | K::RepeatFinish { .. } => repeated = true,
+            K::Do { .. } if node.retry.is_none() && node.routing.error.handler().is_none() => {
+                actions = true;
+            }
             K::Nop
             | K::SetConst { .. }
             | K::Copy { .. }
@@ -187,12 +201,15 @@ fn eligible(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<bool> {
             }
         }
     }
-    if repeated
+    if repeated && actions {
+        return Ok(false);
+    }
+    if (repeated || actions)
         && events
             .iter()
             .any(|event| event.attempt().is_some_and(|attempt| attempt != 1))
     {
         return Err(invalid(plan.entry(), "unproven bound run attempt"));
     }
-    Ok(repeated)
+    Ok(repeated || actions)
 }

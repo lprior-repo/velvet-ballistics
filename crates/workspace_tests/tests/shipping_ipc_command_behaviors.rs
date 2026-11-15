@@ -4,6 +4,9 @@
 #[path = "artifact_evidence_support/mod.rs"]
 mod artifact_fixture;
 
+#[path = "shipping_ipc_command_behaviors/batch.rs"]
+mod batch;
+
 use std::{
     io::{Read, Write},
     num::NonZeroUsize,
