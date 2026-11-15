@@ -890,3 +890,43 @@ fn runtime_take_inspect_response_returns_none_initially() {
     let response = runtime.take_inspect_response(run);
     assert_eq!(response, Err(RuntimeError::RunNotFound));
 }
+
+#[test]
+fn scoped_trace_total_limit_preserves_order_across_shard_rings() -> Result<(), String> {
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(
+        NonZeroUsize::new(2).ok_or("two shards required")?,
+        runtime_config(),
+    )
+    .map_err(|error| format!("{error:?}"))?;
+    let run = RunId::new(9101);
+    let other = RunId::new(9102);
+    let first = TraceEvent::RunSubmitted { run };
+    let second = TraceEvent::StepStarted {
+        run,
+        step: StepIdx::ZERO,
+    };
+    let third = TraceEvent::StepEnded {
+        run,
+        step: StepIdx::ZERO,
+    };
+    let fourth = TraceEvent::RunFinished { run };
+    let unrelated = TraceEvent::RunSubmitted { run: other };
+    // Raw trace records exercise queue selection; no admitted run state is synthesized.
+    let shard0 = runtime.shards.get_mut(0).ok_or("shard zero")?;
+    for event in [first.clone(), unrelated.clone(), second.clone()] {
+        assert!(shard0.trace_ring_mut().push(event));
+    }
+    let shard1 = runtime.shards.get_mut(1).ok_or("shard one")?;
+    for event in [third.clone(), unrelated.clone(), fourth.clone()] {
+        assert!(shard1.trace_ring_mut().push(event));
+    }
+    assert_eq!(runtime.drain_trace_for_run(run, 0), Vec::new());
+    assert_eq!(
+        runtime.drain_trace_for_run(run, 3),
+        vec![first, second, third]
+    );
+    assert_eq!(runtime.drain_trace_for_run(run, 1), vec![fourth]);
+    assert_eq!(runtime.drain_trace_for_run(run, usize::MAX), Vec::new());
+    assert_eq!(runtime.drain_trace(), vec![unrelated.clone(), unrelated]);
+    Ok(())
+}

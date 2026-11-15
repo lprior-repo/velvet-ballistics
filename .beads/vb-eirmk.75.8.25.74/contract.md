@@ -1,0 +1,11 @@
+# Bounded per-run IPC trace drain
+
+The authorized additive Runtime::drain_trace_for_run(&mut self, run: RunId, max_records: usize) -> Vec<TraceEvent> consumes at most one total max_records across shards in the same shard/ring order as Runtime::drain_trace. It delegates to the existing TraceRing::drain_for_run, preserves every unrelated and over-limit pending event in its original order, and consumes nothing when max_records is zero. No matching pending events yield an empty vector. The facade filters retained pending records without requiring active run admission, so completed-run traces remain drainable. Existing global Runtime::drain_trace retains its behavior.
+
+IPC DrainTrace retains its existing target-run inspection, malformed/unknown-run errors, u32 limit conversion, TraceCount response and wire shape. It uses the scoped facade rather than globally draining and then filtering. History and durable journal semantics remain unchanged. No schema, dependency, gate or configuration changes. No public Shard API is needed.
+
+The current MASTER section49 says drain_for_run consumes nonmatching events silently; that descriptive sentence conflicts with the existing TraceRing implementation and its zero-limit/preservation tests. The user's explicit authorization selects the existing per-run preserving behavior for this repair. This contract records the documentation drift without changing master authority or claiming that sentence mandates preservation.
+
+Executable regression must first fail on the existing public IPC dispatch with real compiled scalar workflow, storage-issued Strict accepted artifact, actual successful runtime admission and both runs observed Found. Final tests cover zero, one, repeated bounded calls, exhaustion, unrelated-run events, exact retained event identity/order, unchanged history, unchanged aggregate drain and malformed/unknown-run inspection policy. Tests are registered native workspace integration tests; raw trace-only unit fixtures may separately exercise the new facade's total budget across multiple shard rings without claiming runtime admission.
+
+Independent CODE and TEST approval plus focused native owning tests and canonical source/fmt/explicit-base test-integrity checks are required before adoption. No performance or formal proof closure claim.

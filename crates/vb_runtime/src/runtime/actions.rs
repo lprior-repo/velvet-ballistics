@@ -247,4 +247,17 @@ impl Runtime {
         }
         events
     }
+
+    /// Drains at most `max_records` pending events for one run in shard order.
+    ///
+    /// Other runs and records beyond the total limit remain pending.
+    pub fn drain_trace_for_run(&mut self, run: RunId, max_records: usize) -> Vec<TraceEvent> {
+        self.shards
+            .iter_mut()
+            .fold(Vec::new(), |mut events, shard| {
+                let remaining = max_records.saturating_sub(events.len());
+                events.extend(shard.trace_ring_mut().drain_for_run(run, remaining));
+                events
+            })
+    }
 }

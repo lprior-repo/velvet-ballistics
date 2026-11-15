@@ -136,17 +136,12 @@ pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         }
     }
 
-    let all_events = runtime.drain_trace();
     let max = match usize::try_from(max_records) {
         Ok(value) => value,
         Err(_) => usize::MAX,
     };
-    let filtered: Vec<TraceEvent> = all_events
-        .into_iter()
-        .filter(|event| event.run_id() == run_id)
-        .take(max)
-        .collect();
-    count_response_trace(filtered.len())
+    let events = runtime.drain_trace_for_run(run_id, max);
+    count_response_trace(events.len())
 }
 
 #[cfg(test)]
