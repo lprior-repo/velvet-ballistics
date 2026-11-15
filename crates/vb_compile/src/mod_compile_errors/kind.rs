@@ -51,7 +51,9 @@ pub enum CompileError {
     #[error("YAML scalar length exceeds limit: actual={actual}, limit={limit}")]
     ScalarLimit { actual: usize, limit: usize },
     #[error("compiled workflow IR failed validation: {0}")]
-    Workflow(#[from] WorkflowError),
+    Workflow(#[source] WorkflowError),
+    #[error("compiled workflow IR failed validation: budget policy exceeded: {detail}")]
+    UnboundedWorkflow { detail: vb_core::budget::BudgetDimension },
     #[error("compiled workflow IR encoding failed: {0}")]
     CompiledIrEncode(postcard::Error),
     #[error("validation gate failure: {0}")]
@@ -185,4 +187,13 @@ pub enum CompileError {
     ExpressionHelperArity { helper: &'static str, expected: usize, actual: usize },
     #[error("action {action:?} has side-effect {side_effect:?} with unsafe retry: {reason}")]
     IdempotencyViolation { action: ActionId, side_effect: SideEffect, reason: Box<str> },
+}
+
+impl From<WorkflowError> for CompileError {
+    fn from(error: WorkflowError) -> Self {
+        match error {
+            WorkflowError::BudgetPolicyExceeded { detail } => Self::UnboundedWorkflow { detail },
+            error => Self::Workflow(error),
+        }
+    }
 }

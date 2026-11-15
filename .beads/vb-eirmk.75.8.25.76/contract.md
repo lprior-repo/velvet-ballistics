@@ -1,0 +1,9 @@
+# Typed compiler boundedness refusal contract
+
+MASTER64 requires a typed UnboundedWorkflow identifying the exceeded policy limit. The actual canonical nested-for_each producer in local_resource_contract.rs must return exactly CompileError::UnboundedWorkflow { detail: BudgetDimension::TotalSteps }; its smaller-bound control remains accepted.
+
+Map only WorkflowError::BudgetPolicyExceeded through the shared From conversion. The new compiler variant retains the existing BudgetDimension directly, exact Display text, LIMIT_EXCEEDED code and diagnostic_code alias. Its Error::source is intentionally None. Every other WorkflowError retains the Workflow variant, payload, source chain, Display and code; keep explicit #[source] when replacing derived From.
+
+No core/runtime/policy/serde/schema/dependency/registry/gate changes or repeated budget computation. The prior canonical diagnostic75 repair and all frozen references remain intact. Approved proposal SHA24f882359e891aab996631973a2810e331abd955522951dea4a5a5df0e8db48b; independent proposal review SHAe46a8beedca8bf35bb2a433967fde2dbb215552c4e1ca10e6f2e2b86bf9e39d9. Base f366003714753937573e04650bf63cc4e5beb8ea.
+
+Acceptance: preserve the actual native canonical-producer RED and input; exact typed singleton canonical rejection and accepted control; distinct public From conversion controls TotalSlots and TimerEntries with unchanged detail/text/code/alias and source None; representative nonbudget From payload/source/text/code preservation. Run complete scoped native vb_compile, canonical source gates with explicit integrity base f366, and byte-compare accepted canonical postcard with preserved430-byte baseline. Independent CODE and TEST review before landing. No full MASTER64 analysis/proof closure is inferred from the compiler wrapper repair.

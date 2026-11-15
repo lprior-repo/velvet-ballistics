@@ -29,10 +29,10 @@
 //
 // The production `CompileError::PrimitiveLoweringLimitExceeded`
 // variant is at
-// `crates/vb_compile/src/mod_compile_errors/kind.rs:141` (which is
+// `crates/vb_compile/src/mod_compile_errors/kind.rs:143` (which is
 // what `checked_step_offset` actually constructs on overflow — see
 // part_12.rs:199-212), and `CompileError::StepIndexOutOfRange` is at
-// crates/vb_compile/src/mod_compile_errors/kind.rs:126 (what `checked_body_length_offset` constructs when
+// crates/vb_compile/src/mod_compile_errors/kind.rs:128 (what `checked_body_length_offset` constructs when
 // body_len+extra overflows u16 — see bounded_collect.rs:88-94).
 // The spec lemmas are grounded in the production `StepIdx` contract
 // via `assume_specification` bridges.
@@ -94,13 +94,13 @@
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
 //   - `CompileError::PrimitiveLoweringLimitExceeded`
-//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:141
+//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:143
 //                                                  (mirror of
 //                                                  `CompileError::PrimitiveLoweringLimitExceeded`;
 //                                                  the exact variant produced by
 //                                                  `checked_step_offset` on overflow)
 //   - `CompileError::StepIndexOutOfRange`
-//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:126
+//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:128
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
@@ -271,8 +271,8 @@ impl SlotIdx {
 // ============================================================================
 //
 // Mirror of `CompileError::PrimitiveLoweringLimitExceeded` at
-// `crates/vb_compile/src/mod_compile_errors/kind.rs:141` and of
-// `CompileError::StepIndexOutOfRange` at crates/vb_compile/src/mod_compile_errors/kind.rs:126. The first is the
+// `crates/vb_compile/src/mod_compile_errors/kind.rs:143` and of
+// `CompileError::StepIndexOutOfRange` at crates/vb_compile/src/mod_compile_errors/kind.rs:128. The first is the
 // exact variant constructed by the production `checked_step_offset`
 // wrapper at part_12.rs:199-212 when `StepIdx::checked_add` returns
 // `None`, which is what the production `plan_compute_edges` surfaces
@@ -289,7 +289,7 @@ impl SlotIdx {
 #[derive(Clone, Copy)]
 pub enum SpecCompileError {
     /// Production: `CompileError::PrimitiveLoweringLimitExceeded`
-    /// at `crates/vb_compile/src/mod_compile_errors/kind.rs:141`.
+    /// at `crates/vb_compile/src/mod_compile_errors/kind.rs:143`.
     /// The four payload fields are present structurally but the
     /// spec proofs do not inspect them.
     PrimitiveLoweringLimitExceeded {
@@ -299,7 +299,7 @@ pub enum SpecCompileError {
         limit: u64,
     },
     /// Production: `CompileError::StepIndexOutOfRange`
-    /// at `crates/vb_compile/src/mod_compile_errors/kind.rs:126`.
+    /// at `crates/vb_compile/src/mod_compile_errors/kind.rs:128`.
     /// The payload field is present structurally but the spec proofs
     /// do not inspect it.
     StepIndexOutOfRange { value: u64 },

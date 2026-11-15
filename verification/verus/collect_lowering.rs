@@ -32,8 +32,8 @@
 // This rewrite grounds every lemma in production types:
 //   - The shadow error enum is gone. The production error variants
 //     `CompileError::PrimitiveLoweringLimitExceeded` from
-//     `crates/vb_compile/src/mod_compile_errors/kind.rs:141` and
-//     `CompileError::StepIndexOutOfRange` from crates/vb_compile/src/mod_compile_errors/kind.rs:126 are what
+//     `crates/vb_compile/src/mod_compile_errors/kind.rs:143` and
+//     `CompileError::StepIndexOutOfRange` from crates/vb_compile/src/mod_compile_errors/kind.rs:128 are what
 //     `checked_step_offset` (part_12.rs:199-212) and
 //     `checked_body_length_offset` (bounded_collect.rs:88-94)
 //     actually construct on overflow.
@@ -73,7 +73,7 @@
 //                                              crates/vb_core/src/ids/mod.rs:71)
 //   - `SpecCompileError`                   <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_compile/src/mod_compile_errors/kind.rs:126,141)
+//                                              crates/vb_compile/src/mod_compile_errors/kind.rs:128,143)
 //   - `lower_bounded_collect_projection`   <- extern_collect_lowering.rs
 //                                              (mirror of
 //                                              bounded_collect.rs:225-242)

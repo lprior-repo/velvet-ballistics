@@ -23,7 +23,7 @@
 // This rewrite grounds every lemma in production types:
 //   - The shadow error enum is gone. The production error variant
 //     `CompileError::PrimitiveLoweringLimitExceeded` from
-//     `crates/vb_compile/src/mod_compile_errors/kind.rs:141` is what
+//     `crates/vb_compile/src/mod_compile_errors/kind.rs:143` is what
 //     `checked_step_offset` actually constructs on overflow (see
 //     part_12.rs:206-211).
 //   - The shadow `int` parameters are gone. Each lemma takes the
@@ -56,7 +56,7 @@
 //                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219)
 //   - `SpecCompileError`              <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:141)
+//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:143)
 //   - `checked_step_offset`           <- extern_step_offset.rs
 //                                         (mirror of
 //                                         crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212)

@@ -33,10 +33,10 @@
 //
 // The production `CompileError::PrimitiveLoweringLimitExceeded`
 // variant is at
-// `crates/vb_compile/src/mod_compile_errors/kind.rs:141` (which is
+// `crates/vb_compile/src/mod_compile_errors/kind.rs:143` (which is
 // what `checked_step_offset` actually constructs on overflow — see
 // part_12.rs:199-212), and `CompileError::StepIndexOutOfRange` is at
-// crates/vb_compile/src/mod_compile_errors/kind.rs:126 (what `checked_body_length_offset` constructs when
+// crates/vb_compile/src/mod_compile_errors/kind.rs:128 (what `checked_body_length_offset` constructs when
 // body_len+extra overflows u16 — see bounded_collect.rs:88-94).
 // The spec lemmas are grounded in the production `StepIdx` contract
 // via `assume_specification` bridges.
@@ -99,13 +99,13 @@
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
 //   - `CompileError::PrimitiveLoweringLimitExceeded`
-//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:141
+//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:143
 //                                                  (mirror of
 //                                                  `CompileError::PrimitiveLoweringLimitExceeded`;
 //                                                  the exact variant produced by
 //                                                  `checked_step_offset` on overflow)
 //   - `CompileError::StepIndexOutOfRange`
-//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:126
+//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:128
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)

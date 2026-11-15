@@ -45,6 +45,7 @@ impl CompileError {
             | Self::IntegerScalarOutOfRange { .. }
             | Self::PrimitiveLoweringLimitExceeded { .. } => "LIMIT_EXCEEDED",
             Self::Workflow(error) => workflow_error_code(error),
+            Self::UnboundedWorkflow { .. } => "LIMIT_EXCEEDED",
             Self::CompiledIrEncode(_) => "INVALID_COMPILED_WORKFLOW",
             Self::UnknownTopLevelField { .. } => "UNKNOWN_TOP_LEVEL_FIELD",
             Self::InvalidVersion { .. } => "INVALID_VERSION",

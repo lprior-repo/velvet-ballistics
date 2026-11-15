@@ -22,7 +22,7 @@
 //
 // This binding replaces the shadow type with the production
 // `CompileError::PrimitiveLoweringLimitExceeded` variant from
-// `crates/vb_compile/src/mod_compile_errors/kind.rs:141` (which is
+// `crates/vb_compile/src/mod_compile_errors/kind.rs:143` (which is
 // what `checked_step_offset` actually constructs on overflow — see
 // part_12.rs:206-211), and grounds the spec lemmas in the production
 // `StepIdx::checked_add` contract via `assume_specification` bridges.
@@ -45,7 +45,7 @@
 //                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
 //   - `SpecCompileError`              <- production_inner/step_offset_production.rs
 //                                        (mirror of
-//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:141)
+//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:143)
 //   - `checked_step_offset`           <- production_inner/step_offset_production.rs
 //                                        (verbatim mirror of
 //                                         crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212)
@@ -118,7 +118,7 @@ fn prod_methods_drift_check() {
     let _ = id.checked_add(0u16);
 
     // Reference the SpecCompileError discriminant with all four
-    // payload fields (production mod_compile_errors/kind.rs:141).
+    // payload fields (production mod_compile_errors/kind.rs:143).
     let _err = SpecCompileError::PrimitiveLoweringLimitExceeded {
         primitive: "",
         field: "",
