@@ -1,0 +1,19 @@
+✔ complete tuple identity distinguishes status and path as well as blobs (0.935083ms)
+✔ canonical deduplication retains every signature and every source alias (0.406757ms)
+✔ one resolved signature resolves its shared exact tuple globally (0.492167ms)
+✔ receipt import preserves original payload and owned mixed intent (0.299098ms)
+✔ foreign receipt cannot silently match a path with different status (0.207658ms)
+✔ receipt cannot remove canonical source aliases (0.522026ms)
+✔ pending intent requires an existing active owner (0.246608ms)
+✔ duplicate receipts require an exact append-only predecessor (0.306338ms)
+✔ every imported receipt needs one concrete assessment (0.158668ms)
+✔ mixed raw receipt and original assessment cannot lose all pending intent (0.201709ms)
+✔ source-role lanes route without granting semantic closure (0.394087ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41.787987

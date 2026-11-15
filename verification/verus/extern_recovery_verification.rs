@@ -76,7 +76,7 @@
 // Type mirrors (each mirrors a production type line-by-line so any
 // drift breaks the build):
 //
-//   - `UnsupportedRecoveryState`          <- crates/vb_storage/src/recovery/types/unsupported.rs:5-14
+//   - `UnsupportedRecoveryState`          <- crates/vb_storage/src/recovery/types/unsupported.rs:9-18
 //   - `RecoveryFrameSeed`                 <- crates/vb_storage/src/recovery/types/seed.rs:43-62
 //   - `RecoveryCannotResumeState`         <- crates/vb_storage/src/recovery/types/cannot_resume.rs:14-41
 //   - `RecoveredStepState`                <- crates/vb_storage/src/recovery/types/recovered.rs:8-19
@@ -264,7 +264,7 @@ pub mod prod_src;
 #[verifier::external]
 fn prod_methods_drift_check() {
     // Reference every field of UnsupportedRecoveryStateStub
-    // (production crates/vb_storage/src/recovery/types/unsupported.rs:5-14).
+    // (production crates/vb_storage/src/recovery/types/unsupported.rs:9-18).
     let _stub = prod_src::UnsupportedRecoveryStateStub {
         slot_values: false,
         slot_taint: false,
@@ -294,7 +294,7 @@ fn prod_methods_drift_check() {
     let _ = prod_src::reject_unsupported_stub(_cannot_resume);
 
     // Reference the UnsupportedRecoveryStateStub::is_fully_supported
-    // production method (crates/vb_storage/src/recovery/types/unsupported.rs:65-67).
+    // production method (crates/vb_storage/src/recovery/types/unsupported.rs:79-81).
     let _ = _stub.is_fully_supported_stub();
 
     // Reference the RecoveryCannotResumeStateStub::is_resumable
@@ -394,11 +394,11 @@ impl EventSeq {
 }
 
 // ============================================================================
-// UnsupportedRecoveryState mirror — crates/vb_storage/src/recovery/types/unsupported.rs:5-14
+// UnsupportedRecoveryState mirror — crates/vb_storage/src/recovery/types/unsupported.rs:9-18
 // ============================================================================
 
 /// Mirror of `UnsupportedRecoveryState` at
-/// `crates/vb_storage/src/recovery/types/unsupported.rs:5-14`. All four fields
+/// `crates/vb_storage/src/recovery/types/unsupported.rs:9-18`. All four fields
 /// are `bool` so the mirror is bit-identical to production.
 ///
 /// `PartialEq, Eq` are intentionally NOT derived here because the
@@ -416,7 +416,7 @@ pub struct UnsupportedRecoveryState {
 
 impl UnsupportedRecoveryState {
     /// Mirror of `UnsupportedRecoveryState::SUPPORTED` at
-    /// `crates/vb_storage/src/recovery/types/unsupported.rs:18-23`.
+    /// `crates/vb_storage/src/recovery/types/unsupported.rs:23-28`.
     pub const SUPPORTED: Self = Self {
         slot_values: false,
         slot_taint: false,
@@ -424,7 +424,7 @@ impl UnsupportedRecoveryState {
         pending_actions: false,
     };
 
-    /// Mirror of `is_fully_supported` at `crates/vb_storage/src/recovery/types/unsupported.rs:65-67`. Production
+    /// Mirror of `is_fully_supported` at `crates/vb_storage/src/recovery/types/unsupported.rs:79-81`. Production
     /// returns true iff all four flags are false. The spec proof
     /// `proof_no_rejection_when_supported` discharges the 13-flag
     /// runtime cannot-resume contract separately.

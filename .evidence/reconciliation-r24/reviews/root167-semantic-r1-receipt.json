@@ -1,0 +1,82 @@
+{
+  "status": "REJECTED",
+  "review_type": "Independent source/data semantic review",
+  "scope": "root-authored167 and workspace-map.mjs only; excludes reviewer-authored packets and global acceptance",
+  "manifest_sha256": "2d1d35884df98f70ffd3c36195612f868aa9bd2d64d8ef91cddb652bea20e804",
+  "frozen_inputs": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-compact36-assessments.jsonl",
+      "sha256": "1a5d86c347f8dee6b29a2ade703c641c71066cefdd0b8dda4686bc3e28e4c9f4"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-compact21-assessments.jsonl",
+      "sha256": "75a8a6bdcf2b98e2d827c07f00602b4d4b43ace482865bccb004f49b60564183"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-body110-assessments.jsonl",
+      "sha256": "db88f8a3631281c1377321c80db7980fbf670996a2b810f450ce580cf7ce92b8"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-tests-root131/function-source-map.json",
+      "sha256": "5bb558b858a15f5a144e933ea17c87623860b601fccb44531814abeffb9c5c3e"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-map.mjs",
+      "sha256": "bcda0d8de44297826cab7789fc29eedd38ead9d9ac778a74f8972cb5c8cf9375"
+    }
+  ],
+  "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "findings": [
+    {
+      "priority": "P1",
+      "disposition": "blocker",
+      "artifact": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-body110-assessments.jsonl",
+      "line": 28,
+      "tuple": [
+        "crates/workspace_tests/Cargo.toml",
+        "9b9b97846c61a2cb7ba6151a90a528ffacab52ac",
+        "fc5cd08affd4fd628585ed9a55555cab08f9db7b",
+        "M"
+      ],
+      "problem": "Full manifest feature/package/multiple registration delta falsely resolved from selected timer rename; zero function map drops other source intents.",
+      "required_correction": "Explicitly dispose or retain owned pending for every package/feature/target/bench delta; preserve R1 and freeze new imported data for review."
+    }
+  ],
+  "integrity": {
+    "rows": 167,
+    "aliases": 714,
+    "pending_entries": 1166,
+    "raw_blob_bindings": 269,
+    "current_bindings": 259,
+    "map_functions": 3974,
+    "current_candidate_pointers": 7175,
+    "exact_body_pointers": 2192,
+    "failures": []
+  },
+  "assertion_extraction": {
+    "status": "PASS",
+    "new_assertions": 6946,
+    "old_assertions": 4749,
+    "current_candidate_assertions": 6442,
+    "landing": "34bfc925a4e1c4a6fc179db2836995c2a3b835b0",
+    "verified_landing_sources": 3,
+    "verified_landing_contracts": 2,
+    "errors": [],
+    "limitations": "Same explicitly supported assert/prop_assert eq/ne macros as source map, independently balanced delimiter stack; no semantic execution or general Rust parser proof."
+  },
+  "report": {
+    "file": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/root167-semantic-review-r1/report.md",
+    "sha256": "6daa5717dde4ed6c3240239a7f9b3f6da2a54e70182083975ffb258d9784b3b9"
+  },
+  "commands": [
+    {
+      "command": "node .evidence/root167-review.mjs",
+      "exit": 0
+    },
+    {
+      "command": "node .evidence/root167-assertions-review.mjs",
+      "exit": 0
+    }
+  ],
+  "execution": "No native/build/proof suites executed; source/data integrity and semantic review only"
+}

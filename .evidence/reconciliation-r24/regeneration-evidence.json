@@ -1,0 +1,15 @@
+{
+  "before": {
+    "assessments.jsonl": "99ee6b6afb8c2959f82e205b01bf848f73671ca1578baa008d97a0ec9e0bfb68",
+    "baseline.jsonl": "d7eecfc73d82173114776ee534661e174d0cebcf39ed0fc6f7be1f068c46423b",
+    "report.json": "2bf98f7d3ef3d2cfb85a9048f74a53e08c7f9fe7e50f14932b287f4e4571c6bc",
+    "unreviewed.jsonl": "369d3f3b580ae9368c69f7117c3c5f5fb8f9064a9ba3cfe882bc7ba5354da4e9"
+  },
+  "after": {
+    "assessments.jsonl": "99ee6b6afb8c2959f82e205b01bf848f73671ca1578baa008d97a0ec9e0bfb68",
+    "baseline.jsonl": "d7eecfc73d82173114776ee534661e174d0cebcf39ed0fc6f7be1f068c46423b",
+    "report.json": "2bf98f7d3ef3d2cfb85a9048f74a53e08c7f9fe7e50f14932b287f4e4571c6bc",
+    "unreviewed.jsonl": "369d3f3b580ae9368c69f7117c3c5f5fb8f9064a9ba3cfe882bc7ba5354da4e9"
+  },
+  "identical": true
+}

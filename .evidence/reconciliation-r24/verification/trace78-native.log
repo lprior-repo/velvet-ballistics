@@ -1,0 +1,64 @@
+────────────
+ Nextest run ID 7b9af323-fae1-4acf-8a88-2ee21e86adbf with nextest profile: default
+    Starting 59 tests across 1 binary (2589 tests skipped)
+        PASS [   0.018s] ( 1/59) vb_runtime trace::tests::adversarial_overflow
+        PASS [   0.019s] ( 2/59) vb_runtime trace::tests::drain_for_run_preserves_non_target_events
+        PASS [   0.018s] ( 3/59) vb_runtime trace::tests::drain_for_run_filters_by_run_id
+        PASS [   0.019s] ( 4/59) vb_runtime trace::tests::drain_for_run_returns_empty_for_nonexistent_run
+        PASS [   0.006s] ( 5/59) vb_runtime trace::tests::drain_into_respects_limit
+        PASS [   0.006s] ( 6/59) vb_runtime trace::tests::fifo_ordering
+        PASS [   0.006s] ( 7/59) vb_runtime trace::tests::drain_returns_all_pushed_events
+        PASS [   0.006s] ( 8/59) vb_runtime trace::tests::new_creates_with_configured_capacity
+        PASS [   0.005s] ( 9/59) vb_runtime trace::tests::pending_len_and_pending_is_empty_track_drainable_ring_events
+        PASS [   0.005s] (10/59) vb_runtime trace::tests::pending_len_and_history_len_track_independent_queues
+        PASS [   0.005s] (11/59) vb_runtime trace::tests::pending_len_and_pending_is_empty_ignore_retained_snapshot_history_after_drain
+        PASS [   0.007s] (12/59) vb_runtime trace::tests::push_returns_false_when_ring_is_full
+        PASS [   0.005s] (13/59) vb_runtime trace::tests::trace_event_clone_preserves_all_fields
+        PASS [   0.005s] (14/59) vb_runtime trace::tests::push_succeeds_when_ring_has_space
+        PASS [   0.006s] (15/59) vb_runtime trace::tests::trace_event_different_variants_not_equal
+        PASS [   0.004s] (16/59) vb_runtime trace::tests::trace_event_equality_differs_for_different_fields
+        PASS [   0.005s] (17/59) vb_runtime trace::tests::trace_event_equality_run_failed_differs_run
+        PASS [   0.005s] (18/59) vb_runtime trace::tests::trace_event_equality_run_cancelled
+        PASS [   0.005s] (19/59) vb_runtime trace::tests::trace_event_equality_run_finished
+        PASS [   0.006s] (20/59) vb_runtime trace::tests::trace_event_equality_same_variant_same_fields
+        PASS [   0.004s] (21/59) vb_runtime trace::tests::trace_event_equality_step_ended_differs_step
+        PASS [   0.005s] (22/59) vb_runtime trace::tests::trace_event_equality_step_started
+        PASS [   0.004s] (23/59) vb_runtime trace::tests::trace_event_is_terminal_for_run_run_cancelled_is_terminal
+        PASS [   0.005s] (24/59) vb_runtime trace::tests::trace_event_is_terminal_for_run_run_failed_is_terminal
+        PASS [   0.008s] (25/59) vb_runtime trace::tests::trace_event_is_terminal_for_run_non_terminal_variants_return_false
+        PASS [   0.011s] (26/59) vb_runtime trace::tests::trace_event_equality_slot_written
+        PASS [   0.004s] (27/59) vb_runtime trace::tests::trace_event_is_terminal_for_run_run_finished_is_terminal
+        PASS [   0.004s] (28/59) vb_runtime trace::tests::trace_event_run_id_returns_correct_run_for_all_variants
+        PASS [   0.005s] (29/59) vb_runtime trace::tests::trace_event_run_id_all_variants
+        PASS [   0.006s] (30/59) vb_runtime trace::tests::trace_ring_action_failed_event_carries_correct_code
+        PASS [   0.004s] (31/59) vb_runtime trace::tests::trace_ring_at_exact_capacity_accepts_all_events_without_drops
+        PASS [   0.003s] (32/59) vb_runtime trace::tests::trace_ring_capacity_one_accepts_one_rejects_second
+        PASS [   0.005s] (33/59) vb_runtime trace::tests::trace_ring_drain_for_run_filters_correctly
+        PASS [   0.005s] (34/59) vb_runtime trace::tests::trace_ring_drain_for_run_empty_ring_returns_empty
+        PASS [   0.005s] (35/59) vb_runtime trace::tests::trace_ring_drain_for_run_respects_limit
+        PASS [   0.004s] (36/59) vb_runtime trace::tests::trace_ring_drain_for_run_with_zero_limit_returns_empty_without_consuming
+        PASS [   0.004s] (37/59) vb_runtime trace::tests::trace_ring_drain_returns_empty_after_drain
+        PASS [   0.005s] (38/59) vb_runtime trace::tests::trace_ring_drain_into_appends_to_existing_vec
+        PASS [   0.005s] (39/59) vb_runtime trace::tests::trace_ring_drain_into_with_limit_exceeding_ring_returns_all
+        PASS [   0.005s] (40/59) vb_runtime trace::tests::trace_ring_drain_into_with_zero_limit
+        PASS [   0.004s] (41/59) vb_runtime trace::tests::trace_ring_dropped_starts_at_zero
+        PASS [   0.005s] (42/59) vb_runtime trace::tests::trace_ring_fill_drain_fill_drain_alternating_preserves_data
+        PASS [   0.005s] (43/59) vb_runtime trace::tests::trace_ring_dropped_increments_on_overflow
+        PASS [   0.005s] (44/59) vb_runtime trace::tests::trace_ring_fill_drain_refill_preserves_newest_events
+        PASS [   0.004s] (45/59) vb_runtime trace::tests::trace_ring_has_terminal_event_for_run_cancelled
+        PASS [   0.004s] (46/59) vb_runtime trace::tests::trace_ring_has_terminal_event_for_run_failed
+        PASS [   0.005s] (47/59) vb_runtime trace::tests::trace_ring_has_terminal_event_returns_false_when_only_non_terminal_events
+        PASS [   0.005s] (48/59) vb_runtime trace::tests::trace_ring_history_evicts_when_drained_and_refilled
+        PASS [   0.023s] (49/59) vb_runtime trace::tests::trace_ring_fill_pct_boundary_values_are_bit_exact
+        PASS [   0.006s] (50/59) vb_runtime trace::tests::trace_ring_history_only_stores_successfully_pushed_events
+        PASS [   0.005s] (51/59) vb_runtime trace::tests::trace_ring_history_survives_ring_drain
+        PASS [   0.004s] (52/59) vb_runtime trace::tests::trace_ring_new_capacity_is_correct
+        PASS [   0.031s] (53/59) vb_runtime trace::tests::trace_ring_fill_pct_f32_f64_bit_exact_for_powers_of_two
+        PASS [   0.005s] (54/59) vb_runtime trace::tests::trace_ring_overflow_counts_dropped_events_without_silent_loss
+        PASS [   0.004s] (55/59) vb_runtime trace::tests::trace_ring_push_many_events
+        PASS [   0.004s] (56/59) vb_runtime trace::tests::trace_ring_push_returns_false_at_capacity_boundary
+        PASS [   0.003s] (57/59) vb_runtime trace::tests::trace_ring_snapshot_for_run_with_limit_one_returns_at_most_one
+        PASS [   0.004s] (58/59) vb_runtime trace::tests::trace_ring_push_then_drain_preserves_order
+        PASS [   0.066s] (59/59) vb_runtime trace::tests::trace_ring_fill_pct_f32_f64_within_one_ulp_for_general_caps
+────────────
+     Summary [   0.139s] 59 tests run: 59 passed, 2589 skipped

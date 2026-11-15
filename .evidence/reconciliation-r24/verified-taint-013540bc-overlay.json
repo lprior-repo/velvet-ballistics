@@ -1,0 +1,102 @@
+{
+  "main": "013540bcb0be9d20a6f9e0bcbd44cec303b99d9e",
+  "remote_verified": true,
+  "receipt": {
+    "file": "/home/lewis/src/isoloated/r18/.evidence/reconciliation/landing-taint-013540bc-immutable-receipt.json",
+    "sha256": "8d26ccbc1791c7e4eff8673391bb4c875b2594fbf341fdb31e16da394d704955"
+  },
+  "verified_files": [
+    {
+      "path": "crates/vb_core/src/value/taint.rs",
+      "sha256": "c9a8d701a313dcedb2886ef30c635bb7138ab86c12341d73d8a3572803e57080",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/taint_lattice_direct.rs",
+      "sha256": "15c1ae3d29119657302c16a3a6912968a0004d13c78c566c357023b5665cbb00",
+      "exact_match": true
+    },
+    {
+      "path": ".beads/vb-god2f.5/contract.md",
+      "sha256": "b783bfde8b10a4dd357359881e59d2b4fba2ec923131fa8af966d0441fc933c2",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs",
+      "sha256": "5655d078e01fb1e0c24b9b3cfc42ae42282e6f4c3344a56a818f29e36e2edc77",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/completion_taint_checks.rs",
+      "sha256": "51525d01e59d30b8728261b3be6618c22a024c2e53b4ef2e8f703719cb19c951",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_runtime/tests/completion_taint_public.rs",
+      "sha256": "a1cfb6f9de2f4cf0e1e4110caf3086896d4cf080cd1b294ae4002f67b0244947",
+      "exact_match": true
+    },
+    {
+      "path": ".beads/vb-m4l84/contract.md",
+      "sha256": "0b97153b5caaf47623b44abf8203eae87268b53fb1fa6231520a6cf611b09d29",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/production_inner/execute_do_production.rs",
+      "sha256": "75c6a302401e626803a9c61a98cd71627199717c550a5a3824de7928b5e87e77",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/taint_lattice.rs",
+      "sha256": "15ffa20a0c32797d05913fe05ffc6f6ab86cf0154494737344118b1472a3902e",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/production_inner/taint_lattice_production.rs",
+      "sha256": "8fbf0d18ce959ed44a79d5855d609abd6e37eb364aac583d6d36051079306c7d",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/production_inner/step_state_machine_production.rs",
+      "sha256": "0ce0b3ef60630440727fdcfe3ada49dd3708b4f2493680124700114e7f4bb2d8",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/vb_runtime_execute_do_spec.rs",
+      "sha256": "42d9b400bca3aa3ebf43fcb4912e4009f78862f97a0c9105491780adc370540f",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/production_inner/run_frame_invariant_production.rs",
+      "sha256": "61757c701cd2accbc421f0df3fa3528580064c7819ef018c71e2752edee8b1cc",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/extern_run_frame_invariant.rs",
+      "sha256": "bb27ea74527b0737514e32f07c0e217a18c38f96d98e30b6001697d828f52c35",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/extern_taint_lattice.rs",
+      "sha256": "19396b44f22e2b12bfa84d8cf4cacaf4db109772954dc97f3e553bb5efb8e898",
+      "exact_match": true
+    },
+    {
+      "path": "verification/verus/run_frame_invariant.rs",
+      "sha256": "8386da4ab68a3ee215ab9a2c9c9417f91cbe99456aa1b8f33fff28cb6d7497d3",
+      "exact_match": true
+    }
+  ],
+  "historical_tuple_keys": [
+    "[\"crates/vb_runtime/src/shard/lifecycle/chunk_003.rs\",\"53ee19a4785228eb623b87e7c10ae28094f362fb\",\"5954577220f0838e43a999ffb457b3e4251650d3\",\"M\"]",
+    "[\"crates/vb_runtime/src/shard/lifecycle/chunk_003.rs\",\"53ee19a4785228eb623b87e7c10ae28094f362fb\",\"05d54a4d097a8f65ee2b9b043ed637feb16f1723\",\"M\"]"
+  ],
+  "outcome": "Qualified finite actual action-completion taint guard replaces the old two shadow-taint rows for that bounded predicate. Current core join/leaf lattice change is present. Parent formal and broader public pipeline qualification remain open.",
+  "remaining_scope": [
+    "Current full preflight/RunState and journal-before-frame workflow qualification remains with live scoped owners.",
+    "Old shadow harness feature exclusions/suppressions are not restored.",
+    "Actual production-bound canonical taint enforcement followup remains vb-god2f.7.",
+    "No wholesale formal parent, engine or MASTER acceptance claim."
+  ],
+  "frozen_ledger_unchanged": true
+}

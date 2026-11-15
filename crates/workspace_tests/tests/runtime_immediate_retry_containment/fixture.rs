@@ -205,3 +205,26 @@ pub(super) fn crashed(
 ) -> TestResult<(Arc<FjallJournal>, ActionTicket)> {
     super::historical::prefix(path, handler, resumed, owned, 1)
 }
+
+pub(super) fn refusal_snapshot(
+    live: &Runtime,
+    issued: ActionTicket,
+) -> TestResult<impl FnOnce(&Runtime) -> TestResult + use<>> {
+    let state = live.inspect_run_state(RUN)?.clone();
+    let pending = live.pending_boundary_snapshot(8);
+    let counters = live.counters_snapshot();
+    let quota = live.usage_snapshot();
+    let trace = live.list_events(RUN)?;
+    Ok(move |live: &Runtime| {
+        assert_eq!(live.inspect_run_state(RUN)?, &state);
+        assert_eq!(
+            live.lookup_pending_action_ticket(RUN, u64::from(issued.step.get())),
+            Some(issued)
+        );
+        assert_eq!(live.pending_boundary_snapshot(8), pending);
+        assert_eq!(live.counters_snapshot(), counters);
+        assert_eq!(live.usage_snapshot(), quota);
+        assert_eq!(live.list_events(RUN)?, trace);
+        Ok(())
+    })
+}

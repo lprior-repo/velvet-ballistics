@@ -1,0 +1,78 @@
+[
+  {
+    "id": "vb-eirmk.75.8.25",
+    "title": "Reconcile other Velvet sessions and unmerged branch changes into main",
+    "status": "in_progress",
+    "assignee": "Lewis"
+  },
+  {
+    "id": "vb-eirmk.26.1",
+    "title": "Integrate TimerWheel into shard pending-timer scheduling",
+    "status": "in_progress",
+    "assignee": "Lewis"
+  },
+  {
+    "id": "vb-eirmk.60",
+    "title": "Qualify phase:38 Idempotency verification gate",
+    "status": "in_progress",
+    "assignee": "Lewis"
+  },
+  {
+    "id": "vb-god2f",
+    "title": "P0 verify: plan production-bound replacements for remaining retired hard Verus lanes",
+    "status": "open",
+    "assignee": "femdation-controller"
+  },
+  {
+    "id": "vb-eirmk.75.8.25.76",
+    "title": "Return typed UnboundedWorkflow compiler policy refusals",
+    "status": "closed",
+    "assignee": "priorlewis43@gmail.com"
+  },
+  {
+    "id": "vb-z106v",
+    "title": "Fix CLI exit-code and structured-output drift",
+    "status": "in_progress",
+    "assignee": "Lewis"
+  },
+  {
+    "id": "vb-eirmk.75.8.25.28",
+    "title": "Reconcile nested Together verifier projection with current traversal",
+    "status": "in_progress",
+    "assignee": "priorlewis43@gmail.com"
+  },
+  {
+    "id": "vb-eirmk.40",
+    "title": "Qualify full current master CLI command surface",
+    "status": "open"
+  },
+  {
+    "id": "vb-eirmk.75.8.25.77",
+    "title": "Recover strict storage property success assertions",
+    "status": "closed",
+    "assignee": "Lewis"
+  },
+  {
+    "id": "vb-eirmk.75.8.25.78",
+    "title": "Correct retained trace history Miri oracle",
+    "status": "closed",
+    "assignee": "Lewis"
+  },
+  {
+    "id": "vb-eirmk.11",
+    "title": "Collect canonical master acceptance evidence on integrated Rust candidate",
+    "status": "in_progress",
+    "assignee": "Lewis"
+  },
+  {
+    "id": "vb-eirmk.11.8",
+    "title": "Qualify production-bound formal evidence closure",
+    "status": "open"
+  },
+  {
+    "id": "vb-qfka3",
+    "title": "Storage: force final durability barrier on queued shutdown drain",
+    "status": "in_progress",
+    "assignee": "Lewis"
+  }
+]

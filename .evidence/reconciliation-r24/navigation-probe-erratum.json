@@ -1,0 +1,6 @@
+{
+  "superseded_file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/source-binding-main-drift.json",
+  "reason": "Initial raw-reference navigation probe compared historical reference paths directly, including corrected nonfile paths and dot-dot aliases; it is not a canonical source-drift conclusion.",
+  "replacement": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/source-binding-main-drift-34bfc925.json",
+  "qualified_overlay": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/verified-taint-013540bc-overlay.json"
+}

@@ -1,0 +1,57 @@
+{
+  "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "input_packets": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-tests-packet-1.jsonl",
+      "rows": 30,
+      "tuple_key": "JSON.stringify([path,old,new,status])",
+      "source_aliases": "preserve exact original array and payload",
+      "sha256": "b02f318fb19f41f7f001be9bcc5f8133381cdae0ccfc91f0453a5943a2e0d639"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-tests-packet-2.jsonl",
+      "rows": 30,
+      "tuple_key": "JSON.stringify([path,old,new,status])",
+      "source_aliases": "preserve exact original array and payload",
+      "sha256": "2dc8fe52ea5fdf210f01b0c5f79fb26d373caaab8d60b6669390e9b1417d8483"
+    }
+  ],
+  "schema": {
+    "tuple": [
+      "path",
+      "old",
+      "new",
+      "status",
+      "source_aliases"
+    ],
+    "disposition": "narrow source conclusion; do not infer suite/proof acceptance",
+    "per_intent": [
+      {
+        "intent": "specific authored assertion/helper goal",
+        "reason": "literal old/new/current body conclusion",
+        "pending": "boolean",
+        "owner": "live scoped bead when pending",
+        "evidence": [
+          "persistent raw diff and current source refs"
+        ]
+      }
+    ],
+    "raw_evidence": "old/new blob+sha256 and current source binding at explicit anchor"
+  },
+  "reserved": true,
+  "overlap": "disjoint exact tuple sets; paths can repeat across distinct historical blobs",
+  "pending_repairs": [
+    {
+      "bead": "vb-eirmk.75.8.25.77",
+      "manifest": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/storage-properties77/ready-manifest.json",
+      "commit": "c0cfa765b046b1a902ed1caee9e6930fe319cbcd",
+      "main_receipt": "pendingcentral"
+    },
+    {
+      "bead": "vb-eirmk.75.8.25.78",
+      "manifest": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/ready-manifest.json",
+      "commit": "13f5e8941427bb3a262fb6d93cfd0c0db045fbc8",
+      "main_receipt": "pendingcentral"
+    }
+  ]
+}

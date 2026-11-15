@@ -1,0 +1,23 @@
+WARNING: Ignoring `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.
+
+running 1 test
+trace::tests::miri_trace_operations_no_ub --- FAILED
+
+failures:
+
+---- trace::tests::miri_trace_operations_no_ub stdout ----
+
+thread 'trace::tests::miri_trace_operations_no_ub' (1001) panicked at crates/vb_runtime/src/trace/tests.rs:979:5:
+assertion `left == right` failed: empty after drain
+  left: 3
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+
+
+failures:
+    trace::tests::miri_trace_operations_no_ub
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2648 filtered out; finished in 0.40s
+
+error: test failed, to rerun pass `-p vb_runtime --lib`

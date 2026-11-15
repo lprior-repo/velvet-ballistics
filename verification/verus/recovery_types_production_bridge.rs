@@ -20,12 +20,12 @@
 //   crates/vb_storage/src/recovery/types/runtime.rs:9-21, crates/vb_storage/src/recovery/types/runtime.rs:25-48,
 //   crates/vb_storage/src/recovery/types/hydration.rs:7-44,
 //   crates/vb_storage/src/recovery/types/recovered.rs:8-19,
-//   crates/vb_storage/src/recovery/types/unsupported.rs:3-75
+//   crates/vb_storage/src/recovery/types/unsupported.rs:6-91
 //   (RecoveryTerminalState types/runtime.rs:9-21, RecoveryRuntimeSummary types/runtime.rs:25-48,
 //    RecoveryHydration types/hydration.rs:9-14 with `summary` at types/hydration.rs:31,
 //    RecoveredStepState types/recovered.rs:8-19,
-//    UnsupportedRecoveryState types/unsupported.rs:5-14 with SUPPORTED at types/unsupported.rs:18,
-//    `union` at types/unsupported.rs:54, `is_fully_supported` at types/unsupported.rs:65)
+//    UnsupportedRecoveryState types/unsupported.rs:9-18 with SUPPORTED at types/unsupported.rs:23,
+//    `union` at types/unsupported.rs:65, `is_fully_supported` at types/unsupported.rs:79)
 //
 // This file binds to production through the verbatim mirror at
 // `verification/verus/production_inner/recovery_types_production.rs`
@@ -259,7 +259,7 @@ pub open spec fn unsupported_state_eq(
 }
 
 /// `unsupported_union_spec(a, b)` — flagwise OR across all four fields.
-/// Mirrors the production body at `crates/vb_storage/src/recovery/types/unsupported.rs:54-61`.
+/// Mirrors the production body at `crates/vb_storage/src/recovery/types/unsupported.rs:65-72`.
 pub open spec fn unsupported_union_spec(
     a: production::UnsupportedRecoveryState,
     b: production::UnsupportedRecoveryState,
@@ -273,7 +273,7 @@ pub open spec fn unsupported_union_spec(
 }
 
 /// `is_fully_supported_spec(s)` — `true` iff every flag is `false`.
-/// Mirrors the production body at `crates/vb_storage/src/recovery/types/unsupported.rs:65-67`.
+/// Mirrors the production body at `crates/vb_storage/src/recovery/types/unsupported.rs:79-81`.
 pub open spec fn is_fully_supported_spec(s: production::UnsupportedRecoveryState) -> bool {
     !s.slot_values && !s.slot_taint && !s.action_payloads && !s.pending_actions
 }

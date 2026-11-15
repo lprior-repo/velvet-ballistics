@@ -1,0 +1,42 @@
+[
+  {
+    "label": "importer-behavior-suite",
+    "command": [
+      "env",
+      "CI=1",
+      "TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/scratch",
+      "node",
+      "--test",
+      "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/reconcile.test.mjs"
+    ],
+    "exit": 0,
+    "stdout_sha256": "f5e2e34512343ea54a4955010ffba2eb84ae8c41dfce81bb65da81551fee0b35",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "label": "regeneration-first",
+    "command": [
+      "env",
+      "CI=1",
+      "TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/scratch",
+      "node",
+      "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/reconcile.mjs"
+    ],
+    "exit": 0,
+    "stdout_sha256": "e3dc398c9fb8e397f7ac61bdadb7df6ad56a5877d5d47f52e1085cbcd93e5ba2",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "label": "regeneration-second",
+    "command": [
+      "env",
+      "CI=1",
+      "TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/scratch",
+      "node",
+      "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/reconcile.mjs"
+    ],
+    "exit": 0,
+    "stdout_sha256": "e3dc398c9fb8e397f7ac61bdadb7df6ad56a5877d5d47f52e1085cbcd93e5ba2",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

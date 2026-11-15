@@ -1,0 +1,30 @@
+{
+  "remaining": 317,
+  "assigned_rows": 317,
+  "assigned_unique": 317,
+  "overlaps": 0,
+  "unassigned": [],
+  "assigned_not_remaining": [],
+  "packets": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/core-test-packet-1.jsonl",
+      "rows": 90
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/core-test-packet-2.jsonl",
+      "rows": 85
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-remainder-packet-2.jsonl",
+      "rows": 82
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-tests-packet-1.jsonl",
+      "rows": 30
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-tests-packet-2.jsonl",
+      "rows": 30
+    }
+  ]
+}

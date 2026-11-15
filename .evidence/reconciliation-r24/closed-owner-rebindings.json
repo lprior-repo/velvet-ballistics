@@ -1,0 +1,26 @@
+[
+  {
+    "key": "[\"crates/vb_compile/src/mod_compile_errors/collection.rs\",\"706079c1a8c84c28e2f543657dbac50a92a4a344\",\"a60283d395453ebe9c4ef1feb6460d9fca68b227\",\"M\"]",
+    "intent": "MASTER64-literal-typed-wrapper-qualification",
+    "old_owner": "vb-eirmk.75.8.25.76",
+    "current_owner": "vb-eirmk.75.8.25"
+  },
+  {
+    "key": "[\"crates/vb_compile/src/mod_compile_errors/kind.rs\",\"0c0fbf7e7cbbbca74ba6e7f3da75cec3b1a5ef53\",\"bfe17d4917a1442a850ab59516956d0d72586fcf\",\"M\"]",
+    "intent": "MASTER64-literal-typed-wrapper-qualification",
+    "old_owner": "vb-eirmk.75.8.25.76",
+    "current_owner": "vb-eirmk.75.8.25"
+  },
+  {
+    "key": "[\"crates/vb_compile/src/mod_compile_errors/collection.rs\",\"706079c1a8c84c28e2f543657dbac50a92a4a344\",\"b323198dc98c884e3bca7889f8d9a7957db4264e\",\"M\"]",
+    "intent": "MASTER64-literal-typed-wrapper-qualification",
+    "old_owner": "vb-eirmk.75.8.25.76",
+    "current_owner": "vb-eirmk.75.8.25"
+  },
+  {
+    "key": "[\"crates/vb_compile/src/mod_compile_errors/kind.rs\",\"0c0fbf7e7cbbbca74ba6e7f3da75cec3b1a5ef53\",\"cae681a17b118629c8f2704081ba164ee4ecf97c\",\"M\"]",
+    "intent": "MASTER64-literal-typed-wrapper-qualification",
+    "old_owner": "vb-eirmk.75.8.25.76",
+    "current_owner": "vb-eirmk.75.8.25"
+  }
+]

@@ -1,0 +1,7 @@
+# Correct retained trace history Miri oracle
+
+Given the existing capacity-8 trace ring and its three accepted run-1 events, draining must return all three events and leave pending queue length 0. Snapshot history must retain those exact events in the same order after drain. Subsequent run-2 terminal detection and unknown-run rejection remain unchanged. TraceRing documents and implements separate drainable queue and replay history; the existing Miri assertion conflates them.
+
+Observed RED: pinned nightly-2026-04-28, x86_64-unknown-linux-gnu, cargo miri0.1.0, default isolation and empty MIRIFLAGS, one exact trace::tests::miri_trace_operations_no_ub executed, exit101, left3/right0 at the old empty-history assertion. Full raw log is .evidence/trace-miri-oracle/baseline3.log. Earlier baseline/baseline2 are sysroot setup failures and are not test or UB evidence. The matching prebuilt sysroot was copied into this isolated workspace; all current scratch/cache/build data remains here.
+
+Change only the two post-drain assertions in that existing cfg(miri) test. Assert exact snapshot vector equality against the actual drained events and pending length 0, preserving all pushes, accepted-event count and terminal checks. No production/API/schema/dependency/gate or Miri suppression change; no proof of global soundness. Rerun the identical exact Miri command, focused native trace suite with two Cargo jobs/four threads, formatting, and separate CODE/TEST review. Central owns joined CI/main landing; this bead stays open until a main receipt.

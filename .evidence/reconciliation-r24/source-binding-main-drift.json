@@ -1,0 +1,2312 @@
+[
+  {
+    "path": "crates/vb_compile/src/ast/parse.rs",
+    "reference": "crates/vb_compile/src/ast/parse.rs",
+    "blob": "c487d7afa352ca192511f8f26eb7925027853d18",
+    "sha256": "d4f5ffa175345cfc30c2bef7e9f261ad61d596071c3dd951b2bab8a6679247d9",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c487d7afa352ca192511f8f26eb7925027853d18",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/ast/parse_step_fields.rs",
+    "reference": "crates/vb_compile/src/ast/parse_step_fields.rs",
+    "blob": "4c7e6148454d354c10377ab11208996e64ff463f",
+    "sha256": "ccf4a8b970281597f8637f769ae0fa41a48d58d3c59686a7a7e8f7854019bb95",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "4c7e6148454d354c10377ab11208996e64ff463f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/ast/parse_step_kinds.rs",
+    "reference": "crates/vb_compile/src/ast/parse_step_kinds.rs",
+    "blob": "5a148f6222807b159c8b1e475ed4a11588af1039",
+    "sha256": "decf51aab5d4cb2425fc9bc5b219aae9568384980640c3a1777014ef205ee41d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5a148f6222807b159c8b1e475ed4a11588af1039",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/ast/parse_trigger.rs",
+    "reference": "crates/vb_compile/src/ast/parse_trigger.rs",
+    "blob": "b287949c802c2fc37a8a2435880246ceb7b91844",
+    "sha256": "431a18033c348c9f45abcc54f0ddf0df14103be4672e37ca71dc787ce46d50c6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b287949c802c2fc37a8a2435880246ceb7b91844",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/ast/parse_values.rs",
+    "reference": "crates/vb_compile/src/ast/parse_values.rs",
+    "blob": "b7463c0c580b828bcd02f09e05ecaf6d07967652",
+    "sha256": "7a2534173d7083d4f27d379d58e8d8708e9d1f08923185c11641ade0a2dfccd1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b7463c0c580b828bcd02f09e05ecaf6d07967652",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/ast/types.rs",
+    "reference": "crates/vb_compile/src/ast/types.rs",
+    "blob": "af072f53d5a35444adae1e8307ffda1ef500f18d",
+    "sha256": "dce93c4f37f4e2f8685b18f711c165326a97027eb3de15333db1b28ca821582c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "af072f53d5a35444adae1e8307ffda1ef500f18d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/expression.rs",
+    "reference": "crates/vb_compile/src/expression.rs",
+    "blob": "fba7580e8de804c86f9800a464943844381c3454",
+    "sha256": "7187c8659f7e3966810619211401605de52049dbb0c7cde838412874ae50fd09",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "fba7580e8de804c86f9800a464943844381c3454",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/expression_bytecode.rs",
+    "reference": "crates/vb_compile/src/expression_bytecode.rs",
+    "blob": "c21cafdb893dce5a772d9f74818753e7bc6ce88d",
+    "sha256": "3082825165ec706ea4166f1e44f23b48b97d2240ff94821a82a41c9bf48cd561",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c21cafdb893dce5a772d9f74818753e7bc6ce88d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/expression_bytecode_lowering.rs",
+    "reference": "crates/vb_compile/src/expression_bytecode_lowering.rs",
+    "blob": "c2fc4cd89dc6ddc2854f72799da1bfaa651c4c51",
+    "sha256": "afbb45514ff033fd3ae405949d247bd2cfe8070711cbd1ae56ff8e2c46efb68a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c2fc4cd89dc6ddc2854f72799da1bfaa651c4c51",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/expression_bytecode_slot_refs.rs",
+    "reference": "crates/vb_compile/src/expression_bytecode_slot_refs.rs",
+    "blob": "8986e9e5d3d90d21c5086728ca5db3d20b3757e8",
+    "sha256": "8dfadfa090ed11e6d30149d183d3484da23cd70de9e6a1850326c1d0cc3ca67d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8986e9e5d3d90d21c5086728ca5db3d20b3757e8",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/expression_bytecode_step_refs.rs",
+    "reference": "crates/vb_compile/src/expression_bytecode_step_refs.rs",
+    "blob": "65eee7b351198a82fb1bd814b629301c75d78f8f",
+    "sha256": "99268baefba7e7192eb09ffdc83a2d7ce4814e053a296ea11033ff5ee2d163b7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "65eee7b351198a82fb1bd814b629301c75d78f8f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/expression_lexer.rs",
+    "reference": "crates/vb_compile/src/expression_lexer.rs",
+    "blob": "15cc2ed701c9413b47264666f6cadd1b2984f2bc",
+    "sha256": "d1f1807e83a70fc8338fc3a517a798fde1b30a4b69f7fbb04ee48e2c4bbf89ba",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "15cc2ed701c9413b47264666f6cadd1b2984f2bc",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/expression_parser.rs",
+    "reference": "crates/vb_compile/src/expression_parser.rs",
+    "blob": "f1211cd7d3d4880125d28625cd3236cc3dfd7424",
+    "sha256": "982bd265d4f1a05f8b0c87f4746af457693d7ffe613bed9efba8c954dbbf72ca",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f1211cd7d3d4880125d28625cd3236cc3dfd7424",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/lib.rs",
+    "reference": "crates/vb_compile/src/lib.rs",
+    "blob": "69dd442d0e22880424cb1fbf324d9dce51890719",
+    "sha256": "b23d6251b6565724c169786b59401555193dc737f2a888a8e14a43b4b5d14de0",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "69dd442d0e22880424cb1fbf324d9dce51890719",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_core.rs",
+    "reference": "crates/vb_compile/src/mod_compile_core.rs",
+    "blob": "81eaef55c3a06ea8061ca30be5f0047192c70dd7",
+    "sha256": "87a7a2548825b021ef1d7fef6e5231b172cbb08d7eed9571a2ef89ba02bd41bf",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "81eaef55c3a06ea8061ca30be5f0047192c70dd7",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_errors/codes.rs",
+    "reference": "crates/vb_compile/src/mod_compile_errors/codes.rs",
+    "blob": "342d4f69feff90d9c1e6f6d95c83e50de2ca7a05",
+    "sha256": "12c45de50fdcb4d6082cc8491726a6e1d565d315c6327bb0ed428ebe8aab9b7c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "bee86be0e5c67c1448c1f87811146f517191ab3b",
+    "same_blob": false
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering.rs",
+    "blob": "2ac5c9b6447d75b9e551ccceb2b95385c4793d37",
+    "sha256": "31748f4027aad09ce71de9eeae9377247a41a2026db05df95b9041aa8134ed26",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2ac5c9b6447d75b9e551ccceb2b95385c4793d37",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs",
+    "blob": "1fd0b4448b860b556d81435aa282a50eb10c5cfb",
+    "sha256": "76507e458e65aa093dabb51f143ba6e32480cdd51c5246ba89ba5270dedb1d76",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1fd0b4448b860b556d81435aa282a50eb10c5cfb",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/canonical_reduce.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/canonical_reduce.rs",
+    "blob": "b6ab5ecadc919d750d5ad58c6d4cb8686cd695b9",
+    "sha256": "156e83ada650ddb6d7b0a259c804ad978ada7199f5f043006fe6423252afaec7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b6ab5ecadc919d750d5ad58c6d4cb8686cd695b9",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/canonical_reduce_tests.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/canonical_reduce_tests.rs",
+    "blob": "e53f27e06a5cc7ba19501c498329cb544c8c2897",
+    "sha256": "1bc49d7b263406fc44dabb34ee220589fca0c2f9b341d5d598deda807a465b9f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "e53f27e06a5cc7ba19501c498329cb544c8c2897",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/canonical_references.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/canonical_references.rs",
+    "blob": "aee71ffa99e55c2e82541157fc31b03aa1409e67",
+    "sha256": "6cff6f71d46ebf8ecf5c0f9845e71b99ba47e61e59ab76f95f169c2202dc316f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "aee71ffa99e55c2e82541157fc31b03aa1409e67",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/canonical_repeat.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/canonical_repeat.rs",
+    "blob": "6abbf5a7156eaaafc44b5a230443c68e234a0423",
+    "sha256": "7dae998db4ac0ed6006cc05b34f3336bee7ab4273c14d58b2f25b7b34a1a25c4",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "6abbf5a7156eaaafc44b5a230443c68e234a0423",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/canonical_suspension_fields.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/canonical_suspension_fields.rs",
+    "blob": "18b32c7a5c5b5df372981bebdd7e5a063a1d6036",
+    "sha256": "1cfb5b79fd95ad10d8442eee0898b06d2e44fdf1ca36679307f491be6f2a371e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "18b32c7a5c5b5df372981bebdd7e5a063a1d6036",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/compile_source_finish.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/compile_source_finish.rs",
+    "blob": "cd0d53899ab15970b6fb64846f7927391a6609ff",
+    "sha256": "290d277feb72adc6c0b90fe9a73738d626f1c50c31cbceaec5b8a8dde9fb5f1f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "cd0d53899ab15970b6fb64846f7927391a6609ff",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/digest_scalar.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/digest_scalar.rs",
+    "blob": "348bde2052d5d22434d38456fc780324e209e7ee",
+    "sha256": "cab49e396393121c259e94de4c732be22435e1c38927a4a53e15902d0eaaf5ae",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "348bde2052d5d22434d38456fc780324e209e7ee",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+    "blob": "dae36b4ad773235ded93daa973c5bdf9e8fb282f",
+    "sha256": "5fbbe4916211758b00e1978b4ce916d89bf32f0c4272f209eea985945900591c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "dae36b4ad773235ded93daa973c5bdf9e8fb282f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/part_01/width.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/part_01/width.rs",
+    "blob": "b95cb505819e9979a29b634b7ad24ac62ec92980",
+    "sha256": "a8ec21e74aec073bea337f55c3d308646f9e911d88f4f27180a628cf3c9ee7a0",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b95cb505819e9979a29b634b7ad24ac62ec92980",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/part_03.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/part_03.rs",
+    "blob": "7014102c5b11a402dd23d93125f1161a9183dd1b",
+    "sha256": "bcca5335c27dcede1a8476dff423e46da9da7086e7771fc38b0948d72780c91a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7014102c5b11a402dd23d93125f1161a9183dd1b",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/part_04.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/part_04.rs",
+    "blob": "1ff3ca49aa377c8d82405d2cc8fcbcd912e28050",
+    "sha256": "4cbc31ba9f4c1a9ff3daec45baa534ddfa27453a3cde7105f456ee2605b18ca9",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1ff3ca49aa377c8d82405d2cc8fcbcd912e28050",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/part_05.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/part_05.rs",
+    "blob": "234eeb48cd73a580facbfe2085ba00cf54641c4d",
+    "sha256": "da49c26cc134e58bc6e7c36a76866e7db30b62038ddf013399a304d6cd8d47f6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "234eeb48cd73a580facbfe2085ba00cf54641c4d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs",
+    "blob": "dc002c3f000348337db1f1c6a734c734177d56e6",
+    "sha256": "c09fc126790d262be0426b93e375c7ba55bace59e898d1bba10bab8323da1371",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "dc002c3f000348337db1f1c6a734c734177d56e6",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/part_05_digest_primitive.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/part_05_digest_primitive.rs",
+    "blob": "f17ab3e261427c7c2e6a0426455ac20b9eb5b3f7",
+    "sha256": "8d595257266eb617582e78d682d2f6747888948addc424e73566a1bbd6a8d0eb",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f17ab3e261427c7c2e6a0426455ac20b9eb5b3f7",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_lowering/scoped_references.rs",
+    "reference": "crates/vb_compile/src/mod_compile_lowering/scoped_references.rs",
+    "blob": "0f468150546988357329c66ac7f3884d4f0a5412",
+    "sha256": "a33d9627e434ef4c72313e61587ae1f12590a0adfd2a69155e77c0f7cb154445",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0f468150546988357329c66ac7f3884d4f0a5412",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/mod_compile_validation/part_03.rs",
+    "reference": "crates/vb_compile/src/mod_compile_validation/part_03.rs",
+    "blob": "fd8b3351c9f484aa549350c7ee49e5a7cb3d6ce0",
+    "sha256": "26be4306c02d4b5b4db295ee6e1a2b1e2efb6c4685e02a638616cef1f088c133",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "fd8b3351c9f484aa549350c7ee49e5a7cb3d6ce0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/references.rs",
+    "reference": "crates/vb_compile/src/references.rs",
+    "blob": "8c0c296e4c65d73d62906aee007cd5cc3390ea7f",
+    "sha256": "5a8cdfb513f57ac53b83b4e3764a2e7fa8caa9a0faf729cff4ff69addf78f03f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8c0c296e4c65d73d62906aee007cd5cc3390ea7f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/references/tests.rs",
+    "reference": "crates/vb_compile/src/references/tests.rs",
+    "blob": "951a429325e294703a5c40974148ede3256e8a35",
+    "sha256": "bf7999b09a57b817d5521d7537ced057402c087017576e4631b3cf2286b1dd78",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "951a429325e294703a5c40974148ede3256e8a35",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/references_collect.rs",
+    "reference": "crates/vb_compile/src/references_collect.rs",
+    "blob": "e8cc9456f41b26ed8ace48c56e61c83f1728ce9b",
+    "sha256": "6f9258a35f7600e99ac4c5aec4bac64f4a70bc05c0e0b69c5046da0df67e4d55",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "e8cc9456f41b26ed8ace48c56e61c83f1728ce9b",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/schema.rs",
+    "reference": "crates/vb_compile/src/schema.rs",
+    "blob": "c94a5d01e14848c28feb788e6b929ee76f32b04d",
+    "sha256": "0b8e63fd0cf6e5a2874c046e95c70992d246c66c5a8b8fe72fab758cdbd3a13b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c94a5d01e14848c28feb788e6b929ee76f32b04d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/schema_fields.rs",
+    "reference": "crates/vb_compile/src/schema_fields.rs",
+    "blob": "c686bc0a25be70b30b36b01c7b4782b21e90f616",
+    "sha256": "272b31e75cf91964c058603d13cf4061d3b62b753ff569f5441cce2c12a4cb98",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c686bc0a25be70b30b36b01c7b4782b21e90f616",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/type_taint.rs",
+    "reference": "crates/vb_compile/src/type_taint.rs",
+    "blob": "0a22019d35eb01db2a78c28abc7544fcdd3fff35",
+    "sha256": "be75c200cc549c722865583d3424de7d4b297a2a3ecf4bbc5e940401274a347a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0a22019d35eb01db2a78c28abc7544fcdd3fff35",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_compile/src/type_taint_expr.rs",
+    "reference": "crates/vb_compile/src/type_taint_expr.rs",
+    "blob": "c162c1279551ccec05349005bb5ead4fffe3f5ef",
+    "sha256": "189c42497ac6cf3de0393e7288fcd45869a95800d5b9ff869e3bd34c1978646f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c162c1279551ccec05349005bb5ead4fffe3f5ef",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/action/contract.rs",
+    "reference": "crates/vb_core/src/action/contract.rs",
+    "blob": "461b93f05aeea166565fdb3d4b6e20497694eb38",
+    "sha256": "ffe26304f079a57aada696bd2339b3f3f16e7202281a23de055ea01d4dce8269",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "461b93f05aeea166565fdb3d4b6e20497694eb38",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/action/validation.rs",
+    "reference": "crates/vb_core/src/action/validation.rs",
+    "blob": "ecab224e0dab7eeeaa9387bfaf2650134d8a0840",
+    "sha256": "6370da64ce383fd6149d295e012f971943ca3f542c5ce0da1b961a7812686927",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ecab224e0dab7eeeaa9387bfaf2650134d8a0840",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/diagnostic.rs",
+    "reference": "crates/vb_core/src/diagnostic.rs",
+    "blob": "25ac5491a2c068bb6d8ac1d8de563d44ad53ab74",
+    "sha256": "e4114291f119de716af4ab1005385c9498fc343c896978e34dc257bb3f54ea03",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "25ac5491a2c068bb6d8ac1d8de563d44ad53ab74",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/engine/error_routing.rs",
+    "reference": "crates/vb_core/src/engine/error_routing.rs",
+    "blob": "638a4b602e25168cce50515d33590f7016d7744d",
+    "sha256": "8b4b5ce2952d1c483fe8cb3a25df84a5e46e20924822ee564abeaf3c8e02a406",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "638a4b602e25168cce50515d33590f7016d7744d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/engine/expr_eval/core.rs",
+    "reference": "crates/vb_core/src/engine/expr_eval/core.rs",
+    "blob": "cd96a16aa9b87a296c8191477fd9eff717b2f9e7",
+    "sha256": "4d51dd76e8a62686e121e3d52f0e0b196e66520ecf9740fa48b8bf8683092662",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "cd96a16aa9b87a296c8191477fd9eff717b2f9e7",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/engine/expr_eval/ops.rs",
+    "reference": "crates/vb_core/src/engine/expr_eval/ops.rs",
+    "blob": "7beb079b7705927a975fabcfffe0bb826621963b",
+    "sha256": "501c8d76bb18e2fae0d36f4516a4219ecdbe8c401a8650466c6ac11ad2713d46",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7beb079b7705927a975fabcfffe0bb826621963b",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+    "reference": "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+    "blob": "536c25aed99ac6edfac7f3142fbfb3c9a6908af3",
+    "sha256": "ea381b14b05b5e562fe13a5cab7cdf41045b13183fdc4c4e7ccc571f69996ead",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "536c25aed99ac6edfac7f3142fbfb3c9a6908af3",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+    "reference": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+    "blob": "dad60d552569aced70461f916c6963961e85da27",
+    "sha256": "83f4c33eb26e9e72d2d6947057737b0da6c895cf00776fdac82b47c8efbdad02",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "dad60d552569aced70461f916c6963961e85da27",
+    "same_blob": true
+  },
+  {
+    "reference": "crates/vb_core/src/engine/node_helpers",
+    "normalized": "crates/vb_core/src/engine/node_helpers",
+    "verified_file": false,
+    "kind": "historical-navigation-reference-corrected",
+    "corrected_current_owner": {
+      "path": "crates/vb_core/src/engine/node_helpers.rs",
+      "blob": "06699e5cb514bfa78c87a70c3385f9c4ad20751c",
+      "sha256": "391a2df903ab840f557066309d52e9804683f5b5cb1da11342876f032e62a0f0"
+    },
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "adde65ad6a2ae12ed17084868044c80b5e172edd",
+    "same_blob": false
+  },
+  {
+    "path": "crates/vb_core/src/engine/run_loop.rs",
+    "reference": "crates/vb_core/src/engine/run_loop.rs",
+    "blob": "0d8b38c85fc05b1130eaa3acd0ed520f35e00842",
+    "sha256": "4b6179fc458f17e4dc2b29bf6c5678a8ee2dca065a184b2a3da180e7f9560c5c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0d8b38c85fc05b1130eaa3acd0ed520f35e00842",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/engine/step.rs",
+    "reference": "crates/vb_core/src/engine/step.rs",
+    "blob": "0c03a6b53cbe2a93e96d91e7cc2bb5e0f4e0940c",
+    "sha256": "29d4d4d2b49e4d5853a18cf0531835c4b11c10f3cf0066f8571323f0c440bd6e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0c03a6b53cbe2a93e96d91e7cc2bb5e0f4e0940c",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/engine/tests/integration_step_behavior/mod.rs",
+    "reference": "crates/vb_core/src/engine/tests/integration_step_behavior/mod.rs",
+    "blob": "b15aa59e152e8d88709e7a61dd80489698a15549",
+    "sha256": "0f7437638eaf12c4763f54f3282e46582561bbd83fa62b61e12e00a9f7af5884",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b15aa59e152e8d88709e7a61dd80489698a15549",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/errors.rs",
+    "reference": "crates/vb_core/src/errors.rs",
+    "blob": "8f0bef5120f25a8a8fd5034be98802335183ad11",
+    "sha256": "e877eec035fed73303dc11a204d330c028e0c0ed3c8dd4f43498238c3ae60832",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8f0bef5120f25a8a8fd5034be98802335183ad11",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/errors/action_lifecycle_tests.rs",
+    "reference": "crates/vb_core/src/errors/action_lifecycle_tests.rs",
+    "blob": "374fefc787c5abca38c82b81a3bf4b5b7206a40a",
+    "sha256": "6616a32b2ff9ee38078c547cad1ef266fc6f4783f44795ecb8f39852ff372fbf",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "374fefc787c5abca38c82b81a3bf4b5b7206a40a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/errors/tests.rs",
+    "reference": "crates/vb_core/src/errors/tests.rs",
+    "blob": "903fe1ce024ec132193adf96e605a058f71f6223",
+    "sha256": "fe26ce02798c8d09c82f1fd08df750311c64a9c58f056de34768fbb2f555dc02",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "903fe1ce024ec132193adf96e605a058f71f6223",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/frame/parts/impl_002_accessors.rs",
+    "reference": "crates/vb_core/src/frame/parts/impl_002_accessors.rs",
+    "blob": "7f7ef18e6aae82f801d0f1f50bba77a859170731",
+    "sha256": "1ff515cc89a35f19a793d4782619205701adad5ff845da44d3e5b73bb1313e95",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7f7ef18e6aae82f801d0f1f50bba77a859170731",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/frame/tests_and_verification/tests_security_parallel.rs",
+    "reference": "crates/vb_core/src/frame/tests_and_verification/tests_security_parallel.rs",
+    "blob": "f6bffaf4bdab97d86adba499bcb8b8b72f6f18b0",
+    "sha256": "d2851dd9f32e6746497fc5362ffc5343bcf60cc8362cf2a5198cc8883fdf86df",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f6bffaf4bdab97d86adba499bcb8b8b72f6f18b0",
+    "same_blob": true
+  },
+  {
+    "reference": "crates/vb_core/src/ids.rs",
+    "normalized": "crates/vb_core/src/ids.rs",
+    "verified_file": false,
+    "kind": "historical-navigation-reference-corrected",
+    "corrected_current_owner": {
+      "path": "crates/vb_core/src/ids/mod.rs",
+      "blob": "bcaab83039f08faa29cec53dc3708ab882802bd7",
+      "sha256": "3fdd387575421f09c24039ebc8e0b4b5140defc7b30ef8ba5022438687806525"
+    },
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": null,
+    "same_blob": false
+  },
+  {
+    "path": "crates/vb_core/src/ids/parts/chunk_001_custom_types.rs",
+    "reference": "crates/vb_core/src/ids/parts/chunk_001_custom_types.rs",
+    "blob": "c959731592c92fa0a8cccac7b7ad89e598baf90e",
+    "sha256": "1ceba8f58f9b8d51deb5408df25cea3ed5c1766570bc4045af17593046ef656d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c959731592c92fa0a8cccac7b7ad89e598baf90e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/ids/tests_and_verification.rs",
+    "reference": "crates/vb_core/src/ids/tests_and_verification.rs",
+    "blob": "6f91a3ae6a953b0e477933d4fb2973dd2ded168d",
+    "sha256": "2b696d5b96ff598fdcad887a340ed606681fbb447b56343fe720ed282abe74fd",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "6f91a3ae6a953b0e477933d4fb2973dd2ded168d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/lib.rs",
+    "reference": "crates/vb_core/src/lib.rs",
+    "blob": "42048bb00b599f7818dbffd5e946a075c1f516e8",
+    "sha256": "8e2907bdd4a9bb92607007f39181f6eff20fd13a8b55b90587391b7b3e29bf53",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "42048bb00b599f7818dbffd5e946a075c1f516e8",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/replay/mod.rs",
+    "reference": "crates/vb_core/src/replay/mod.rs",
+    "blob": "43bf60d81f4c540571f951e6dc05a7f48a373c14",
+    "sha256": "6d06eb933a88c005ee2415cedc22d2a7a32437978a21023b36e2825cd1108ec1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "43bf60d81f4c540571f951e6dc05a7f48a373c14",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/replay/ops.rs",
+    "reference": "crates/vb_core/src/replay/ops.rs",
+    "blob": "21cda8907dd63faca58cb6fb183b148a38f59b32",
+    "sha256": "1579336010683db3832898c704af86a91296a004df498eb19b06fc37c19f35a3",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "21cda8907dd63faca58cb6fb183b148a38f59b32",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/replay/step.rs",
+    "reference": "crates/vb_core/src/replay/step.rs",
+    "blob": "f8faa4a15b50875b39f89268b8c84eafcc0bd2d6",
+    "sha256": "640d74dfa1823d67cfef39a348984309410a0bdea54f1f35d3f6e937c702cd0c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f8faa4a15b50875b39f89268b8c84eafcc0bd2d6",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/replay/step/dispatch.rs",
+    "reference": "crates/vb_core/src/replay/step/dispatch.rs",
+    "blob": "681c58f001cf5912ba6cd293519a242e2419ce89",
+    "sha256": "e15a76eb7a1b20f266fefc8907aaf324cd0411739cc34b145dbfe24cc26f0db6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "681c58f001cf5912ba6cd293519a242e2419ce89",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/shard/partition/mod.rs",
+    "reference": "crates/vb_core/src/shard/partition/mod.rs",
+    "blob": "9ef9811f37b91422ea343f7d688cc2c33a7f9061",
+    "sha256": "67c6e783dcb3d31ec3350172c0821f04f490efa89d28346b39de41a45969ce6b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "9ef9811f37b91422ea343f7d688cc2c33a7f9061",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/value/taint.rs",
+    "reference": "crates/vb_core/src/value/taint.rs",
+    "blob": "e0ecdda84612d30c16ea4630be008cb53a45a864",
+    "sha256": "abc13da2f1a510465e99dd7bdeb19f10b153e250b7b3be56ac633c870ebc0ce6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "e0ecdda84612d30c16ea4630be008cb53a45a864",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/value_store/list_ops.rs",
+    "reference": "crates/vb_core/src/value_store/list_ops.rs",
+    "blob": "9607f08561c674a134bb66704e095f4a630bf157",
+    "sha256": "4620030ebfecd8445ac87f73d645200be012e976ab5964a57cbfa7ec56b44707",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "9607f08561c674a134bb66704e095f4a630bf157",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/workflow/mod.rs",
+    "reference": "crates/vb_core/src/workflow/mod.rs",
+    "blob": "226a2ea89421e6ce7609f5ab1fc39663289d4b9c",
+    "sha256": "cfbeacca80a1c548aa1c4765b885d276764aff0a42f90583938ec3be4ae54338",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "226a2ea89421e6ce7609f5ab1fc39663289d4b9c",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/workflow/profile_construct.rs",
+    "reference": "crates/vb_core/src/workflow/profile_construct.rs",
+    "blob": "d157e0cdf739b5330121f4d42ac964ee7548957d",
+    "sha256": "bec6f18f892dd2afdd13e6213bd57e77a1c040d621f1baddd278c75d06d48dbd",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d157e0cdf739b5330121f4d42ac964ee7548957d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/workflow/resource_contract.rs",
+    "reference": "crates/vb_core/src/workflow/resource_contract.rs",
+    "blob": "7bcd709d76c2d910b51f31da410c48320e6dbc9a",
+    "sha256": "652757f31cc37baccf21b6dc4e9d2500f03c283f8e3441c49514d8a7df2d45d5",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7bcd709d76c2d910b51f31da410c48320e6dbc9a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/src/workflow/validate.rs",
+    "reference": "crates/vb_core/src/workflow/validate.rs",
+    "blob": "47b915c7bae114416dbb8d61348e3587390e9d91",
+    "sha256": "058a5300b18adaf8167e80cadd6d235785da9e3e55912540a74652515ed4c31b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "47b915c7bae114416dbb8d61348e3587390e9d91",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_core/tests/proptest_core_error_codes.rs",
+    "reference": "crates/vb_core/tests/proptest_core_error_codes.rs",
+    "blob": "a65d483201363e32a47f1a0e09a0109a15207587",
+    "sha256": "0c60e643a290f21c80395a730f80e68ba6415d1b415ca13a9c184388351f8cc8",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a65d483201363e32a47f1a0e09a0109a15207587",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_bytecode/mod.rs",
+    "reference": "crates/vb_expr/src/expr_bytecode/mod.rs",
+    "blob": "30c0bcb87c94c0b7fb0c11d0f94cac5e426c55b4",
+    "sha256": "eb828d357ed0f1803c3ab94c0cf2c68bcb1eec29d0e99d9449bbe3a51c09af0d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "30c0bcb87c94c0b7fb0c11d0f94cac5e426c55b4",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_bytecode/tests.rs",
+    "reference": "crates/vb_expr/src/expr_bytecode/tests.rs",
+    "blob": "05f7a2093ad1ee9cf3f7522a9cb4675907c27615",
+    "sha256": "43194e895b253daf5e6133b6778579b536d3a634cc4d97d527fcb049092f7027",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "05f7a2093ad1ee9cf3f7522a9cb4675907c27615",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_eval/evaluate.rs",
+    "reference": "crates/vb_expr/src/expr_eval/evaluate.rs",
+    "blob": "4bd47445decb0681d5c6226bfcba5d24cd0db957",
+    "sha256": "c619c6a7a18f539a3d9bb610480f64e849d7010356a90b5cdbc752e8af09a5a4",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "4bd47445decb0681d5c6226bfcba5d24cd0db957",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_eval/helper_store.rs",
+    "reference": "crates/vb_expr/src/expr_eval/helper_store.rs",
+    "blob": "7c1c9e111e3a8ca66094af9d28df12524b625988",
+    "sha256": "ee047fc0868f14ca6476904a0b23817022a5ff41987ea824f4cdc43d62e2c3db",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7c1c9e111e3a8ca66094af9d28df12524b625988",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_lexer/mod.rs",
+    "reference": "crates/vb_expr/src/expr_lexer/mod.rs",
+    "blob": "c8ab7057becdb74f2ea75ece14433f41fcf8dea7",
+    "sha256": "1e3c8d7344a5123c001977e1db974ad01c959574c998568737e1d26477a8f2d1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c8ab7057becdb74f2ea75ece14433f41fcf8dea7",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_lexer/tests.rs",
+    "reference": "crates/vb_expr/src/expr_lexer/tests.rs",
+    "blob": "4888b85ec2606aeed1e552f43a4bc43cb920c57a",
+    "sha256": "d637f12db6d4a09ad2baff711f8339b515417729dd606d4e2c147e9811a395dc",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "4888b85ec2606aeed1e552f43a4bc43cb920c57a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_parser/mod.rs",
+    "reference": "crates/vb_expr/src/expr_parser/mod.rs",
+    "blob": "b6e559ef6068555eb0ae66775a932ee58ff224d7",
+    "sha256": "6d3319228856ba7c1b92e940d1f26f8004bb1a4c3b289ef10f5e6dcd323a6275",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b6e559ef6068555eb0ae66775a932ee58ff224d7",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_parser/tests.rs",
+    "reference": "crates/vb_expr/src/expr_parser/tests.rs",
+    "blob": "0cb4bf2041b137672233818f72eb89cd0ad64d7a",
+    "sha256": "b979386ef367a292744da38c8c9b382bf05aa42d9ce0dbd4a1b760aa693584ea",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0cb4bf2041b137672233818f72eb89cd0ad64d7a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_stack_ops.rs",
+    "reference": "crates/vb_expr/src/expr_stack_ops.rs",
+    "blob": "d0757d14d20651f536961e637a6a3edacf1705bd",
+    "sha256": "d54127457f0e53b3fd330d794d53c9bed4729cda767c44f097ec00a825a557f6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d0757d14d20651f536961e637a6a3edacf1705bd",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_typecheck/mod.rs",
+    "reference": "crates/vb_expr/src/expr_typecheck/mod.rs",
+    "blob": "8d94dc65e0929fea9ea9ba1f15673fd357f1a255",
+    "sha256": "44a72d84b986eb66673c5e0c19c3e39a04925141136474767256982268e83f48",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8d94dc65e0929fea9ea9ba1f15673fd357f1a255",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/expr_typecheck/tests.rs",
+    "reference": "crates/vb_expr/src/expr_typecheck/tests.rs",
+    "blob": "5f6138089f50c153f0975dfac546939beb8a3ab0",
+    "sha256": "931492bfaaee12598c7ca64db26417dcde88f7419749e6ab32de1053993ef272",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5f6138089f50c153f0975dfac546939beb8a3ab0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_expr/src/lib.rs",
+    "reference": "crates/vb_expr/src/lib.rs",
+    "blob": "335502f2b7bd60c0603a921a081f68387111c19d",
+    "sha256": "96e588676f2dec812269f0e43098368d98bf5c6b02daeeed4c24d497ee84e1ed",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "335502f2b7bd60c0603a921a081f68387111c19d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/payloads.rs",
+    "reference": "crates/vb_ipc/src/payloads.rs",
+    "blob": "50c3eeec35161798ecda022e7d1c9c956e92ae27",
+    "sha256": "96db6d5172e7edbde81e7b3d607cf8a555e9accd2d80c14a0b9294613907e900",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "50c3eeec35161798ecda022e7d1c9c956e92ae27",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/connection_io.rs",
+    "reference": "crates/vb_ipc/src/server/connection_io.rs",
+    "blob": "5f48575e1110d6b8fcb5acc416e1de0cee20f510",
+    "sha256": "1e7f10b36e71d303a2b0c08d373b6d49f3822f4b3fd0bd0c5173bd3b8b36b883",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5f48575e1110d6b8fcb5acc416e1de0cee20f510",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/dispatch.rs",
+    "reference": "crates/vb_ipc/src/server/dispatch.rs",
+    "blob": "2ab078b70b9cf35bd880854c6047c53895942f67",
+    "sha256": "d8a4da9846911bc5d689a05de49db61535a38f1714649449749d89c94086aac3",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2ab078b70b9cf35bd880854c6047c53895942f67",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/handlers/answer.rs",
+    "reference": "crates/vb_ipc/src/server/handlers/answer.rs",
+    "blob": "810cc979b403086ded978b4ee0d9adbe2733bb61",
+    "sha256": "ba151aea8cad48350b3f89f77229cd6317236da0d1abc219983f2b142b10752c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "810cc979b403086ded978b4ee0d9adbe2733bb61",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/handlers/command.rs",
+    "reference": "crates/vb_ipc/src/server/handlers/command.rs",
+    "blob": "1502494e0030ec0365479738262ffd3beef537c9",
+    "sha256": "78c7aeafa0585cf0b40c46d658758f5f521dba89ff8ac538f3b7bb7e2d1ff751",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1502494e0030ec0365479738262ffd3beef537c9",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/handlers/mod.rs",
+    "reference": "crates/vb_ipc/src/server/handlers/mod.rs",
+    "blob": "ac5440842fafd0d046443c818e2fbc632b29c042",
+    "sha256": "30260ab63279eed09c38218d9c5419aacd3ca650b7f9f82cb31860c28a5705f0",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ac5440842fafd0d046443c818e2fbc632b29c042",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/handlers/queries.rs",
+    "reference": "crates/vb_ipc/src/server/handlers/queries.rs",
+    "blob": "0928c03c9bd32b39178de8b080b14dbfea2ef2b4",
+    "sha256": "8cba2a2ef97093d1ee5828dfa8547be56cf01c471e905a13718334f77942fb5c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0928c03c9bd32b39178de8b080b14dbfea2ef2b4",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/handlers/runs.rs",
+    "reference": "crates/vb_ipc/src/server/handlers/runs.rs",
+    "blob": "2f7bf1f302f62b66aa0f4a7fc3d822385a219f8d",
+    "sha256": "832bb3fdd4a271e70c8b93fc4e4bee84a4c70a61140a4f46af722dd1fad5b113",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2f7bf1f302f62b66aa0f4a7fc3d822385a219f8d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/handlers/session.rs",
+    "reference": "crates/vb_ipc/src/server/handlers/session.rs",
+    "blob": "c31ac6fbf21a926931c7b4d16db277576c6c93ee",
+    "sha256": "418a683b4a57cb0a9ef08a70e17381458f4d4fbf942c6e92deb1b1c5d01fc546",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c31ac6fbf21a926931c7b4d16db277576c6c93ee",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/helpers/mod.rs",
+    "reference": "crates/vb_ipc/src/server/helpers/mod.rs",
+    "blob": "120139fb71ce7c23c83c73dcd27926c7be7e4629",
+    "sha256": "e1a2ff1c13de59c9105b221a88a06b83433519b36043324f82b7bff402dd2a0b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "120139fb71ce7c23c83c73dcd27926c7be7e4629",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/helpers/tests.rs",
+    "reference": "crates/vb_ipc/src/server/helpers/tests.rs",
+    "blob": "212cba1149dedc232c73226b6c2f9f864be58078",
+    "sha256": "ecd071c73f648ae068cf582c870b9b2d8cffa49c64f2a23ffccae0b99c752628",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "212cba1149dedc232c73226b6c2f9f864be58078",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/impl_.rs",
+    "reference": "crates/vb_ipc/src/server/impl_.rs",
+    "blob": "3a69c9a80312338e09bb933c9581bc9d29d5e6af",
+    "sha256": "dcece333db2c4e37077c95d1ba4d552895e539108b9926efd9c15ad46fd74000",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "3a69c9a80312338e09bb933c9581bc9d29d5e6af",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/reactor.rs",
+    "reference": "crates/vb_ipc/src/server/reactor.rs",
+    "blob": "2367523f07514ffc33f56b5e3c61440029665049",
+    "sha256": "298787abd93fc0908471ef37afb042dc11f234062b29b4791c9a4930dbd1dcc9",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2367523f07514ffc33f56b5e3c61440029665049",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/reactor_tests.rs",
+    "reference": "crates/vb_ipc/src/server/reactor_tests.rs",
+    "blob": "a1f81688c5ee8e510d1e12aba7368dea614119a2",
+    "sha256": "054f14b7682521ba8a47e84c010d85989bdd288d0a9bf2188d5f34edb89419ac",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a1f81688c5ee8e510d1e12aba7368dea614119a2",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/response_io.rs",
+    "reference": "crates/vb_ipc/src/server/response_io.rs",
+    "blob": "d2e1fba1afcf7fcffcc2001ca082e7e926ca2813",
+    "sha256": "1af7eb3e41b69c2cbda0dc2bd1f81f30359268e5e35f5d2abf539e5cd1e3b636",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d2e1fba1afcf7fcffcc2001ca082e7e926ca2813",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/trace/mod.rs",
+    "reference": "crates/vb_ipc/src/server/trace/mod.rs",
+    "blob": "90765378689af4a18e4dab53fab3b410045c9ea4",
+    "sha256": "66fef6f3db0ee25f44287082f2790c0561e27540cd3a61c888426dc675b5fd17",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "90765378689af4a18e4dab53fab3b410045c9ea4",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/admission.rs",
+    "reference": "crates/vb_runtime/src/admission.rs",
+    "blob": "d0d4debefc1ca93094b6afa8acaa849cec8b2f43",
+    "sha256": "9e2f2e4189a5f5cc0bdfcdf2cd67484032150f96fc34d9cc8a2b56defe37fc6a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d0d4debefc1ca93094b6afa8acaa849cec8b2f43",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs",
+    "reference": "crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs",
+    "blob": "6c33649ddcda293b30c2f82f8c2e21ff458e8958",
+    "sha256": "3415e4d0d66f26f226ae4810f30df491abf07854e81c9d45b8033d291ecd4f45",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "6c33649ddcda293b30c2f82f8c2e21ff458e8958",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/admission/parts/chunk_004_validation.rs",
+    "reference": "crates/vb_runtime/src/admission/parts/chunk_004_validation.rs",
+    "blob": "0b1e3aaad938e0513e9cfe17fdd743c78492bc68",
+    "sha256": "283b752b1a9bcce7df84ab3c83642fb008c53d77ca22ed4e67db88055ee8dc05",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0b1e3aaad938e0513e9cfe17fdd743c78492bc68",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs",
+    "reference": "crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs",
+    "blob": "729d2027f2bfda4fdff6cfc88a4d628efbe03918",
+    "sha256": "b2b975d47f1910bae7768d517b245a34fcd043d4889cd91cd5169f92e80fb51d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "729d2027f2bfda4fdff6cfc88a4d628efbe03918",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/admission/parts/chunk_006_admit_budget.rs",
+    "reference": "crates/vb_runtime/src/admission/parts/chunk_006_admit_budget.rs",
+    "blob": "ce6f494895960a32888acf423aab6561d62ee5d8",
+    "sha256": "c3891eab8f14c68994d13d67aeceb0432e42278942796a3b12ed8b7e6e1312d4",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ce6f494895960a32888acf423aab6561d62ee5d8",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/engine/action/mod.rs",
+    "reference": "crates/vb_runtime/src/engine/action/mod.rs",
+    "blob": "6aaa607ba7154dc78de7cd1109913e1ce092a71c",
+    "sha256": "b32ff84e6de282e07efdebac7fe8d9b9013e9a8e2413d1cbfbe229c97a7b996e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "3f349a9b142f827c13515dceb1e303e0bab7a07c",
+    "same_blob": false
+  },
+  {
+    "path": "crates/vb_runtime/src/engine/drive/loop_step.rs",
+    "reference": "crates/vb_runtime/src/engine/drive/loop_step.rs",
+    "blob": "c97314101cd4e7f671239acaa8781b9b03191f00",
+    "sha256": "04e9c227db635d23319d2c741d00acf66cdbf4ef783ea4a7446d389a02825f53",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c97314101cd4e7f671239acaa8781b9b03191f00",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/engine/drive/mod.rs",
+    "reference": "crates/vb_runtime/src/engine/drive/mod.rs",
+    "blob": "4324741c671dd69066bbcb23e2f3dc4248d505a3",
+    "sha256": "eaf789bbfadd53d772346c378b435f93bd66ddcb747766b57aba7e0e41330869",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "4324741c671dd69066bbcb23e2f3dc4248d505a3",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/engine/drive/tests/mod.rs",
+    "reference": "crates/vb_runtime/src/engine/drive/tests/mod.rs",
+    "blob": "8c9bcd40e9c058faa12f420b10ce0332cd0d0616",
+    "sha256": "6ff747baebfe6c91db069b325c5441ccda0df374ec6dbce04211e9ac9599cd29",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8c9bcd40e9c058faa12f420b10ce0332cd0d0616",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/engine/retry_math.rs",
+    "reference": "crates/vb_runtime/src/engine/retry_math.rs",
+    "blob": "0fe1c50a25875909cfc6af58120cbda0288d5b5d",
+    "sha256": "4934aeb3ea117c463f0b72c02ecba7acf5596192865a1cd6144891be62e0b2a7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0fe1c50a25875909cfc6af58120cbda0288d5b5d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/frame_pool.rs",
+    "reference": "crates/vb_runtime/src/frame_pool.rs",
+    "blob": "67a8abcb6b994fdb3d8c992f0c734c1705def8eb",
+    "sha256": "f9b0eaf8af48accb4f3a349a286a849ee83f636adbbc72e3183f62e8fac78f63",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "67a8abcb6b994fdb3d8c992f0c734c1705def8eb",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+    "reference": "crates/vb_runtime/src/frame_pool/tests.rs",
+    "blob": "6d6b085fcc7121d1fccc395dea1be5e1e2beea90",
+    "sha256": "c3c85205d92faff7de7fe5084004b47249d112e9d6697bd2a8d3a531015b0651",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "6d6b085fcc7121d1fccc395dea1be5e1e2beea90",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/idempotency.rs",
+    "reference": "crates/vb_runtime/src/idempotency.rs",
+    "blob": "7983306bfc383563b7f67462e2800378dcdc1806",
+    "sha256": "f453a3cdb10a56175bcd8f622e460ceeee013e2f4625bd88412b2aa2ac7c022d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7983306bfc383563b7f67462e2800378dcdc1806",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/ipc_refinement.rs",
+    "reference": "crates/vb_runtime/src/ipc_refinement.rs",
+    "blob": "ec743aaeb85972b0b0b15005703e553ce254ded2",
+    "sha256": "16f253e91a4929b6343ca7668ca524e6190a06375cf06ccad32451bbda746029",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ec743aaeb85972b0b0b15005703e553ce254ded2",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/journal.rs",
+    "reference": "crates/vb_runtime/src/journal.rs",
+    "blob": "e9865bc2c7d74635c45a94f1556973784f83f623",
+    "sha256": "fe558e15204c5eae5176ed781bd1d8d04e6ef1df2208d3bc9fb56989ec326139",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "e9865bc2c7d74635c45a94f1556973784f83f623",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/journal/chunk_001b.rs",
+    "reference": "crates/vb_runtime/src/journal/chunk_001b.rs",
+    "blob": "bc5bf616e7315e0b3e12085fd55a80bbc795c57b",
+    "sha256": "b61b2d77b93842de09e4264d4a2aeb268cf48d473e8f085a496e097989a67ad1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "bc5bf616e7315e0b3e12085fd55a80bbc795c57b",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/journal/chunk_001c.rs",
+    "reference": "crates/vb_runtime/src/journal/chunk_001c.rs",
+    "blob": "0dc6a532882c66eb1e55218a16338d56b624241e",
+    "sha256": "24c56fc3c4ba1989530f60f6fed20244cc5c78c53db61fd5e83e1548ebcb048b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0dc6a532882c66eb1e55218a16338d56b624241e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/journal/chunk_002.rs",
+    "reference": "crates/vb_runtime/src/journal/chunk_002.rs",
+    "blob": "56ecdbfb44a9d8c1662e4427238a33e7e81d73a1",
+    "sha256": "6c9f80d1f608439cd93af4d6c74e53b6fac00ca6ffb474ea272dd0d6af66367b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "56ecdbfb44a9d8c1662e4427238a33e7e81d73a1",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/journal/chunk_002c.rs",
+    "reference": "crates/vb_runtime/src/journal/chunk_002c.rs",
+    "blob": "2eab19fcfdf85de67d1311efe08a58642b5695b9",
+    "sha256": "8aec16ebe0ee84ecf2d4baf6afe316f8dbefe41bad20f6a45eeb9d989d619f2c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2eab19fcfdf85de67d1311efe08a58642b5695b9",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/journal/run_lifecycle_events.rs",
+    "reference": "crates/vb_runtime/src/journal/run_lifecycle_events.rs",
+    "blob": "deaeb773ce8f1cc085ba00902a6428f664207d67",
+    "sha256": "514666cc1da1b290e12768010a015bd12bab866fbc961247f5379e0a7c912f51",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "deaeb773ce8f1cc085ba00902a6428f664207d67",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/journal/tests/chunk_004.rs",
+    "reference": "crates/vb_runtime/src/journal/tests/chunk_004.rs",
+    "blob": "cb1d6409231f5c93b2191507521b6dacdf3070c3",
+    "sha256": "b257286987a728d0fb82e4db8ea649cc6055362f401511a3941a266b3d2e62a8",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "cb1d6409231f5c93b2191507521b6dacdf3070c3",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/primitives/collect/helpers.rs",
+    "reference": "crates/vb_runtime/src/primitives/collect/helpers.rs",
+    "blob": "b825339228ac1981369fce78bf60ac6e2921c333",
+    "sha256": "9d122c63f2decc168069916d0f2d8902680d6552ec9dad1d00995217c881b128",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b825339228ac1981369fce78bf60ac6e2921c333",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/primitives/collect/hydration.rs",
+    "reference": "crates/vb_runtime/src/primitives/collect/hydration.rs",
+    "blob": "41097f978e4c9a92b793ec78fa635bdcd4f34c1b",
+    "sha256": "2be79dc77e7a353f7e99975916285efa6daef4f695a8dfb86ebe590edb54c56a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "41097f978e4c9a92b793ec78fa635bdcd4f34c1b",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/primitives/together.rs",
+    "reference": "crates/vb_runtime/src/primitives/together.rs",
+    "blob": "a7b0e6f2e753fdf7513167e09f227ea47265f2c1",
+    "sha256": "2a60461df6abee35c970dcd4e0c6f584524e039cb9d02b17daf84aa5ecbe0a2c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a7b0e6f2e753fdf7513167e09f227ea47265f2c1",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/runtime/actions.rs",
+    "reference": "crates/vb_runtime/src/runtime/actions.rs",
+    "blob": "0e371cea16c80d6cea1230d6171060cb740a812f",
+    "sha256": "5162adbb220fa6efd264640781204c7a4dc52820b85e55b8380ee29d9ab485aa",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0e371cea16c80d6cea1230d6171060cb740a812f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/impl_parts/chunk_001/dispatch_control.rs",
+    "reference": "crates/vb_runtime/src/shard/impl_parts/chunk_001/dispatch_control.rs",
+    "blob": "f60bdf43f78cb42004ad1f52a40a8f081afb01ff",
+    "sha256": "5b7ef86e68fa6b41f0609b1df79d584539fd8c7aadff6d4169425a6da1efec50",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f60bdf43f78cb42004ad1f52a40a8f081afb01ff",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/impl_parts/chunk_001/inspect_evidence.rs",
+    "reference": "crates/vb_runtime/src/shard/impl_parts/chunk_001/inspect_evidence.rs",
+    "blob": "c71157a1b22b38f90566757c1a792de49e9437b0",
+    "sha256": "99193bd4881c7a455c783f961b241cf880d865511faf7b3260e7a2371398b9b3",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c71157a1b22b38f90566757c1a792de49e9437b0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/impl_parts/chunk_001/inspect_evidence_helpers.rs",
+    "reference": "crates/vb_runtime/src/shard/impl_parts/chunk_001/inspect_evidence_helpers.rs",
+    "blob": "deda82174055a15d4ad59226901bee322655a59f",
+    "sha256": "7b07eefe52458519339d076ba6e861d5c8b32f7860b5fbe991e6976d76f48227",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "deda82174055a15d4ad59226901bee322655a59f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/impl_parts/chunk_001/pending.rs",
+    "reference": "crates/vb_runtime/src/shard/impl_parts/chunk_001/pending.rs",
+    "blob": "39718675206d29717a2cb50d3ce755895470c8e4",
+    "sha256": "6bd9c6811f6d16faa633276164af4e483dfd7d1548c434fcb1ccbba122c4bfc1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "39718675206d29717a2cb50d3ce755895470c8e4",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001/completion_helpers.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_001/completion_helpers.rs",
+    "blob": "443d9831dd97176491a1ba20aa80aae656b38eb1",
+    "sha256": "2e2897e580569163d01c93ccdb6821d67f78db904b2540728a6fbdb2af64ea31",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "443d9831dd97176491a1ba20aa80aae656b38eb1",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001/open_wait_restore.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_001/open_wait_restore.rs",
+    "blob": "7b29196295a7a5316003da1870df2a573752691e",
+    "sha256": "a33c06723653a190dec87557316c7a402abe1ab4c8bbe1ce2313c8c9a199e664",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7b29196295a7a5316003da1870df2a573752691e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001/recover.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_001/recover.rs",
+    "blob": "79830251abd9f64b78bc72804df81a134a3df068",
+    "sha256": "812a2a02e3a2d3d1576c7754e8ae75d3b266c5a3ba764202f3958be479167ee7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "79830251abd9f64b78bc72804df81a134a3df068",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001/recover_state.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_001/recover_state.rs",
+    "blob": "640e1c2f2b49d5ffe8f97c3740be4cbe7d677519",
+    "sha256": "68aceecea9d79afd74bf8de1e21255cb9a2a2724edd6cabf92f34b2e0e4e702d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "640e1c2f2b49d5ffe8f97c3740be4cbe7d677519",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001/resume.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_001/resume.rs",
+    "blob": "54da6d38a75d73212c819f3da2f46dc47be3d631",
+    "sha256": "4f56bc633b874038a883ca9b4fe2186fe8f13038a5279216c2432057721e58a7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "54da6d38a75d73212c819f3da2f46dc47be3d631",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001/resume_helpers.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_001/resume_helpers.rs",
+    "blob": "87504b142986eaf389602ac885b6fdc2f959d7ac",
+    "sha256": "351863e126f43a7db4d904a3b1164df5a77a6602371f35f77c2a652bbc72e17e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "87504b142986eaf389602ac885b6fdc2f959d7ac",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_003.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_003.rs",
+    "blob": "7614eedd14cd8ce28b4a5885b7cd61958cf0fbc2",
+    "sha256": "7952ab8a819252d350d0193496a664badd6a18d39a63a1b3682b1c2ea4915768",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "7614eedd14cd8ce28b4a5885b7cd61958cf0fbc2",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs",
+    "blob": "eb76baff66bd08bd2be7c379b887a40a7aa300d0",
+    "sha256": "1f7f74e2928830b4aee2596c3d07dfdb1962251c318ae0a178e1c1632ff3e448",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "eb76baff66bd08bd2be7c379b887a40a7aa300d0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_002_failure_preflight.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_002_failure_preflight.rs",
+    "blob": "2f1344a9453a8e647a5b0ed9e8d8d74dfa289695",
+    "sha256": "290342d814a11cac75439c957b0f84c843869d10fc3d63516ee73f8e2691846f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2f1344a9453a8e647a5b0ed9e8d8d74dfa289695",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_005.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_005.rs",
+    "blob": "d1969c10ca7b46165043b9fafd02a7617e9b4dbd",
+    "sha256": "44224b7591b406580202a495b126d7a6dc68d40a9da6f9d72f4022e41fd691ae",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d1969c10ca7b46165043b9fafd02a7617e9b4dbd",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/lifecycle/chunk_006.rs",
+    "reference": "crates/vb_runtime/src/shard/lifecycle/chunk_006.rs",
+    "blob": "a7f04fe7c9d52cfd92a088451fa2e42906626573",
+    "sha256": "e7323e49d0d9dd4e264e2a0f45c20982722b86e278237e559d6bedccf5aaabdf",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a7f04fe7c9d52cfd92a088451fa2e42906626573",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/timer_wheel.rs",
+    "reference": "crates/vb_runtime/src/shard/timer_wheel.rs",
+    "blob": "d1d341ca52f147832ac5d926295b45b71b08b045",
+    "sha256": "40f2efdc553fe01d43c57595d65f1cbe2c8ab6b90d857ff862ed2d4012c702ff",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d1d341ca52f147832ac5d926295b45b71b08b045",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/timer_wheel/tests.rs",
+    "reference": "crates/vb_runtime/src/shard/timer_wheel/tests.rs",
+    "blob": "fd2bb12c690f77ffbe94f22955a7be14f82ee145",
+    "sha256": "8825511d3cd7dad2e1f0d95a97fc25b56dd231db7313e9aab3f331e0cf8e023b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "fd2bb12c690f77ffbe94f22955a7be14f82ee145",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/transitions.rs",
+    "reference": "crates/vb_runtime/src/shard/transitions.rs",
+    "blob": "55b66f021631c5ba80c12077346171324f3feb55",
+    "sha256": "d239b79373667a6c62ad0437cb06a62d6e3e4f5b9055ee912da422455ac4a81d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "55b66f021631c5ba80c12077346171324f3feb55",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/transitions/timer_methods.rs",
+    "reference": "crates/vb_runtime/src/shard/transitions/timer_methods.rs",
+    "blob": "d9de7e43c3e688e3e00c482e6f6d8b5a9887552a",
+    "sha256": "aa9e6e6dffabf5541bbc15528de86f3bf0ab10e76e6e12f85836d86ec7f8e863",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d9de7e43c3e688e3e00c482e6f6d8b5a9887552a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/transitions_cleanup.rs",
+    "reference": "crates/vb_runtime/src/shard/transitions_cleanup.rs",
+    "blob": "4e88eaf7ec2f21e234f84dc57c6f95f357b99261",
+    "sha256": "c003ad8e8ea31167f3b89f16fa7b84fd1bdceff950c4aa0d3beb60700a7d325a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "4e88eaf7ec2f21e234f84dc57c6f95f357b99261",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/types/format_snapshot_tests.rs",
+    "reference": "crates/vb_runtime/src/shard/types/format_snapshot_tests.rs",
+    "blob": "2e075680abe9542c402eaad4943b1bedde256e07",
+    "sha256": "76d80d444f8627070feb1b7c514fe37ae5137c034c2b2e372f5112b248487554",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2e075680abe9542c402eaad4943b1bedde256e07",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/types/inspect.rs",
+    "reference": "crates/vb_runtime/src/shard/types/inspect.rs",
+    "blob": "b8b589547b60ff0051c4da52c3e12a23592fae20",
+    "sha256": "333f57b9ca73f18cc2936652679c839b535e237991e945cfbfbae3da8f5ab764",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b8b589547b60ff0051c4da52c3e12a23592fae20",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/types/introspection.rs",
+    "reference": "crates/vb_runtime/src/shard/types/introspection.rs",
+    "blob": "06dfb499f4bbd4aedd5f0f71c77bf48098569ba5",
+    "sha256": "b4323e16253c5ba49cc1fcc1c281979768cc0c2688894000e8992c400b43e16b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "06dfb499f4bbd4aedd5f0f71c77bf48098569ba5",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/types/introspection_poison_regression_tests.rs",
+    "reference": "crates/vb_runtime/src/shard/types/introspection_poison_regression_tests.rs",
+    "blob": "a51517526d85780878a681bea72cf70b89d584cd",
+    "sha256": "56eea098a0b6f7e601463e156719fdb8e89eb295cc904ca32cb4977754c2685e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a51517526d85780878a681bea72cf70b89d584cd",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/types/run_aggregate_terminal.rs",
+    "reference": "crates/vb_runtime/src/shard/types/run_aggregate_terminal.rs",
+    "blob": "3130b43f5b9b34aaea1c35d4394f2434a753d49f",
+    "sha256": "0d9804d2afa5eefd5bba5e519464f74928e7da268ccd18dfcc79ca989f466a82",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "3130b43f5b9b34aaea1c35d4394f2434a753d49f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/types/shard.rs",
+    "reference": "crates/vb_runtime/src/shard/types/shard.rs",
+    "blob": "09337dcda8d119c7fb84e7fb1a7f8b0ba1b462c5",
+    "sha256": "bb004e7cdd3f76ef7babc4e4626af3b1bf32b87040fdf04ced6c0c0227bd53a5",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "09337dcda8d119c7fb84e7fb1a7f8b0ba1b462c5",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_runtime/src/shard/types/tests.rs",
+    "reference": "crates/vb_runtime/src/shard/types/tests.rs",
+    "blob": "6f22120098b8d1e0b0551b0fea55a3fc212aeffe",
+    "sha256": "c97bdf3c23d4e8a316ea6523ba4bacd7cee00ec0df5aa79d1b36e6ce892bf631",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "6f22120098b8d1e0b0551b0fea55a3fc212aeffe",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/admission.rs",
+    "reference": "crates/vb_storage/src/admission.rs",
+    "blob": "e472603603c15058817c5d24f97e66fdd016b956",
+    "sha256": "174f96056f08406b1f808d13c8d85cd9f96b493ddf115fef9ebf3181d0d0c724",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "e472603603c15058817c5d24f97e66fdd016b956",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/batch/action_index.rs",
+    "reference": "crates/vb_storage/src/batch/action_index.rs",
+    "blob": "b554ddc433c79fdc6ff2e0ccc684451f26a9ac87",
+    "sha256": "d1d9db6d5958754ce08efdaec328188ed735f1f78a5513fb2f7f73be141bfce3",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b554ddc433c79fdc6ff2e0ccc684451f26a9ac87",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/batch/append_event.rs",
+    "reference": "crates/vb_storage/src/batch/append_event.rs",
+    "blob": "f35842a94e69a04fff707d0b7c3bc87285232c80",
+    "sha256": "4c0ce3dec9255a020bee5273adb9528b9fefc582474162d701f2bf94ff10f592",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f35842a94e69a04fff707d0b7c3bc87285232c80",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/batch/commit.rs",
+    "reference": "crates/vb_storage/src/batch/commit.rs",
+    "blob": "13d5d66b90620f0f1c27a14dfc4788813a207d9a",
+    "sha256": "6c33deec925114067a9df00a3deeeaaa2551f28de04ca79001f29e1500ed1701",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "13d5d66b90620f0f1c27a14dfc4788813a207d9a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/codec_miri_tests.rs",
+    "reference": "crates/vb_storage/src/codec_miri_tests.rs",
+    "blob": "bcc674d78e89908d4f1e504799e813d82c0ae7b0",
+    "sha256": "3b9db681b8f4ed9e5eb73b19b849221db76d917ca0da32eb9a018fb476b9e0d9",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "bcc674d78e89908d4f1e504799e813d82c0ae7b0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/events/event.rs",
+    "reference": "crates/vb_storage/src/events/event.rs",
+    "blob": "90e143f626bac226694cd7a5bbb9afa1cb080c43",
+    "sha256": "73a91f570781770e695139830eaa2b78565a924bbc549db67f1ff443c67bc3c7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "90e143f626bac226694cd7a5bbb9afa1cb080c43",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/journal/append.rs",
+    "reference": "crates/vb_storage/src/journal/append.rs",
+    "blob": "3e86cd54d13b85db926aad33bef830194603a659",
+    "sha256": "60c932b1ef3936997ca5b89afba362883433fa78f67c39f331c0c4e328455221",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "3e86cd54d13b85db926aad33bef830194603a659",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/journal/core.rs",
+    "reference": "crates/vb_storage/src/journal/core.rs",
+    "blob": "0678d93ab999e6a9e449dd5fb6eafe093b13f747",
+    "sha256": "fa9c88d16d87573f378cd3f647cbb40b8f7181ea3926269348ecf83936c52c80",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0678d93ab999e6a9e449dd5fb6eafe093b13f747",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/journal/readonly.rs",
+    "reference": "crates/vb_storage/src/journal/readonly.rs",
+    "blob": "84b93047682d6605029f3150f948c9fea748adfb",
+    "sha256": "a135a71622b7a6e7e1f04dbfafcef93af4e1ffb717b9001a7b43686337687034",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "84b93047682d6605029f3150f948c9fea748adfb",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/lib.rs",
+    "reference": "crates/vb_storage/src/lib.rs",
+    "blob": "f2aa5ed11d5b1c49aa015f1dd3d905587b258627",
+    "sha256": "0382a77c039a607a7e35d8477ec848ea2ffc64729ec27e9be9663727a6d2f444",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f2aa5ed11d5b1c49aa015f1dd3d905587b258627",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/public_api.rs",
+    "reference": "crates/vb_storage/src/public_api.rs",
+    "blob": "221e72351d42704a18f58fdbcfdd8a539f684dce",
+    "sha256": "cbd5e12006f1bcf62ca4b1e4bb1a5df4fa96203f99a0c4601f30e92a9996a6fc",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "221e72351d42704a18f58fdbcfdd8a539f684dce",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/records/status.rs",
+    "reference": "crates/vb_storage/src/records/status.rs",
+    "blob": "175e16601b5db136b3d7b67ce97265ddf71bc217",
+    "sha256": "7bfdb52d532d9feac4bcd8091fe2bf41d0fa1dc73ad111b686df302566d3e761",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "175e16601b5db136b3d7b67ce97265ddf71bc217",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/records/structs.rs",
+    "reference": "crates/vb_storage/src/records/structs.rs",
+    "blob": "ddd9bb75f23db6ec2ad7b89c91a3fc0c97367f2d",
+    "sha256": "4eb0c2f378e8b0f27ff9af5eeaec09a160c55c17d301cc6b0d2daed5547239a2",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ddd9bb75f23db6ec2ad7b89c91a3fc0c97367f2d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/recovery/hydrate/mod.rs",
+    "reference": "crates/vb_storage/src/recovery/hydrate/mod.rs",
+    "blob": "70289575d914cd582ae7c2bfffd6e9dcee2f18ce",
+    "sha256": "1e947371b6e19e743b44a9709cf14e77837561c0096c74a174c1b025702ccda4",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "70289575d914cd582ae7c2bfffd6e9dcee2f18ce",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/recovery/hydrate_support/apply.rs",
+    "reference": "crates/vb_storage/src/recovery/hydrate_support/apply.rs",
+    "blob": "c1d56a5cceef338e884c094f22f0e2d393490d57",
+    "sha256": "d85541ff13ce10dc07b472ffd1e395dbd03dd77239446f27f2b04fbd771c5028",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c1d56a5cceef338e884c094f22f0e2d393490d57",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/recovery/hydrate_support/snapshot.rs",
+    "reference": "crates/vb_storage/src/recovery/hydrate_support/snapshot.rs",
+    "blob": "f9420f83b5a1836320289060886c36701ad04756",
+    "sha256": "fa4a23152d540e4644d39e2d4cfa4c6b4dcf705dc0f1d91a55bf04916c215518",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f9420f83b5a1836320289060886c36701ad04756",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/recovery/recover.rs",
+    "reference": "crates/vb_storage/src/recovery/recover.rs",
+    "blob": "f5128982953741c3f05f350890f3b60435b84879",
+    "sha256": "ffa402e602fb54a906c7d87a4ae891b325a12e045f8de2690a56b464471c7527",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f5128982953741c3f05f350890f3b60435b84879",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/recovery/replay/core/full.rs",
+    "reference": "crates/vb_storage/src/recovery/replay/core/full.rs",
+    "blob": "5a564ac5fea5e7e9941a6c578d800601b193e7f9",
+    "sha256": "3fc9ecab9f28ab01970d131a988d126856fab920d96d4c6f550166c6dd5c83c2",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5a564ac5fea5e7e9941a6c578d800601b193e7f9",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/recovery/tests/hydrate_snapshot_taint.rs",
+    "reference": "crates/vb_storage/src/recovery/tests/hydrate_snapshot_taint.rs",
+    "blob": "0549802a4a6e372a0cb2669cfd1711c66d83725a",
+    "sha256": "df1302187934babbdd24ef2971ee2511e71068b9bf309bbc599e2aa07dde22d7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0549802a4a6e372a0cb2669cfd1711c66d83725a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_storage/src/slot_extra.rs",
+    "reference": "crates/vb_storage/src/slot_extra.rs",
+    "blob": "35938f10a297f249ff7cb4d236cd6727c6346b01",
+    "sha256": "cf4e9896ebb1375d3a45df4be3fa13216d29e019f0a1a344453d6d7de86655e6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "35938f10a297f249ff7cb4d236cd6727c6346b01",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/diag/diag_codes.rs",
+    "reference": "crates/vb_validate/src/diag/diag_codes.rs",
+    "blob": "462b752b3367386eff4fccbea8d09c28287f452a",
+    "sha256": "7abbf61ccd60ae09bfbd9a2c8e337e2cf3a7f9cd78b24c59b642f951927eca92",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "462b752b3367386eff4fccbea8d09c28287f452a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/diag/diag_render/parts.rs",
+    "reference": "crates/vb_validate/src/diag/diag_render/parts.rs",
+    "blob": "ab39d5a1201323b25959ff4b8d5ff7b7147e58dd",
+    "sha256": "452f11cbc5c344acef8e7373ce90dc79d97d5067296c6d9fded18a2079212076",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ab39d5a1201323b25959ff4b8d5ff7b7147e58dd",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gate_15_resume.rs",
+    "reference": "crates/vb_validate/src/gate_15_resume.rs",
+    "blob": "67ad4d6588784bb1a4cdddedd93ee84d28b91060",
+    "sha256": "a1ab30c9ac00de5d2462c52d5d73377b5241d0f8614c001c64e2d866a5806d64",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "67ad4d6588784bb1a4cdddedd93ee84d28b91060",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/gate_09.rs",
+    "reference": "crates/vb_validate/src/gates/gate_09.rs",
+    "blob": "9f185f60d941bcad92f4e63434a85959e7d1ec9c",
+    "sha256": "12479c7b9806c84b489bc4b84715be79828feaa68e01dd56c6fc33d60f40b71b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "9f185f60d941bcad92f4e63434a85959e7d1ec9c",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/gate_10.rs",
+    "reference": "crates/vb_validate/src/gates/gate_10.rs",
+    "blob": "a079df4530d27f4041e7173959d5169bc548db84",
+    "sha256": "986ce7618df1734f8cfbe29a75b0c02bfb8f46ff2d9141cc6262829d948fa97d",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a079df4530d27f4041e7173959d5169bc548db84",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/gate_10_refs.rs",
+    "reference": "crates/vb_validate/src/gates/gate_10_refs.rs",
+    "blob": "a5fb698a34df9dae21bd96bf4e32bc2134a958de",
+    "sha256": "2d7518bdefdc9ce22c80dfeb5cc5d92f3f650c9ee13b768af5a58e62d994f84b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a5fb698a34df9dae21bd96bf4e32bc2134a958de",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/gate_12.rs",
+    "reference": "crates/vb_validate/src/gates/gate_12.rs",
+    "blob": "3d4d914eb3f77fec9a1531ae93b109a7a7d35198",
+    "sha256": "fff7b08f80c241a4385da9934809a656b32cb60cae5464db881bff982a83a71a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "3d4d914eb3f77fec9a1531ae93b109a7a7d35198",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/gate_13.rs",
+    "reference": "crates/vb_validate/src/gates/gate_13.rs",
+    "blob": "0b7e4c7f114cf3f502385028771322024098750d",
+    "sha256": "ddf998fda2d42f167ee45ed8f81dfdac4d182f1287c35a09c0ac635d0e91448f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0b7e4c7f114cf3f502385028771322024098750d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/gate_14.rs",
+    "reference": "crates/vb_validate/src/gates/gate_14.rs",
+    "blob": "a70e7fb564345fcde5db3543c8e4e8b1dddde60d",
+    "sha256": "632e9a8fd70b219bed236c65d5de5f1ce94b21aa20f211dbc191e16bad5b45a5",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a70e7fb564345fcde5db3543c8e4e8b1dddde60d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/gate_15.rs",
+    "reference": "crates/vb_validate/src/gates/gate_15.rs",
+    "blob": "424d4b85c3935b657efa8ddd2b5ddff359ad8251",
+    "sha256": "43b32107b2a22f1c4856356b37cd162d45feebdee0f10670d27808c3958304cd",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "424d4b85c3935b657efa8ddd2b5ddff359ad8251",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/gates/mod.rs",
+    "reference": "crates/vb_validate/src/gates/mod.rs",
+    "blob": "d0f227fbedcb879f3ba0fc18bbbf1f2f38653352",
+    "sha256": "50f3fbd8aa01b25cc3a522e545a59837efbc5dcd9f868f7e1a4bc3282562db55",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d0f227fbedcb879f3ba0fc18bbbf1f2f38653352",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/idempotency_contract.rs",
+    "reference": "crates/vb_validate/src/idempotency_contract.rs",
+    "blob": "5bdd467001528f3d3d0c9c580ef868d1f41a40db",
+    "sha256": "7df4c876d5e687cda0d006c01296606fac26dc9624308e53771ae15e6a71d7fe",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5bdd467001528f3d3d0c9c580ef868d1f41a40db",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/lib.rs",
+    "reference": "crates/vb_validate/src/lib.rs",
+    "blob": "423571a881663a287243c397b3fc5fadbd2e1a0d",
+    "sha256": "27102b7453d9e564918c9979cf01e6b56c8e4710efc835d1c9285e0a83ec411c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "423571a881663a287243c397b3fc5fadbd2e1a0d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/references.rs",
+    "reference": "crates/vb_validate/src/references.rs",
+    "blob": "e284b7f79d60216043cd5b8d8524aa8381f178a8",
+    "sha256": "b6d7bec6bad73badedfbdae8d1b5d9609d532527a82bac1ab81b2bdc57215985",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "e284b7f79d60216043cd5b8d8524aa8381f178a8",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/shared.rs",
+    "reference": "crates/vb_validate/src/shared.rs",
+    "blob": "c9614aa59fdbcfb51ac1a4da953101b92e7b2177",
+    "sha256": "b3a01f338360d8423cf557a0ddfde30f0ce6caf4a8efe59b4802d38dc5e94995",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c9614aa59fdbcfb51ac1a4da953101b92e7b2177",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/type_taint.rs",
+    "reference": "crates/vb_validate/src/type_taint.rs",
+    "blob": "ee63b68f62e1f4ecdf5b539a8c60ee40ebbb5e4a",
+    "sha256": "45c8c240a919615bfd8f803bc393d9bdbd9c8e1cf536ff8becb7db7834c31b93",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ee63b68f62e1f4ecdf5b539a8c60ee40ebbb5e4a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/type_taint/limits.rs",
+    "reference": "crates/vb_validate/src/type_taint/limits.rs",
+    "blob": "f5d785b6701e612833c413f3ae04db446ea5da89",
+    "sha256": "b3da2ad0fa30bc8fe005cf07d9cf126a657c73dc31c198a0b9c7c2f70afe26c0",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "f5d785b6701e612833c413f3ae04db446ea5da89",
+    "same_blob": true
+  },
+  {
+    "reference": "crates/vb_validate/src/type_taint/model.rs",
+    "normalized": "crates/vb_validate/src/type_taint/model.rs",
+    "verified_file": false,
+    "kind": "historical-navigation-reference-corrected",
+    "corrected_current_owner": {
+      "path": "crates/vb_validate/src/type_taint.rs",
+      "blob": "ee63b68f62e1f4ecdf5b539a8c60ee40ebbb5e4a",
+      "sha256": "45c8c240a919615bfd8f803bc393d9bdbd9c8e1cf536ff8becb7db7834c31b93"
+    },
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": null,
+    "same_blob": false
+  },
+  {
+    "path": "crates/vb_validate/src/type_taint/steps.rs",
+    "reference": "crates/vb_validate/src/type_taint/steps.rs",
+    "blob": "38a4ef85d1589576545f97e546008416c4430702",
+    "sha256": "81721b0d753017e8ba087a4cd987e4ad89e2b0bf392fde861a1b23734b4dd130",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "38a4ef85d1589576545f97e546008416c4430702",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/validation_errors.rs",
+    "reference": "crates/vb_validate/src/validation_errors.rs",
+    "blob": "41d028946374fd343d5be3bdefee9e313318a966",
+    "sha256": "87af124aae8524b4301154aa4498794ed3aacbc888bc9d0d47574eed195ab0ac",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "41d028946374fd343d5be3bdefee9e313318a966",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_validate/src/verification/gate_08_verus_proof.rs",
+    "reference": "crates/vb_validate/src/verification/gate_08_verus_proof.rs",
+    "blob": "294de8854b95183a0affcf170382736cfaafd766",
+    "sha256": "8895e721344c6cfd4b8bfe36947f00e0efcfc25937c6920e9e8f918210bd3570",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "294de8854b95183a0affcf170382736cfaafd766",
+    "same_blob": true
+  },
+  {
+    "path": "crates/vb_ipc/src/server/handlers/command.rs",
+    "reference": "crates/velvet_ballistics/src/../../vb_ipc/src/server/handlers/command.rs",
+    "blob": "1502494e0030ec0365479738262ffd3beef537c9",
+    "sha256": "78c7aeafa0585cf0b40c46d658758f5f521dba89ff8ac538f3b7bb7e2d1ff751",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": null,
+    "same_blob": false
+  },
+  {
+    "path": "crates/velvet_ballistics/tests/cli_trace_integration.rs",
+    "reference": "crates/velvet_ballistics/src/../tests/cli_trace_integration.rs",
+    "blob": "78c5897b8481dde07bb603b92f342fa988c80e36",
+    "sha256": "8d7304b3f6c04117f8faaddae8c44da5c76217375adab862430859177aa52407",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": null,
+    "same_blob": false
+  },
+  {
+    "path": "crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs",
+    "reference": "crates/velvet_ballistics/src/../tests/vb_qi37_14_1_run_step.rs",
+    "blob": "c2efda2254516d150440c02ec637b56ac0853abc",
+    "sha256": "7bc34c7ae6f1495fd89ca993740a7febb1c7f0172e42c8ec49e7dc07ff616af7",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": null,
+    "same_blob": false
+  },
+  {
+    "path": "crates/velvet_ballistics/src/action.rs",
+    "reference": "crates/velvet_ballistics/src/action.rs",
+    "blob": "5bdd85f3134c923f172b693a350d487f47fa9f18",
+    "sha256": "df6b9a446ed62bb73b015ca8b80e695d1ac1fb109ff14fef8a8e484ce3dee2d6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5bdd85f3134c923f172b693a350d487f47fa9f18",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/action_specs.rs",
+    "reference": "crates/velvet_ballistics/src/action_specs.rs",
+    "blob": "da675db56abef92af27f30576ba417b738264f32",
+    "sha256": "89ab10d4d70d37ea4949a021b5fec5e5187a73b4b92fe3d2e96d9a64970305fb",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "da675db56abef92af27f30576ba417b738264f32",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/app_impl.rs",
+    "reference": "crates/velvet_ballistics/src/app_impl.rs",
+    "blob": "8e01d51303d7f92564f281a9533444efdb2901e7",
+    "sha256": "f43a0ebdea0cb79057303e7ce23d8de557a97885425e041f2cab85d55e9deed8",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8e01d51303d7f92564f281a9533444efdb2901e7",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/args/run_ops.rs",
+    "reference": "crates/velvet_ballistics/src/args/run_ops.rs",
+    "blob": "824f4990359300d54a7bd84d8bcca2c42927ba95",
+    "sha256": "3fa647d13addc9a167bcf6bf148dd4a5fde9d111c1892e911b6d054509657cfb",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "824f4990359300d54a7bd84d8bcca2c42927ba95",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/args/shared.rs",
+    "reference": "crates/velvet_ballistics/src/args/shared.rs",
+    "blob": "2612476b20c860a4e77798654ef6c1ebf97a6565",
+    "sha256": "30d332fb2df21f9151845943e09d37dcfb6d2f88a0881dc9e4522cacb1581b48",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2612476b20c860a4e77798654ef6c1ebf97a6565",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/bench_run.rs",
+    "reference": "crates/velvet_ballistics/src/bench_run.rs",
+    "blob": "d45474739879ced1619955eab55656b58927e4f3",
+    "sha256": "b6465f82ab98c2f72a588f4b6a8559bb2ed5f58260237d07d9db2a0db7748e58",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "d45474739879ced1619955eab55656b58927e4f3",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/cli_postcard/codec.rs",
+    "reference": "crates/velvet_ballistics/src/cli_postcard/codec.rs",
+    "blob": "c254f5cebd24dc51900d9a043bad814f0e714881",
+    "sha256": "671c49345fe336af4fb7ad93e65dd15be9fe63a98cb638413a1d529d23f102bc",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c254f5cebd24dc51900d9a043bad814f0e714881",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/cli_postcard/types.rs",
+    "reference": "crates/velvet_ballistics/src/cli_postcard/types.rs",
+    "blob": "c4499fc441fa5703cb9b1cb62e4e542b5b21f33d",
+    "sha256": "e7c2f848fdca9766269b6fb2a0174ac879116dad17a4631c778ac9e62740aee2",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c4499fc441fa5703cb9b1cb62e4e542b5b21f33d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_ai_context.rs",
+    "reference": "crates/velvet_ballistics/src/commands_ai_context.rs",
+    "blob": "13bca86e7c47748dbf486feec1fc80e51f6e457e",
+    "sha256": "46e62d89d64e1ac3a8f3abb3cacb60121e6ad547c7e6c1737e1e660988fe361a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "13bca86e7c47748dbf486feec1fc80e51f6e457e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_ai_context/journal_events.rs",
+    "reference": "crates/velvet_ballistics/src/commands_ai_context/journal_events.rs",
+    "blob": "1f0d974d8a5393154b1de079b4ac20abe713beb3",
+    "sha256": "c1a2d349d58fc5b2ded18bf0ec45ae3265e3ffb3cecf55c1875f83eb0ff40b9f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1f0d974d8a5393154b1de079b4ac20abe713beb3",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_ai_context/workflow_summary.rs",
+    "reference": "crates/velvet_ballistics/src/commands_ai_context/workflow_summary.rs",
+    "blob": "70844f385855e669253b4ffb4ab032c381970c0c",
+    "sha256": "b196d44b7b43203298dad77d3b6686101d4f227119ec3b359ecd3c2606326627",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "70844f385855e669253b4ffb4ab032c381970c0c",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_journal.rs",
+    "reference": "crates/velvet_ballistics/src/commands_journal.rs",
+    "blob": "9d0eaeb458ddd73cb020082d31ad71b952700420",
+    "sha256": "2558e492e04ec51749e4f94f2df3650ce35b8828f1a15cd150087ac44bd1fdc1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "9d0eaeb458ddd73cb020082d31ad71b952700420",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_journal/retry_analysis_tests.rs",
+    "reference": "crates/velvet_ballistics/src/commands_journal/retry_analysis_tests.rs",
+    "blob": "78c183b614e7c231049b158ccc09a8267b5b3565",
+    "sha256": "24f86e5d959a0d20912ccedf3f6cae72e7126609ece2c916e5a6c5424e5c1786",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "78c183b614e7c231049b158ccc09a8267b5b3565",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_journal/tests.rs",
+    "reference": "crates/velvet_ballistics/src/commands_journal/tests.rs",
+    "blob": "c2f1ddfcf02bc490315ca85aab2b0df61945ad13",
+    "sha256": "fb4235339f8df2fb82ed2f944d8d761be16b284495efc1a11e0c49b2a977ff73",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c2f1ddfcf02bc490315ca85aab2b0df61945ad13",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_workflow/dot.rs",
+    "reference": "crates/velvet_ballistics/src/commands_workflow/dot.rs",
+    "blob": "1dbe26c1d85c6b76fe91306b9a996105c3aefc14",
+    "sha256": "31cc63233d18219967be27e9140cf4b4558a5565f6ecfcc75571e165f0fe669e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1dbe26c1d85c6b76fe91306b9a996105c3aefc14",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_workflow/helpers.rs",
+    "reference": "crates/velvet_ballistics/src/commands_workflow/helpers.rs",
+    "blob": "6ccef54ebad4325d75940f11fc2e818d4deffd22",
+    "sha256": "f1874eae9808fe3cc09bbd5df4044c080450e4f3ec2ca467002899118c2ec2a1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "6ccef54ebad4325d75940f11fc2e818d4deffd22",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/commands_workflow/simulate.rs",
+    "reference": "crates/velvet_ballistics/src/commands_workflow/simulate.rs",
+    "blob": "96a142a1b10e7a02b53e7fd628ae3d55e99fc56d",
+    "sha256": "528a76c59a66b313a2a3de368a047d2e9455a58ca342358ad20a41986d350e80",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "96a142a1b10e7a02b53e7fd628ae3d55e99fc56d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/constants.rs",
+    "reference": "crates/velvet_ballistics/src/constants.rs",
+    "blob": "bc27a8b4064858774c7cb4db7097b20a437a4516",
+    "sha256": "1d1139764ab4dcef547a5de89b2f72eba20c8e1f074ab231b82ff073b5d4616b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "bc27a8b4064858774c7cb4db7097b20a437a4516",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/deliver_sink.rs",
+    "reference": "crates/velvet_ballistics/src/deliver_sink.rs",
+    "blob": "40b38ae79b7eeff275b23541dabdec55ca3af7d0",
+    "sha256": "e0e981b196101cf667cbf15df8bd4fa0a636d4b92841277cb552d71c056caa91",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "40b38ae79b7eeff275b23541dabdec55ca3af7d0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/dispatcher.rs",
+    "reference": "crates/velvet_ballistics/src/dispatcher.rs",
+    "blob": "381433e32897f43fccbf1a662324624237eee2e5",
+    "sha256": "efa766e9674b79b994ad3c481c7c266cd6aa1ef606a8be5419f80e6bdb87d23b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "381433e32897f43fccbf1a662324624237eee2e5",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/dispatcher/execution.rs",
+    "reference": "crates/velvet_ballistics/src/dispatcher/execution.rs",
+    "blob": "a4d1ce68a143ee3828d14eae32271e1c4d79462e",
+    "sha256": "e4bdf3f49a668f124a0a9dd8fa8727811cbd3959a971c81ffb1a9c565c62f170",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a4d1ce68a143ee3828d14eae32271e1c4d79462e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/dispatcher/journal.rs",
+    "reference": "crates/velvet_ballistics/src/dispatcher/journal.rs",
+    "blob": "385006f8eedadcb2096d1b019c921b81875efc92",
+    "sha256": "2f8fd018afdbae8c509c53b98da4d379b0d75b264e9527407100e54966d4f776",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "385006f8eedadcb2096d1b019c921b81875efc92",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/dispatcher/metadata.rs",
+    "reference": "crates/velvet_ballistics/src/dispatcher/metadata.rs",
+    "blob": "74782c3ef2f81c29fda8a3077a4e03b96202cf33",
+    "sha256": "77ed2fb5b84cad196f4a22a4c887144bfc88f208fb6fac316f32b23b1f87c2a6",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "74782c3ef2f81c29fda8a3077a4e03b96202cf33",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/dispatcher/source.rs",
+    "reference": "crates/velvet_ballistics/src/dispatcher/source.rs",
+    "blob": "b70d4e08b2d49f1bf2f1e725204cfbd8a1e1f573",
+    "sha256": "4e7fdef18b7965a0cdc63123b3da949d36b8829c87227dd11328c6d0bfb54ec9",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b70d4e08b2d49f1bf2f1e725204cfbd8a1e1f573",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/events.rs",
+    "reference": "crates/velvet_ballistics/src/events.rs",
+    "blob": "1c93d532e6ba65f0433ab3b5fa01ba7f652d155e",
+    "sha256": "bd136bfc2c1b8a999d6ddd50fc2fe3d2e7db083803e8acd2db42ad8184dad875",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1c93d532e6ba65f0433ab3b5fa01ba7f652d155e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/events/command.rs",
+    "reference": "crates/velvet_ballistics/src/events/command.rs",
+    "blob": "950186d1ca0c78bc2936333b4b57ef07af83e820",
+    "sha256": "d824ae4134c3edb31114bb5f1a5d3f18e973957d83ab2b789a310ed6ac8466be",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "950186d1ca0c78bc2936333b4b57ef07af83e820",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/file_io.rs",
+    "reference": "crates/velvet_ballistics/src/file_io.rs",
+    "blob": "5f75eee343cfca646bf1576bdb737a91c3991555",
+    "sha256": "fc634ae68a6e01cd3f4dad6cef48122e8056cb85557cc4d3c948e36617c77cf2",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5f75eee343cfca646bf1576bdb737a91c3991555",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/inspect.rs",
+    "reference": "crates/velvet_ballistics/src/inspect.rs",
+    "blob": "8578ff72847a37d46d45169ca7c906c269d7f01d",
+    "sha256": "3a3fe252ec7899159352bd49a27e4ec6f58c478e98b39c3c0329b4f22d9458b1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8578ff72847a37d46d45169ca7c906c269d7f01d",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/io_helpers.rs",
+    "reference": "crates/velvet_ballistics/src/io_helpers.rs",
+    "blob": "45f8b4dfa3d7613aa2ea9b92c6abf516d16d2566",
+    "sha256": "2dd9106619d5d67633e99e1fa7e53f1463d1137e5caca78e02c41291f68590c0",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "45f8b4dfa3d7613aa2ea9b92c6abf516d16d2566",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/ipc_serve.rs",
+    "reference": "crates/velvet_ballistics/src/ipc_serve.rs",
+    "blob": "8afe69ba01936972593afdab23289dd9325d362e",
+    "sha256": "5a55a1aae7cb7b5fb35b43d746c9e6cb9573645115add0f0e18f892291c44f4c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8afe69ba01936972593afdab23289dd9325d362e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/ipc_serve/command.rs",
+    "reference": "crates/velvet_ballistics/src/ipc_serve/command.rs",
+    "blob": "357371a0f38e68ce9d84a051d2b285b6c82da88b",
+    "sha256": "8cdb539882c03b4d9b0c1005ddf6f5191382dfc8327d41fb162c8c9af70e7dd4",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "357371a0f38e68ce9d84a051d2b285b6c82da88b",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/ipc_serve/startup.rs",
+    "reference": "crates/velvet_ballistics/src/ipc_serve/startup.rs",
+    "blob": "3240660a167dd993d861891ab34904d81d6e695e",
+    "sha256": "707c3275d1adcb196abee0d8e1b2ab5cc3f040938280de72c1feef5684fe6715",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "3240660a167dd993d861891ab34904d81d6e695e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/lib.rs",
+    "reference": "crates/velvet_ballistics/src/lib.rs",
+    "blob": "23ffce0640d43625dd7c709c0b601413491194ad",
+    "sha256": "d469dc7d9ee40010e2263d2e4687edd097e23bdb85737c8c649ab46d68c47c87",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "23ffce0640d43625dd7c709c0b601413491194ad",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/lifecycle.rs",
+    "reference": "crates/velvet_ballistics/src/lifecycle.rs",
+    "blob": "1d7f620c90a65f170ed070587167c475bcca2555",
+    "sha256": "ff94914d7aa26539854df0c7d20ceff7d53ece1d12ccf80dfddf9067b77b7011",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1d7f620c90a65f170ed070587167c475bcca2555",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/main.rs",
+    "reference": "crates/velvet_ballistics/src/main.rs",
+    "blob": "26edf8640ae75998fc1ac2799659d8cc6175be8e",
+    "sha256": "a67023772b5c6d65f2c5119883f3372ef31666a188926fd22e6e5fd36b45d52a",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "26edf8640ae75998fc1ac2799659d8cc6175be8e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/naming_scan/config.rs",
+    "reference": "crates/velvet_ballistics/src/naming_scan/config.rs",
+    "blob": "bfe882da56f636f1709d7978f3674d3da21286b1",
+    "sha256": "2ff838e5ccd01c9d4de9a3dcee038b195eb4e7d237e93b761acd3c4b5f88e88b",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "bfe882da56f636f1709d7978f3674d3da21286b1",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/naming_scan/types/mod.rs",
+    "reference": "crates/velvet_ballistics/src/naming_scan/types/mod.rs",
+    "blob": "5ffdc346997e20fd475f30a6a9fc955685bcab96",
+    "sha256": "9f5e103417a2d4336c0f9ce9ace1d897292248ad1eb1acd888cb6d9fe639afbc",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5ffdc346997e20fd475f30a6a9fc955685bcab96",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/output.rs",
+    "reference": "crates/velvet_ballistics/src/output.rs",
+    "blob": "9a331819fd759ba8e9060be8e5355193e5b869c9",
+    "sha256": "bb75bbecd3f5ccbdd895746d73e308c7f2b2d439394ed12083cd2cfba2b6db29",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "9a331819fd759ba8e9060be8e5355193e5b869c9",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/replay/event_to_json.rs",
+    "reference": "crates/velvet_ballistics/src/replay/event_to_json.rs",
+    "blob": "843fbc308ca9faa7c29d7737a15310da2963cb01",
+    "sha256": "026530301957168b369e3613cda43bd5ab9e06632061b52d8096a37605ecef4e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "843fbc308ca9faa7c29d7737a15310da2963cb01",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/replay/mod.rs",
+    "reference": "crates/velvet_ballistics/src/replay/mod.rs",
+    "blob": "2f654b20db88185c4418ec04448571f06a0775c0",
+    "sha256": "e2fa0ee9ba95d4281136d236bd230e41be7d4d1dd4817514770d934125a6f15f",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2f654b20db88185c4418ec04448571f06a0775c0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_cancel.rs",
+    "reference": "crates/velvet_ballistics/src/run_cancel.rs",
+    "blob": "9d9c2bd1f1676b9bab121fd779725eaa7af23940",
+    "sha256": "689e07d75bcb1ab8725164622a8209a542e6526f41212e008d91b20afcc89d6c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "9d9c2bd1f1676b9bab121fd779725eaa7af23940",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_cancel/answer.rs",
+    "reference": "crates/velvet_ballistics/src/run_cancel/answer.rs",
+    "blob": "b55c298d10bbcba3e8700018b36462de385c290e",
+    "sha256": "e3b3d6c12fc837f89d3782e8fc7eaed9af85ede2d1bc14491100f5a4edf4920e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b55c298d10bbcba3e8700018b36462de385c290e",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_cancel_ops.rs",
+    "reference": "crates/velvet_ballistics/src/run_cancel_ops.rs",
+    "blob": "1cb194f0f60d72595bfc99e6e6ca62ff56d97d0f",
+    "sha256": "594d51e88c18339e384561da67d82c368d8b751e395c8a68b6226cbc78bb0a2c",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1cb194f0f60d72595bfc99e6e6ca62ff56d97d0f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_compiled.rs",
+    "reference": "crates/velvet_ballistics/src/run_compiled.rs",
+    "blob": "8786cfc7f4c7f36ef6e9b12b0059f4385d28eed6",
+    "sha256": "673dec29a4fed3b096ef90ce36e8a82797befc2c62fa6cb5eeb3e87233dbc670",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "8786cfc7f4c7f36ef6e9b12b0059f4385d28eed6",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_compiled_input_tests.rs",
+    "reference": "crates/velvet_ballistics/src/run_compiled_input_tests.rs",
+    "blob": "1ccbcbb7c89d085dbe74d2c04663f7a3325087a5",
+    "sha256": "fb10d3b4bc75eb2a7d8c4a32f2228871b510d1e5080ce1cf2b2065ed0f2bf8d1",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1ccbcbb7c89d085dbe74d2c04663f7a3325087a5",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_compiled_runtime.rs",
+    "reference": "crates/velvet_ballistics/src/run_compiled_runtime.rs",
+    "blob": "a28f38099d9024d520dc0c354937f365ce41630f",
+    "sha256": "abfcc8daa2d8e7731424172cd2e75db32d08fcbf1eb19555ba84595b17923cdd",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "a28f38099d9024d520dc0c354937f365ce41630f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_compiled_runtime/workflow.rs",
+    "reference": "crates/velvet_ballistics/src/run_compiled_runtime/workflow.rs",
+    "blob": "1790fb9cfcd561caea70b399b942fb5e53a9c8a4",
+    "sha256": "7889c27b8b2072ec6128b48987d7eb9f6cefca1cb7f398748f544c5e65964fda",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "1790fb9cfcd561caea70b399b942fb5e53a9c8a4",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_ops/retry.rs",
+    "reference": "crates/velvet_ballistics/src/run_ops/retry.rs",
+    "blob": "c293f3b7bc446b5427ffbe49202641c79c07db5a",
+    "sha256": "13374830c0a8762d40b6c77e5ddaee705f5c33203ad35e93013f4a5a3dec0173",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "c293f3b7bc446b5427ffbe49202641c79c07db5a",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_ops/retry/checkpoint.rs",
+    "reference": "crates/velvet_ballistics/src/run_ops/retry/checkpoint.rs",
+    "blob": "0a07a6d0914d0839536fe145367e4813e3b542d4",
+    "sha256": "72c6f00b530763258cc2a7c7784f1f5e07a44cd9f044e929be0dd0109bdd9656",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0a07a6d0914d0839536fe145367e4813e3b542d4",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/run_ops/retry/output.rs",
+    "reference": "crates/velvet_ballistics/src/run_ops/retry/output.rs",
+    "blob": "ae1130f2ccc5fd067a5ab09b1921f05d198c86b8",
+    "sha256": "f770570a1b0ce66bfeb9ff00d4385637b86b3ea9956a10a269f1bc1ed102ba37",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ae1130f2ccc5fd067a5ab09b1921f05d198c86b8",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/simulate.rs",
+    "reference": "crates/velvet_ballistics/src/simulate.rs",
+    "blob": "2d1068cc0ed3564d06d4003b35d87dc1e9eb6db6",
+    "sha256": "ab9efc3fcf22470b25619bee29f182e4628c3e418516f0a34f5bdb13aad29732",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2d1068cc0ed3564d06d4003b35d87dc1e9eb6db6",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/step_helpers.rs",
+    "reference": "crates/velvet_ballistics/src/step_helpers.rs",
+    "blob": "0eff8e30d80ac28d19aff473ce38a88499cb9be0",
+    "sha256": "ac4e0dd1e51b51f161ccaae5b421f7336d2b087026c643ce7227237b0af21a89",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "0eff8e30d80ac28d19aff473ce38a88499cb9be0",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/step_helpers_display.rs",
+    "reference": "crates/velvet_ballistics/src/step_helpers_display.rs",
+    "blob": "6d96f1763ee77c6d43743c5336ea85aaae42a959",
+    "sha256": "64517d3ebcfe1e317f0925c5006448ccfc48db98c265c5094c0e0628c4180d0e",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "6d96f1763ee77c6d43743c5336ea85aaae42a959",
+    "same_blob": true
+  },
+  {
+    "path": "crates/velvet_ballistics/src/trace.rs",
+    "reference": "crates/velvet_ballistics/src/trace.rs",
+    "blob": "ce8a6c2d89909416c139e1746164cc1b5eda29ec",
+    "sha256": "1005e739f917e0100143ce0d7259ca3d3e0125b30b886e56ca46bef767370ded",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "ce8a6c2d89909416c139e1746164cc1b5eda29ec",
+    "same_blob": true
+  },
+  {
+    "path": "crates/workspace_tests/tests/cli/action_discovery_names.rs",
+    "reference": "crates/workspace_tests/tests/cli/action_discovery_names.rs",
+    "blob": "2de8b06e176a5a86dd44159fc3ed891bedf9fb1b",
+    "sha256": "549ce696fb831a3bf8014d93138b3f3763def278dd2927ea2cead0e5ea776c81",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "2de8b06e176a5a86dd44159fc3ed891bedf9fb1b",
+    "same_blob": true
+  },
+  {
+    "path": "crates/workspace_tests/tests/shipping_ipc_command_behaviors.rs",
+    "reference": "crates/workspace_tests/tests/shipping_ipc_command_behaviors.rs",
+    "blob": "b07f15677e3be80a76e136b4cea4ac2044f02d6f",
+    "sha256": "77e2a80d84d72ca67840dbc7a28c6182b6ef226cb376b5d84d28afb2143834cf",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "b07f15677e3be80a76e136b4cea4ac2044f02d6f",
+    "same_blob": true
+  },
+  {
+    "path": "crates/workspace_tests/tests/vb_f2_nested_yaml_preservation.rs",
+    "reference": "crates/workspace_tests/tests/vb_f2_nested_yaml_preservation.rs",
+    "blob": "5afe1ad2ac56cc99a6ad6698704f125744162496",
+    "sha256": "2f3ced4157f61790ed4a35da635e5b8d5289013f959aa56adff265e6f75892e3",
+    "observed_main": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "new_main_blob": "5afe1ad2ac56cc99a6ad6698704f125744162496",
+    "same_blob": true
+  }
+]

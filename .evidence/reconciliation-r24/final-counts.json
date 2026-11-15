@@ -1,0 +1,10 @@
+{
+  "rows": 1385,
+  "unique_tuples": 1385,
+  "source_alias_records": 6304,
+  "pending_rows": 1088,
+  "source_obligations": 3970,
+  "owner_rebindings": 20,
+  "changed_frozen_inputs": [],
+  "unreviewed_bytes": 0
+}

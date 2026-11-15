@@ -1,0 +1,299 @@
+{
+  "report": {
+    "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "baseline_tuples": 1385,
+    "baseline_production_tuples": 220,
+    "assessed_tuples": 1385,
+    "assessed_with_pending_intents": 1088,
+    "remaining_unreviewed_tuples": 0,
+    "remaining_unreviewed_by_lane": {},
+    "source_aliases_preserved": true,
+    "all_reconciliation_complete": false,
+    "engine_acceptance_claimed": false,
+    "proof_or_suite_execution_claimed": false
+  },
+  "scope": "Complete exact1385tuple denominator and normalized data transport, not proof/suite/engine acceptance. Root167semanticR2approved; central60semanticreviewactive; final CODEtransportreviewactive.",
+  "source_cutoffs": {
+    "original": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "central_packets": "b9c1b711959ca6e98077539bf01bba7b49120ea4",
+    "verified_qualified_landings": "34bfc925a4e1c4a6fc179db2836995c2a3b835b0"
+  },
+  "limitations": [
+    "1088rowsretainhistoricalassertion/fixture/registration/formalqualification; not1088missingfeatures.",
+    "Six historical77/78intents record qualifiedlandedrepair and retainonlyfinalparent25historicalsourcebridgesignoff.",
+    "One central f4recoveryintent records verified20filelanding; successfulcoldimmediateretry/proofclosure notclaimed.",
+    "Lexical function/assertion maps are source/navigation evidence only.",
+    "Originalrawreceipts/aliases preserved; no gates/dependencies/publicruntimeAPI/persistedformatschanged byledger."
+  ],
+  "inputs": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/input-manifest.json",
+      "sha256": "28abc64cfacdd2f2bb17a335e7b888989d73f3d93047ea0c21536c9f95cff898",
+      "bytes": 10738
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/owners.json",
+      "sha256": "e29054264e862607ef0464d115dcd87f94f7fc67858ebe851af6f3e7b364cde2",
+      "bytes": 2097
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r15e/.evidence/reconciliation/named-crate-intents.jsonl",
+      "sha256": "0c3700d48b06f5b628a926f2dd57edcc067b8f456b6aa317d620d2fe30612747",
+      "bytes": 15555338
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r15e/.evidence/reconciliation/functional-resolutions.json",
+      "sha256": "0596dbaf9b02ef50877fdedf208128474fd2e5d7f368fd095fb97fee992a56c7",
+      "bytes": 397263
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r15e/.evidence/reconciliation/delegated-support-formal-deltas.jsonl",
+      "sha256": "3c0cebe86db755c4a4521a94ebc1a1d97a515cf74c48aa0f9d6690721408fc80",
+      "bytes": 2831151
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r15e/.evidence/reconciliation/token-current-file-deltas.jsonl",
+      "sha256": "4886b09c1eed3554fb67b5f2d58ec3337318f33f55accd377b8927a611248811",
+      "bytes": 27284
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r15e/.evidence/reconciliation/body-only-current-deltas.jsonl",
+      "sha256": "31990b175c4bd0b6ef60a6bee11b649ddf6bae6f1a3dbdbdce54b4d4bd023f29",
+      "bytes": 49469
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r15e/.evidence/reconciliation/manual-delta-dispositions.jsonl",
+      "sha256": "39db61267c418b6ec16a40dc2464c155d71fc8d9f370c991e585d2ef902bf758",
+      "bytes": 1704950
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r15e/.evidence/reconciliation/production-bearing-pending-r19.jsonl",
+      "sha256": "fe881e8c035372927992d8b488f4dd017cd4c3a5b1e9bbdbc161ef9b5b7e4f5f",
+      "bytes": 36177
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r18/.evidence/reconciliation/ipc-routing-review/ipc15-r23-resolutions.jsonl",
+      "sha256": "42472f09244368312d9857c31b3da9a2f89720e354604c4e0c3d4eed54106d66",
+      "bytes": 36825
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-cli-review-r23/.evidence/review-r23/cli-context7-r23-resolutions-v1.jsonl",
+      "sha256": "bc02d7f9781b7562e2c713dd539765d16c2f1cb1b7f6ab72773cddfb98ab068f",
+      "bytes": 20230
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-cli-review-r23/.evidence/review-r23/compiler7-r23-resolutions-v1.jsonl",
+      "sha256": "59fe50603fb55cb8cfbffbb01f7522dec780216438755873abed36503571d532",
+      "bytes": 20620
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-cli-review-r23/.evidence/review-r23/core-errors9-r23-resolutions-v1.jsonl",
+      "sha256": "0655496db0156ef33fe1dff71905f626334a3d33bda554fdc97abcec44e9cea7",
+      "bytes": 24489
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-cli-review-r23/.evidence/review-r23/ipc4-r23-resolutions-v3.jsonl",
+      "sha256": "08bcb251b85bdc38a008e564adcec12615627c6874372364115ed619ae0df8dd",
+      "bytes": 14502
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-cli-review-r23/.evidence/review-r23/runtime8-r23-resolutions-v1.jsonl",
+      "sha256": "b73b9ec7db3d13f3122823fded149d7e9bf469aa8f326621a2383a82866727c3",
+      "bytes": 24840
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-budget-oracle-r23/.evidence/runtime-seven-row-audit/resolutions.jsonl",
+      "sha256": "506f46a5af2d23fa38b810236bbed6a28966499b9121a765fb9cd0ef8cfb758c",
+      "bytes": 34533
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-budget-oracle-r23/.evidence/compiler-error-four-row-audit/resolutions.jsonl",
+      "sha256": "96c44106316d9436ff61badbbf58448f8b0da3bf0ba7c51990348bb64dafcb5e",
+      "bytes": 26954
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-ipc-review-r23/.evidence/review/journal6/journal6-r23-resolutions-v1.jsonl",
+      "sha256": "c4938c3f5205070e5a18ec9ad69d010db10d177f7ce75153ecb730b3e20f8868",
+      "bytes": 20031
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-cli-review-r23/.evidence/review-r23/validation13-final-r23-v2.jsonl",
+      "sha256": "d0baa4a1c92cab91d457bb589e54085898d9906fe47ff4a62548582833355ae1",
+      "bytes": 73797
+    },
+    {
+      "file": "/home/lewis/src/isoloated/r18/.evidence/reconciliation/ipc-routing-review/ipc15-r23-landed-followup.jsonl",
+      "sha256": "e458ebcf786bf759572898a58936356933ada180a93464dca8ed7f323d5e97be",
+      "bytes": 5406
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/packet-assessments.jsonl",
+      "sha256": "fa8ace150a4628453bb2a913025729113b53ce5e766766bafea5ff03083fb862",
+      "bytes": 233533
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/core-runtime-assessments.jsonl",
+      "sha256": "69be2a5af4ecbce09015effa11c8dedf1a3fca104df03e694ba9121c536ea746",
+      "bytes": 155344
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/cli-assessments.jsonl",
+      "sha256": "fe15dfb670b55da29f2357e8daf187da4375b313453343d7469ce32e6b588368",
+      "bytes": 217310
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/compiler-assessments.jsonl",
+      "sha256": "9eeceb97794ebb8fc82503db3ce42346ff5eb282068dbe6f8306b73321aa86b2",
+      "bytes": 377751
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-assessments.jsonl",
+      "sha256": "5fb64c17b86e47addd565a2d721bbf305862912aa71d9a957f50949983246dc4",
+      "bytes": 78858
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/support-formal-assessments.jsonl",
+      "sha256": "747a84c561cb69f6de31e65350d1d6e96fbfee5f9ad3b7498124176c94c52bfb",
+      "bytes": 332693
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/cli-test-assessments.jsonl",
+      "sha256": "7539f8a97388014a1f65cd5d3be3473218d7ea61ee0d817fb60a7d8372fcc86b",
+      "bytes": 733968
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/benchmark-waiver-assessments.jsonl",
+      "sha256": "d886b55888124699a6d97d51ef45c9a3ce020fa636b7c4342840e420f4799b80",
+      "bytes": 33083
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/expr-validation-test-assessments.jsonl",
+      "sha256": "147573fb5ea61f82d12ede7b0ac1660f81fd125055399b921e84fd552fc18a24",
+      "bytes": 769375
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/compiler-test-assessments.jsonl",
+      "sha256": "e3551b4145d06c0485105414b53f9de0b7fd62ed10846383ccef0d36641a466d",
+      "bytes": 1031853
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/runtime-test-packet1-assessments.jsonl",
+      "sha256": "bbc97d301acd61a687073a53959d2ac2ecdc80344bb1e9bbd12e18adcb6a962a",
+      "bytes": 582261
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/runtime-test-packet2-assessments.jsonl",
+      "sha256": "8c7a076d6addc092d3b2717cab9afd2186e99608c99f36449eda0aad7a6202d1",
+      "bytes": 4823561
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-compact36-assessments.jsonl",
+      "sha256": "1a5d86c347f8dee6b29a2ade703c641c71066cefdd0b8dda4686bc3e28e4c9f4",
+      "bytes": 176046
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/ipc39-assessments.jsonl",
+      "sha256": "a52cf8d7a96abd5df31924e96103a6e6fcde254ab0bae4122160f009d5dd6876",
+      "bytes": 3506793
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-compact21-assessments.jsonl",
+      "sha256": "75a8a6bdcf2b98e2d827c07f00602b4d4b43ace482865bccb004f49b60564183",
+      "bytes": 104882
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/runtime-test-packet3-assessments.jsonl",
+      "sha256": "1d2921f88ebad4460d941bb5bc5f94555c9c83027d9435d59c0f8ae843417843",
+      "bytes": 709988
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-body110-assessments.jsonl",
+      "sha256": "9189f446121e7ccb2a060b01e5fabde2bd786ad44d557fa87e4cde5c9dd9b0c4",
+      "bytes": 7000796
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-remainder90-assessments.jsonl",
+      "sha256": "30a46efb3f4f32643bc8bb446055a8beb61d28be3e81dc3ff3eb7bbc806cca2d",
+      "bytes": 4025669
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/core-test-packet1-assessments.jsonl",
+      "sha256": "4e2cc19f49326b70179f6b46c4bfd34c4a00b5f3286a5ae7b7f4894e6fbd392f",
+      "bytes": 1295008
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-packet2-assessments.jsonl",
+      "sha256": "09a29f76b1f981fe6f2da4bf5ebb9d0972689dd58c1db7d42eddaf307d58e080",
+      "bytes": 220492
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-packet1-assessments.jsonl",
+      "sha256": "9a52fa1b8f01d06d14b1f7b47f96b4d65fc00166d7f4545880c7bf3fe06be731",
+      "bytes": 614734
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-remainder82-assessments.jsonl",
+      "sha256": "74f6dd436581db35b8262a00eeeba730f07fe5466c6926c165e48dae99e079ca",
+      "bytes": 804892
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/core-test-packet2-assessments.jsonl",
+      "sha256": "a3c5999629527dd12080f1be5c95519332b306534818ef9f9ac870c80b7368be",
+      "bytes": 1647506
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/generated/baseline.jsonl",
+      "sha256": "d7eecfc73d82173114776ee534661e174d0cebcf39ed0fc6f7be1f068c46423b",
+      "bytes": 1466272
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/generated/assessments.jsonl",
+      "sha256": "f14b1044bdd43b3884229b0b13c2a3e7cbf3f2da3d997fc1cfbd85f5aefaa30a",
+      "bytes": 31309301
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/generated/unreviewed.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/generated/report.json",
+      "sha256": "2ba748c5506aa684b2bde98caec89f47cda40ccec4258d3747f8b5e487b3fa15",
+      "bytes": 424
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/reconcile.mjs",
+      "sha256": "824a0b003d115c25ee1508111561f2d48b341302be86e65a9b6cf591f43e88bd",
+      "bytes": 10143
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/bind-pending.mjs",
+      "sha256": "de6cf598305f6bfd576a6c0aa132af8f9e03798881cf6a69da74c20579b063bc",
+      "bytes": 2776
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/reconcile.test.mjs",
+      "sha256": "47e1096f794d2da1492f40f86984fe9858e6e81d92cb92b6de5e68684e56f24b",
+      "bytes": 7740
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/reconcile.filesystem.test.mjs",
+      "sha256": "e2b9ab282470a4fee0e9482979914fa088bc9ecdcb13941640a0c130a1520167",
+      "bytes": 5092
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-map.mjs",
+      "sha256": "bcda0d8de44297826cab7789fc29eedd38ead9d9ac778a74f8972cb5c8cf9375",
+      "bytes": 4431
+    }
+  ],
+  "semantic_root167": {
+    "manifest": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/root-authored-review-manifest-r2.json",
+    "receipt": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/root167-semantic-review-r2/review-receipt.json",
+    "receipt_sha256": "9e709d1dd35f7889574645b137e5f35dfbca2e0647e32bd7ab71aab1a1b96117"
+  },
+  "verified_landings": [
+    "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/verified-77-78-main-landing.json",
+    "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/verified-recovery-main-landing.json"
+  ]
+}

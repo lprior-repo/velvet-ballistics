@@ -1,0 +1,28 @@
+[
+  {
+    "command": [
+      "rustup",
+      "run",
+      "nightly-2026-04-28",
+      "rustc",
+      "--version",
+      "--verbose"
+    ],
+    "exit": 0,
+    "stdout": "rustc 1.97.0-nightly (52b6e2c20 2026-04-27)\nbinary: rustc\ncommit-hash: 52b6e2c208b73276ccb36ec0b68456913a801c96\ncommit-date: 2026-04-27\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.0-nightly\nLLVM version: 22.1.2\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "rustup",
+      "run",
+      "nightly-2026-04-28",
+      "cargo",
+      "miri",
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "miri 0.1.0 (52b6e2c208 2026-04-27)\n",
+    "stderr": ""
+  }
+]

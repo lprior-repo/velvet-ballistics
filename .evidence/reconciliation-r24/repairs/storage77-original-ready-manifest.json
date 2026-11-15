@@ -1,0 +1,54 @@
+{
+  "bead": "vb-eirmk.75.8.25.77",
+  "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "candidate": "c0cfa765b046b1a902ed1caee9e6930fe319cbcd",
+  "bookmark": "codex/storage-property-oracles-77-r24",
+  "files": [
+    {
+      "path": "crates/vb_storage/tests/proptest_vb_vzcuf_PS_001.rs",
+      "blob": "91e045c201a596d7bc0eb35934d04d733884df7b",
+      "sha256": "db568d2bdc8b00c4fcd97a234100a1ae448718f6e5639f22c44364fafbd8bbdb"
+    },
+    {
+      "path": "crates/vb_storage/tests/proptest_vb_vzcuf_PS_008.rs",
+      "blob": "15dc11be42f00e81540d69661c5b665bb3fd7f69",
+      "sha256": "233781fbad394ee4770259a926022a5660e93bd28e4666d1e3f08bf3b525f88f"
+    }
+  ],
+  "contract": {
+    "path": "/home/lewis/src/isoloated/vb-reconcile-r24/.beads/vb-eirmk.75.8.25.77/contract.md",
+    "sha256": "f2a08141e89f75c281c87195c20b02308bea790f8090506bd4c553a3d668834d",
+    "tracked_in_candidate": false
+  },
+  "verification": {
+    "native_command": "CI=1 TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/storage-properties77/scratch CARGO_BUILD_JOBS=2 RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p vb_storage --all-features --test proptest_vb_vzcuf_PS_001 --test proptest_vb_vzcuf_PS_008 --test-threads 4",
+    "native_exit": 0,
+    "native_log_sha256": "61f28dc8c1447da2b53350670ae5d8d554b09b9691e43606deed3063474a25d2",
+    "tests": 12,
+    "passed": 12,
+    "skipped": 0,
+    "format_exit": 0
+  },
+  "reviews": {
+    "CODE": {
+      "status": "APPROVED",
+      "scope": "static CODE of two-file source diff",
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24-packet-review/.evidence/storage77-code-review/report.md",
+      "sha256": "a6f86c6b4b64a0bad20f26b8d0fd6ee251397508ae509289bb9a5d2e9fa0bb89"
+    },
+    "TEST": {
+      "status": "APPROVED",
+      "scope": "independent TEST; recorded fulltwo-target12pass raw native run inspected, not rerun",
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/storage77-test-review/test-suite-review.md",
+      "sha256": "accd16556089b580c87e88b09ff10d8bef2f27c40109ff0fbb5b82e7cb500278"
+    }
+  },
+  "scope": "Two existing integration property oracles strengthened; no production/API/schema/dependency/gate change. Central owns broad CI/main landing; bead remains open.",
+  "publication": {
+    "remote": "origin",
+    "ref": "refs/heads/codex/storage-property-oracles-77-r24",
+    "commit": "c0cfa765b046b1a902ed1caee9e6930fe319cbcd",
+    "verified_by": "git ls-remote --heads origin codex/storage-property-oracles-77-r24",
+    "exit": 0
+  }
+}

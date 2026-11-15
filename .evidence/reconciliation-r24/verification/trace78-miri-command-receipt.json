@@ -1,0 +1,48 @@
+{
+  "bead": "vb-eirmk.75.8.25.78",
+  "package": "vb_runtime",
+  "target": "x86_64-unknown-linux-gnu",
+  "nightly": "nightly-2026-04-28",
+  "command": "CI=1 TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/scratch XDG_CACHE_HOME=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/cache MIRI_SYSROOT=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/sysroot CARGO_BUILD_JOBS=2 RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings MIRIFLAGS= timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_runtime --lib --all-features trace::tests::miri_trace_operations_no_ub -- --exact",
+  "MIRIFLAGS": "",
+  "isolation": "default enabled",
+  "seed_scope": "one default execution; no explicit many-seed exploration",
+  "weakening_flags": [],
+  "classification": "ordinary assertion/oracle mismatch, not Miri UB diagnosis",
+  "sysroot": "Preexisting matching Miri sysroot copied without modifying it into assigned isolated workspace; interpreted case executed successfully with pinned toolchain.",
+  "toolchain_file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/toolchain.json",
+  "runs": [
+    {
+      "name": "baseline",
+      "exit": 1,
+      "log": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/baseline.log",
+      "sha256": "b6b6b3ec09f8815802a94dda5f7c9548ba83dfcaf9475cf2a5d8e4f4f775ce37",
+      "executed_test": false,
+      "meaning": "infrastructure sysroot setup failure; not test/UB evidence"
+    },
+    {
+      "name": "baseline2",
+      "exit": 1,
+      "log": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/baseline2.log",
+      "sha256": "0b5ba87d85e42caf75f4a32658299c63806d7d5239bdfa8b1b3acd7cd0b637a1",
+      "executed_test": false,
+      "meaning": "infrastructure sysroot setup failure; not test/UB evidence"
+    },
+    {
+      "name": "baseline3",
+      "exit": 101,
+      "log": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/baseline3.log",
+      "sha256": "5e944ee16035011c21de62b8cc780284d3ae170420c22636dd032761dae5fc62",
+      "executed_test": true,
+      "meaning": "RED:0pass1fail0ignored2648filtered"
+    },
+    {
+      "name": "green",
+      "exit": 0,
+      "log": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/green.log",
+      "sha256": "b6353ac356aebd5224bf928fd44d06cdedf44915edbc26a142f5bea5fb44bd62",
+      "executed_test": true,
+      "meaning": "GREEN:1pass0fail0ignored2648filtered"
+    }
+  ]
+}

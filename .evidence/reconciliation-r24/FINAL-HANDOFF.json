@@ -1,0 +1,50 @@
+{
+  "branch": "codex/source-reconciliation-ledger-r26-packed",
+  "frozen_manifest": {
+    "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/final-ledger-review-manifest-r24.json",
+    "sha256": "f8041e2c0029728acc571d1ca0471742beba94a0a11c326834bcf84a3d797ba1"
+  },
+  "counts": {
+    "rows": 1385,
+    "unique_tuples": 1385,
+    "source_alias_records": 6304,
+    "pending_rows": 1088,
+    "source_obligations": 3970,
+    "owner_rebindings": 20,
+    "changed_frozen_inputs": [],
+    "unreviewed_bytes": 0
+  },
+  "canonical_report": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/generated/report.json",
+  "reviews": {
+    "code": "reviews/code-transport-receipt.json",
+    "test": "reviews/test-transport-receipt.json",
+    "root167_semantic": "reviews/root167-semantic-r2-receipt.json",
+    "central60_semantic": "reviews/central60-semantic-receipt.json"
+  },
+  "qualified_repairs": {
+    "storage77": {
+      "source": "c0cfa765b046b1a902ed1caee9e6930fe319cbcd",
+      "main": "34bfc925a4e1c4a6fc179db2836995c2a3b835b0"
+    },
+    "trace78": {
+      "source": "13f5e8941427bb3a262fb6d93cfd0c0db045fbc8",
+      "main": "34bfc925a4e1c4a6fc179db2836995c2a3b835b0"
+    }
+  },
+  "latest_verified_main": "013540bcb0be9d20a6f9e0bcbd44cec303b99d9e",
+  "overlays": [
+    "verified-77-78-main-landing.json",
+    "verified-recovery-main-landing.json",
+    "verified-taint-013540bc-overlay.json"
+  ],
+  "fresh_checks": "verification/: storage12/12,trace59/59(2589filtered),exactMiri1/1(2648filtered); final-node-tests16/16; all exit0.",
+  "limitations": "No engine/MASTER/formalparent closure.1088rowsretain owned qualification, notmissingfeaturecount. Lexicalmapsnavigationonly. Scope of CODE/TESTtransport and semanticreviews explicit; originals/rejected R1/history preserved.",
+  "original_branch": "codex/source-reconciliation-ledger-r24",
+  "raw_record_transport": {
+    "manifest": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/packed-raw-records.json",
+    "encoding": "gzip",
+    "records": 5,
+    "decoded_semantics_identical": true,
+    "original_commit": "60caf29a91c1592dfd4c6bcbd1aaff613a907e02"
+  }
+}

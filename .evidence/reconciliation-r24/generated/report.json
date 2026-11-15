@@ -1,0 +1,13 @@
+{
+  "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "baseline_tuples": 1385,
+  "baseline_production_tuples": 220,
+  "assessed_tuples": 1385,
+  "assessed_with_pending_intents": 1088,
+  "remaining_unreviewed_tuples": 0,
+  "remaining_unreviewed_by_lane": {},
+  "source_aliases_preserved": true,
+  "all_reconciliation_complete": false,
+  "engine_acceptance_claimed": false,
+  "proof_or_suite_execution_claimed": false
+}

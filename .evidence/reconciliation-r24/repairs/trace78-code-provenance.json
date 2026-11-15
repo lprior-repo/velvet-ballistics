@@ -1,0 +1,16 @@
+{
+  "frozen_commit": "13f5e8941427bb3a262fb6d93cfd0c0db045fbc8",
+  "original_report_sha256": "3973922837fa91691ddda617aaed7c7214779f54e2ddd9a302369934701b93d6",
+  "receipt": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/miri-command-receipt.json",
+  "receipt_sha256": "27e25ba31147c9acc5980a051f57b5eb6e42190f0e9cd1c9d2b8e442d117ec67",
+  "toolchain_sha256": "91a3da8c3550ec0607ad9c0e0f695b0b26d8644770effcaaa9c7725019ba44b4",
+  "command": "CI=1 TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/scratch XDG_CACHE_HOME=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/cache MIRI_SYSROOT=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/sysroot CARGO_BUILD_JOBS=2 RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings MIRIFLAGS= timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_runtime --lib --all-features trace::tests::miri_trace_operations_no_ub -- --exact",
+  "nightly": "nightly-2026-04-28",
+  "target": "x86_64-unknown-linux-gnu",
+  "MIRIFLAGS": "",
+  "isolation": "default enabled",
+  "seed_scope": "one default execution; no explicit many-seed exploration",
+  "weakening_flags": [],
+  "raw_log_hash_errors": [],
+  "note": "Append-only provenance binding; original CODE report remains unchanged. Command/version/environment metadata previously outside raw output is now bound by owner receipt. No rerun performed. Static verdict unchanged; no global UB/soundness claim."
+}

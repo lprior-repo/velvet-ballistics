@@ -1,0 +1,48 @@
+{
+  "original_commit": "60caf29a91c1592dfd4c6bcbd1aaff613a907e02",
+  "frozen_semantic_manifest_sha256": "f8041e2c0029728acc571d1ca0471742beba94a0a11c326834bcf84a3d797ba1",
+  "encoding": "gzip",
+  "scope": "Only five raw copied records are encoded. Original raw bytes, original reviewer files and frozen60caf29 remain unchanged.",
+  "records": [
+    {
+      "original_path": ".evidence/reconciliation-r24/repairs/trace78-code.md",
+      "transport_path": ".evidence/reconciliation-r24/repairs/trace78-code.md.gz",
+      "original_sha256": "3973922837fa91691ddda617aaed7c7214779f54e2ddd9a302369934701b93d6",
+      "original_bytes": 5835,
+      "transport_sha256": "a9da1b4dcde504dd83217f19843eff02f797e5a21984229ecd04b1635d41a1e5",
+      "transport_bytes": 2841
+    },
+    {
+      "original_path": ".evidence/reconciliation-r24/reviews/code-transport.md",
+      "transport_path": ".evidence/reconciliation-r24/reviews/code-transport.md.gz",
+      "original_sha256": "061dbd223f14e933f59100d26f899d118392faa075e2126d2a4ecd9c0fed93de",
+      "original_bytes": 7316,
+      "transport_sha256": "0420ec5cf4e0835cbf78600ec24536bc3aa69c6ac2dae66b1d13b666023d7a8f",
+      "transport_bytes": 3308
+    },
+    {
+      "original_path": ".evidence/reconciliation-r24/verification/trace78-baseline.log",
+      "transport_path": ".evidence/reconciliation-r24/verification/trace78-baseline.log.gz",
+      "original_sha256": "b6b6b3ec09f8815802a94dda5f7c9548ba83dfcaf9475cf2a5d8e4f4f775ce37",
+      "original_bytes": 669,
+      "transport_sha256": "e4db1f82ef325857d3c1664d171321b88c532ddca962eca5d9cf9dc5e9767755",
+      "transport_bytes": 331
+    },
+    {
+      "original_path": ".evidence/reconciliation-r24/verification/trace78-baseline2.log",
+      "transport_path": ".evidence/reconciliation-r24/verification/trace78-baseline2.log.gz",
+      "original_sha256": "0b5ba87d85e42caf75f4a32658299c63806d7d5239bdfa8b1b3acd7cd0b637a1",
+      "original_bytes": 1015,
+      "transport_sha256": "856f027f75c1eb76412366b7dce771ba01f285597d7aeb5230d7d2e177e3a60b",
+      "transport_bytes": 366
+    },
+    {
+      "original_path": ".evidence/reconciliation-r24/verification/trace78-miri.log",
+      "transport_path": ".evidence/reconciliation-r24/verification/trace78-miri.log.gz",
+      "original_sha256": "b6353ac356aebd5224bf928fd44d06cdedf44915edbc26a142f5bea5fb44bd62",
+      "original_bytes": 204,
+      "transport_sha256": "6047fd4657f998e04ad8e6ee7dcb5f75729c0acf54579a920a44d5bc1aa8c31f",
+      "transport_bytes": 181
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "scope": "Root-authored storagecompact36,workspacecompact21,workspacebody110; exact tuple/aliases and literal assertion preservation, source-only conclusions",
+  "files": [
+    "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-compact36-assessments.jsonl",
+    "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-compact21-assessments.jsonl",
+    "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-body110-assessments.jsonl",
+    "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-tests-root131/function-source-map.json",
+    "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-map.mjs"
+  ],
+  "limitations": "110body rows are explicitly mapped/literal with unresolved current fixture/registration/behavior qualification retained; not fully executed suites, not 1130missing features, not production proof acceptance.",
+  "current_report": {
+    "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "baseline_tuples": 1385,
+    "baseline_production_tuples": 220,
+    "assessed_tuples": 1158,
+    "assessed_with_pending_intents": 899,
+    "remaining_unreviewed_tuples": 227,
+    "remaining_unreviewed_by_lane": {
+      "embedded_test_candidate": 73,
+      "test_fixture_benchmark": 154
+    },
+    "source_aliases_preserved": true,
+    "all_reconciliation_complete": false,
+    "engine_acceptance_claimed": false,
+    "proof_or_suite_execution_claimed": false
+  },
+  "inputs": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-compact36-assessments.jsonl",
+      "sha256": "1a5d86c347f8dee6b29a2ade703c641c71066cefdd0b8dda4686bc3e28e4c9f4"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-compact21-assessments.jsonl",
+      "sha256": "75a8a6bdcf2b98e2d827c07f00602b4d4b43ace482865bccb004f49b60564183"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-body110-assessments.jsonl",
+      "sha256": "9189f446121e7ccb2a060b01e5fabde2bd786ad44d557fa87e4cde5c9dd9b0c4"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-tests-root131/function-source-map.json",
+      "sha256": "5bb558b858a15f5a144e933ea17c87623860b601fccb44531814abeffb9c5c3e"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-map.mjs",
+      "sha256": "bcda0d8de44297826cab7789fc29eedd38ead9d9ac778a74f8972cb5c8cf9375"
+    }
+  ],
+  "main_landing": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/verified-77-78-main-landing.json",
+  "previous_review": {
+    "verdict": "REJECTED",
+    "receipt": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/root167-semantic-review-r1/review-receipt.json",
+    "sha256": "8eec727532db93130ea6960ce1c627ab3826e0aae7949a63ab8becd3830b33f7"
+  },
+  "correction": {
+    "tuple": "[\"crates/workspace_tests/Cargo.toml\",\"9b9b97846c61a2cb7ba6151a90a528ffacab52ac\",\"fc5cd08affd4fd628585ed9a55555cab08f9db7b\",\"M\"]",
+    "authored_target_changes": 17,
+    "explicit_manifest_intents": 22,
+    "retained_pending_intents": 7,
+    "prior_assessment_preserved": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/semantic-review-r1-preserved/workspace-body110-assessments.jsonl"
+  }
+}

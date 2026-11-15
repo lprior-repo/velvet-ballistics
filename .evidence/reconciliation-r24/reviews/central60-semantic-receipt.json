@@ -1,0 +1,62 @@
+{
+  "status": "APPROVED",
+  "review_type": "Independent DATA transport and semantic normalization",
+  "scope": "Only central60 import/source metadata; no original suite/native/proof/engine acceptance",
+  "frozen_inputs": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-packet1-assessments.jsonl",
+      "copy": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/central60-semantic-review-r1/0.jsonl",
+      "sha256": "9a52fa1b8f01d06d14b1f7b47f96b4d65fc00166d7f4545880c7bf3fe06be731"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/central-workspace-packet2-assessments.jsonl",
+      "copy": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/central60-semantic-review-r1/1.jsonl",
+      "sha256": "09a29f76b1f981fe6f2da4bf5ebb9d0972689dd58c1db7d42eddaf307d58e080"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-budget-oracle-r23/.evidence/central-workspace-tests-packet1-review/assessments.jsonl",
+      "copy": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/central60-semantic-review-r1/2.jsonl",
+      "sha256": "b04eb8b6f14234437e85c5d22512388398cecb9b234b677ad9eb64638c3c10f7"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-final-cli-review-r23/.evidence/central-workspace-tests-packet2-review/assessments-final-v3.jsonl",
+      "copy": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/central60-semantic-review-r1/3.jsonl",
+      "sha256": "ea3c350286b0ecd9b97257aba964421c9557d1002c4972e0fafac3b5a2b85471"
+    }
+  ],
+  "findings": [],
+  "counts": {
+    "rows": 60,
+    "aliases": 222,
+    "raw_blobs": 105,
+    "current_sources": 230,
+    "absent_current_pointers": 6,
+    "current_source_lines": 3506,
+    "original_pending_arrays": 52,
+    "original_labeled_per_intents": 45,
+    "declared_pending_entries": 97,
+    "imported_pending_groups": 52
+  },
+  "pending_rows": 27,
+  "resolved_rows": 33,
+  "integrity_failures": [],
+  "verified_recovery": {
+    "main": "34bfc925a4e1c4a6fc179db2836995c2a3b835b0",
+    "exact_sources": 20,
+    "immutable_receipt_sha256": "c008913605e6c8331384f9f302dfff4a040150a447454d6f4ff5fa2d21c3c845",
+    "historical_scenario_bridge": "retained pending parent25; no successful cold immediate retry claim"
+  },
+  "command": {
+    "command": "node .evidence/central60-review.mjs",
+    "exit": 0
+  },
+  "final_freeze": {
+    "sha256": "f8041e2c0029728acc571d1ca0471742beba94a0a11c326834bcf84a3d797ba1",
+    "central_inputs_exact": true,
+    "scope": "Hash transport only; full ledger review separate"
+  },
+  "report": {
+    "file": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/central60-semantic-review-r1/report.md",
+    "sha256": "c995b6b07595f4b35047020dc752a65c2ddc2be525ee7f0f6ffa5e849b431b74"
+  }
+}

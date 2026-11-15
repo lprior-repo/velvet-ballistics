@@ -1,0 +1,108 @@
+{
+  "main": "34bfc925a4e1c4a6fc179db2836995c2a3b835b0",
+  "receipt": "/home/lewis/src/isoloated/r18/.evidence/reconciliation/landing-recovery-test-34bfc925-immutable-receipt.json",
+  "receipt_sha256": "c008913605e6c8331384f9f302dfff4a040150a447454d6f4ff5fa2d21c3c845",
+  "source_files": [
+    {
+      "path": "crates/vb_runtime/src/recovery.rs",
+      "sha256": "2f3991dc4527637cb9042df6bdf97e7f591147207b852229450b34a490a7dd6e",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/recovery_product.rs",
+      "sha256": "c86eda3665c965a5feeed1ea984eefeab40d0267d1d983efdbfb13b13de3335c",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/recovery_product/attempts.rs",
+      "sha256": "5ee0d2db5a7cdfc854385b82de2f267357a01669ae7f49abc5b9c5b5c1d69a35",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/recovery_product/immediate_retry.rs",
+      "sha256": "ea011ce38e632363f79f2dc949b6d2502cafbb6d0fbdd77c5f8308a662db5c16",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_storage/src/recovery/complete_scalar.rs",
+      "sha256": "11f438b0dce13501013d6d9b273a25123459184b729bcad1b3e18709ed44b43a",
+      "exact_match": true
+    },
+    {
+      "path": "crates/vb_storage/src/recovery/complete_scalar/driver/events.rs",
+      "sha256": "16d6032fbd23aa55c4ee450d41264eab84e2726a4176681f04287ca683e04e9f",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_immediate_retry_containment.rs",
+      "sha256": "1eaf3ad7857d09ce74ec0bc976847a25c1325ef72d1a7844b9492ba6b225d8a3",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_immediate_retry_containment/attempt_identity.rs",
+      "sha256": "6fc772417c4e7a21bde85f1b2fea6d7ea8a2165b0875007f328e6a01176c7757",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_immediate_retry_containment/cut.rs",
+      "sha256": "c5791f3a9138ec11d1e4db878655f776970c5180e0f478eb9962c86ae4008ebe",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_immediate_retry_containment/fixture.rs",
+      "sha256": "f2b05bb9fddb590f40067fa2c4d0435c2dcbd68f6783c891ac84860d4ba91913",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_immediate_retry_containment/preservation.rs",
+      "sha256": "ebefe31c144b04db084b771a2add619a2f9d6424edade45d68e6470b6ae9bc64",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_strict_action_preflight.rs",
+      "sha256": "c456ee8769f6c21527b7ff7e4b7f160bb40ef9dea3c302716ddd16787a5831ba",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_strict_action_preflight/fixture.rs",
+      "sha256": "f8747dfc84c82991998364c8f885a46b2048530609cdda9179236d4d9da213db",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_strict_resume_crash_prefix.rs",
+      "sha256": "e9b2aaf5b98c824612f10568b3d86f0b5efc58b85576f309dab8c7462dc16ea2",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_strict_resume_crash_prefix/checks.rs",
+      "sha256": "5176b9a5a1bd5633f6ad3405e181ec4e83b444923a12038d4bb823438accb2af",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_strict_resume_crash_prefix/corruption.rs",
+      "sha256": "970c1dbd2a4777650087b81594d27414222420bd65c147154a8d92bb55f37b79",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_strict_resume_crash_prefix/cut.rs",
+      "sha256": "8530b966b64089c41fa1746bf2f2edd54d2f172ce8aa1e0c1708413d964419db",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_strict_resume_crash_prefix/fixture.rs",
+      "sha256": "0f2dd9ce9ca73f842180402df11136cab3850e7ae5bf799b851b8780f71b8d15",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/shipping_ipc_command_behaviors.rs",
+      "sha256": "b3cd4b0eefe2fa04834b5e73c815e1935b86b6ba82174eca41e5c7633920f404",
+      "exact_match": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/shipping_ipc_command_behaviors/batch.rs",
+      "sha256": "15740e234ec2899c5bfe8addcf7407735ac7bbaa0e4f812cc63d6cdd2b232c75",
+      "exact_match": true
+    }
+  ],
+  "scope": "Exact20qualified recovery source/test file identity. No success claim for unrecorded cold immediate retry; no production-proof closure."
+}

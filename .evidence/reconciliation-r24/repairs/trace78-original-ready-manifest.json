@@ -1,0 +1,48 @@
+{
+  "bead": "vb-eirmk.75.8.25.78",
+  "base": "c0cfa765b046b1a902ed1caee9e6930fe319cbcd",
+  "candidate": "13f5e8941427bb3a262fb6d93cfd0c0db045fbc8",
+  "bookmark": "codex/runtime-trace-history-oracle-78-r24",
+  "files": [
+    {
+      "path": "crates/vb_runtime/src/trace/tests.rs",
+      "blob": "98f9d3410c75b83cc5dd69c094605e8bf3e7b2f2",
+      "sha256": "966317bd571108d805212f590cf1bb5a0d14e84c28143e6b4ad69bb85f058b29"
+    }
+  ],
+  "contract": {
+    "path": "/home/lewis/src/isoloated/vb-reconcile-r24/.beads/vb-eirmk.75.8.25.78/contract.md",
+    "sha256": "361376c952ea8e69e52a2b771a95773ab1af817e7d7fb790e2704986986f836e",
+    "tracked_in_candidate": false
+  },
+  "verification": {
+    "miri_receipt": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/miri-command-receipt.json",
+    "miri_receipt_sha256": "27e25ba31147c9acc5980a051f57b5eb6e42190f0e9cd1c9d2b8e442d117ec67",
+    "miri_red_exit": 101,
+    "miri_green_exit": 0,
+    "miri_tests": 1,
+    "miri_ignored": 0,
+    "miri_filtered": 2648,
+    "native_command": "CI=1 TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/scratch CARGO_BUILD_JOBS=2 RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p vb_runtime --lib --all-features -E 'test(trace::tests::)' --test-threads 4",
+    "native_exit": 0,
+    "native_tests": 59,
+    "native_passed": 59,
+    "native_filtered": 2589,
+    "native_log_sha256": "02a70c78bd9cf2842033a11a5cf171810a0aa77a46e7a29fb828b5f1a82325bb",
+    "format_exit": 0
+  },
+  "reviews": {
+    "CODE": {
+      "status": "APPROVED",
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24-packet-review/.evidence/trace78-code-review/report.md",
+      "sha256": "3973922837fa91691ddda617aaed7c7214779f54e2ddd9a302369934701b93d6"
+    },
+    "TEST": {
+      "status": "APPROVED",
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/trace78-test-review/report.md",
+      "sha256": "a4e0f0fa606d56f1533d87351f8cea2f08e3b92e913cf6e7a5defc0cfe2d977c",
+      "scope": "Independent TEST of onefile oracle; raw MiriRED/GREEN/native59pass evidence verified, not rerun."
+    }
+  },
+  "scope": "One existing cfg(miri) oracle corrected and strengthened. No production/API/schema/dependency/gate changes; no globalUB or mainacceptance claim. Stack parent77 contains2other separately qualified testfiles; delta frombase contains onlytrace/tests.rs."
+}

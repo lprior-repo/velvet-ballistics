@@ -1,0 +1,177 @@
+{
+  "bead": "vb-eirmk.75.8.25",
+  "review": "independent CODE / ledger transport integrity",
+  "attempt": "R3 final-1385 data rebind",
+  "verdict": "APPROVED",
+  "source_checkout": "/home/lewis/src/isoloated/vb-reconcile-r24",
+  "review_workspace": "/home/lewis/src/isoloated/vb-reconcile-r24-compiler-audit",
+  "source_hashes": {
+    "reconcile.mjs": "824a0b003d115c25ee1508111561f2d48b341302be86e65a9b6cf591f43e88bd",
+    "bind-pending.mjs": "de6cf598305f6bfd576a6c0aa132af8f9e03798881cf6a69da74c20579b063bc",
+    "reconcile.test.mjs": "47e1096f794d2da1492f40f86984fe9858e6e81d92cb92b6de5e68684e56f24b",
+    "reconcile.filesystem.test.mjs": "e2b9ab282470a4fee0e9482979914fa088bc9ecdcb13941640a0c130a1520167",
+    "contract.md": "de86e912173b718b4ab450d4caba9e23a26cbb8b60ae22ad71859bc3a57bd8c8",
+    "original-input-manifest.json": "28abc64cfacdd2f2bb17a335e7b888989d73f3d93047ea0c21536c9f95cff898",
+    "final-ledger-review-manifest-r24.json": "f8041e2c0029728acc571d1ca0471742beba94a0a11c326834bcf84a3d797ba1"
+  },
+  "source_unchanged_since_R3": true,
+  "baseline_tuples": 1385,
+  "source_role_denominator": 220,
+  "assessed_tuples": 1385,
+  "pending_rows": 1088,
+  "unreviewed_tuples": 0,
+  "aliases": 6304,
+  "source_obligations": 3970,
+  "explicit_source_owner_rebindings": 20,
+  "live_owners": [
+    {
+      "id": "vb-eirmk.60",
+      "status": "in_progress"
+    },
+    {
+      "id": "vb-god2f",
+      "status": "open"
+    },
+    {
+      "id": "vb-eirmk.26.1",
+      "status": "in_progress"
+    },
+    {
+      "id": "vb-eirmk.75.8.25",
+      "status": "in_progress"
+    },
+    {
+      "id": "vb-z106v",
+      "status": "in_progress"
+    },
+    {
+      "id": "vb-eirmk.75.8.25.28",
+      "status": "in_progress"
+    },
+    {
+      "id": "vb-eirmk.40",
+      "status": "open"
+    },
+    {
+      "id": "vb-eirmk.11",
+      "status": "in_progress"
+    },
+    {
+      "id": "vb-eirmk.11.8",
+      "status": "open"
+    },
+    {
+      "id": "vb-qfka3",
+      "status": "in_progress"
+    }
+  ],
+  "final_core_delta": {
+    "rows": 85,
+    "pending": 81,
+    "equal_previous_unreviewed": true,
+    "previous22assessment_hashes_unchanged": true
+  },
+  "verification": {
+    "node_tests": {
+      "pass": 16,
+      "fail": 0,
+      "exit": 0
+    },
+    "generic_CODE_attacks": {
+      "checks": 11,
+      "exit": 0
+    },
+    "actual_dataset_attacks": {
+      "valid_exact_row_positives": 1385,
+      "individual_obligation_omissions_rejected": 3970,
+      "wrong_status_rejected": 1385,
+      "alias_loss_rejected": 1385,
+      "missing_owner_rebindings_rejected": 17,
+      "result": "PASS"
+    },
+    "transport": {
+      "exit": 0,
+      "warnings": 0,
+      "raw_origin_modes": {
+        "versioned raw packet": 80,
+        "external raw exact or documented additive adapter": 1103,
+        "root-authored/benchmark data": 35,
+        "embedded root/source assessment": 167
+      },
+      "raw_pending_objects_checked": 1877,
+      "adapter_rows": 60
+    },
+    "regeneration": {
+      "exit": 0,
+      "binder_idempotent": true,
+      "parent_generated_files_match": 4,
+      "deterministic": true,
+      "frozen_input_hashes": 52
+    },
+    "tracked_changes": 0
+  },
+  "excluded": [
+    "Semantic approval of any source-role assessment, including reviewer-authored compiler/runtime/storage receipts",
+    "Independent TEST verdict",
+    "Production Rust or native/proof verification",
+    "Engine acceptance, MASTER acceptance or complete pending qualification",
+    "Semantic approval of known-resolution claims or newer-main composition"
+  ],
+  "honesty": {
+    "all_reconciliation_complete": false,
+    "engine_acceptance_claimed": false,
+    "proof_or_suite_execution_claimed": false
+  },
+  "open_CODE_findings": [],
+  "prior_R1_R2_reviews": "Preserved rejected; no retroactive approval",
+  "evidence": [
+    {
+      "file": "tests.log",
+      "sha256": "86c579b4574a6227d2212e56be2e41d462dffac1c0c7ddcb9336dd5ef6f49e46"
+    },
+    {
+      "file": "attacks.log",
+      "sha256": "420183910da9b6856970f2c20c9f7e2749d5ad15024d2e8e8556671d931bcf57"
+    },
+    {
+      "file": "transport-check.json",
+      "sha256": "ae711a688ba88e8fdc0ed3d74b2d8399a800ead70e397815d2560ff47d3a8470"
+    },
+    {
+      "file": "raw-origin-checks.json",
+      "sha256": "9c46ca4c02c0d1f800afa308070f72394c4f5ec6be3964e8bcf2d554ec46fd2d"
+    },
+    {
+      "file": "external-raw-manifest.json",
+      "sha256": "2059b1516919c71d8b3598ddfe2da4aca4842b9d79b5f75e813349c973758351"
+    },
+    {
+      "file": "transport-warnings.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "file": "delta-and-adapters.json",
+      "sha256": "818f69a76cf3bf7c3ccec1631dccc5491e5f4711f3e7f0b005cb01a70d427620"
+    },
+    {
+      "file": "adapter-checks.json",
+      "sha256": "4ed2d0b15a82ddf61ec2563eb5b217d2c15ac042db9ec37ee87c32a6748e20d3"
+    },
+    {
+      "file": "function-measurements.json",
+      "sha256": "1383b7860bde31c6f51b3d73202b2c8766c150e09508cd6b3e456a192bf39255"
+    },
+    {
+      "file": "actual-omission-attacks.json",
+      "sha256": "ee3d07beba478ceeaee0584a568a3287a1955eb6d57e976b14f87b8b02bb07f4"
+    },
+    {
+      "file": "regeneration-check.json",
+      "sha256": "5792da91e60dda5c5f843721dcdfc1c524338faf4524e7c4ef98a7fd01359a12"
+    },
+    {
+      "file": "relocations.json",
+      "sha256": "126b4b213cc92ef56589a72993fd57348340fed4a98bd908d4ca8b9f8b47933d"
+    }
+  ]
+}

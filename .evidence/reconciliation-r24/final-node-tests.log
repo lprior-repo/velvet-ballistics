@@ -1,0 +1,24 @@
+✔ regeneration preserves exact aliases and pending state deterministically (39.413938ms)
+✔ changed frozen input is rejected before generated evidence is written (2.535201ms)
+✔ binder retains real qualification-owner obligations and explicit rebinding (114.877649ms)
+✔ complete tuple identity distinguishes status and path as well as blobs (4.201029ms)
+✔ canonical deduplication retains every signature and every source alias (0.772784ms)
+✔ one resolved signature resolves its shared exact tuple globally (1.919156ms)
+✔ receipt import preserves original payload and owned mixed intent (0.753305ms)
+✔ foreign receipt cannot silently match a path with different status (0.444307ms)
+✔ receipt cannot remove canonical source aliases (1.825326ms)
+✔ pending intent requires an existing active owner (0.657765ms)
+✔ duplicate receipts require an exact append-only predecessor (4.05156ms)
+✔ every imported receipt needs one concrete assessment (0.915113ms)
+✔ mixed raw receipt and original assessment cannot lose all pending intent (1.074962ms)
+✔ every declared pending subintent survives even with a false nested wrapper (106.769279ms)
+✔ qualification owners declare obligations without boolean flags (1.805626ms)
+✔ source-role lanes route without granting semantic closure (4.301988ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 298.071852

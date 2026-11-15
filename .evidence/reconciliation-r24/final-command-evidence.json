@@ -1,0 +1,63 @@
+{
+  "freeze": {
+    "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/final-ledger-review-manifest-r24.json",
+    "sha256": "f8041e2c0029728acc571d1ca0471742beba94a0a11c326834bcf84a3d797ba1"
+  },
+  "actual_checks": [
+    {
+      "command": "CI=1 TMPDIR=/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/scratch node --test .evidence/reconciliation-r24/reconcile.test.mjs .evidence/reconciliation-r24/reconcile.filesystem.test.mjs",
+      "exit": 0,
+      "result": "16tests16passed0failed0skipped"
+    },
+    {
+      "command": "node .evidence/reconciliation-r24/reconcile.mjs",
+      "exit": 0,
+      "result": {
+        "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+        "baseline_tuples": 1385,
+        "baseline_production_tuples": 220,
+        "assessed_tuples": 1385,
+        "assessed_with_pending_intents": 1088,
+        "remaining_unreviewed_tuples": 0,
+        "remaining_unreviewed_by_lane": {},
+        "source_aliases_preserved": true,
+        "all_reconciliation_complete": false,
+        "engine_acceptance_claimed": false,
+        "proof_or_suite_execution_claimed": false
+      }
+    },
+    {
+      "command_receipt": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/storage-properties77/recheck-r24-receipt.json",
+      "exit": 0,
+      "result": "12tests12passed6slow0skipped"
+    },
+    {
+      "command_receipt": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/recheck-r24-receipt.json",
+      "exit": 0,
+      "result": "native59passed2589filtered;exactMiri1passed2648filtered"
+    }
+  ],
+  "logs": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/final-node-tests.log",
+      "sha256": "7713e0732eb0c097a1984cd97258594b56ae45630c32b52046c467fe2184bf8d"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/final-regeneration.log",
+      "sha256": "68a8891d2a06e536cdb17035d380d1fefdb53bb1b8d7288da7ba061899b1ae33"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/storage-properties77/recheck-r24.log",
+      "sha256": "b4c8c6a41a161f05650adadfe1310b0ad0ded89f0e21c8d32fc53e7318bea077"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/recheck-r24-native.log",
+      "sha256": "4ed143214336bb8025dbe14be8742c9187cc95369376caf10f6874032936a2c8"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/recheck-r24-miri.log",
+      "sha256": "b6353ac356aebd5224bf928fd44d06cdedf44915edbc26a142f5bea5fb44bd62"
+    }
+  ],
+  "limits": "Scoped tests bind unchanged frozen source repairs. No fullengine/MASTER or broadproofacceptance, no benchmarks."
+}

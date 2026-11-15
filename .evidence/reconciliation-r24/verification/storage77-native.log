@@ -1,0 +1,39 @@
+────────────
+ Nextest run ID 52122dbf-ed37-42c3-8807-ed0258f5e5c1 with nextest profile: default
+    Starting 12 tests across 2 binaries
+        PASS [   0.004s] ( 1/12) vb_storage::proptest_vb_vzcuf_PS_001 ps001_admission_exact
+        PASS [   0.006s] ( 2/12) vb_storage::proptest_vb_vzcuf_PS_001 ps001_encoded_len_min
+        PASS [   0.004s] ( 3/12) vb_storage::proptest_vb_vzcuf_PS_001 ps001_overflow_none
+        PASS [   0.005s] ( 4/12) vb_storage::proptest_vb_vzcuf_PS_001 ps001_zero_fits
+        PASS [   0.004s] ( 5/12) vb_storage::proptest_vb_vzcuf_PS_008 ps008_count_limit
+        SLOW [> 60.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+        SLOW [> 60.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+        SLOW [> 60.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+        SLOW [> 60.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+        SLOW [>120.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+        SLOW [>120.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+        SLOW [>120.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+        SLOW [>120.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+        SLOW [>180.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+        SLOW [>180.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+        SLOW [>180.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+        SLOW [>180.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+        SLOW [>240.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+        SLOW [>240.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+        SLOW [>240.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+        SLOW [>240.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+        PASS [ 255.577s] ( 6/12) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+        PASS [   0.023s] ( 7/12) vb_storage::proptest_vb_vzcuf_PS_008 ps008_encode_before_mut
+        PASS [ 256.974s] ( 8/12) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+        PASS [ 261.996s] ( 9/12) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+        PASS [ 264.041s] (10/12) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+        SLOW [> 60.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+        SLOW [> 60.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+        SLOW [>120.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+        SLOW [>120.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+        SLOW [>180.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+        PASS [ 180.845s] (11/12) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+        SLOW [>180.000s] (─────) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+        PASS [ 181.891s] (12/12) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+────────────
+     Summary [ 438.866s] 12 tests run: 12 passed (6 slow), 0 skipped

@@ -1,0 +1,56 @@
+{
+  "main": "34bfc925a4e1c4a6fc179db2836995c2a3b835b0",
+  "remote_verified": true,
+  "receipt": {
+    "file": "/home/lewis/src/isoloated/r18/.evidence/reconciliation/landing-recovery-test-34bfc925-immutable-receipt.json",
+    "sha256": "c008913605e6c8331384f9f302dfff4a040150a447454d6f4ff5fa2d21c3c845"
+  },
+  "sources": [
+    {
+      "bead": "vb-eirmk.75.8.25.77",
+      "path": "crates/vb_storage/tests/proptest_vb_vzcuf_PS_001.rs",
+      "blob": "91e045c201a596d7bc0eb35934d04d733884df7b",
+      "sha256": "db568d2bdc8b00c4fcd97a234100a1ae448718f6e5639f22c44364fafbd8bbdb",
+      "main_blob": "91e045c201a596d7bc0eb35934d04d733884df7b",
+      "main_sha256": "db568d2bdc8b00c4fcd97a234100a1ae448718f6e5639f22c44364fafbd8bbdb",
+      "exact_match": true
+    },
+    {
+      "bead": "vb-eirmk.75.8.25.77",
+      "path": "crates/vb_storage/tests/proptest_vb_vzcuf_PS_008.rs",
+      "blob": "15dc11be42f00e81540d69661c5b665bb3fd7f69",
+      "sha256": "233781fbad394ee4770259a926022a5660e93bd28e4666d1e3f08bf3b525f88f",
+      "main_blob": "15dc11be42f00e81540d69661c5b665bb3fd7f69",
+      "main_sha256": "233781fbad394ee4770259a926022a5660e93bd28e4666d1e3f08bf3b525f88f",
+      "exact_match": true
+    },
+    {
+      "bead": "vb-eirmk.75.8.25.78",
+      "path": "crates/vb_runtime/src/trace/tests.rs",
+      "blob": "98f9d3410c75b83cc5dd69c094605e8bf3e7b2f2",
+      "sha256": "966317bd571108d805212f590cf1bb5a0d14e84c28143e6b4ad69bb85f058b29",
+      "main_blob": "98f9d3410c75b83cc5dd69c094605e8bf3e7b2f2",
+      "main_sha256": "966317bd571108d805212f590cf1bb5a0d14e84c28143e6b4ad69bb85f058b29",
+      "exact_match": true
+    }
+  ],
+  "contracts": [
+    {
+      "source": "/home/lewis/src/isoloated/vb-reconcile-r24/.beads/vb-eirmk.75.8.25.77/contract.md",
+      "path": ".beads/vb-eirmk.75.8.25.77/contract.md",
+      "sha256": "f2a08141e89f75c281c87195c20b02308bea790f8090506bd4c553a3d668834d",
+      "staged": ".evidence/reconciliation/recovery-test-r24-contract-staging/.beads/vb-eirmk.75.8.25.77/contract.md",
+      "main_sha256": "f2a08141e89f75c281c87195c20b02308bea790f8090506bd4c553a3d668834d",
+      "exact_match": true
+    },
+    {
+      "source": "/home/lewis/src/isoloated/vb-reconcile-r24/.beads/vb-eirmk.75.8.25.78/contract.md",
+      "path": ".beads/vb-eirmk.75.8.25.78/contract.md",
+      "sha256": "361376c952ea8e69e52a2b771a95773ab1af817e7d7fb790e2704986986f836e",
+      "staged": ".evidence/reconciliation/recovery-test-r24-contract-staging/.beads/vb-eirmk.75.8.25.78/contract.md",
+      "main_sha256": "361376c952ea8e69e52a2b771a95773ab1af817e7d7fb790e2704986986f836e",
+      "exact_match": true
+    }
+  ],
+  "scope": "Exact frozen source and contract identity on published main. Central joined native/static results remain in immutable receipt; no full engine/MASTER acceptance."
+}

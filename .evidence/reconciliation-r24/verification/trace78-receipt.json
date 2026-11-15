@@ -1,0 +1,18 @@
+{
+  "source_change": "13f5e8941427bb3a262fb6d93cfd0c0db045fbc8",
+  "isolated_audit_child": "791e62c5",
+  "source_sha256": "966317bd571108d805212f590cf1bb5a0d14e84c28143e6b4ad69bb85f058b29",
+  "miri": {
+    "exit": 0,
+    "log": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/recheck-r24-miri.log",
+    "scope": "exact one trace-history test, default MIRIFLAGS; no global UB or engine acceptance",
+    "log_sha256": "b6353ac356aebd5224bf928fd44d06cdedf44915edbc26a142f5bea5fb44bd62"
+  },
+  "native": {
+    "exit": 0,
+    "log": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/recheck-r24-native.log",
+    "scope": "trace::tests only",
+    "log_sha256": "4ed143214336bb8025dbe14be8742c9187cc95369376caf10f6874032936a2c8"
+  },
+  "prior_full_command_receipt": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/trace-miri-oracle/miri-command-receipt.json"
+}

@@ -28,6 +28,22 @@ fn remaining_second_attempt(handler: bool) -> TestResult {
             _ => None,
         })
         .ok_or("first issued ticket absent")?;
+    assert_eq!(
+        (first.run_attempt, first.attempt, first.capacity),
+        (1, 1, 3)
+    );
+    assert_eq!(
+        prefix
+            .iter()
+            .filter_map(|event| match event {
+                JournalEvent::ActionScheduledTicket { ticket, .. } if ticket.attempt == 2 => {
+                    Some(*ticket)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>(),
+        vec![second]
+    );
     assert_eq!(second.idempotency_key, first.idempotency_key);
     assert!(
         matches!(prefix.last(), Some(JournalEvent::ActionFailedEvent { step, action, attempt: 2, .. }) if *step == second.step && *action == second.action)

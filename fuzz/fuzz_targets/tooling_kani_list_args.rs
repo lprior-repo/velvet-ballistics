@@ -46,10 +46,6 @@ fuzz_target!(|data: &[u8]| {
     let mut argv = Vec::with_capacity(capacity);
     argv.push("scripts/kani-list.sh");
     argv.extend(args);
-    fuzz_lib::bounded_cmd::run_smoke_bounded(
-        "bash",
-        &argv,
-        &[("KANI_LIST_DIR", "/tmp/fuzz-kani-list")],
-    );
+    fuzz_lib::bounded_cmd::run_smoke_bounded("bash", &argv, &[]);
     // No assertions — fuzzer checks for panics/crashes only
 });

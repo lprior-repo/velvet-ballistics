@@ -1,0 +1,82 @@
+{
+  "status": "APPROVED",
+  "review_type": "Independent source/data semantic R2 review",
+  "scope": "Exact167 root-authored tuple records and unchanged lexical mapper; no native/proof/global engine acceptance",
+  "anchor": "f366003714753937573e04650bf63cc4e5beb8ea",
+  "manifest": {
+    "file": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/root167-semantic-review-r2/root-authored-review-manifest-r2.json",
+    "sha256": "4466d3262a49245fedb7bac6dc3611456e35fd419b1401e5c2636ff2a6cd3099"
+  },
+  "frozen_inputs": [
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/storage-compact36-assessments.jsonl",
+      "sha256": "1a5d86c347f8dee6b29a2ade703c641c71066cefdd0b8dda4686bc3e28e4c9f4"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-compact21-assessments.jsonl",
+      "sha256": "75a8a6bdcf2b98e2d827c07f00602b4d4b43ace482865bccb004f49b60564183"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-body110-assessments.jsonl",
+      "sha256": "9189f446121e7ccb2a060b01e5fabde2bd786ad44d557fa87e4cde5c9dd9b0c4"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-tests-root131/function-source-map.json",
+      "sha256": "5bb558b858a15f5a144e933ea17c87623860b601fccb44531814abeffb9c5c3e"
+    },
+    {
+      "file": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-map.mjs",
+      "sha256": "bcda0d8de44297826cab7789fc29eedd38ead9d9ac778a74f8972cb5c8cf9375"
+    }
+  ],
+  "previous_review": {
+    "verdict": "REJECTED",
+    "receipt": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/root167-semantic-review-r1/review-receipt.json",
+    "sha256": "8eec727532db93130ea6960ce1c627ab3826e0aae7949a63ab8becd3830b33f7"
+  },
+  "findings": [
+    {
+      "id": "R1-P1",
+      "disposition": "fixed_with_evidence",
+      "artifact": "/home/lewis/src/isoloated/vb-reconcile-r24/.evidence/reconciliation-r24/workspace-body110-assessments.jsonl",
+      "line": 28,
+      "tuple": [
+        "crates/workspace_tests/Cargo.toml",
+        "9b9b97846c61a2cb7ba6151a90a528ffacab52ac",
+        "fc5cd08affd4fd628585ed9a55555cab08f9db7b",
+        "M"
+      ],
+      "evidence": {
+        "file": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/root167-semantic-review-r2/manifest-coverage.json",
+        "sha256": "d5d5a325f5289b5f5cdaf57b8667cbaae7da00e34c2aff20d57fce19221be524"
+      },
+      "correction": "All22 non-function manifest intents explicitly disposed; seven live owned pending qualifications preserved; registered alias comparison is not behavior/execution equivalence."
+    }
+  ],
+  "coverage": {
+    "rows": 167,
+    "aliases": 714,
+    "pending_rows": 145,
+    "pending_entries": 1173,
+    "raw_bindings": 269,
+    "current_bindings": 271,
+    "manifest_intents": 22,
+    "test_registrations": 17,
+    "bench_registrations": 2
+  },
+  "commands": [
+    {
+      "command": "node .evidence/root167-review-r2.mjs",
+      "exit": 0
+    },
+    {
+      "command": "node .evidence/root167-manifest-r2-review.mjs",
+      "exit": 0
+    }
+  ],
+  "report": {
+    "file": "/home/lewis/src/isoloated/vb-reconcile-r24-remainder/.evidence/root167-semantic-review-r2/report.md",
+    "sha256": "291a3bfa5ee7c3a48bd94b1a5e66b29d24aff812d37feec3733ac4b03377b114"
+  },
+  "execution": "Read-only source/data review and evidence checks; no native/proof/build rerun"
+}
