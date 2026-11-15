@@ -283,7 +283,7 @@ fn cli_action_list_table_output_has_exact_fields() {
     assert_cli_success(&output, "action list");
     assert_eq!(
         output_stdout(&output),
-        "id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms\n1\tdeterministic_pure\tsafe\tnone\t1\t1\t1000\n2\tidempotent_external\tkey_required\twrites\t2\t1\t5000\n3\tat_least_once_external\tunsafe\tsends\t1\t0\t10000\n"
+        "id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms\tname\n1\tdeterministic_pure\tsafe\tnone\t1\t1\t1000\tnoop\n2\tidempotent_external\tkey_required\twrites\t2\t1\t5000\twrite\n3\tat_least_once_external\tunsafe\tsends\t1\t0\t10000\tsend\n"
     );
     assert_eq!(output_stderr(&output), "");
 }
