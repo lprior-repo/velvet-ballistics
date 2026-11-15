@@ -56,6 +56,10 @@ fn write_dynamic_operation(error: &RuntimeError, f: &mut Formatter<'_>) -> Optio
             Some(write!(f, "recovery cannot resume: {reason}"))
         }
         RuntimeError::ShardNotFound { shard } => Some(write!(f, "shard {shard} not found")),
+        RuntimeError::NotResumable { run, current_state } => Some(write!(
+            f,
+            "run {run:?} cannot resume from state {current_state:?}"
+        )),
         _ => None,
     }
 }

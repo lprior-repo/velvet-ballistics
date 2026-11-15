@@ -10,8 +10,25 @@ pub(super) fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeEr
         || runtime_error_action_taint_eq(left, right)
         || runtime_error_journal_eq(left, right)
         || runtime_error_shard_eq(left, right)
+        || runtime_error_resume_eq(left, right)
         || runtime_error_gate_eq(left, right)
         || runtime_error_recovery_and_contract_eq(left, right)
+}
+
+fn runtime_error_resume_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    matches!(
+        (left, right),
+        (
+            RuntimeError::NotResumable {
+                run: left_run,
+                current_state: left_state,
+            },
+            RuntimeError::NotResumable {
+                run: right_run,
+                current_state: right_state,
+            },
+        ) if left_run == right_run && left_state == right_state
+    )
 }
 
 fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
