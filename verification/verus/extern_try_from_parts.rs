@@ -531,8 +531,12 @@ pub struct SpecNode {
 }
 /// Mirror of the production `ExprOp` stack-effect classes
 /// (`crates/vb_core/src/workflow/expr_program.rs:41-100`, classified by
-/// `expr_stack_effect` at workflow/expr_program.rs:162-175): `Push` covers `LoadSlot` /
-/// `LoadConst` (effect 0,1); `LoadAccessor` covers `LoadAccessor`
+/// `expr_stack_effect` at workflow/expr_program.rs:162-175): `Push` covers a
+/// bare push with no pool reference (effect 0,1), kept for the
+/// stack-simulation lemmas; `LoadSlot` / `LoadConst` cover the production
+/// ops of the same names (effect 0,1) and carry the pool index for the
+/// pool-bounds check (`validate_expression_pool_bounds`,
+/// workflow/validate_refs.rs:95-105); `LoadAccessor` covers `LoadAccessor`
 /// (effect 0,1) and carries the accessor index for the
 /// `validate_accessor` bound check (workflow/validate_refs.rs:117-130);
 /// `Unary` covers `Not`, `Exists`, `Length`, `Empty`, `Sum`,
@@ -544,6 +548,8 @@ pub struct SpecNode {
 #[derive(Clone, Copy)]
 pub enum SpecExprOp {
     Push,
+    LoadSlot(u32),
+    LoadConst(u32),
     LoadAccessor(u32),
     Unary,
     AppendIf,
@@ -1260,6 +1266,8 @@ pub fn node_id_error(meta: SpecNodeMeta, index: usize) -> Option<SpecWorkflowErr
 fn expr_stack_effect(op: SpecExprOp) -> (u32, u32) {
     match op {
         SpecExprOp::Push => (0, 1),
+        SpecExprOp::LoadSlot(_) => (0, 1),
+        SpecExprOp::LoadConst(_) => (0, 1),
         SpecExprOp::LoadAccessor(_) => (0, 1),
         SpecExprOp::Unary => (1, 1),
         SpecExprOp::AppendIf => (3, 1),
@@ -1287,7 +1295,10 @@ fn expr_stack_effect(op: SpecExprOp) -> (u32, u32) {
 /// first failure in that order, or `None` when the program
 /// validates. `LoadSlot` / `LoadConst` indices are not
 /// bounds-checked by `validate_expressions` (only their stack
-/// effect matters). Depth and required are `u32`: the per-op
+/// effect matters); their pool bounds are checked by the separate
+/// Step 6 projection `expr_pool_bounds_error` below
+/// (`validate_expression_pool_bounds`,
+/// workflow/validate_refs.rs:95-105). Depth and required are `u32`: the per-op
 /// capacity check keeps depth at or below the claimed `max_stack`,
 /// and step 1a already enforces
 /// `max_stack <= contract.max_expr_stack <= 64` (crates/vb_core/src/limits.rs:43),
@@ -1329,6 +1340,42 @@ pub fn expr_error(program: &SpecExprProgram, accessors_len: u32) -> Option<SpecW
             if *index >= accessors_len {
                 return Some(SpecWorkflowError::ExpressionInvalid);
             }
+        }
+    }
+    None
+}
+
+/// Pure projection of `validate_expression_pool_bounds`
+/// (workflow/validate_refs.rs:95-105) for one expression program:
+/// per op, in order — `LoadSlot` against `slot_count` via
+/// `validate_slot` (workflow/validate_refs.rs:56-62) and `LoadConst`
+/// against the constants inventory length via `validate_const`
+/// (workflow/validate_refs.rs:64-70). Every other op carries no pool
+/// reference. Returns the first out-of-bounds failure, or `None`
+/// when every pool reference is in bounds.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn expr_pool_bounds_error(
+    program: &SpecExprProgram,
+    slot_count: u32,
+    constants_len: u32,
+) -> Option<SpecWorkflowError> {
+    for op in &program.ops {
+        match *op {
+            SpecExprOp::LoadSlot(slot) => {
+                if slot >= slot_count {
+                    return Some(SpecWorkflowError::SlotOutOfBounds);
+                }
+            }
+            SpecExprOp::LoadConst(constant) => {
+                if constant >= constants_len {
+                    return Some(SpecWorkflowError::ConstOutOfBounds);
+                }
+            }
+            _ => {}
         }
     }
     None
@@ -2746,6 +2793,24 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             }
         }
         prev_slot = Some(*current);
+    }
+    // ---- Step 6: expression pool bounds ----
+    // Production calls validate_expression_pool_bounds(&parts)?
+    // (workflow/validate_refs.rs:95-105) last in validate_shared_parts
+    // (workflow/profile_construct.rs:25-39): per expression, in order,
+    // per op, in order — LoadSlot against slot_count
+    // (validate_slot, workflow/validate_refs.rs:56-62) and LoadConst
+    // against the constants inventory length (validate_const,
+    // workflow/validate_refs.rs:64-70). Runs after every modelled step
+    // in production position: the unmodelled steps between Step 5 and
+    // this check (source_metadata::secrets, retry_policy, slot_flow)
+    // stay unmodelled on both sides.
+    for expression in &parts.expressions {
+        if let Some(err) =
+            expr_pool_bounds_error(expression, parts.slot_count, parts.constants_len)
+        {
+            return SpecValidationResult::Err(err);
+        }
     }
     SpecValidationResult::Ok
 }
