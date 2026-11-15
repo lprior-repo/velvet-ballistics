@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Reference validation for legacy test fixtures.
 
-use crate::{ValidationError, ValidationResult};
 pub(crate) use crate::references::{RefTables, WorkflowRefs};
+use crate::{ValidationError, ValidationResult};
 
 pub(crate) fn validate_references(workflow: &WorkflowRefs) -> ValidationResult<()> {
     let tables = RefTables::build(workflow);
