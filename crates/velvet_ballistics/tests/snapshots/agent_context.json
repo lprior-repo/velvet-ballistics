@@ -130,22 +130,18 @@
           ]
         },
         "--slot": {
-          "type": "u16"
-        },
-        "--step": {
+          "required": true,
           "type": "u16"
         },
         "--value": {
-          "type": "path"
-        },
-        "--value-file": {
+          "required": true,
           "type": "path"
         }
       },
       "positionals": [
         "run_id"
       ],
-      "summary": "Answer a suspended ask using exactly one selector/file pair: --step with --value-file or --slot with --value."
+      "summary": "Answer a suspended ask by its pending slot using --slot with --value."
     },
     "bench-run": {
       "flags": {

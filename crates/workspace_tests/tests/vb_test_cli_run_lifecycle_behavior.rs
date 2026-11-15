@@ -566,27 +566,25 @@ mod answer_command {
         assert!(!output.status.success(), "answer without args should fail");
     }
 
-    /// answer with invalid step should fail.
+    /// answer rejects the retired step selector before doing any work.
     #[test]
-    fn cli_answer_invalid_step_fails() {
+    fn cli_answer_rejects_legacy_step_selector() {
         let output = run_vb(&[
             "answer",
             "42",
             "--step",
-            "not-a-number",
+            "3",
             "--value-file",
             "value.bin",
             "--db",
             "journal-db",
         ]);
-        assert!(
-            !output.status.success(),
-            "answer with invalid step should fail"
-        );
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.contains("invalid step") || stderr.contains("not-a-number"),
-            "should report invalid step: {}",
+            stderr.starts_with("unknown flag for answer: --step\n\n"),
+            "should reject the legacy selector: {}",
             stderr
         );
     }

@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn parse_answer_preserves_step_and_adds_canonical_slot_selector() {
+fn parse_answer_rejects_legacy_step_and_accepts_canonical_slot_selector() {
     let step = parse_args(&args(&[
         "velvet-ballistics",
         "answer",
@@ -13,9 +13,12 @@ fn parse_answer_preserves_step_and_adds_canonical_slot_selector() {
         "--db",
         "run.db",
     ]));
-    assert!(
-        matches!(step, Ok(Command::Answer { selector: crate::args::AnswerSelector::Step(step), value_file, .. })
-        if step.get() == 3 && value_file == PathBuf::from("step.bin"))
+    assert_eq!(
+        step,
+        Err(ParseError::UnknownFlag {
+            command: "answer",
+            flag: "--step".into(),
+        })
     );
     let slot = parse_args(&args(&[
         "velvet-ballistics",
@@ -35,38 +38,26 @@ fn parse_answer_preserves_step_and_adds_canonical_slot_selector() {
 }
 
 #[test]
-fn parse_answer_rejects_mixed_selectors_and_value_modes() {
-    let mixed = parse_args(&args(&[
+fn parse_answer_rejects_legacy_value_file_flag() {
+    let legacy_value = parse_args(&args(&[
         "velvet-ballistics",
         "answer",
         "41",
-        "--step",
-        "3",
         "--slot",
         "2",
-        "--value-file",
-        "a.bin",
         "--value",
+        "a.bin",
+        "--value-file",
         "b.bin",
         "--db",
         "run.db",
     ]));
-    assert!(
-        matches!(mixed, Err(ParseError::InvalidArgument(ref reason)) if reason == "--step and --slot cannot be combined")
-    );
-    let wrong_file = parse_args(&args(&[
-        "velvet-ballistics",
-        "answer",
-        "41",
-        "--slot",
-        "2",
-        "--value-file",
-        "a.bin",
-        "--db",
-        "run.db",
-    ]));
-    assert!(
-        matches!(wrong_file, Err(ParseError::InvalidArgument(ref reason)) if reason == "--value-file does not match --value")
+    assert_eq!(
+        legacy_value,
+        Err(ParseError::UnknownFlag {
+            command: "answer",
+            flag: "--value-file".into(),
+        })
     );
 }
 

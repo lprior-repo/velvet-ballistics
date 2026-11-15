@@ -105,6 +105,31 @@ fn assert_answer_refusal_read_only(
     Ok(())
 }
 
+fn assert_legacy_answer_refusal_read_only(
+    fixture: &mut AnswerCliFixture,
+    ticket: AskTicket,
+    format: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let before = observe_answer(fixture, ticket.ask_step())?;
+    let output = run_answer_cli(
+        fixture,
+        "--step",
+        ticket.ask_step().get(),
+        "--value-file",
+        SlotValue::I64(5),
+        format,
+    )?;
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output_stdout(&output), "");
+    assert!(output_stderr(&output).starts_with("unknown flag for answer: --step\n\n"));
+    assert!(output_stderr(&output).contains(
+        "answer     <run_id> --slot <N> --value <file> --db <path>"
+    ));
+    fixture.runtime.tick_all()?;
+    assert_eq!(observe_answer(fixture, ticket.ask_step())?, before);
+    Ok(())
+}
+
 fn assert_cli_refusal(
     output: &std::process::Output,
     format: Option<&str>,
@@ -232,18 +257,18 @@ fn assert_answer_effects(fixture: &AnswerCliFixture) -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn public_answer_cli_routes_step_and_slot_by_pending_authority_in_all_formats()
+fn public_answer_cli_rejects_step_and_answers_by_slot_in_all_formats()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut fixture = answer_cli_fixture()?;
     let first = wait_for_ask(&mut fixture.runtime, fixture.run, fixture.asks[0])?;
     for format in [None, Some("yaml"), Some("postcard")] {
-        assert_answer_refusal_read_only(&mut fixture, first, "--step", 2, "--value-file", format)?;
+        assert_legacy_answer_refusal_read_only(&mut fixture, first, format)?;
     }
     let output = run_answer_cli(
         &mut fixture,
-        "--step",
-        first.ask_step().get(),
-        "--value-file",
+        "--slot",
+        first.answer_slot().get(),
+        "--value",
         SlotValue::I64(99),
         None,
     )?;

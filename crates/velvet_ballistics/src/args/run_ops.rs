@@ -8,7 +8,7 @@ use super::answer_selector::AnswerSelector;
 use super::error::ParseError;
 use super::shared::{find_positional, named_flag, parse_output_format, validate_known_flags};
 use super::types::{Command, EventStatus, OutputFormat};
-use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::ids::SlotIdx;
 
 pub(super) struct RunDbArgs {
     pub(super) run_id: String,
@@ -165,39 +165,11 @@ fn run_id_argument(args: &[OsString]) -> Result<String, ParseError> {
 }
 
 fn answer_selector_and_file(args: &[OsString]) -> Result<(AnswerSelector, String), ParseError> {
-    match (named_flag(args, "--step"), named_flag(args, "--slot")) {
-        (Some(step), None) => Ok((
-            AnswerSelector::Step(parse_answer_index(step)?),
-            answer_file(args, "--value-file", "--value")?,
-        )),
-        (None, Some(slot)) => Ok((
-            AnswerSelector::Slot(parse_answer_slot(slot)?),
-            answer_file(args, "--value", "--value-file")?,
-        )),
-        (Some(_), Some(_)) => Err(ParseError::InvalidArgument(String::from(
-            "--step and --slot cannot be combined",
-        ))),
-        (None, None) => Err(ParseError::MissingArgument("--step or --slot")),
-    }
-}
-
-fn answer_file(
-    args: &[OsString],
-    required: &'static str,
-    forbidden: &'static str,
-) -> Result<String, ParseError> {
-    if named_flag(args, forbidden).is_some() {
-        return Err(ParseError::InvalidArgument(format!(
-            "{forbidden} does not match {required}"
-        )));
-    }
-    required_flag(args, required)
-}
-
-fn parse_answer_index(raw: String) -> Result<StepIdx, ParseError> {
-    raw.parse::<u16>()
-        .map(StepIdx::new)
-        .map_err(|_| ParseError::InvalidStep(raw))
+    let slot = named_flag(args, "--slot").ok_or(ParseError::MissingArgument("--slot"))?;
+    Ok((
+        AnswerSelector::Slot(parse_answer_slot(slot)?),
+        required_flag(args, "--value")?,
+    ))
 }
 
 fn parse_answer_slot(raw: String) -> Result<SlotIdx, ParseError> {

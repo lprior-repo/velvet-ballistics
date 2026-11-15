@@ -127,9 +127,7 @@ fn control_flags(command: &str, token: &str) -> Option<FlagSpec> {
 
 fn answer_flags(token: &str) -> Option<FlagSpec> {
     match token {
-        "--step" => Some(FlagSpec::Value("--step")),
         "--slot" => Some(FlagSpec::Value("--slot")),
-        "--value-file" => Some(FlagSpec::Value("--value-file")),
         "--value" => Some(FlagSpec::Value("--value")),
         "--db" => Some(FlagSpec::Value("--db")),
         _ => None,

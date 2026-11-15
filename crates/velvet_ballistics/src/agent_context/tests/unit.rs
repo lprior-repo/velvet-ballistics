@@ -977,22 +977,19 @@ fn command_all_have_summary_field() {
 }
 
 #[test]
-fn command_answer_describes_selector_file_pairs_and_required_database() {
+fn command_answer_describes_current_slot_selector_and_required_database() {
     let context = build("0.1.0");
     let flags = context
         .pointer("/commands/answer/flags")
         .and_then(Value::as_object)
         .expect("flags must be an object");
 
-    for (flag_name, kind) in [
-        ("--step", "u16"),
-        ("--slot", "u16"),
-        ("--value-file", "path"),
-        ("--value", "path"),
-    ] {
-        let expected = serde_json::json!({"type": kind});
+    for (flag_name, kind) in [("--slot", "u16"), ("--value", "path")] {
+        let expected = serde_json::json!({"type": kind, "required": true});
         assert_eq!(flags.get(flag_name), Some(&expected), "{flag_name}");
     }
+    assert_eq!(flags.get("--step"), None);
+    assert_eq!(flags.get("--value-file"), None);
     assert_eq!(
         flags.get("--db").and_then(|flag| flag.get("required")),
         Some(&Value::Bool(true))

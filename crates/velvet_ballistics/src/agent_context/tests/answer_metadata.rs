@@ -15,19 +15,19 @@ fn parsed(arguments: &[&str]) -> Result<Command, ParseError> {
 }
 
 #[test]
-fn answer_metadata_matches_both_parser_routes() -> TestResult {
+fn answer_metadata_matches_current_slot_route_and_rejects_legacy_flags() -> TestResult {
     let context = build("test");
     let answer = context
         .pointer("/commands/answer")
         .ok_or("answer command")?;
     assert_eq!(
         answer.get("summary").and_then(Value::as_str),
-        Some(
-            "Answer a suspended ask using exactly one selector/file pair: --step with --value-file or --slot with --value."
-        )
+        Some("Answer a suspended ask by its pending slot using --slot with --value.")
     );
     let flags = answer.get("flags").ok_or("answer flags")?;
     assert_answer_flags(flags)?;
+    assert_eq!(flags.get("--step"), None);
+    assert_eq!(flags.get("--value-file"), None);
     assert_eq!(flags.pointer("/--db/required"), Some(&json!(true)));
     assert_eq!(
         flags.get("--emit"),
@@ -37,25 +37,23 @@ fn answer_metadata_matches_both_parser_routes() -> TestResult {
             "default": "text"
         }))
     );
-    assert_step_parser_route()?;
+    assert_legacy_parser_flags_are_rejected()?;
     assert_slot_parser_route()?;
     Ok(())
 }
 
 fn assert_answer_flags(flags: &Value) -> TestResult {
-    for (flag, kind) in [
-        ("--step", "u16"),
-        ("--slot", "u16"),
-        ("--value-file", "path"),
-        ("--value", "path"),
-    ] {
+    for (flag, kind) in [("--slot", "u16"), ("--value", "path")] {
         assert_eq!(flags.pointer(&format!("/{flag}/type")), Some(&json!(kind)));
-        assert_eq!(flags.pointer(&format!("/{flag}/required")), None);
+        assert_eq!(
+            flags.pointer(&format!("/{flag}/required")),
+            Some(&json!(true))
+        );
     }
     Ok(())
 }
 
-fn assert_step_parser_route() -> TestResult {
+fn assert_legacy_parser_flags_are_rejected() -> TestResult {
     assert_eq!(
         parsed(&[
             "answer",
@@ -67,12 +65,25 @@ fn assert_step_parser_route() -> TestResult {
             "--db",
             "state",
         ]),
-        Ok(Command::Answer {
-            run_id: "17".into(),
-            selector: AnswerSelector::Step(vb_core::ids::StepIdx::new(3)),
-            value_file: PathBuf::from("answer.bin"),
-            db: PathBuf::from("state"),
-            output: OutputFormat::Text,
+        Err(ParseError::UnknownFlag {
+            command: "answer",
+            flag: "--step".into(),
+        })
+    );
+    assert_eq!(
+        parsed(&[
+            "answer",
+            "17",
+            "--slot",
+            "2",
+            "--value-file",
+            "answer.bin",
+            "--db",
+            "state",
+        ]),
+        Err(ParseError::UnknownFlag {
+            command: "answer",
+            flag: "--value-file".into(),
         })
     );
     Ok(())
