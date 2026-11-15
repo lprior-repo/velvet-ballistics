@@ -182,10 +182,8 @@
     fn end_to_end_lex_parse_compile_eval() -> ExprResult<()> {
         let tokens = crate::lexer::lex_expr("3 + 4 * 2")?;
         let ast = crate::parser::parse_expr(&tokens)?;
-        let _program = crate::bytecode::compile_expr_to_bytecode(&ast)?;
-        let mut constants = Vec::new();
-        let p2 = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
-        let result = eval_expr_program(&p2, &[], &constants)?;
+        let (program, constants) = crate::bytecode::compile_expr_to_bytecode(&ast)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
         assert_eq!(result, SlotValue::I64(11));
         Ok(())
     }
