@@ -95,7 +95,7 @@
 //   - `DigestCheck`                       <- crates/vb_storage/src/recovery/types/digest_check.rs:6-13
 //   - `RecoveryError` (spec subset)       <- crates/vb_storage/src/recovery/types/errors.rs:9-118
 //                                            (only the four variants the spec exercises)
-//   - `RuntimeError` (spec subset)        <- crates/vb_runtime/src/error/mod.rs:11-362
+//   - `RuntimeError` (spec subset)        <- crates/vb_runtime/src/error/mod.rs:11-369
 //                                            (only the variants the spec exercises)
 //
 // Pure decision fns (each production body mirrors the production
@@ -877,7 +877,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 // RuntimeError mirror (spec subset) — crates/vb_runtime/src/error/mod.rs
 // ============================================================================
 //
-// Production `RuntimeError` has 40+ variants (crates/vb_runtime/src/error/mod.rs:11-362).
+// Production `RuntimeError` has 40+ variants (crates/vb_runtime/src/error/mod.rs:11-369).
 // The spec only exercises the variants the recovery boundary emits.
 // D2 (file header): production has no `FrameDimensionOverflow`
 // variant in `RuntimeError`; the runtime layer collapses all
