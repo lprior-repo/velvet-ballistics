@@ -3,15 +3,17 @@
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
+#[cfg(not(verus_keep_ghost))]
 use super::slot::SlotValue;
+#[cfg(not(verus_keep_ghost))]
 use serde::{Deserialize, Serialize};
 
 /// Secret propagation marker attached to each runtime slot.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(not(verus_keep_ghost), derive(Serialize, Deserialize))]
 #[repr(u8)]
 #[non_exhaustive]
 #[cfg_attr(verus_keep_ghost, verifier::verify)]
-#[cfg_attr(verus_keep_ghost, verifier::external_derive(erialize))]
 pub enum Taint {
     /// Slot contains no secret-derived data.
     Clean = 0,
@@ -32,6 +34,7 @@ pub enum Taint {
 /// without updating taint). A `SlotCell` makes that state unrepresentable:
 /// an empty slot carries no taint, and a populated slot always carries
 /// exactly one taint marker.
+#[cfg(not(verus_keep_ghost))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SlotCell {
     /// Slot has never been written (or was cleared).
@@ -45,6 +48,7 @@ pub enum SlotCell {
     },
 }
 
+#[cfg(not(verus_keep_ghost))]
 impl SlotCell {
     /// Empty slot constructor.
     #[must_use]

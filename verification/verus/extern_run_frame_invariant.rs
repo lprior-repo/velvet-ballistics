@@ -35,8 +35,8 @@
 //   - `RunFrame::states_snapshot`               <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:75-77
 //   - `RunFrame::slots_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:50-55
 //   - `RunFrame::taint_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-71
-//   - `Taint` discriminant set                  <- crates/vb_core/src/value/taint.rs:15-26
-//   - `SlotCell` representation                 <- crates/vb_core/src/value/taint.rs:36-46
+//   - `Taint` discriminant set                  <- crates/vb_core/src/value/taint.rs:17-28
+//   - `SlotCell` representation                 <- crates/vb_core/src/value/taint.rs:39-49
 //   - `SlotValue` discriminant set              <- crates/vb_core/src/value/slot.rs:14-31
 //   - `CoreError` relevant variants             <- crates/vb_core/src/errors.rs
 //   - `RunId`, `StepIdx`, `SlotIdx`             <- crates/vb_core/src/ids/mod.rs

@@ -1,8 +1,5 @@
 //! Lattice laws over the actual five-variant runtime taint and join body.
 use vstd::prelude::*;
-mod slot {
-    pub use vb_core::SlotValue;
-}
 #[path = "../../crates/vb_core/src/value/taint.rs"]
 mod production;
 

@@ -55,7 +55,7 @@
 //                                           external pure-decision mirror;
 //                                           production table correspondence trusted)
 //   - `SlotCell` representation         <- extern::SlotCell
-//                                          (mirror of crates/vb_core/src/value/taint.rs:36-46)
+//                                          (mirror of crates/vb_core/src/value/taint.rs:39-49)
 //   - `Taint` discriminant set          <- extern::Taint
 //                                          (mirror of value/taint.rs:10-21;
 //                                           Clean=0, DerivedFromSecret=1,
@@ -295,7 +295,7 @@ pub open spec fn spec_valid_step_index(step: int, step_count: int) -> bool {
 }
 
 /// `Taint` validity: every `Taint` variant is a valid write target. The
-/// production `Taint` enum at `crates/vb_core/src/value/taint.rs:15-26` is a
+/// production `Taint` enum at `crates/vb_core/src/value/taint.rs:17-28` is a
 /// closed 5-variant `#[repr(u8)]` enum. `write_slot_with_taint` writes
 /// the input `taint: Taint` directly into a populated cell (no raw u8
 /// conversion), so any closed-enum variant is a valid write.
@@ -759,7 +759,7 @@ pub proof fn proof_valid_dimensions_accepted(first_step: int, step_count: int)
 
 // ============================================================================
 // VB-INV006-VERUS: Taint validity proofs. The production Taint enum at
-// `crates/vb_core/src/value/taint.rs:15-26` has 5 closed variants (was 3 in
+// `crates/vb_core/src/value/taint.rs:17-28` has 5 closed variants (was 3 in
 // the prior vacuum spec; production was always 5). `write_slot_with_taint`
 // writes the input `Taint` directly with no raw u8 conversion, so any
 // variant is a valid write.
