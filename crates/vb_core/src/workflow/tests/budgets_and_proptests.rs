@@ -317,7 +317,10 @@ fn total_steps_budget_parts() -> WorkflowParts {
             budget_node(2, CompiledNodeKind::Nop),
         ],
         1,
-        budget_contract(3, 1),
+        ResourceContract {
+            max_collect_items: 1_000_001,
+            ..budget_contract(3, 1)
+        },
     )
 }
 

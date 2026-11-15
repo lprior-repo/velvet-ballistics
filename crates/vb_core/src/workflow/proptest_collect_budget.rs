@@ -4,8 +4,8 @@
 use crate::budget::{BoundednessPolicy, BudgetDimension, BudgetError, WholeWorkflowBudget};
 use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use crate::workflow::{
-    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
-    ResourceContract, WorkflowError, WorkflowParts, node,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, CompiledWorkflow,
+    ContractResource, InputSlotKind, ResourceContract, WorkflowError, WorkflowParts, node,
 };
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseResult;
@@ -90,10 +90,22 @@ pub(super) fn check_collect_budget(limit: u32, page_size: u32) -> TestCaseResult
     let computed =
         WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract);
     let constructed = CompiledWorkflow::try_from_parts(parts.clone());
+    let within_contract = limit <= parts.resource_contract.max_collect_items
+        && page_size <= parts.resource_contract.max_collect_items;
+    if !within_contract {
+        prop_assert_eq!(
+            &constructed,
+            &Err(WorkflowError::ResourceContractExceeded {
+                resource: ContractResource::CollectItems,
+            })
+        );
+    }
     if steps > u64::from(u32::MAX) {
         let expected = WorkflowError::StepCountOverflow { actual: steps };
         prop_assert_eq!(computed, Err(expected.clone()));
-        prop_assert_eq!(constructed, Err(expected));
+        if within_contract {
+            prop_assert_eq!(constructed, Err(expected));
+        }
         return Ok(());
     }
     let budget = computed.map_err(|error| TestCaseError::fail(format!("budget: {error:?}")))?;
@@ -111,14 +123,19 @@ pub(super) fn check_collect_budget(limit: u32, page_size: u32) -> TestCaseResult
                 limit: policy.max_total_steps,
             })
         );
-        prop_assert_eq!(
-            constructed,
-            Err(WorkflowError::BudgetPolicyExceeded {
-                detail: BudgetDimension::TotalSteps,
-            })
-        );
+        if within_contract {
+            prop_assert_eq!(
+                constructed,
+                Err(WorkflowError::BudgetPolicyExceeded {
+                    detail: BudgetDimension::TotalSteps,
+                })
+            );
+        }
     } else {
         prop_assert_eq!(policy.validate(&budget), Ok(()));
+        if !within_contract {
+            return Ok(());
+        }
         let workflow = constructed
             .map_err(|error| TestCaseError::fail(format!("valid collect rejected: {error:?}")))?;
         prop_assert_eq!(workflow.to_parts(), parts);

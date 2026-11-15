@@ -184,10 +184,10 @@ fn validate_resource_usage(
     )
 }
 
-fn check_actual_within_declared(
+pub(super) fn check_actual_within_declared<T: PartialOrd>(
     resource: ContractResource,
-    actual: usize,
-    declared: usize,
+    actual: T,
+    declared: T,
 ) -> Result<(), WorkflowError> {
     if actual > declared {
         Err(WorkflowError::ResourceContractExceeded { resource })
