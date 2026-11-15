@@ -52,7 +52,20 @@ pub(crate) use full::validate_current_admission;
 pub fn hydrate_run_admission_from_events(
     events: &[vb_storage::JournalEvent],
 ) -> Option<crate::admission::RunAdmission> {
-    budgeted_admission(input_binding::current_admission_event(events)?)
+    let admission = budgeted_admission(input_binding::current_admission_event(events)?)?;
+    let decision = events.iter().find_map(|event| match event {
+        vb_storage::JournalEvent::CompatibilityDecisionEvent { run, decision, .. }
+            if *run == admission.run_id()
+                && decision.boundary == vb_storage::compat::CompatBoundary::IrVersion =>
+        {
+            Some(*decision)
+        }
+        _ => None,
+    });
+    Some(match decision {
+        Some(decision) => admission.with_ir_compat_decision(decision),
+        None => admission,
+    })
 }
 
 fn budgeted_admission(event: &vb_storage::JournalEvent) -> Option<crate::admission::RunAdmission> {

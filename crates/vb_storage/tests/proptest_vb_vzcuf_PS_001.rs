@@ -28,12 +28,13 @@ proptest! {
     #[test]
     fn ps001_encoded_len_min(run in 1u64..1000u64) {
         let event = make_event(run, 0);
-        if let Ok(value) = encode_record(
+        let value = encode_record(
             MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0,
             &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        ) {
-            prop_assert!(value.len() >= RECORD_HEADER_LEN as usize);
-        }
+        ).map_err(|error| proptest::test_runner::TestCaseError::fail(format!("valid RunAccepted encoding failed: {error}")))?;
+        let header_len = usize::try_from(RECORD_HEADER_LEN)
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(format!("header length conversion failed: {error}")))?;
+        prop_assert!(value.len() >= header_len);
     }
     #[test]
     fn ps001_admission_exact(current in 0u64..1000000u64, delta in 1u64..1000000u64) {

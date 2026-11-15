@@ -49,6 +49,7 @@ proptest! {
         let mut batch = JournalWriteBatch::new(&journal);
         let result = batch.append_event(&event);
         prop_assert!(result.is_ok());
+        prop_assert_eq!(batch.len(), 1);
     }
     #[test]
     fn ps008_count_limit(_dummy in proptest::bool::ANY) {

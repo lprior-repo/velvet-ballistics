@@ -973,10 +973,11 @@ fn miri_trace_operations_no_ub() {
     // Drain all events
     let events = ring.drain();
     assert_eq!(events.len(), 3, "all pushed events are drained");
+    assert_eq!(ring.pending_len(), 0, "drain empties pending events");
 
     // Snapshot for a run
     let snap = ring.snapshot_for_run(RunId::new(1), 10);
-    assert_eq!(snap.len(), 0, "empty after drain");
+    assert_eq!(snap, events, "snapshot retains drained event history");
 
     // Push and check terminal detection
     assert!(ring.push(TraceEvent::RunFinished { run: RunId::new(2) }));

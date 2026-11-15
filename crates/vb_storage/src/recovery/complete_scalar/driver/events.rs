@@ -43,6 +43,15 @@ impl Driver<'_> {
 
     fn dispatch_event(&mut self, event: &E) -> RecoveryResult<()> {
         match event {
+            E::RunResumed { .. }
+                if self.accepted
+                    && self.admitted
+                    && self.started
+                    && !self.finished
+                    && !self.terminal =>
+            {
+                Ok(())
+            }
             E::RunAccepted { .. }
             | E::RunAdmission { .. }
             | E::RunAdmissionBudget { .. }

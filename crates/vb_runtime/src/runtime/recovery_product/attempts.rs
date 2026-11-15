@@ -184,7 +184,7 @@ fn attempt_mismatch() -> RuntimeError {
     }
 }
 
-fn action_capacity_mismatch() -> RuntimeError {
+pub(super) fn action_capacity_mismatch() -> RuntimeError {
     RuntimeError::RecoveryCannotResume {
         reason: String::from("pending_action_capacity_mismatch"),
     }
