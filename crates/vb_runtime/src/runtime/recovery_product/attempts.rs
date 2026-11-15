@@ -11,10 +11,25 @@ pub(super) fn validate_owned_run_attempts(
     workflow: &CompiledWorkflow,
     retained: &RecoveredRetainedInputs,
 ) -> RuntimeResult<()> {
-    if !owned_replay_candidate(workflow, retained) {
+    if !owned_replay_candidate(workflow, retained) && !selected_scalar_retry(events, workflow) {
         return Ok(());
     }
     RunAttemptAuthority::validate(events)
+}
+
+fn selected_scalar_retry(events: &[JournalEvent], workflow: &CompiledWorkflow) -> bool {
+    if matches!(
+        events
+            .iter()
+            .rev()
+            .find(|event| !matches!(event, JournalEvent::RunResumed { .. })),
+        Some(JournalEvent::ActionFailedEvent { .. })
+    ) {
+        return false;
+    }
+    events.iter().any(|event| matches!(event, JournalEvent::ActionScheduledTicket { ticket, .. }
+        if ticket.attempt > 1 && workflow.node(ticket.step).is_some_and(|node|
+            matches!(node.kind, CompiledNodeKind::Do { .. }) && node.retry.is_some_and(|policy| policy.delay_ms == 0))))
 }
 
 pub(super) fn validate_pending_action_capacity(
@@ -126,6 +141,7 @@ impl RunAttemptAuthority {
 
     fn apply_attempt_authority(&mut self, event: &JournalEvent) -> RuntimeResult<()> {
         match event {
+            JournalEvent::ActionFailedEvent { .. } => Ok(()),
             JournalEvent::RetryCheckpoint { attempt, .. } => self.authorize_retry(*attempt),
             JournalEvent::RunContinuation { carrier } => {
                 self.advance(carrier.header().actual_attempt())
@@ -187,5 +203,64 @@ fn attempt_mismatch() -> RuntimeError {
 pub(super) fn action_capacity_mismatch() -> RuntimeError {
     RuntimeError::RecoveryCannotResume {
         reason: String::from("pending_action_capacity_mismatch"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RunAttemptAuthority, attempt_mismatch};
+    use vb_core::{ActionId, RunId, StepIdx};
+    use vb_storage::{EventSeq, JournalEvent};
+
+    fn action_failure(attempt: u16) -> JournalEvent {
+        JournalEvent::ActionFailedEvent {
+            run: RunId::new(1),
+            seq: EventSeq::new(1),
+            step: StepIdx::ZERO,
+            action: ActionId::new(0),
+            attempt,
+        }
+    }
+
+    fn next_run_start() -> JournalEvent {
+        JournalEvent::StepStarted {
+            run: RunId::new(1),
+            seq: EventSeq::new(3),
+            step: StepIdx::ZERO,
+            attempt: 2,
+        }
+    }
+
+    #[test]
+    fn action_failure_does_not_authorize_matching_next_run_epoch() {
+        assert_eq!(
+            RunAttemptAuthority::validate(&[action_failure(2), next_run_start()]),
+            Err(attempt_mismatch())
+        );
+    }
+
+    #[test]
+    fn action_failure_breaks_run_failure_checkpoint_adjacency() {
+        let events = [
+            JournalEvent::RunFailedEvent {
+                run: RunId::new(1),
+                seq: EventSeq::ZERO,
+                attempt: 1,
+            },
+            action_failure(1),
+            JournalEvent::RetryCheckpoint {
+                run: RunId::new(1),
+                seq: EventSeq::new(2),
+                attempt: 2,
+                step: StepIdx::ZERO,
+                payload_digest: [0; 32],
+                payload: Vec::new(),
+            },
+            next_run_start(),
+        ];
+        assert_eq!(
+            RunAttemptAuthority::validate(&events),
+            Err(attempt_mismatch())
+        );
     }
 }

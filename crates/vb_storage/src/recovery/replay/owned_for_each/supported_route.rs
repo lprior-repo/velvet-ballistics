@@ -17,6 +17,32 @@ pub(super) fn has_computed_composites(plan: &CompiledWorkflow) -> bool {
     })
 }
 
+pub(super) fn has_selected_immediate_retry(
+    events: &[crate::JournalEvent],
+    plan: &CompiledWorkflow,
+) -> bool {
+    if super::eligibility(plan) != Some(false)
+        || matches!(
+            events
+                .iter()
+                .rev()
+                .find(|event| !matches!(event, crate::JournalEvent::RunResumed { .. })),
+            Some(crate::JournalEvent::ActionFailedEvent { .. })
+        )
+    {
+        return false;
+    }
+    events.iter().any(|event| match event {
+        crate::JournalEvent::ActionScheduledTicket { ticket, .. } if ticket.attempt > 1 => {
+            plan.node(ticket.step).is_some_and(|node| {
+                matches!(node.kind, K::Do { .. })
+                    && node.retry.is_some_and(|policy| policy.delay_ms == 0)
+            })
+        }
+        _ => false,
+    })
+}
+
 pub(super) fn retained_roots_need_checkpoint(
     plan: &CompiledWorkflow,
     roots: &[(vb_core::SlotIdx, SlotValue, vb_core::Taint)],

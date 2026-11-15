@@ -14,6 +14,7 @@ enum Cut {
 pub(super) struct CutJournal {
     inner: StorageRuntimeJournal,
     cut: Mutex<Cut>,
+    historical: Option<Arc<Mutex<Option<Vec<JournalEvent>>>>>,
 }
 
 impl CutJournal {
@@ -21,6 +22,18 @@ impl CutJournal {
         Self {
             inner: StorageRuntimeJournal::strict(journal),
             cut: Mutex::new(Cut::Failure(failure_to_cut)),
+            historical: None,
+        }
+    }
+
+    pub(super) fn historical(
+        journal: Arc<FjallJournal>,
+        failure_to_cut: u16,
+        captured: Arc<Mutex<Option<Vec<JournalEvent>>>>,
+    ) -> Self {
+        Self {
+            historical: Some(captured),
+            ..Self::new(journal, failure_to_cut)
         }
     }
 }
@@ -59,6 +72,30 @@ impl RuntimeJournal for CutJournal {
         seq: EventSeq,
     ) -> RuntimeResult<()> {
         let mut cut = self.cut.lock().map_err(|_| RuntimeError::JournalPoisoned)?;
+        let has_failure = events
+            .iter()
+            .any(|event| matches!(event, RuntimeJournalEvent::ActionFailed { .. }));
+        if matches!(*cut, Cut::Failure(1))
+            && has_failure
+            && let Some(captured) = &self.historical
+        {
+            let converted = events
+                .iter()
+                .enumerate()
+                .map(|(index, event)| {
+                    let offset = u64::try_from(index).map_err(|_| RuntimeError::JournalPoisoned)?;
+                    let seq = seq
+                        .get()
+                        .checked_add(offset)
+                        .ok_or(RuntimeError::JournalPoisoned)?;
+                    self.inner
+                        .convert_to_storage_event(event.clone(), EventSeq::new(seq))
+                })
+                .collect::<RuntimeResult<Vec<_>>>()?;
+            *captured.lock().map_err(|_| RuntimeError::JournalPoisoned)? = Some(converted);
+            *cut = Cut::Resume;
+            return Err(RuntimeError::JournalPoisoned);
+        }
         match *cut {
             Cut::Drive => {
                 *cut = Cut::Resume;

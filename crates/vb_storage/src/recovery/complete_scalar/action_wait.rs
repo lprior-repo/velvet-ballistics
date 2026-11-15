@@ -18,7 +18,11 @@ pub(super) struct ScheduledAction {
     pub(super) ticket: ActionTicket,
     pub(super) output: SlotIdx,
     pub(super) abi_digest: WorkflowDigest,
+    pub(super) input: SlotIdx,
 }
+
+#[path = "action_retry.rs"]
+mod action_retry;
 
 impl Driver<'_> {
     pub(super) fn pending_boundary(&self) -> bool {
@@ -89,6 +93,7 @@ impl Driver<'_> {
             || input != *expected_input
             || node.output.slot() != Some(output)
             || ticket.attempt == 0
+            || ticket.run_attempt != self.active_run_attempt
             || ticket.capacity != expected_capacity
         {
             return Err(invalid(
@@ -96,15 +101,23 @@ impl Driver<'_> {
                 "action ticket differs from compiled Do",
             ));
         }
+        self.validate_retry_schedule(ticket)?;
         self.action = Some(ScheduledAction {
             ticket,
             output,
             abi_digest,
+            input,
         });
         Ok(())
     }
 
-    pub(super) fn action_failed(&mut self, step: StepIdx) -> RecoveryResult<()> {
+    pub(super) fn action_failed(
+        &mut self,
+        step: StepIdx,
+        action_id: vb_core::ActionId,
+        attempt: u16,
+        tail: &[crate::JournalEvent],
+    ) -> RecoveryResult<()> {
         let (active, action) = self
             .active
             .as_ref()
@@ -121,6 +134,18 @@ impl Driver<'_> {
         {
             return Err(invalid(step, "action failure authority mismatch"));
         }
+        self.validate_failed_schedule(step, action_id, attempt)?;
+        if let Some(ticket) = self.selected_immediate_retry(tail)? {
+            self.frame
+                .mark_waiting(step)
+                .and_then(|()| self.frame.set_pc(step))
+                .map_err(|error| invalid(step, error.to_string()))?;
+            self.retry_ticket = Some(ticket);
+            self.action = None;
+            self.active = None;
+            return Ok(());
+        }
+        self.require_failure_outcome(tail)?;
         self.frame
             .mark_failed(step)
             .map_err(|e| invalid(step, e.to_string()))?;

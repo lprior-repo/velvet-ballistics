@@ -156,7 +156,11 @@ pub(crate) fn classify_full_recovery_resume(
 pub(crate) fn run_is_currently_terminal(events: &[vb_storage::JournalEvent]) -> bool {
     let mut current_attempt = 1u16;
     for event in events {
-        if matches!(event, vb_storage::JournalEvent::RetryCheckpoint { .. }) {
+        if matches!(
+            event,
+            vb_storage::JournalEvent::RetryCheckpoint { .. }
+                | vb_storage::JournalEvent::ActionFailedEvent { .. }
+        ) {
             continue;
         }
         if let Some(attempt) = event.attempt()

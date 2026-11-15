@@ -1,7 +1,11 @@
 #![forbid(unsafe_code)]
 
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
+
 /// State that durable headers/events still cannot reconstruct into a live frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_verify)]
 pub struct UnsupportedRecoveryState {
     /// Slot values are not present in current slot-written records.
     pub slot_values: bool,
@@ -13,6 +17,7 @@ pub struct UnsupportedRecoveryState {
     pub pending_actions: bool,
 }
 
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_verify)]
 impl UnsupportedRecoveryState {
     /// Recovery state is fully supported by the runtime hydration boundary.
     pub const SUPPORTED: Self = Self {
@@ -51,6 +56,12 @@ impl UnsupportedRecoveryState {
 
     /// Combines two support descriptors without permitting contradictory states.
     #[must_use]
+    #[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out => ensures
+        out.slot_values == (self.slot_values || other.slot_values),
+        out.slot_taint == (self.slot_taint || other.slot_taint),
+        out.action_payloads == (self.action_payloads || other.action_payloads),
+        out.pending_actions == (self.pending_actions || other.pending_actions),
+    ))]
     pub const fn union(self, other: Self) -> Self {
         Self {
             slot_values: self.slot_values || other.slot_values,
@@ -62,6 +73,9 @@ impl UnsupportedRecoveryState {
 
     /// Production proof surface for `SUPPORTED`: every unsupported flag is false.
     #[must_use]
+    #[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out => ensures
+        out == (!self.slot_values && !self.slot_taint && !self.action_payloads && !self.pending_actions),
+    ))]
     pub const fn is_fully_supported(self) -> bool {
         !self.slot_values && !self.slot_taint && !self.action_payloads && !self.pending_actions
     }

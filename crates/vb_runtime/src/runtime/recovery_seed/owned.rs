@@ -52,4 +52,12 @@ fn is_owned_replay_candidate(
             retained_inputs.initial_inputs(),
             input_store,
         )
+        || (0..workflow.node_count()).any(|raw| {
+            workflow
+                .node(vb_core::StepIdx::new(raw))
+                .is_some_and(|node| {
+                    matches!(node.kind, vb_core::CompiledNodeKind::Do { .. })
+                        && node.retry.is_some_and(|policy| policy.delay_ms == 0)
+                })
+        })
 }

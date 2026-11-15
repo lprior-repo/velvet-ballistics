@@ -13,8 +13,12 @@ mod attempt_identity;
 mod cut;
 #[path = "runtime_immediate_retry_containment/fixture.rs"]
 mod fixture;
+#[path = "runtime_immediate_retry_containment/historical.rs"]
+mod historical;
 #[path = "runtime_immediate_retry_containment/preservation.rs"]
 mod preservation;
+#[path = "runtime_immediate_retry_containment/selected.rs"]
+mod selected;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const RUN: RunId = RunId::new(92421);
@@ -91,9 +95,11 @@ fn strict_owned_resumed_retry_with_handler_is_refused_cold() -> TestResult {
 }
 
 fn ambiguous(handler: bool, resumed: bool, owned: bool) -> TestResult {
+    // Historical failure-only prefixes remain ambiguous after atomic retry issuance.
+    // The optional real resume payload is explicitly composed hostile metadata.
     let directory = tempfile::tempdir()?;
     let path = directory.path().join("journal");
-    let (journal, live, issued) = fixture::crashed(&path, handler, resumed, owned)?;
+    let (journal, issued) = fixture::crashed(&path, handler, resumed, owned)?;
     let prefix = journal.events_for_run_full(RUN)?;
     assert_eq!(
         prefix
@@ -120,7 +126,6 @@ fn ambiguous(handler: bool, resumed: bool, owned: bool) -> TestResult {
         .ok_or("actual admission absent")?;
     let receipt = fixture::receipt(&journal, &workflow, artifact)?;
     assert_eq!(receipt.0, owned);
-    drop(live);
     drop(journal);
     let before = rows(&path)?;
     let journal = Arc::new(FjallJournal::open(&path, None)?);
@@ -164,7 +169,7 @@ fn ambiguous(handler: bool, resumed: bool, owned: bool) -> TestResult {
 fn resolved_scalar_failure_with_wrong_compiled_capacity_is_refused_without_mutation() -> TestResult
 {
     let directory = tempfile::tempdir()?;
-    let (journal, live, issued) = fixture::crashed(directory.path(), true, false, false)?;
+    let (journal, issued) = fixture::crashed(directory.path(), true, false, false)?;
     let mut schedule = journal
         .events_for_run_full(RUN)?
         .into_iter()
@@ -176,14 +181,17 @@ fn resolved_scalar_failure_with_wrong_compiled_capacity_is_refused_without_mutat
     }
     let workflow =
         vb_compile::compile_workflow(fixture::source(true, Some((3, "0ms"))).as_bytes())?;
-    let artifact = live
-        .inspect_run_state(RUN)?
-        .admission
-        .as_ref()
-        .ok_or("actual admission absent")?
-        .artifact_digest();
+    let artifact = journal
+        .events_for_run_full(RUN)?
+        .iter()
+        .find_map(|event| match event {
+            JournalEvent::RunAdmissionBudget {
+                artifact_digest, ..
+            } => Some(*artifact_digest),
+            _ => None,
+        })
+        .ok_or("actual admission absent")?;
     let receipt = fixture::receipt(&journal, &workflow, artifact)?;
-    drop(live);
     drop(journal);
     {
         let database = fjall::Database::builder(directory.path()).open()?;

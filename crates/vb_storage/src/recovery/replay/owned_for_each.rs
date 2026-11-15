@@ -109,7 +109,7 @@ fn can_replay_owned_trace(
 ) -> bool {
     let controls = is_owned_for_each_contract(plan);
     let source = is_owned_input_replay_contract(plan, initial_inputs, store_checkpoint);
-    (controls || source)
+    (controls || source || supported_route::has_selected_immediate_retry(events, plan))
         && !events
             .iter()
             .any(super::owned_for_each_summary::unsupported_replay_event)

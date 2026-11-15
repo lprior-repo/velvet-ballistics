@@ -106,9 +106,20 @@ fn selected_failure_outcome(
         }) => {
             *run == failed.run
                 && *attempt == ticket.run_attempt
-                && crate::recovery::handler_route_for_failure(workflow, failed.step)
+                && (crate::recovery::handler_route_for_failure(workflow, failed.step)
                     .is_some_and(|route| route.handler == *step)
+                    || selected_retry_ticket(failed, ticket, *step))
         }
         _ => false,
     }
+}
+
+fn selected_retry_ticket(failed: &FailedAction<'_>, previous: ActionTicket, step: StepIdx) -> bool {
+    if step != failed.step {
+        return false;
+    }
+    matches!(failed.tail.get(1), Some(JournalEvent::ActionScheduledTicket { run, ticket, .. })
+        if *run == failed.run && ticket.run == failed.run && ticket.step == step
+            && ticket.action == previous.action && ticket.run_attempt == previous.run_attempt
+            && previous.attempt.checked_add(1) == Some(ticket.attempt))
 }

@@ -8,10 +8,10 @@ use crate::recovery::types::RecoveryError;
 mod admission;
 
 impl Driver<'_> {
-    pub(super) fn apply_bound_event(&mut self, event: &E) -> RecoveryResult<()> {
+    pub(super) fn apply_bound_event(&mut self, event: &E, tail: &[E]) -> RecoveryResult<()> {
         self.validate_sequence(event)?;
         self.close_admission_prefix(event);
-        self.dispatch_event(event)?;
+        self.dispatch_event(event, tail)?;
         self.validate_step_budget()
     }
 
@@ -41,7 +41,7 @@ impl Driver<'_> {
         Ok(())
     }
 
-    fn dispatch_event(&mut self, event: &E) -> RecoveryResult<()> {
+    fn dispatch_event(&mut self, event: &E, tail: &[E]) -> RecoveryResult<()> {
         match event {
             E::RunResumed { .. }
                 if self.accepted
@@ -73,7 +73,7 @@ impl Driver<'_> {
             | E::AskAnsweredEvent { .. }
             | E::AskTimedOutEvent { .. }
             | E::ActionFailedEvent { .. }
-            | E::RunFailedEvent { .. } => self.apply_execution_event(event),
+            | E::RunFailedEvent { .. } => self.apply_execution_event(event, tail),
             E::ActionScheduledTicket { .. } | E::ActionCompletedEnvelope { .. } => {
                 self.apply_action_event(event)
             }
@@ -85,10 +85,13 @@ impl Driver<'_> {
         }
     }
 
-    fn apply_execution_event(&mut self, event: &E) -> RecoveryResult<()> {
+    fn apply_execution_event(&mut self, event: &E, tail: &[E]) -> RecoveryResult<()> {
         match event {
-            E::StepStarted { step, .. } if self.accepted && self.admitted => {
+            E::StepStarted { step, attempt, .. }
+                if self.accepted && self.admitted && *attempt > 0 =>
+            {
                 self.started = true;
+                self.active_run_attempt = *attempt;
                 self.start(*step)
             }
             E::SlotWrittenEvent {
@@ -104,7 +107,12 @@ impl Driver<'_> {
             E::AskScheduledEvent { step, .. } => self.scheduled_ask(*step),
             E::AskAnsweredEvent { step, .. } => self.answered_ask(*step),
             E::AskTimedOutEvent { step, .. } => self.timed_out_ask(*step),
-            E::ActionFailedEvent { step, .. } => self.action_failed(*step),
+            E::ActionFailedEvent {
+                step,
+                action,
+                attempt,
+                ..
+            } => self.action_failed(*step, *action, *attempt, tail),
             E::RunFailedEvent { .. } if self.active.is_none() => {
                 self.terminal = true;
                 Ok(())

@@ -286,5 +286,7 @@ mod gate_retry_ticket;
 mod gate_ticket_binding;
 #[path = "cases/gate_ticket_boundaries.rs"]
 mod gate_ticket_boundaries;
+#[path = "cases/immediate_retry.rs"]
+mod immediate_retry;
 #[path = "cases/owned_submission.rs"]
 mod owned_submission;

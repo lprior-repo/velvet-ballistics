@@ -130,6 +130,9 @@ impl Shard {
         if preflight.outcome == ActionFailureOutcome::RetryNow {
             self.can_retry(run)?;
         }
+        if self.commit_immediate_retry(run, &preflight, code)? {
+            return Ok(());
+        }
         let retry_timer = self.prepare_retry_timer(run, &preflight)?;
         let budget_exceeded =
             self.append_action_failure_events(run, &preflight, retry_timer.as_ref())?;
@@ -221,3 +224,4 @@ impl Shard {
 }
 
 include!("completion_helpers.rs");
+include!("immediate_retry.rs");

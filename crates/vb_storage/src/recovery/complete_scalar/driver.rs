@@ -24,6 +24,9 @@ pub(super) struct Driver<'a> {
     pub(super) finished: bool,
     terminal: bool,
     pub(super) action: Option<ScheduledAction>,
+    pub(super) retry_ticket: Option<vb_core::ActionTicket>,
+    pub(super) issued_action_attempts: Box<[u16]>,
+    pub(super) active_run_attempt: u16,
     pub(super) waiting: Option<(StepIdx, u16)>,
     pub(super) mode: TraceReplayMode,
     pub(super) run_id: vb_core::RunId,
@@ -99,9 +102,13 @@ pub(crate) fn replay_with_inputs_and_store_and_collect_snapshots(
 ) -> RecoveryResult<(RunFrame, ValueStore, Vec<OwnedCollectReplaySnapshot>)> {
     let run_id = first_run_id(events, plan)?;
     let mut driver = replay_driver(plan, input, run_id)?;
-    events
-        .iter()
-        .try_for_each(|event| driver.apply_bound_event(event))?;
+    events.iter().enumerate().try_for_each(|(index, event)| {
+        let tail = index
+            .checked_add(1)
+            .and_then(|next| events.get(next..))
+            .ok_or_else(|| invalid(plan.entry(), "bound event index overflow"))?;
+        driver.apply_bound_event(event, tail)
+    })?;
     driver.finish(input.mode)
 }
 
@@ -135,6 +142,9 @@ fn replay_driver<'a>(
         finished: false,
         terminal: false,
         action: None,
+        retry_ticket: None,
+        issued_action_attempts: vec![0; usize::from(plan.node_count())].into_boxed_slice(),
+        active_run_attempt: 1,
         waiting: None,
         mode: input.mode,
         run_id,

@@ -65,17 +65,35 @@ impl Shard {
         }
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
+        self.publish_awaiting_action_plan(run, (journal_events, trace_events, state, ticket, step))
+    }
+
+    fn publish_awaiting_action_plan(
+        &mut self,
+        run: RunId,
+        (_, trace_events, state, ticket, step): AwaitingActionPlan,
+    ) -> Result<(), DriveApplyFailure> {
+        self.fencing_tokens.restore(run, ticket.fencing_token);
         self.push_trace_events(trace_events);
         self.trace_ring
             .push(TraceEvent::ActionScheduled { run, step });
         self.add_executed_step_delta(run, state.frame.executed());
-        self.run_state_insert(run, state)
+        self.publish_awaiting_action_state(run, state)
             .map_err(DriveApplyFailure::AfterCommit)?;
         self.pending_action_insert(run, ticket)
             .map_err(DriveApplyFailure::AfterCommit)?;
         self.clear_matching_action_timer(run, step);
         self.apply(run, RuntimeEvent::AwaitAction)
             .map_err(DriveApplyFailure::AfterCommit)
+    }
+
+    fn publish_awaiting_action_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
+        if let Some(current) = self.run_state_get_mut(run) {
+            *current = state;
+            Ok(())
+        } else {
+            self.run_state_insert(run, state).map(|_| ())
+        }
     }
 
     fn clear_matching_action_timer(&mut self, run: RunId, step: StepIdx) {

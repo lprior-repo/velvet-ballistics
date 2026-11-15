@@ -40,6 +40,21 @@ impl FencingTokens {
         token
     }
 
+    pub(crate) fn prepare_mint(&mut self, run: RunId) -> crate::RuntimeResult<FencingToken> {
+        let token = self
+            .next
+            .checked_add(1)
+            .ok_or(crate::RuntimeError::UnsupportedOperation {
+                operation: "action_fencing_exhausted",
+            })?;
+        if !self.current.contains_key(&run) {
+            self.current
+                .try_reserve(1)
+                .map_err(|_| crate::RuntimeError::from(vb_storage::JournalError::QueueFull))?;
+        }
+        Ok(token)
+    }
+
     /// Records a token read back from the journal during recovery.
     ///
     /// Zero is ignored: it carries no ordering information, and overwriting a
@@ -115,5 +130,34 @@ mod tests {
         let minted = tokens.mint(RUN);
         tokens.restore(RUN, 0);
         assert!(tokens.accepts(RUN, minted));
+    }
+
+    #[test]
+    fn prepared_token_keeps_old_authority_until_publication() -> crate::RuntimeResult<()> {
+        let mut tokens = FencingTokens::new();
+        let old = tokens.mint(RUN);
+        let staged = tokens.prepare_mint(RUN)?;
+        assert_eq!(Some(staged), old.checked_add(1));
+        assert!(tokens.accepts(RUN, old));
+        assert!(!tokens.accepts(RUN, staged));
+        assert_eq!(tokens.next, old);
+        tokens.restore(RUN, staged);
+        assert!(!tokens.accepts(RUN, old));
+        assert!(tokens.accepts(RUN, staged));
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_token_refuses_exhaustion_without_saturation() {
+        let mut tokens = FencingTokens::new();
+        tokens.restore(RUN, u64::MAX);
+        assert_eq!(
+            tokens.prepare_mint(RUN),
+            Err(crate::RuntimeError::UnsupportedOperation {
+                operation: "action_fencing_exhausted",
+            })
+        );
+        assert!(tokens.accepts(RUN, u64::MAX));
+        assert_eq!(tokens.next, u64::MAX);
     }
 }

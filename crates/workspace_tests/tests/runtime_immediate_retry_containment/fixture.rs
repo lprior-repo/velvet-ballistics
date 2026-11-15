@@ -6,11 +6,10 @@ use std::{
 };
 use vb_core::action::ActionName;
 use vb_core::{
-    ActionContract, ActionFailureCode, ActionTicket, CapabilitySet, CompiledWorkflow,
-    RuntimePolicy, SlotValue, Taint, ValueStore, WorkflowDigest,
+    ActionContract, ActionTicket, CapabilitySet, CompiledWorkflow, RuntimePolicy, SlotValue, Taint,
+    ValueStore, WorkflowDigest,
 };
 use vb_runtime::{
-    RuntimeError,
     journal::{SharedRuntimeJournal, StorageRuntimeJournal},
     runtime::Runtime,
 };
@@ -81,6 +80,25 @@ pub(super) fn pending_at_failure(
     owned: bool,
     failure_to_cut: Option<u16>,
 ) -> TestResult<(Arc<FjallJournal>, Runtime, ActionTicket)> {
+    pending_with_adapter(
+        path,
+        handler,
+        retry,
+        owned,
+        |journal| match failure_to_cut {
+            Some(failure) => Arc::new(cut::CutJournal::new(journal, failure)),
+            None => StorageRuntimeJournal::shared_strict(journal),
+        },
+    )
+}
+
+pub(super) fn pending_with_adapter(
+    path: &Path,
+    handler: bool,
+    retry: Option<(u16, &str)>,
+    owned: bool,
+    adapter: impl FnOnce(Arc<FjallJournal>) -> SharedRuntimeJournal,
+) -> TestResult<(Arc<FjallJournal>, Runtime, ActionTicket)> {
     let source = source(handler, retry);
     let workflow = vb_compile::compile_workflow(source.as_bytes())?;
     let journal = Arc::new(FjallJournal::open(path, None)?);
@@ -96,11 +114,7 @@ pub(super) fn pending_at_failure(
             &[contract.clone()],
         )?;
     }
-    let adapter: SharedRuntimeJournal = match failure_to_cut {
-        Some(failure) => Arc::new(cut::CutJournal::new(journal.clone(), failure)),
-        None => StorageRuntimeJournal::shared_strict(journal.clone()),
-    };
-    let mut live = runtime(adapter)?;
+    let mut live = runtime(adapter(journal.clone()))?;
     if owned {
         live.activate_owned_submission(RUN, source_digest)?;
     } else {
@@ -188,23 +202,6 @@ pub(super) fn crashed(
     handler: bool,
     resumed: bool,
     owned: bool,
-) -> TestResult<(Arc<FjallJournal>, Runtime, ActionTicket)> {
-    let (journal, mut live, issued) = pending(path, handler, Some((3, "0ms")), owned, true)?;
-    live.fail_action(issued, ActionFailureCode::Timeout.into())?;
-    assert_eq!(live.tick_all(), Err(RuntimeError::JournalPoisoned));
-    let state = live.inspect_run_state(RUN)?;
-    assert_eq!(state.frame.pc(), issued.step);
-    assert_eq!(
-        state.frame.step_state(issued.step)?,
-        vb_core::StepState::Waiting
-    );
-    assert_eq!(
-        state.action_attempts.get(usize::from(issued.step.get())),
-        Some(&2)
-    );
-    if resumed {
-        live.resume_run(RUN)?;
-        assert_eq!(live.tick_all(), Err(RuntimeError::JournalPoisoned));
-    }
-    Ok((journal, live, issued))
+) -> TestResult<(Arc<FjallJournal>, ActionTicket)> {
+    super::historical::prefix(path, handler, resumed, owned, 1)
 }
