@@ -511,6 +511,28 @@ pub enum SpecNodeKind {
     },
     Jump { target: u32 },
     Finish { result: u32 },
+    ForEachConcurrentStart {
+        input: u32,
+        item_slot: u32,
+        limit: u32,
+        at_once: u32,
+        body: u32,
+        join: u32,
+    },
+    TogetherConcurrentStart {
+        branch_count: u32,
+        join: u32,
+    },
+    FirstSuccessStart {
+        branch_count: u32,
+        join: u32,
+    },
+    ConcurrentLaneEnd {
+        owner: u32,
+        /// `result.is_some()` flattened to 1, else 0.
+        has_result: u8,
+    },
+    ConcurrentGroupJoin { owner: u32 },
 }
 /// Mirrors the production `CompiledNode` at
 /// `crates/vb_core/src/workflow/node.rs:14-25`.
@@ -947,6 +969,11 @@ pub const fn spec_node_kind_retry_check() -> u32 { 30 }
 pub const fn spec_node_kind_error_handler() -> u32 { 31 }
 pub const fn spec_node_kind_jump() -> u32 { 32 }
 pub const fn spec_node_kind_finish() -> u32 { 33 }
+pub const fn spec_node_kind_foreach_concurrent_start() -> u32 { 34 }
+pub const fn spec_node_kind_together_concurrent_start() -> u32 { 35 }
+pub const fn spec_node_kind_first_success_start() -> u32 { 36 }
+pub const fn spec_node_kind_concurrent_lane_end() -> u32 { 37 }
+pub const fn spec_node_kind_concurrent_group_join() -> u32 { 38 }
 /// Sentinel for "no reference present" on `next_step`,
 /// `on_error_step`, `out_slot`, `error_slot`. Production stores
 /// `Option<StepIdx> / Option<SlotIdx>`; the projection flattens
