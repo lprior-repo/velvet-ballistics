@@ -4,40 +4,21 @@ impl Shard {
         run: RunId,
         boundary: crate::recovery::RecoveredTimerSuspension,
         kind: PendingTimerKind,
+        pending: Option<PendingTimer>,
     ) -> RuntimeResult<()> {
-        self.restore_recovered_timer(run, boundary.step(), boundary.boundary_seq(), kind)
-    }
-
-    /// Re-arms a recovered timer suspension from its timeout slot.
-    ///
-    /// Covers waiting waits and timed asks. Wall-clock instants are not
-    /// durable, so the deadline is the full timeout from the recovery point
-    /// (the same helper the live drive path uses), never an expired instant
-    /// that would fire spuriously.
-    fn restore_recovered_timer(
-        &mut self,
-        run: RunId,
-        step: StepIdx,
-        boundary_seq: vb_storage::EventSeq,
-        kind: PendingTimerKind,
-    ) -> RuntimeResult<()> {
-        let deadline = match self.run_state_get(run) {
-            Some(state) => awaiting_deadline(state, step),
-            None => return Err(RuntimeError::RunNotFound),
-        };
-        let generation = boundary_seq
+        let timer = pending.ok_or(RuntimeError::InvalidTimerFire)?;
+        let expected_generation = boundary
+            .boundary_seq()
             .get()
             .checked_add(1)
             .ok_or(RuntimeError::InvalidTimerFire)?;
-        self.pending_timer_insert(
-            run,
-            PendingTimer {
-                step,
-                kind,
-                generation,
-                deadline,
-            },
-        )?;
+        if timer.step != boundary.step()
+            || timer.kind != kind
+            || timer.generation != expected_generation
+        {
+            return Err(RuntimeError::InvalidTimerFire);
+        }
+        self.pending_timer_insert(run, timer)?;
         Ok(())
     }
 

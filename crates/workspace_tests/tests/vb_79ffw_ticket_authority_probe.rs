@@ -170,7 +170,8 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
         .map_err(|e| format!("artifact submit failed: {e}"))?;
 
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
         runtime
             .submit_direct_with_inputs_grants_and_contracts(
                 run,
@@ -213,7 +214,8 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
         let _workflow = retry_action_workflow()?;
         let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
 
         runtime
             .recover_retry(run, checkpoint1, next_seq1)
@@ -250,7 +252,8 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
         let _workflow = retry_action_workflow()?;
         let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
 
         runtime
             .recover_retry(run, checkpoint2, next_seq2)
@@ -455,7 +458,8 @@ fn future_run_attempt_ticket_rejected() -> Result<(), String> {
     .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,
@@ -524,7 +528,8 @@ fn zero_run_attempt_ticket_rejected() -> Result<(), String> {
     .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,
@@ -592,7 +597,8 @@ fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
         .map_err(|e| format!("artifact submit failed: {e}"))?;
 
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
         runtime
             .submit_direct_with_inputs_grants_and_contracts(
                 run,
@@ -629,7 +635,8 @@ fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
         let _workflow = retry_action_workflow()?;
         let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
 
         runtime
             .recover_retry(run, checkpoint, next_seq)

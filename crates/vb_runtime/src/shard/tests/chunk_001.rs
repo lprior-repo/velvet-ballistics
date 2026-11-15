@@ -203,7 +203,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
 #[test]
 fn action_failed_routes_to_nearby_error_handler() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = action_with_error_handler_workflow() else {
         return;
     };
@@ -237,7 +237,7 @@ fn action_failed_routes_to_nearby_error_handler() {
 #[test]
 fn action_failed_without_error_handler_fails_run() -> Result<(), Box<dyn Error>> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = suspended_workflow().ok_or("no workflow")?;
     let run = super::RunId::new(302);
 
@@ -269,7 +269,7 @@ fn action_failed_without_error_handler_fails_run() -> Result<(), Box<dyn Error>>
 #[test]
 fn submit_rejects_duplicate_run_id() -> Result<(), Box<dyn Error>> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = suspended_workflow().ok_or("no workflow")?;
     let run = super::RunId::new(451);
 

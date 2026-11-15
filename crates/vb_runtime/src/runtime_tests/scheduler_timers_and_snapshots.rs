@@ -6,7 +6,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf1) = wait_then_finish_workflow() else {
             return;
         };
@@ -77,7 +77,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf1) = action_then_finish_workflow() else {
             return;
         };
@@ -174,7 +174,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
         // Use the finished_workflow (SetConst -> Finish, 2 steps)
         let Some(wf) = finished_workflow() else {
             return;
@@ -202,7 +202,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -234,7 +234,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -253,7 +253,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -271,7 +271,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
 
         assert_eq!(
             runtime.tick_shard(0, ShardDirective::Migrate { target: 0 }),
@@ -288,7 +288,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -312,7 +312,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -331,7 +331,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -362,7 +362,7 @@
     fn pending_boundary_snapshot_reports_empty_state() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(2)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let snapshot = runtime.pending_boundary_snapshot(8);
         assert_eq!(snapshot.shards().len(), 2);
         assert_snapshot_counts(&snapshot, 0, 0, 0, 0, false);
@@ -380,7 +380,7 @@
     fn pending_boundary_snapshot_reports_populated_boundaries() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let action_workflow = suspended_workflow()
             .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
         let ask_workflow =
@@ -442,7 +442,7 @@
     fn pending_boundary_snapshot_reports_ask_without_timeout() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let workflow = ask_without_timeout_workflow()
             .ok_or_else(|| String::from("ask without timeout workflow fixture failed"))?;
         let ask_run = vb_core::ids::RunId::new(12);
@@ -470,7 +470,7 @@
     fn pending_boundary_snapshot_bounds_truncates_and_repeats_read_only() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let action_workflow = suspended_workflow()
             .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
         let timed_ask_workflow = ask_waiting_workflow()

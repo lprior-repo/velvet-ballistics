@@ -179,13 +179,19 @@ pub(crate) enum Command {
     },
     Answer {
         run_id: String,
-        step: u16,
+        selector: super::AnswerSelector,
         value_file: PathBuf,
         db: PathBuf,
         output: OutputFormat,
     },
     Graph {
         workflow: PathBuf,
+        output: OutputFormat,
+    },
+    WorkflowDiff {
+        workflow: PathBuf,
+        against: Option<PathBuf>,
+        db: Option<PathBuf>,
         output: OutputFormat,
     },
     Diff {

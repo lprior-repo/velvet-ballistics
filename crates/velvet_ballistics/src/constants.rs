@@ -25,7 +25,7 @@ commands:
   doctor     [--db <path>] [--emit text|yaml|postcard]
   answer     <run_id> --step <N> --value-file <file> --db <path> [--emit text|yaml|postcard]
   graph      <workflow.yaml> [--emit text|yaml|postcard]
-  diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]
+  diff       <workflow.yaml> [--against <old.yaml> | --db <path>] [--emit text|yaml|postcard]\n  diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]
   incident   <run_id> --db <path> [--emit text|yaml|postcard]
   submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]
   simulate   <workflow.yaml> [--emit text|yaml|postcard]

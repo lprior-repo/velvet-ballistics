@@ -58,6 +58,7 @@ pub(super) fn runtime(journal: &Arc<FjallJournal>, queue: &Arc<JournalWriterQueu
             Arc::clone(queue),
         )),
     )
+    .expect("valid test configuration")
 }
 
 pub(super) fn accept_workflow(

@@ -159,7 +159,8 @@ fn produce_failed_attempt(
     .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = vb_runtime::journal::StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,
@@ -198,7 +199,8 @@ fn recover_and_schedule(
 ) -> Result<Runtime, String> {
     let journal = Arc::new(FjallJournal::open(path, None).map_err(|e| e.to_string())?);
     let shared = vb_runtime::journal::StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
     runtime
         .recover_retry(run, checkpoint, next_seq)
         .map_err(|e| format!("recover_retry failed: {e}"))?;

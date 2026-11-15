@@ -89,6 +89,7 @@ pub(super) fn open(journal: Arc<FjallJournal>) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
+    .expect("valid test configuration")
 }
 
 pub(super) struct Shape {

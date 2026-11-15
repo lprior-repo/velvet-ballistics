@@ -80,6 +80,20 @@ impl FrameSeedAccumulator {
     /// Applies a single event to the accumulator, returning the updated
     /// accumulator or a `RecoveryError` on divergence / overflow.
     pub(super) fn apply(mut self, event: &JournalEvent) -> RecoveryResult<Self> {
+        self.validate_event_identity(event)?;
+        self.summary.last_seq = event.seq();
+        if !matches!(
+            event,
+            JournalEvent::ActionCompletedEnvelope { .. }
+                | JournalEvent::ActionScheduledTicket { .. }
+        ) {
+            apply_summary_event(&mut self.summary, event);
+        }
+        self.apply_frame_event(event)
+            .map(|accumulator| accumulator.record_succeeded_output(event))
+    }
+
+    fn validate_event_identity(&self, event: &JournalEvent) -> RecoveryResult<()> {
         if event.run_id() != self.run {
             return Err(RecoveryError::ReplayDivergence {
                 step: StepIdx::ZERO,
@@ -95,15 +109,16 @@ impl FrameSeedAccumulator {
                 ),
             });
         }
-        self.summary.last_seq = event.seq();
-        if !matches!(
-            event,
-            JournalEvent::ActionCompletedEnvelope { .. }
-                | JournalEvent::ActionScheduledTicket { .. }
-        ) {
-            apply_summary_event(&mut self.summary, event);
+        Ok(())
+    }
+
+    fn record_succeeded_output(self, event: &JournalEvent) -> Self {
+        match event {
+            JournalEvent::StepSucceeded { output, .. } if *output != SlotIdx::ZERO => {
+                self.record_slot(*output)
+            }
+            _ => self,
         }
-        self.apply_frame_event(event)
     }
 
     fn apply_frame_event(mut self, event: &JournalEvent) -> RecoveryResult<Self> {

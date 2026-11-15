@@ -9,6 +9,8 @@ use fixtures::*;
 
 #[path = "cases/actions.rs"]
 mod actions;
+#[path = "cases/answer_slot.rs"]
+mod answer_slot;
 #[path = "cases/negative.rs"]
 mod negative;
 #[path = "cases/positive.rs"]

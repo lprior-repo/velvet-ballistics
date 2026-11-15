@@ -55,13 +55,22 @@ fn valid_parts() -> WorkflowParts {
 mod resource_contract_too_large {
     use super::*;
 
-    /// max_steps is u16-bounded and accepts the maximum representable declaration.
+    /// max_steps accepts the hard limit and rejects the next value.
     #[test]
-    fn accepts_max_steps_at_type_max() {
+    fn step_declaration_matches_hard_limit() {
         let mut parts = valid_parts();
-        parts.resource_contract.max_steps = u16::MAX;
-
+        parts.resource_contract.max_steps =
+            u16::try_from(MAX_STEPS_PER_WORKFLOW).unwrap_or(u16::MAX);
         assert_eq!(validate_resource_contract(&parts), Ok(()));
+
+        parts.resource_contract.max_steps =
+            u16::try_from(MAX_STEPS_PER_WORKFLOW.saturating_add(1)).unwrap_or(u16::MAX);
+        assert!(matches!(
+            validate_resource_contract(&parts),
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: crate::workflow::ContractResource::Steps
+            })
+        ));
     }
 
     /// max_slots is u16-bounded and accepts the maximum representable declaration.
@@ -73,13 +82,21 @@ mod resource_contract_too_large {
         assert_eq!(validate_resource_contract(&parts), Ok(()));
     }
 
-    /// max_constants is u16-bounded and accepts the maximum representable declaration.
+    /// max_constants accepts the hard limit and rejects the next value.
     #[test]
-    fn accepts_max_constants_at_type_max() {
+    fn constant_declaration_matches_hard_limit() {
         let mut parts = valid_parts();
-        parts.resource_contract.max_constants = u16::MAX;
-
+        parts.resource_contract.max_constants = u16::try_from(MAX_CONSTANTS).unwrap_or(u16::MAX);
         assert_eq!(validate_resource_contract(&parts), Ok(()));
+
+        parts.resource_contract.max_constants =
+            u16::try_from(MAX_CONSTANTS.saturating_add(1)).unwrap_or(u16::MAX);
+        assert!(matches!(
+            validate_resource_contract(&parts),
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: crate::workflow::ContractResource::Constants
+            })
+        ));
     }
 
     /// max_accessors declared > MAX_ACCESSORS → ResourceContractTooLarge
@@ -220,7 +237,12 @@ mod resource_contract_error_exactness {
     fn too_large_error_contains_exact_resource_name_max_steps() {
         let mut parts = valid_parts();
         parts.resource_contract.max_steps = u16::MAX;
-        assert_eq!(validate_resource_contract(&parts), Ok(()));
+        assert!(matches!(
+            validate_resource_contract(&parts),
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: crate::workflow::ContractResource::Steps
+            })
+        ));
     }
 
     #[test]
@@ -234,7 +256,12 @@ mod resource_contract_error_exactness {
     fn too_large_error_contains_exact_resource_name_max_constants() {
         let mut parts = valid_parts();
         parts.resource_contract.max_constants = u16::MAX;
-        assert_eq!(validate_resource_contract(&parts), Ok(()));
+        assert!(matches!(
+            validate_resource_contract(&parts),
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: crate::workflow::ContractResource::Constants
+            })
+        ));
     }
 
     #[test]

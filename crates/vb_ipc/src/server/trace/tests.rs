@@ -16,6 +16,7 @@ fn make_runtime() -> Runtime {
     };
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
     Runtime::new_for_tests_and_benchmarks_only(NonZeroUsize::MIN, config)
+        .expect("valid test configuration")
 }
 
 fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {

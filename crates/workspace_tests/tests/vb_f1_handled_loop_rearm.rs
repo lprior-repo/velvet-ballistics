@@ -91,7 +91,8 @@ fn exercise(yaml: &str, quantum: u64, expected_iterations: usize) -> TestResult<
             ..ShardConfig::default()
         },
         journal.clone(),
-    );
+    )
+    .expect("valid test configuration");
     runtime.submit_direct(RunId::new(1), workflow)?;
     for _ in 0..256 {
         runtime.tick_all()?;

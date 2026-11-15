@@ -108,6 +108,7 @@ fn runtime(journal: Arc<FjallJournal>) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
+    .expect("valid test configuration")
 }
 
 fn recorded_cut(source: &str, events: &[JournalEvent]) -> TestResult<tempfile::TempDir> {

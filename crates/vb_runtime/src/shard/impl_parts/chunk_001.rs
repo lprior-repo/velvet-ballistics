@@ -8,7 +8,7 @@ struct ShardServices {
 
 impl Shard {
     /// Creates a new shard with the given configuration.
-    pub fn new(config: ShardConfig) -> Self {
+    pub fn new(config: ShardConfig) -> RuntimeResult<Self> {
         Self::new_with_journal_and_artifact_store(
             config,
             VolatileRuntimeJournal::shared(),
@@ -21,7 +21,7 @@ impl Shard {
         config: ShardConfig,
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
-    ) -> Self {
+    ) -> RuntimeResult<Self> {
         Self::new_with_shared_quota(
             config,
             journal,
@@ -36,13 +36,18 @@ impl Shard {
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
         quota: crate::quota::SharedQuotaLedger,
-    ) -> Self {
+    ) -> RuntimeResult<Self> {
         let services = ShardServices {
             quota,
             artifact_store,
             journal,
         };
-        Self::with_services(config, services)
+        Self::try_with_services(config, services)
+    }
+
+    fn try_with_services(config: ShardConfig, services: ShardServices) -> RuntimeResult<Self> {
+        validate_command_queue_capacity(config.command_queue_capacity)?;
+        Ok(Self::with_services(config, services))
     }
 
     fn with_services(config: ShardConfig, services: ShardServices) -> Self {
@@ -81,7 +86,10 @@ impl Shard {
     /// `MissingAcceptedArtifactStore` is used so direct runtime construction without a
     /// storage-backed accepted-artifact source rejects admission instead of silently
     /// accepting unbacked artifacts.
-    pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
+    pub fn new_with_journal(
+        config: ShardConfig,
+        journal: SharedRuntimeJournal,
+    ) -> RuntimeResult<Self> {
         Self::new_with_journal_and_quota(config, journal, crate::quota::SharedQuotaLedger::new())
     }
 
@@ -90,7 +98,7 @@ impl Shard {
         config: ShardConfig,
         journal: SharedRuntimeJournal,
         quota: crate::quota::SharedQuotaLedger,
-    ) -> Self {
+    ) -> RuntimeResult<Self> {
         let artifact_store = Self::artifact_store_for(&config, &journal);
         Self::new_with_shared_quota(config, journal, artifact_store, quota)
     }

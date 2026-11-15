@@ -167,7 +167,8 @@ fn retained_owned_text_reopens_with_canonical_roots_and_unchanged_receipt() -> T
                 ..Default::default()
             },
             vb_runtime::journal::StorageRuntimeJournal::shared_strict(journal),
-        );
+        )
+        .expect("valid test configuration");
         runtime.recover_and_resume(run)?;
         observed(&mut runtime, true)?;
     }
@@ -233,7 +234,8 @@ fn scalar_cold_ipc_preserves_source_symbol_identity_and_rejects_unbacked_handles
                 ..Default::default()
             },
             journal,
-        );
+        )
+        .expect("valid test configuration");
         let payload = vb_ipc::IpcPayload::SubmitRunInline(vb_ipc::SubmitRunPayload {
             run_id: RunId::new(117),
             workflow: workflow.digest(),

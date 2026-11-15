@@ -114,7 +114,8 @@ fn prefix_and_object_fit_bounded_public_runtime() -> TestResult {
             ..ShardConfig::default()
         },
         Arc::new(VolatileRuntimeJournal::new()),
-    );
+    )
+    .expect("valid test configuration");
     runtime.submit_compiled(RunId::new(1), workflow)?;
     assert!(runtime.tick_all()?);
     Ok(())

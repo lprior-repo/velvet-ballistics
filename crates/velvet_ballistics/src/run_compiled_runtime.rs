@@ -6,6 +6,7 @@ pub(crate) mod completion_output;
 #[cfg(test)]
 mod completion_output_tests;
 pub(crate) mod secret_presence;
+mod workflow;
 
 pub(crate) fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
@@ -44,100 +45,12 @@ pub(crate) fn run_compiled_workflow(
     db: Option<&std::path::Path>,
     output: OutputFormat,
 ) -> ExitCode {
-    let run_id = fresh_durable_run_id(db, durability);
-    let Some(shard_count) = NonZeroUsize::new(1) else {
-        report_runtime_error(
-            format_args!("runtime configuration error: shard count must be non-zero"),
-            output,
-        );
-        return CliExitCode::RuntimeFailed.into();
-    };
-    let config = runtime_config_for_durability(durability);
-    if durability != DurabilityMode::None
-        && let Some(db_path) = db
-        && let Err(code) = store_compiled_artifact(compiled, db_path, output, config.policy)
-    {
-        return code;
-    }
-    let journal = match runtime_journal_for_mode(durability, db, output) {
-        Ok(journal) => journal,
-        Err(code) => return code,
-    };
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, journal);
-    secret_presence::install(&mut runtime, compiled);
-
-    if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
-        report_runtime_error(format_args!("runtime submit error: {e}"), output);
-        return CliExitCode::RuntimeFailed.into();
-    }
-    if let Err(e) = runtime.tick_all() {
-        report_runtime_error(format_args!("runtime tick error: {e}"), output);
-        return CliExitCode::RuntimeFailed.into();
-    }
-
-    let counters = runtime.counters_snapshot();
-    let traces = runtime.drain_trace();
-    let status = if counters.runs_failed != 0 {
-        "failed"
-    } else if counters.runs_completed != 0 {
-        "completed"
-    } else {
-        "accepted"
-    };
-    if output != OutputFormat::Text {
-        emit_json_or_return!(
-            &serde_json::json!({
-                "success": counters.runs_failed == 0 && counters.runs_completed != 0,
-                "run_id": run_id.get(),
-                "status": status,
-                "runtime": {
-                    "submitted": counters.runs_submitted,
-                    "completed": counters.runs_completed,
-                    "failed": counters.runs_failed,
-                    "steps": counters.steps_executed
-                },
-                "trace_count": traces.len()
-            }),
-            output,
-        );
-    } else {
-        outln!(
-            "run {}: submitted={} completed={} failed={} steps={}",
-            run_id.get(),
-            counters.runs_submitted,
-            counters.runs_completed,
-            counters.runs_failed,
-            counters.steps_executed
-        );
-        for trace in &traces {
-            print_trace_event(trace);
-        }
-
-        if counters.runs_failed != 0 {
-            match last_started_step(&traces) {
-                Some(step) => {
-                    let name = compiled
-                        .step_name(step)
-                        .map_or_else(|| "?".to_string(), String::from);
-                    errln!("run failed at step {} ({name})", step.get());
-                }
-                None => errln!("run failed"),
-            }
-        } else if counters.runs_completed != 0 {
-            outln!("run completed");
-        } else {
-            outln!("run accepted but not terminal after one runtime tick");
-        }
-    }
-
-    if counters.runs_failed != 0 || counters.runs_completed == 0 {
-        return CliExitCode::RuntimeFailed.into();
-    }
-
-    ExitCode::SUCCESS
+    workflow::run(compiled, inputs, durability, db, output)
 }
 
-fn last_started_step(traces: &[vb_runtime::trace::TraceEvent]) -> Option<vb_core::StepIdx> {
+pub(super) fn last_started_step(
+    traces: &[vb_runtime::trace::TraceEvent],
+) -> Option<vb_core::StepIdx> {
     traces.iter().rev().find_map(|trace| match trace {
         vb_runtime::trace::TraceEvent::StepStarted { step, .. } => Some(*step),
         _ => None,

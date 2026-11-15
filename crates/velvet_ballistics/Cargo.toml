@@ -29,12 +29,17 @@ path = "src/main.rs"
 
 [dev-dependencies]
 bytes = { workspace = true }
+fjall.workspace = true
 proptest = { workspace = true }
 serde = { workspace = true }
 tempfile.workspace = true
 
 [lints]
 workspace = true
+
+[[test]]
+name = "deliver_filename_boundaries"
+path = "../workspace_tests/tests/cli/deliver_filename_boundaries.rs"
 
 [[test]]
 name = "submit_input_boundary"
@@ -63,3 +68,19 @@ path = "../workspace_tests/tests/cli/qa_permutation_matrix.rs"
 [[test]]
 name = "f5_example_input_shape"
 path = "../workspace_tests/tests/cli/f5_example_input_shape.rs"
+
+[[test]]
+name = "replay_exit_codes"
+path = "../workspace_tests/tests/cli/replay_exit_codes.rs"
+
+[[test]]
+name = "workflow_semantic_diff"
+path = "../workspace_tests/tests/cli/workflow_semantic_diff.rs"
+
+[[test]]
+name = "explain_execution_plan"
+path = "../workspace_tests/tests/cli/explain_execution_plan.rs"
+
+[[test]]
+name = "events_filters"
+path = "../workspace_tests/tests/cli/events_filters.rs"

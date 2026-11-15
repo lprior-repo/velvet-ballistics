@@ -26,7 +26,8 @@ fn startup_runtime(service: &IpcJournalService) -> TestResult<vb_runtime::runtim
         NonZeroUsize::MIN,
         vb_runtime::shard::ShardConfig::default(),
         journal,
-    ))
+    )
+    .expect("valid test configuration"))
 }
 
 fn startup_header(run: RunId, digest: WorkflowDigest) -> vb_storage::RunHeaderRecord {
@@ -132,7 +133,8 @@ fn seed_startup_run(
         NonZeroUsize::MIN,
         vb_runtime::shard::ShardConfig::default(),
         journal,
-    );
+    )
+    .expect("valid test configuration");
     producer.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,

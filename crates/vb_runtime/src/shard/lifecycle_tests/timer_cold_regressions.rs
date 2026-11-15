@@ -1,14 +1,10 @@
 fn strict_cold_timer_runtime(
     journal: std::sync::Arc<vb_storage::FjallJournal>,
 ) -> crate::runtime::Runtime {
-    crate::runtime::Runtime::new(
-        std::num::NonZeroUsize::MIN,
-        ShardConfig {
-            policy: vb_core::RuntimePolicy::Strict,
-            ..ShardConfig::default()
-        },
-        crate::journal::StorageRuntimeJournal::shared_strict(journal),
-    )
+    crate::runtime::Runtime::new(std::num::NonZeroUsize::MIN, ShardConfig {
+        policy: vb_core::RuntimePolicy::Strict,
+        ..ShardConfig::default()
+    }, crate::journal::StorageRuntimeJournal::shared_strict(journal)).expect("valid test configuration")
 }
 
 #[derive(Debug, PartialEq, Eq)]

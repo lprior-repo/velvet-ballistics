@@ -71,7 +71,10 @@ fn phase46_parts_with_nodes(nodes: Vec<CompiledNode>, slot_count: u16) -> Workfl
         slot_count,
         symbols_count: 0,
         entry: StepIdx::new(0),
-        resource_contract: resource_contract(max_steps, slot_count, 1, 0, 0),
+        resource_contract: ResourceContract {
+            max_collect_items: 10,
+            ..resource_contract(max_steps, slot_count, 1, 0, 0)
+        },
         step_names: Box::new([]),
     }
 }
@@ -304,7 +307,10 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
         slot_count: 3,
         symbols_count: 0,
         entry: StepIdx::new(0),
-        resource_contract: resource_contract(4, 3, 1, 0, 0),
+        resource_contract: ResourceContract {
+            max_collect_items: 10,
+            ..resource_contract(4, 3, 1, 0, 0)
+        },
         step_names: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts)
@@ -387,7 +393,10 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
         slot_count: 5,
         symbols_count: 0,
         entry: StepIdx::new(0),
-        resource_contract: resource_contract(6, 5, 1, 0, 0),
+        resource_contract: ResourceContract {
+            max_collect_items: 10,
+            ..resource_contract(6, 5, 1, 0, 0)
+        },
         step_names: Box::new([]),
     };
     match CompiledWorkflow::try_from_parts(parts) {
@@ -479,7 +488,10 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
         slot_count: 5,
         symbols_count: 0,
         entry: StepIdx::new(0),
-        resource_contract: resource_contract(6, 5, 1, 0, 0),
+        resource_contract: ResourceContract {
+            max_collect_items: 10,
+            ..resource_contract(6, 5, 1, 0, 0)
+        },
         step_names: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts)

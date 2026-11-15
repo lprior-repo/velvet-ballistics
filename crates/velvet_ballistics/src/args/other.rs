@@ -92,7 +92,47 @@ pub(super) fn parse_doctor(args: &[OsString]) -> Result<Command, ParseError> {
 
 pub(super) fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "diff")?;
+    if named_flag(args, "--against").is_some() && named_flag(args, "--db").is_some() {
+        return Err(ParseError::InvalidArgument(
+            "--against and --db are alternate baseline modes".into(),
+        ));
+    }
     let run_a = positional_str(args, 2, "run_a")?;
+    if has_run_pair(args) {
+        parse_run_diff(args, run_a)
+    } else {
+        parse_workflow_diff(args, run_a)
+    }
+}
+
+fn has_run_pair(args: &[OsString]) -> bool {
+    args.get(3)
+        .is_some_and(|value| value.to_str().is_some_and(|value| !value.starts_with('-')))
+}
+
+fn parse_workflow_diff(args: &[OsString], workflow: String) -> Result<Command, ParseError> {
+    if args
+        .iter()
+        .any(|value| value == "--json" || value == "--jsonl")
+    {
+        return Err(ParseError::InvalidArgument(
+            "workflow diff supports --emit text|yaml|postcard".into(),
+        ));
+    }
+    Ok(Command::WorkflowDiff {
+        workflow: PathBuf::from(workflow),
+        against: named_flag(args, "--against").map(PathBuf::from),
+        db: named_flag(args, "--db").map(PathBuf::from),
+        output: parse_output_format(args),
+    })
+}
+
+fn parse_run_diff(args: &[OsString], run_a: String) -> Result<Command, ParseError> {
+    if named_flag(args, "--against").is_some() {
+        return Err(ParseError::InvalidArgument(
+            "--against cannot be combined with run comparison".into(),
+        ));
+    }
     let run_b = positional_str(args, 3, "run_b")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);

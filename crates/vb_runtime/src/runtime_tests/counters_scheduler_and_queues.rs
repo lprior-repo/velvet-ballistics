@@ -12,7 +12,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -42,7 +42,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         // When snapshotting a non-existent run
         let result = runtime.snapshot_run(vb_core::ids::RunId::new(9999), 42);
         // Then it returns NotFound
@@ -61,7 +61,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -84,7 +84,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -111,7 +111,7 @@
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         // When computing shard index for run 1 twice
         let idx1 = runtime.shard_index(vb_core::ids::RunId::new(1));
         let idx2 = runtime.shard_index(vb_core::ids::RunId::new(1));
@@ -126,7 +126,7 @@
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         // When computing shard indices for different runs
         let idx1 = runtime.shard_index(vb_core::ids::RunId::new(1));
         let idx2 = runtime.shard_index(vb_core::ids::RunId::new(2));
@@ -142,7 +142,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -166,7 +166,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -199,7 +199,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -222,7 +222,7 @@
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -266,7 +266,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -321,7 +321,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -348,7 +348,7 @@
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -384,7 +384,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -423,7 +423,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
         let Some(wf) = wait_then_finish_workflow() else {
             return;
         };
@@ -478,7 +478,7 @@
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -513,7 +513,7 @@
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
         let Some(wf) = finished_workflow() else {
             return;
         };

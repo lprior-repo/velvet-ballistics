@@ -214,7 +214,8 @@ fn observed_shard_resets_after_real_resume_error_and_finish() -> Result<(), Stri
         policy: vb_core::RuntimePolicy::Relaxed,
         max_active_runs: 1,
         ..ShardConfig::default()
-    });
+    })
+    .expect("valid test configuration");
     let enqueue_result = shard.enqueue(ShardCommand::Resume { run: RunId::new(7) });
     enqueue_result.map_err(|error| format!("resume enqueue failed: {error:?}"))?;
     assert_eq!(

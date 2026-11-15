@@ -195,19 +195,11 @@ pub fn recover_runtime_summary_with_expected(
     run: RunId,
     expected: crate::recovery::types::RecoveryTerminalState,
 ) -> RecoveryResult<RecoveryHydration> {
-    let events = journal.events_for_run_full(run)?;
-    if events.is_empty() {
-        return Err(RecoveryError::NoRecoveryData { run });
-    }
-    let hydration = crate::recovery::replay::summary::summarize_recovery_events(&events)?;
-
-    let found_str = terminal_state_to_string(hydration.summary().terminal);
-    let expected_str = terminal_state_to_string(Some(expected));
-
-    if found_str != expected_str {
+    let hydration = recover_runtime_summary(journal, run)?;
+    if hydration.summary().terminal != Some(expected) {
         return Err(RecoveryError::TerminalStateMismatch {
-            expected: expected_str,
-            found: found_str,
+            expected: terminal_state_to_string(Some(expected)),
+            found: terminal_state_to_string(hydration.summary().terminal),
         });
     }
 
@@ -223,8 +215,8 @@ fn terminal_state_to_string(
         Some(crate::recovery::types::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
         Some(crate::recovery::types::RecoveryTerminalState::Killed) => "Killed".to_owned(),
         Some(crate::recovery::types::RecoveryTerminalState::Failed) => "Failed".to_owned(),
-        Some(crate::recovery::types::RecoveryTerminalState::Finished { .. }) => {
-            "Finished".to_owned()
+        Some(crate::recovery::types::RecoveryTerminalState::Finished { result }) => {
+            format!("Finished(result={})", result.get())
         }
     }
 }

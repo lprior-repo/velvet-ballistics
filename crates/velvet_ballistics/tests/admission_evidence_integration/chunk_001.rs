@@ -225,11 +225,7 @@ fn storage_failure_before_header_prevents_ack() {
         fail_assert!("invalid shard count");
         return;
     };
-    let runtime = vb_runtime::runtime::Runtime::new(
-        shard_count,
-        test_config(),
-        Arc::new(FailingBeforeHeaderJournal),
-    );
+    let runtime = vb_runtime::runtime::Runtime::new(shard_count, test_config(), Arc::new(FailingBeforeHeaderJournal)).expect("valid test configuration");
 
     assert_eq!(
         runtime.submit_direct(RunId::new(4505), workflow),
@@ -305,11 +301,7 @@ fn multiple_runs_concurrent_produce_correct_completion_counters() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new(
-        shard_count,
-        test_config(),
-        vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, test_config(), vb_runtime::journal::NoopRuntimeJournal::shared()).expect("valid test configuration");
 
     match runtime.submit_direct(RunId::new(1), workflow1) {
         Ok(()) => {}
@@ -359,11 +351,7 @@ fn runtime_rejects_submission_when_capacity_exceeded() {
     };
     let mut config = test_config();
     config.max_active_runs = 2;
-    let runtime = vb_runtime::runtime::Runtime::new(
-        shard_count,
-        config,
-        vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+    let runtime = vb_runtime::runtime::Runtime::new(shard_count, config, vb_runtime::journal::NoopRuntimeJournal::shared()).expect("valid test configuration");
 
     let mut submitted = 0u64;
     let mut hit_capacity = false;
@@ -438,7 +426,7 @@ fn submit_with_tainted_input_propagates_taint_through_runtime() {
     };
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
     let mut runtime =
-        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone());
+        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone()).expect("valid test configuration");
     let run_id = RunId::new(9);
 
     match runtime.submit_direct_with_inputs_grants_and_contracts(

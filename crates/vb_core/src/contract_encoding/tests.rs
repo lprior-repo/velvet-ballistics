@@ -3,7 +3,13 @@ use crate::workflow::{ResourceContract, SecretResultPolicy};
 
 #[test]
 fn legacy_default_contract_bytes_and_digest_are_stable() {
-    let bytes = encode_contract_bytes(&ResourceContract::DEFAULT);
+    // Preserve the original default wire fixture while current runtime caps evolve.
+    let legacy_default = ResourceContract {
+        max_steps: 10_000,
+        max_constants: u16::MAX,
+        ..ResourceContract::DEFAULT
+    };
+    let bytes = encode_contract_bytes(&legacy_default);
     let expected = concat!(
         "7265736f757263655f636f6e74726163746d61785f737465707310276d61785f736c6f747300046d61785f",
         "636f6e7374616e7473ffff6d61785f6163636573736f727300206d61785f65787072657373696f6e730010",

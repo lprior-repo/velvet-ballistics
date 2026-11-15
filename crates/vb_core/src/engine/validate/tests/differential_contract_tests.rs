@@ -97,8 +97,8 @@ fn differential_default_contract_is_accepted_by_both() {
 /// keeps the downstream budget-policy check out of the picture: pinning every
 /// dimension at its limit at once trips `BudgetPolicyExceeded`, which belongs
 /// to a different validation layer. `u16`-capped dimensions whose type
-/// maximum equals the hard limit (steps, slots, constants) use `u16::MAX`,
-/// which is the limit itself.
+/// maximum equals the hard limit (slots) use `u16::MAX`; steps and constants
+/// use their smaller declared hard limits.
 fn assert_at_limit_agrees(mutate: fn(&mut ResourceContract)) {
     let mut parts = valid_parts();
     mutate(&mut parts.resource_contract);
@@ -108,11 +108,12 @@ fn assert_at_limit_agrees(mutate: fn(&mut ResourceContract)) {
 
 #[test]
 fn differential_at_limit_contracts_agree() {
-    // Sanity: u16-capped dimensions really sit exactly on their hard limits,
-    // so the at-limit corpus cannot pass vacuously on a mistyped conversion.
-    assert_eq!(usize::from(u16::MAX), MAX_STEPS_PER_WORKFLOW);
+    // Sanity: each chosen declaration represents its hard limit exactly.
+    let step_limit = u16::try_from(MAX_STEPS_PER_WORKFLOW).unwrap_or(u16::MAX);
+    let constant_limit = u16::try_from(MAX_CONSTANTS).unwrap_or(u16::MAX);
+    assert_eq!(usize::from(step_limit), MAX_STEPS_PER_WORKFLOW);
     assert_eq!(usize::from(u16::MAX), MAX_SLOTS_PER_WORKFLOW);
-    assert_eq!(usize::from(u16::MAX), MAX_CONSTANTS);
+    assert_eq!(usize::from(constant_limit), MAX_CONSTANTS);
     assert_eq!(
         usize::from(u16::try_from(MAX_ACCESSORS).unwrap_or(u16::MAX)),
         MAX_ACCESSORS
@@ -125,13 +126,13 @@ fn differential_at_limit_contracts_agree() {
     assert_eq!(MAX_FANOUT, 256);
 
     assert_at_limit_agrees(|contract| {
-        contract.max_steps = u16::MAX;
+        contract.max_steps = u16::try_from(MAX_STEPS_PER_WORKFLOW).unwrap_or(u16::MAX);
     });
     assert_at_limit_agrees(|contract| {
         contract.max_slots = u16::MAX;
     });
     assert_at_limit_agrees(|contract| {
-        contract.max_constants = u16::MAX;
+        contract.max_constants = u16::try_from(MAX_CONSTANTS).unwrap_or(u16::MAX);
     });
     assert_at_limit_agrees(|contract| {
         contract.max_accessors = u16::try_from(MAX_ACCESSORS).unwrap_or(u16::MAX);

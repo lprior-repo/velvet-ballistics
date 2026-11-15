@@ -10,8 +10,8 @@ use super::{replay_events, replay_events_with_schedule_requirement};
 ///
 /// ## GAP-3: Policy Digest Verification
 ///
-/// When `expected_policy_digests` is empty and `RunAdmission` is absent,
-/// return `PolicyDigestMismatch` because the policy digest cannot be verified.
+/// Nonempty policy expectations must match consistent pinned admission metadata.
+/// Missing, unverified, conflicting, or mismatched policy identities are refused.
 /// vb-xk9y9: Action ABI digest verification. When expected_action_abi_digests
 /// is non-empty, the journal must contain at least one ActionScheduled event,
 /// otherwise the action ABI digests cannot be verified and we return
@@ -29,35 +29,72 @@ pub fn recover_full_journal(
         return Err(RecoveryError::NoRecoveryData { run });
     }
 
-    let has_run_admission = events.iter().any(|e| {
-        matches!(
-            e,
-            JournalEvent::RunAdmission { .. } | JournalEvent::RunAdmissionBudget { .. }
-        )
-    });
-
-    if !has_run_admission && !expected_policy_digests.is_empty() {
-        return Err(RecoveryError::PolicyDigestMismatch {
-            step: StepIdx::ZERO,
-        });
-    }
-
-    let missing_required_action_schedule = !expected_action_abi_digests.is_empty()
-        && !events.iter().any(|e| {
-            matches!(
-                e,
-                JournalEvent::ActionScheduled { .. } | JournalEvent::ActionScheduledTicket { .. }
-            )
-        });
-    if missing_required_action_schedule
-        && let Some((action_id, _)) = expected_action_abi_digests.first()
-    {
-        return Err(RecoveryError::ActionAbiMismatch {
-            action_id: *action_id,
-        });
-    }
+    verify_policy_expectations(&events, expected_policy_digests)?;
+    verify_action_schedule(&events, expected_action_abi_digests)?;
 
     replay_events(&events, tracker, expected_action_abi_digests)
+}
+
+fn verify_policy_expectations(
+    events: &[JournalEvent],
+    expected: &[(StepIdx, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    let Some((first_step, _)) = expected.first() else {
+        return Ok(());
+    };
+    let pin =
+        consistent_policy_pin(events, *first_step)?.ok_or(RecoveryError::PolicyDigestMismatch {
+            step: StepIdx::ZERO,
+        })?;
+    expected.iter().try_for_each(|(step, expected)| {
+        if *expected == pin {
+            Ok(())
+        } else {
+            Err(RecoveryError::PolicyDigestMismatch { step: *step })
+        }
+    })
+}
+
+fn consistent_policy_pin(
+    events: &[JournalEvent],
+    step: StepIdx,
+) -> RecoveryResult<Option<WorkflowDigest>> {
+    let failure = || RecoveryError::PolicyDigestMismatch { step };
+    events
+        .iter()
+        .filter_map(|event| match event {
+            JournalEvent::RunAdmission { policy_pin, .. }
+            | JournalEvent::RunAdmissionBudget { policy_pin, .. } => Some(*policy_pin),
+            _ => None,
+        })
+        .try_fold(None, |previous, pin| match (previous, pin) {
+            (None, crate::RunPolicyPin::Pinned(digest)) => Ok(Some(digest)),
+            (Some(previous), crate::RunPolicyPin::Pinned(digest)) if previous == digest => {
+                Ok(Some(previous))
+            }
+            _ => Err(failure()),
+        })
+}
+
+fn verify_action_schedule(
+    events: &[JournalEvent],
+    expected: &[(ActionId, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    let Some((action_id, _)) = expected.first() else {
+        return Ok(());
+    };
+    if events.iter().any(|event| {
+        matches!(
+            event,
+            JournalEvent::ActionScheduled { .. } | JournalEvent::ActionScheduledTicket { .. }
+        )
+    }) {
+        Ok(())
+    } else {
+        Err(RecoveryError::ActionAbiMismatch {
+            action_id: *action_id,
+        })
+    }
 }
 
 /// Loads a snapshot from the journal.

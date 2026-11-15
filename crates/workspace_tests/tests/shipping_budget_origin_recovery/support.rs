@@ -115,7 +115,8 @@ pub(super) fn fixture(run: RunId) -> TestResult<Case> {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    );
+    )
+    .expect("valid test configuration");
     runtime.activate_owned_submission(run, source_digest)?;
     let events = journal.events_for_run_full(run)?;
     assert!(
@@ -169,7 +170,8 @@ pub(super) fn cold_recover(case: &Case) -> TestResult<(Runtime, Arc<FjallJournal
                 ..ShardConfig::default()
             },
             StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-        ),
+        )
+        .expect("valid test configuration"),
         journal,
     ))
 }

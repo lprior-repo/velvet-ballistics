@@ -97,7 +97,7 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
         QUEUE_CAPACITY,
         QUEUE_BATCH_SIZE,
     )?;
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let run = RunId::new(50_100);
     let workflow = honest_digest_workflow(require_workflow("suspended", suspended_workflow())?)?;
     let contracts = strict_submit_contracts();
@@ -309,7 +309,7 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
         QUEUE_CAPACITY,
         QUEUE_BATCH_SIZE,
     )?;
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let run = RunId::new(50_070);
     submit_run(
         &mut shard,
@@ -457,7 +457,7 @@ fn drive_handler_action_failure_queue_full_preserves_post_failure_state() -> Res
         QUEUE_CAPACITY,
         QUEUE_BATCH_SIZE,
     )?;
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let run = RunId::new(50_080);
     submit_run(
         &mut shard,
@@ -591,7 +591,7 @@ fn finish_run_append_failure_reports_rollback_failure() -> Result<(), String> {
     let shared: SharedRuntimeJournal = std::sync::Arc::new(RejectRunFinishedJournal);
     let mut config = small_config();
     config.max_active_runs = 1;
-    let mut shard = Shard::new_with_journal(config, shared);
+    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
     let run = RunId::new(50_090);
     let workflow = require_workflow("finished", finished_workflow())?;
     let state = crate::shard::helpers::make_run_state(workflow, run)
@@ -635,7 +635,7 @@ fn finish_run_append_failure_reports_rollback_failure() -> Result<(), String> {
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_missing() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
@@ -654,7 +654,7 @@ fn handle_action_completion_returns_run_not_found_when_run_missing() {
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_cancelled() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -685,7 +685,7 @@ fn handle_action_completion_returns_run_not_found_when_run_cancelled() {
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_finished() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -725,7 +725,7 @@ fn handle_action_completion_returns_run_not_found_when_run_finished() {
 
 #[test]
 fn handle_action_failure_returns_run_not_found_when_run_missing() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: make_ticket(RunId::new(430), StepIdx::ZERO, 1),
@@ -738,7 +738,7 @@ fn handle_action_failure_returns_run_not_found_when_run_missing() {
 
 #[test]
 fn handle_action_failure_returns_stale_attempt_when_attempt_mismatch() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };

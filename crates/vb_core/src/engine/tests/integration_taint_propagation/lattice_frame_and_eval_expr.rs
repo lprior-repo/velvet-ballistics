@@ -212,6 +212,17 @@ fn eval_workflow_with_slots(
     slots: Vec<(SlotValue, Taint)>,
     constants: Vec<ConstValue>,
 ) -> Result<(SlotValue, Taint), EngineError> {
+    let workflow = CompiledWorkflow::try_from_parts(taint_workflow_parts(ops, constants)?)
+        .map_err(|_| EngineError::InvalidCompiledWorkflow {
+            reason: "workflow parts",
+        })?;
+    eval_workflow_and_slots(&workflow, slots)
+}
+
+fn taint_workflow_parts(
+    ops: Box<[ExprOp]>,
+    constants: Vec<ConstValue>,
+) -> Result<WorkflowParts, EngineError> {
     let max_stack =
         crate::workflow::check_expr_stack_bound(&ops, crate::limits::MAX_EXPRESSION_STACK)
             .map_err(|_| EngineError::InvalidCompiledWorkflow {
@@ -223,7 +234,7 @@ fn eval_workflow_with_slots(
         }
     })?;
 
-    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+    Ok(WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
         input_slots: Box::new([]),
@@ -245,17 +256,38 @@ fn eval_workflow_with_slots(
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     })
-    .map_err(|_| EngineError::InvalidCompiledWorkflow {
-        reason: "workflow parts",
-    })?;
+}
 
+fn eval_workflow_and_slots(
+    workflow: &CompiledWorkflow,
+    slots: Vec<(SlotValue, Taint)>,
+) -> Result<(SlotValue, Taint), EngineError> {
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 8)?;
     for (i, (value, taint)) in slots.iter().enumerate() {
         run.write_slot_with_taint(SlotIdx::new(i as u16), *value, *taint)?;
     }
 
     let mut store = ValueStore::new();
-    eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
+    eval_expr_with_store(workflow, &run, &mut store, ExprIdx::new(0))
+}
+
+fn eval_rejected_workflow_with_slots(
+    ops: Box<[ExprOp]>,
+    slots: Vec<(SlotValue, Taint)>,
+    constants: Vec<ConstValue>,
+    expected: crate::WorkflowError,
+) -> Result<(SlotValue, Taint), EngineError> {
+    let parts = taint_workflow_parts(ops, constants)?;
+    assert_eq!(
+        CompiledWorkflow::try_from_parts(parts.clone()).err(),
+        Some(expected.clone())
+    );
+    assert_eq!(
+        CompiledWorkflow::try_from_concurrent_parts(parts.clone()).err(),
+        Some(expected)
+    );
+    let workflow = CompiledWorkflow::from_parts_unchecked(parts);
+    eval_workflow_and_slots(&workflow, slots)
 }
 
 // B-030: eval_expr_with_store returns Clean when all loaded slots are Clean

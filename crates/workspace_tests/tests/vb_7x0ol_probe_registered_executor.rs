@@ -136,7 +136,8 @@ fn execute_registered_action_commits_one_effect_and_completes_run() -> TestResul
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
 
     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
     runtime.configure_live_policy(
@@ -215,7 +216,8 @@ fn reconcile_registered_action_reads_receipt_without_new_effect() -> TestResult 
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
 
     let allowed_digest = PolicyDigest::from_bytes([0x12u8; 32]);
     runtime.configure_live_policy(
@@ -305,7 +307,8 @@ fn execute_registered_action_rejects_mismatched_grant_artifact() -> TestResult {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,
@@ -399,7 +402,8 @@ fn submit_and_reach_pending(
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     // Minimal live policy fixture: allow the action so it reaches the
     // pending-scheduled boundary; recovery is the gate under test.
     runtime.configure_live_policy(
@@ -453,7 +457,8 @@ fn recovery_of_pending_registered_action_blocked_pack_rejects() -> TestResult {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     let result = runtime.recover_and_resume(run);
     match result {
         Err(vb_runtime::RuntimeError::RecoveryCannotResume { reason }) => {
@@ -493,7 +498,8 @@ fn recovery_of_pending_registered_action_reconcile_pack_is_resumable() -> TestRe
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     let product = runtime.recover_product(run)?;
     match product {
         vb_runtime::recovery::RuntimeRecoveryProduct::Resumable(resumable) => {

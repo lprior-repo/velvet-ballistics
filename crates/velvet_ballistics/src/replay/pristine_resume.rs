@@ -1,10 +1,11 @@
 use crate::app_impl::prelude::*;
-use crate::run_compiled_runtime::completion_output::{
-    completion_after_execution, completion_json, completion_text, matching_completion,
-};
+use crate::run_compiled_runtime::completion_output::completion_after_execution;
 use vb_runtime::runtime::completion_observation::{
     CompletionObservation, CompletionObservationSlot,
 };
+#[path = "pristine_resume/command.rs"]
+mod command;
+pub(super) use command::run_pristine_resume;
 
 pub(super) fn pristine_resume_candidate(error: &vb_core::errors::CoreError) -> bool {
     matches!(
@@ -168,90 +169,6 @@ fn finalize_pristine_resume(
             retain_resume_failure(failure, "journal owner survived runtime shutdown".into());
             drop(shared);
         }
-    }
-}
-
-pub(super) fn run_pristine_resume(
-    run_id: &str,
-    run: vb_core::RunId,
-    journal: vb_storage::FjallJournal,
-    output: OutputFormat,
-) -> ExitCode {
-    let journal = Arc::new(journal);
-    let mut runtime = vb_runtime::runtime::Runtime::new(
-        NonZeroUsize::MIN,
-        vb_runtime::shard::ShardConfig::default(),
-        vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    );
-    if let Ok(events) = journal.events_for_run_full(run)
-        && let Some(admission) = vb_runtime::recovery::hydrate_run_admission_from_events(&events)
-    {
-        crate::run_compiled_runtime::secret_presence::install_stored(
-            &mut runtime,
-            Arc::clone(&journal),
-            admission.artifact_digest(),
-        );
-    }
-    let (candidate, mut failure) = match recover_pristine_once(&mut runtime, run) {
-        Ok(candidate) => (candidate, None),
-        Err(error) => (None, Some(error)),
-    };
-    let counters = runtime.counters_snapshot();
-    let completed = counters.runs_completed == 1 && counters.runs_failed == 0;
-    let completion = matching_completion(candidate, completed, run, core::num::NonZeroU16::MIN);
-    let success = completed && completion.is_some();
-    let status = if counters.runs_failed != 0 {
-        "failed"
-    } else if completed {
-        "completed"
-    } else {
-        "waiting"
-    };
-    finalize_pristine_resume(runtime, journal, completed, &mut failure);
-    if let Some(error) = failure {
-        crate::run_compiled_runtime::report_runtime_error(
-            format_args!("resume runtime: {error}"),
-            output,
-        );
-        return CliExitCode::RuntimeFailed.into();
-    }
-    if output != OutputFormat::Text {
-        emit_json_or_return!(
-            &serde_json::json!({
-                "success": success,
-                "run_id": run_id,
-                "status": status,
-                "runtime": {
-                    "submitted": counters.runs_submitted,
-                    "completed": counters.runs_completed,
-                    "failed": counters.runs_failed,
-                    "steps": counters.steps_executed
-                },
-                "completion": completion_json(completion)
-            }),
-            output,
-        );
-    } else {
-        outln!(
-            "run {run_id}: submitted={} completed={} failed={} steps={}",
-            counters.runs_submitted,
-            counters.runs_completed,
-            counters.runs_failed,
-            counters.steps_executed
-        );
-        if let Some(line) = completion_text(completion) {
-            outln!("{line}");
-        }
-        if success {
-            outln!("run completed");
-        } else {
-            outln!("run {status}; no successful completion observed");
-        }
-    }
-    if success {
-        ExitCode::SUCCESS
-    } else {
-        CliExitCode::RuntimeFailed.into()
     }
 }
 

@@ -85,7 +85,8 @@ fn owned_strict_submission_drop_reopen_resumes_for_each() -> Result<(), String> 
                 ..ShardConfig::default()
             },
             StorageRuntimeJournal::shared_strict(journal),
-        );
+        )
+        .expect("valid test configuration");
         runtime
             .activate_owned_submission(run, source_digest)
             .map_err(|error| format!("activate: {error:?}"))?;
@@ -110,7 +111,8 @@ fn owned_strict_submission_drop_reopen_resumes_for_each() -> Result<(), String> 
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    );
+    )
+    .expect("valid test configuration");
     runtime
         .recover_and_resume(run)
         .map_err(|error| format!("recover and resume: {error:?}"))?;

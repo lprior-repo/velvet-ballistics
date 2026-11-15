@@ -13,6 +13,8 @@ mod source;
 #[path = "shipping_nested_effects/support.rs"]
 mod support;
 
+#[path = "shipping_nested_effects/answer_slot.rs"]
+mod answer_slot;
 #[path = "shipping_nested_effects/foreach_repeat_ask.rs"]
 mod foreach_repeat_ask;
 

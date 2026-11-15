@@ -184,8 +184,13 @@ fn t_009_run_failed_1_hint() {
 #[test]
 fn t_010_run_failed_3_hints() {
     let side_effects = vec![SideEffect {
+        run: RunId::new(1),
+        seq: EventSeq::new(1),
+        attempt: 1,
         step: 1,
         action: 0,
+        ticket: None,
+        action_abi_digest: None,
         certainty: SideEffectCertainty::Confirmed,
     }];
     let hints = build_repair_hints("RunFailed", &side_effects, Some(3));
@@ -196,11 +201,11 @@ fn t_010_run_failed_3_hints() {
     );
     assert_eq!(
         hints[1],
-        "review side effects that completed before failure for compensating actions"
+        "review recorded action outcomes before choosing compensating actions"
     );
     assert_eq!(
         hints[2],
-        "consider retry from step 3 using the retry command"
+        "inspect the retry contract before retrying from step 3"
     );
 }
 
@@ -219,8 +224,13 @@ fn t_011_run_cancelled_1_hint() {
 #[test]
 fn t_012_run_cancelled_2_hints() {
     let side_effects = vec![SideEffect {
+        run: RunId::new(1),
+        seq: EventSeq::new(1),
+        attempt: 1,
         step: 2,
         action: 0,
+        ticket: None,
+        action_abi_digest: None,
         certainty: SideEffectCertainty::Confirmed,
     }];
     let hints = build_repair_hints("RunCancelled", &side_effects, None);
@@ -231,7 +241,7 @@ fn t_012_run_cancelled_2_hints() {
     );
     assert_eq!(
         hints[1],
-        "review completed side effects for partial cleanup needs"
+        "review recorded action outcomes for partial cleanup needs"
     );
 }
 
@@ -275,6 +285,6 @@ fn t_014_action_abandoned_keeps_ticket_identity() {
     assert_eq!(analysis.side_effects[0].action, 9);
     assert!(matches!(
         analysis.side_effects[0].certainty,
-        SideEffectCertainty::Confirmed
+        SideEffectCertainty::Abandoned
     ));
 }

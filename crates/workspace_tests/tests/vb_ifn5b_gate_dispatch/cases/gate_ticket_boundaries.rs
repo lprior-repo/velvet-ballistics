@@ -29,7 +29,7 @@ fn foreign_run_and_ticket_attempt_boundary_refuse_without_mutation() -> TestResu
     let shard_count = std::num::NonZeroUsize::new(1).ok_or("shard count")?;
     let mut config = crate::common::runtime_fixture::strict_config();
     config.step_budget_per_tick = 1;
-    let mut runtime = Runtime::new(shard_count, config, storage);
+    let mut runtime = Runtime::new(shard_count, config, storage).expect("valid test configuration");
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {

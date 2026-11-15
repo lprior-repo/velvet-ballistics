@@ -1,11 +1,8 @@
 fn review_strict_owned_shard(journal: Arc<vb_storage::FjallJournal>) -> crate::shard::Shard {
-    crate::shard::Shard::new_with_journal(
-        ShardConfig {
-            policy: RuntimePolicy::Strict,
-            ..runtime_config()
-        },
-        crate::journal::StorageRuntimeJournal::shared_strict(journal),
-    )
+    crate::shard::Shard::new_with_journal(ShardConfig {
+        policy: RuntimePolicy::Strict,
+        ..runtime_config()
+    }, crate::journal::StorageRuntimeJournal::shared_strict(journal)).expect("valid test configuration")
 }
 
 #[test]

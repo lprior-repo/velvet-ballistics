@@ -103,6 +103,14 @@ pub(crate) use part_14::*;
 #[allow(unused_imports)]
 pub(crate) use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 
+pub(super) fn validate_compiled_node_count(count: usize) -> Result<(), crate::CompileError> {
+    if count > vb_core::limits::MAX_STEPS_PER_WORKFLOW {
+        Err(source_slot_reservation::source_step_limit())
+    } else {
+        Ok(())
+    }
+}
+
 /// Builds the checked workflow under the execution profile its node set requires.
 ///
 /// The profile is chosen once at the compiler boundary: any concurrent node

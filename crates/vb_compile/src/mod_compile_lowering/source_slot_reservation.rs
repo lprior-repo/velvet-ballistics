@@ -4,7 +4,7 @@ use super::SlotCompiler;
 use crate::{CompileError, ScalarValue, StepAst, StepPrimitive, WorkflowSource};
 
 /// A compiled workflow cannot contain more source steps than numeric node IDs.
-const MAX_SOURCE_STEPS: usize = 65_535;
+const MAX_SOURCE_STEPS: usize = vb_core::limits::MAX_STEPS_PER_WORKFLOW;
 
 /// Preserves the existing positional source-slot contract without reserving
 /// literal values, action IDs, iteration counts, or generated node indices.
@@ -143,9 +143,12 @@ fn push_steps<'a>(
     Ok(())
 }
 
-fn source_step_limit() -> CompileError {
-    CompileError::NodeLimit {
-        limit: u32::from(u16::MAX),
+pub(super) fn source_step_limit() -> CompileError {
+    match u32::try_from(MAX_SOURCE_STEPS) {
+        Ok(limit) => CompileError::NodeLimit { limit },
+        Err(_) => CompileError::StepIndexOutOfRange {
+            value: MAX_SOURCE_STEPS,
+        },
     }
 }
 

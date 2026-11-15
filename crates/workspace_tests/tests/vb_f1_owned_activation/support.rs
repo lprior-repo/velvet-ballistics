@@ -126,7 +126,8 @@ pub(super) fn runtime(journal: SharedRuntimeJournal, config: ShardConfig) -> Tes
         NonZeroUsize::new(1).ok_or("zero shard count")?,
         config,
         journal,
-    ))
+    )
+    .expect("valid test configuration"))
 }
 
 pub(super) fn assert_pristine(case: &Case, journal: &FjallJournal) -> TestResult {

@@ -97,10 +97,7 @@ mod default_binding {
             policy: vb_core::policy::RuntimePolicy::Journaled,
             ..one_step_config()
         };
-        let mut shard = Shard::new_with_journal(
-            config,
-            StorageRuntimeJournal::shared_journaled(journal.clone()),
-        );
+        let mut shard = Shard::new_with_journal(config, StorageRuntimeJournal::shared_journaled(journal.clone())).expect("valid test configuration");
         let cases = [
             (
                 RunId::new(741),
@@ -162,7 +159,7 @@ mod default_binding {
     #[test]
     fn scalar_default_input_binding_matches_volatile_frame_and_admission() -> TestResult {
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut shard = Shard::new_with_journal(one_step_config(), journal.clone());
+        let mut shard = Shard::new_with_journal(one_step_config(), journal.clone()).expect("valid test configuration");
         let run = RunId::ZERO;
         let workflow = input_workflow(Some(SlotValue::I64(7)))?;
         let digest = workflow.digest();
@@ -319,7 +316,7 @@ mod default_binding {
             step_budget_per_tick: 1,
             ..super::small_config()
         };
-        let mut shard = Shard::new_with_journal(config, shared);
+        let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
         let workflow = input_workflow(Some(SlotValue::I64(7)))?;
         let result = shard.handle_submit(RunId::ZERO, workflow, CapabilitySet::empty());
         let is_expected = match &result {
@@ -368,7 +365,7 @@ mod default_binding {
             step_budget_per_tick: 1,
             ..super::small_config()
         };
-        let mut shard = Shard::new_with_journal(config, shared);
+        let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
         let workflow = input_workflow(Some(SlotValue::I64(7)))?;
         let result = shard.handle_submit(RunId::ZERO, workflow, CapabilitySet::empty());
         let is_expected = match &result {

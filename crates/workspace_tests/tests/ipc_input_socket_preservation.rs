@@ -115,7 +115,10 @@ fn runtime() -> (Runtime, Arc<VolatileRuntimeJournal>) {
         policy: RuntimePolicy::Relaxed,
         ..ShardConfig::default()
     };
-    (Runtime::new(NonZeroUsize::MIN, config, shared), journal)
+    (
+        Runtime::new(NonZeroUsize::MIN, config, shared).expect("valid test configuration"),
+        journal,
+    )
 }
 
 fn submit(

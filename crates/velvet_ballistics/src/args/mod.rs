@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub(crate) mod action;
+pub(crate) mod answer_selector;
 pub(crate) mod error;
 pub(crate) mod flag_spec;
 pub(crate) mod other;
@@ -17,6 +18,7 @@ pub(crate) mod workflow;
 mod tests;
 
 // Re-export public types used throughout the crate
+pub(crate) use answer_selector::AnswerSelector;
 pub(crate) use error::ParseError;
 pub(crate) use shared::parse_args;
 pub(crate) use types::{

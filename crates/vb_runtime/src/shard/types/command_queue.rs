@@ -59,12 +59,10 @@ impl ShardCommandQueue {
         })
     }
 
-    /// Creates a command queue from an already-accepted shard configuration.
+    /// Creates a command queue after the owning shard constructor validates capacity.
     ///
-    /// `Shard::new` has historically been infallible and accepted `ShardConfig`
-    /// by value. The validated constructor for externally supplied capacity is
-    /// `ShardConfig::new`; this helper preserves `Shard::new`'s existing shape
-    /// while placing the raw queue construction behind the domain wrapper.
+    /// This helper is private to the shard construction path; callers validate the
+    /// configured capacity before reaching this allocation.
     pub(crate) fn from_config(config: ShardConfig) -> Self {
         Self {
             inner: ArrayQueue::new(config.command_queue_capacity),

@@ -150,7 +150,8 @@ fn corrupt_emergency_marker_causes_precise_typed_failure() -> TestResult {
         journal_reopen.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
 
     let allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
     runtime.configure_live_policy(

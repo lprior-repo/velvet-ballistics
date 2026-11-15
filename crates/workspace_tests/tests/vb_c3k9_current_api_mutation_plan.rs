@@ -223,6 +223,45 @@ fn duplicated_required_section_reports_exact_duplicate_id() {
 }
 
 #[test]
+fn plan_validity_requires_each_failure_class_to_be_absent() {
+    use velvet_ballistics_workspace_tests::quality::current_api_mutation_plan::PlanValidationReport;
+
+    let valid = PlanValidationReport {
+        required_section_count: REQUIRED_SECTIONS.len(),
+        covered_required_sections: REQUIRED_SECTIONS.len(),
+        stale_api_mentions: 0,
+        missing_sections: Vec::new(),
+        duplicate_sections: Vec::new(),
+        missing_requirements: Vec::new(),
+    };
+    assert_eq!(valid.is_valid(), true);
+    let invalid = [
+        PlanValidationReport {
+            missing_sections: vec!["runtime-recovery"],
+            ..valid.clone()
+        },
+        PlanValidationReport {
+            duplicate_sections: vec!["runtime-recovery"],
+            ..valid.clone()
+        },
+        PlanValidationReport {
+            missing_requirements: vec![MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "retry state",
+            }],
+            ..valid.clone()
+        },
+        PlanValidationReport {
+            stale_api_mentions: 1,
+            ..valid
+        },
+    ];
+    for report in invalid {
+        assert_eq!(report.is_valid(), false, "{report:?}");
+    }
+}
+
+#[test]
 fn critical_survivor_creates_blocker() {
     assert!(
         PLAN.contains("Critical semantic survivor policy")

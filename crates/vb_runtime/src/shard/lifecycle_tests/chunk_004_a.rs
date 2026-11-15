@@ -1,6 +1,6 @@
 #[test]
 fn future_attempt_completion_rejected_when_current_attempt_exists() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return;
@@ -46,7 +46,7 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() {
 
 #[test]
 fn future_attempt_completion_mismatch_is_action_failed_code() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return;
@@ -90,7 +90,7 @@ fn future_attempt_completion_mismatch_is_action_failed_code() {
 fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return;
@@ -168,7 +168,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
 
 #[test]
 fn scheduling_propagates_zero_retry_policy_error() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = zero_retry_policy_workflow() else {
         assert_eq!(
             None::<()>,
@@ -201,7 +201,7 @@ fn scheduling_propagates_zero_retry_policy_error() {
 
 #[test]
 fn legacy_action_completed_on_suspended_run_succeeds() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -238,7 +238,7 @@ fn legacy_action_completed_on_suspended_run_succeeds() {
 
 #[test]
 fn legacy_action_completed_unknown_run_returns_run_not_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompletedLegacy {
             run: RunId::new(9999),
@@ -298,7 +298,7 @@ fn legacy_action_completion_journal_first() -> Result<(), String> {
     }
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(LegacyStepFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let wf = require_workflow("suspended_workflow", suspended_workflow())?;
     let run = RunId::new(50_010);
     assert_eq!(
@@ -481,7 +481,7 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
             events: std::sync::Mutex::new(Vec::new()),
         });
         let shared: SharedRuntimeJournal = journal.clone();
-        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
         submit_run(
             &mut shard,
             run,

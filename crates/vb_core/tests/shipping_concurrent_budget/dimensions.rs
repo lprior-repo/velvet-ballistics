@@ -30,7 +30,7 @@ const EXPECTED: WholeWorkflowBudget = WholeWorkflowBudget {
     max_incident_emissions: 9,
     max_transitions: 36,
     max_journal_bytes_total: 9437184,
-    max_value_store_entries: 66568,
+    max_value_store_entries: 9225,
     max_cost_units: 12,
 };
 

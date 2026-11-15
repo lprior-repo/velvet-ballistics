@@ -289,7 +289,7 @@ pub assume_specification[ production::accessor_path_error ](
 /// Returns `Some(SymbolOutOfBounds)` for the first pooled symbol
 /// at or beyond `symbols_count`, or `None` when every pooled
 /// symbol validates, in production order
-/// (workflow/validate_refs.rs:154-164).
+/// (workflow/validate_refs.rs:166-176).
 pub assume_specification[ production::constants_symbols_error ](
     parts: &SpecWorkflowParts,
 ) -> (err: Option<SpecWorkflowError>)

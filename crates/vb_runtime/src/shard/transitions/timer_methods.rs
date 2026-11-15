@@ -55,22 +55,43 @@ impl Shard {
         state: RunState,
         kind: PendingTimerKind,
     ) -> RuntimeResult<AwaitTimerRegistration> {
-        self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
-        let (state, generation) =
-            self.prepare_await_timer_generation(run, state, register_timer)?;
-        let ask_boundary_seq = self.prepare_ask_boundary_sequence(run, kind)?;
         if register_timer {
+            crate::shard::lifecycle::awaiting_deadline(&state, step)?;
+        }
+        self.add_executed_step_delta(run, state.frame.executed());
+        self.prepare_await_timer_registration_slots(
+            run,
+            kind,
+            AwaitTimerRegistration {
+                state,
+                step,
+                register_timer,
+                generation: None,
+                ask_boundary_seq: None,
+            },
+        )
+    }
+
+    fn prepare_await_timer_registration_slots(
+        &mut self,
+        run: RunId,
+        kind: PendingTimerKind,
+        mut registration: AwaitTimerRegistration,
+    ) -> RuntimeResult<AwaitTimerRegistration> {
+        let (state, generation) = self.prepare_await_timer_generation(
+            run,
+            registration.state,
+            registration.register_timer,
+        )?;
+        registration.state = state;
+        registration.generation = generation;
+        registration.ask_boundary_seq = self.prepare_ask_boundary_sequence(run, kind)?;
+        if registration.register_timer {
             self.reserve_pending_timer_slot(run)?;
         }
-        Ok(AwaitTimerRegistration {
-            state,
-            step,
-            register_timer,
-            generation,
-            ask_boundary_seq,
-        })
+        Ok(registration)
     }
 
     fn prepare_await_timer_generation(

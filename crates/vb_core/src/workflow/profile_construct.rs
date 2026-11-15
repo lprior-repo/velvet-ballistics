@@ -3,6 +3,7 @@
 
 use super::super::WorkflowIrProfile;
 use super::super::ir_profile::validate_profile;
+use super::super::validate_refs::validate_expression_pool_bounds;
 use super::*;
 
 impl CompiledWorkflow {
@@ -33,6 +34,7 @@ impl CompiledWorkflow {
         source_metadata::secrets::validate(parts)?;
         retry_policy::validate(parts)?;
         slot_flow::validate_slot_flow(parts)?;
+        validate_expression_pool_bounds(parts)?;
         Ok(loop_slots)
     }
 

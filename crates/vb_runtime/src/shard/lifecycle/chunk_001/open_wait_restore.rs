@@ -3,11 +3,32 @@ impl Shard {
         &mut self,
         run: RunId,
         boundary: crate::recovery::RecoveredRunBoundary,
-        retry_timer: Option<PendingTimer>,
+        timer: Option<PendingTimer>,
+    ) -> RuntimeResult<bool> {
+        match boundary.kind() {
+            crate::recovery::RecoveredRunBoundaryKind::WaitingTimer
+            | crate::recovery::RecoveredRunBoundaryKind::TimedAsk => {
+                self.restore_timer_boundary(run, boundary, timer)
+            }
+            crate::recovery::RecoveredRunBoundaryKind::RetryTimer
+            | crate::recovery::RecoveredRunBoundaryKind::PendingAction
+            | crate::recovery::RecoveredRunBoundaryKind::OpenAsk
+            | crate::recovery::RecoveredRunBoundaryKind::OpenWaitEvent
+            | crate::recovery::RecoveredRunBoundaryKind::None => {
+                self.restore_other_boundary(run, boundary, timer)
+            }
+        }
+    }
+
+    fn restore_other_boundary(
+        &mut self,
+        run: RunId,
+        boundary: crate::recovery::RecoveredRunBoundary,
+        timer: Option<PendingTimer>,
     ) -> RuntimeResult<bool> {
         match boundary.kind() {
             crate::recovery::RecoveredRunBoundaryKind::RetryTimer => {
-                self.restore_retry_timer(run, retry_timer)
+                self.restore_retry_timer(run, timer)
             }
             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
                 self.restore_pending_action(run, boundary)
@@ -18,13 +39,30 @@ impl Shard {
             crate::recovery::RecoveredRunBoundaryKind::OpenWaitEvent => {
                 self.restore_open_wait_event(run, boundary)
             }
+            crate::recovery::RecoveredRunBoundaryKind::WaitingTimer
+            | crate::recovery::RecoveredRunBoundaryKind::TimedAsk => Ok(false),
+            crate::recovery::RecoveredRunBoundaryKind::None => Ok(false),
+        }
+    }
+
+    fn restore_timer_boundary(
+        &mut self,
+        run: RunId,
+        boundary: crate::recovery::RecoveredRunBoundary,
+        timer: Option<PendingTimer>,
+    ) -> RuntimeResult<bool> {
+        match boundary.kind() {
             crate::recovery::RecoveredRunBoundaryKind::WaitingTimer => {
-                self.restore_waiting_timer(run, boundary)
+                self.restore_waiting_timer(run, boundary, timer)
             }
             crate::recovery::RecoveredRunBoundaryKind::TimedAsk => {
-                self.restore_timed_ask(run, boundary)
+                self.restore_timed_ask(run, boundary, timer)
             }
-            crate::recovery::RecoveredRunBoundaryKind::None => Ok(false),
+            crate::recovery::RecoveredRunBoundaryKind::RetryTimer
+            | crate::recovery::RecoveredRunBoundaryKind::PendingAction
+            | crate::recovery::RecoveredRunBoundaryKind::OpenAsk
+            | crate::recovery::RecoveredRunBoundaryKind::OpenWaitEvent
+            | crate::recovery::RecoveredRunBoundaryKind::None => Ok(false),
         }
     }
 
@@ -91,11 +129,17 @@ impl Shard {
         &mut self,
         run: RunId,
         boundary: crate::recovery::RecoveredRunBoundary,
+        timer: Option<PendingTimer>,
     ) -> RuntimeResult<bool> {
-        let Some(timer) = boundary.waiting_timer() else {
+        let Some(suspension) = boundary.waiting_timer() else {
             return Ok(false);
         };
-        self.restore_recovered_timer_boundary(run, timer, PendingTimerKind::Wait)?;
+        self.restore_recovered_timer_boundary(
+            run,
+            suspension,
+            PendingTimerKind::Wait,
+            timer,
+        )?;
         self.apply(run, RuntimeEvent::AwaitTimer)?;
         Ok(true)
     }
@@ -104,11 +148,12 @@ impl Shard {
         &mut self,
         run: RunId,
         boundary: crate::recovery::RecoveredRunBoundary,
+        timer: Option<PendingTimer>,
     ) -> RuntimeResult<bool> {
         let Some(ask) = boundary.timed_ask() else {
             return Ok(false);
         };
-        self.restore_recovered_timer_boundary(run, ask, PendingTimerKind::Ask)?;
+        self.restore_recovered_timer_boundary(run, ask, PendingTimerKind::Ask, timer)?;
         self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
         self.apply(run, RuntimeEvent::AwaitTimer)?;
         Ok(true)

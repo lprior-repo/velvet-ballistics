@@ -7,13 +7,20 @@
 fn eval_expr_returns_slot_out_of_bounds_for_invalid_slot() -> Result<(), String> {
     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(99))].into_boxed_slice();
 
-    // slot_count is only 2 (indices 0 and 1), so 99 is OOB
+    // The workflow and frame have 8 slots, so 99 is out of bounds.
     let slots = vec![
         (SlotValue::I64(1), Taint::Clean),
         (SlotValue::I64(2), Taint::Clean),
     ];
 
-    let result = eval_workflow_with_slots(ops, slots, vec![]);
+    let result = eval_rejected_workflow_with_slots(
+        ops,
+        slots,
+        vec![],
+        crate::WorkflowError::SlotOutOfBounds {
+            slot: SlotIdx::new(99),
+        },
+    );
     match result {
         Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(99) => Ok(()),
         other => Err(format!("expected SlotOutOfBounds, got: {other:?}")),
@@ -89,7 +96,14 @@ fn eval_expr_returns_const_out_of_bounds() -> Result<(), String> {
     // Only constant at index 0 exists
     let slots: Vec<(SlotValue, Taint)> = vec![];
 
-    let result = eval_workflow_with_slots(ops, slots, vec![ConstValue::I64(1)]);
+    let result = eval_rejected_workflow_with_slots(
+        ops,
+        slots,
+        vec![ConstValue::I64(1)],
+        crate::WorkflowError::ConstOutOfBounds {
+            constant: ConstIdx::new(99),
+        },
+    );
     match result {
         Err(EngineError::ConstOutOfBounds { index }) if index == ConstIdx::new(99) => Ok(()),
         other => Err(format!("expected ConstOutOfBounds, got: {other:?}")),

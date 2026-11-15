@@ -10,6 +10,7 @@ const STDOUT_TARGET: &str = "stdout";
 const FILE_SCHEME: &str = "file";
 const WEBHOOK_SCHEME: &str = "webhook";
 const MAX_PATH_BYTES: usize = 4096;
+const MAX_STAGE_NAME_BYTES: usize = 255;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DeliverTarget {
@@ -100,14 +101,20 @@ fn validate_new_file_path(path: &Path) -> Result<(), DeliverSinkError> {
     if path.try_exists().map_err(to_io_error)? {
         return Err(DeliverSinkError::ExistingFile);
     }
+    validate_parent(path)
+}
 
+fn validate_parent(path: &Path) -> Result<(), DeliverSinkError> {
     let Some(parent) = path.parent() else {
         return Err(DeliverSinkError::MissingParent);
     };
     if !parent.is_dir() {
         return Err(DeliverSinkError::MissingParent);
     }
-
+    let resolved = parent.canonicalize().map_err(to_io_error)?;
+    if is_blocked_root(&resolved) {
+        return Err(DeliverSinkError::BlockedPath);
+    }
     Ok(())
 }
 
@@ -161,6 +168,13 @@ fn temporary_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
     let mut temp_name = OsString::from(".");
     temp_name.push(file_name);
     temp_name.push(".tmp");
+    if temp_name.as_encoded_bytes().len() > MAX_STAGE_NAME_BYTES {
+        temp_name = format!(
+            ".{}.tmp",
+            blake3::hash(file_name.as_encoded_bytes()).to_hex()
+        )
+        .into();
+    }
     Ok(parent.join(temp_name))
 }
 
@@ -196,3 +210,7 @@ fn to_io_error(error: io::Error) -> DeliverSinkError {
 #[cfg(test)]
 #[path = "deliver_sink/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "deliver_sink/boundary_tests.rs"]
+mod boundary_tests;

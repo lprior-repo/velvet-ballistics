@@ -597,13 +597,17 @@ fn commands_includes_all_expected_names() {
 }
 
 #[test]
-fn command_count_is_stable() {
+fn command_count_is_stable() -> Result<(), String> {
     let context = build("0.1.0");
     let commands = context
         .get("commands")
         .and_then(Value::as_object)
-        .expect("commands must be an object");
-    assert_eq!(commands.len(), 22);
+        .ok_or("commands must be an object")?;
+    let actual: std::collections::BTreeSet<_> = commands.keys().map(String::as_str).collect();
+    let expected: std::collections::BTreeSet<_> =
+        super::IMPLEMENTED_COMMAND_NAMES.iter().copied().collect();
+    assert_eq!(actual, expected);
+    Ok(())
 }
 
 #[test]
@@ -973,20 +977,26 @@ fn command_all_have_summary_field() {
 }
 
 #[test]
-fn command_answer_has_step_and_value_file_and_db_flags() {
+fn command_answer_describes_selector_file_pairs_and_required_database() {
     let context = build("0.1.0");
     let flags = context
         .pointer("/commands/answer/flags")
         .and_then(Value::as_object)
         .expect("flags must be an object");
 
-    for flag_name in &["--step", "--value-file", "--db"] {
-        let flag = flags
-            .get(*flag_name)
-            .and_then(Value::as_object)
-            .unwrap_or_else(|| panic!("{} must be an object", flag_name));
-        assert_eq!(flag.get("required").and_then(Value::as_bool), Some(true));
+    for (flag_name, kind) in [
+        ("--step", "u16"),
+        ("--slot", "u16"),
+        ("--value-file", "path"),
+        ("--value", "path"),
+    ] {
+        let expected = serde_json::json!({"type": kind});
+        assert_eq!(flags.get(flag_name), Some(&expected), "{flag_name}");
     }
+    assert_eq!(
+        flags.get("--db").and_then(|flag| flag.get("required")),
+        Some(&Value::Bool(true))
+    );
 }
 
 #[test]

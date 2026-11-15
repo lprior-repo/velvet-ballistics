@@ -1,99 +1,13 @@
 //! Module: ipc_serve
 
 use crate::app_impl::prelude::*;
+#[path = "ipc_serve/command.rs"]
+mod command;
 #[path = "ipc_serve/startup.rs"]
 mod startup;
+pub(crate) use command::cmd_ipc_serve;
+#[cfg(test)]
 use startup::recover_startup;
-
-pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
-    // Open the storage journal to validate the path
-    let journal = match vb_storage::FjallJournal::open(db, None) {
-        Ok(j) => j,
-        Err(e) => {
-            errln!("error opening journal at {}: {e}", db.display());
-            return CliExitCode::IpcError.into();
-        }
-    };
-    let journal = Arc::new(journal);
-    let queue =
-        match vb_storage::JournalWriterQueue::new(1024, 64, vb_storage::StorageLimits::DEFAULT) {
-            Ok(q) => Arc::new(q),
-            Err(e) => {
-                errln!("error creating journal queue: {e}");
-                return CliExitCode::IpcError.into();
-            }
-        };
-    let runtime_journal = match vb_runtime::journal::RuntimeJournalConfig::new(
-        vb_storage::DurabilityProfile::Journaled,
-    )
-    .shared_journal(Arc::clone(&journal), Arc::clone(&queue))
-    {
-        Ok(j) => j,
-        Err(e) => {
-            errln!("error creating runtime journal: {e}");
-            return CliExitCode::IpcError.into();
-        }
-    };
-
-    // Create runtime
-    let shard_count = match NonZeroUsize::new(1) {
-        Some(count) => count,
-        None => NonZeroUsize::MIN,
-    };
-    let config = vb_runtime::shard::ShardConfig::default();
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, runtime_journal);
-
-    let persistence = IpcJournalService { journal, queue };
-    let available_names =
-        match recover_startup(&persistence, &mut runtime, STARTUP_HEADER_SCAN_LIMIT) {
-            Ok(names) => names,
-            Err(error) => {
-                errln!("error recovering startup runs: {error}");
-                return CliExitCode::IpcError.into();
-            }
-        };
-    let mut resolver = StorageWorkflowResolver {
-        journal: Arc::clone(&persistence.journal),
-        available_names,
-    };
-
-    // Bind the IPC server
-    let mut server = match vb_ipc::server::IpcServer::bind(socket) {
-        Ok(s) => s,
-        Err(e) => {
-            errln!("error binding IPC socket at {}: {e}", socket.display());
-            return CliExitCode::IpcError.into();
-        }
-    };
-
-    outln!("ipc server listening on {}", socket.display());
-
-    // Event loop
-    loop {
-        let result = persistence.turn(
-            &mut server,
-            &mut runtime,
-            &mut resolver,
-            Some(std::time::Duration::from_millis(100)),
-        );
-        if let Some(error) = server.take_client_error() {
-            errln!("ipc peer error: {error}");
-        }
-        match result {
-            Ok(true) => {}
-            Ok(false) => {
-                outln!("shutdown requested");
-                break;
-            }
-            Err(e) => {
-                errln!("ipc service error: {e}");
-                return CliExitCode::IpcError.into();
-            }
-        }
-    }
-
-    ExitCode::SUCCESS
-}
 
 struct IpcJournalService {
     journal: Arc<vb_storage::FjallJournal>,

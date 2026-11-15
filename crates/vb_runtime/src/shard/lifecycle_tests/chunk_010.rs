@@ -38,7 +38,7 @@
             QUEUE_CAPACITY,
             QUEUE_BATCH_SIZE,
         )?;
-        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
         let run = kind.run();
         submit_run(&mut shard, run, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let timer = guard_test_timer(PendingTimerKind::Wait);
@@ -117,7 +117,7 @@
 
     #[test]
     fn action_completion_rejects_missing_and_mismatched_pending_action() -> Result<(), String> {
-        let mut missing = Shard::new(small_config());
+        let mut missing = Shard::new(small_config()).expect("valid test configuration");
         let run_missing = RunId::new(51_030);
         submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let ticket = pending_ticket(&missing, run_missing, StepIdx::ZERO, 1);
@@ -130,7 +130,7 @@
         assert_eq!(missing.pending_action_get(run_missing), None);
         assert_no_completion_mutation(&missing, run_missing, &state, &trace, seq);
 
-        let mut mismatched = Shard::new(small_config());
+        let mut mismatched = Shard::new(small_config()).expect("valid test configuration");
         let run_mismatch = RunId::new(51_031);
         submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let pending = mismatched.pending_action_get(run_mismatch);
@@ -149,7 +149,7 @@
     #[test]
     fn legacy_action_completion_rejects_missing_and_mismatched_pending_action(
     ) -> Result<(), String> {
-        let mut missing = Shard::new(small_config());
+        let mut missing = Shard::new(small_config()).expect("valid test configuration");
         let run_missing = RunId::new(51_034);
         submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let _removed = missing.pending_action_remove(run_missing);
@@ -161,7 +161,7 @@
         assert_eq!(missing.pending_action_get(run_missing), None);
         assert_no_completion_mutation(&missing, run_missing, &state, &trace, seq);
 
-        let mut mismatched = Shard::new(small_config());
+        let mut mismatched = Shard::new(small_config()).expect("valid test configuration");
         let run_mismatch = RunId::new(51_035);
         submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let pending = mismatched.pending_action_get(run_mismatch);
@@ -179,7 +179,7 @@
 
     #[test]
     fn action_failure_rejects_missing_and_mismatched_pending_action() -> Result<(), String> {
-        let mut missing = Shard::new(small_config());
+        let mut missing = Shard::new(small_config()).expect("valid test configuration");
         let run_missing = RunId::new(51_032);
         submit_run(&mut missing, run_missing, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let ticket = pending_ticket(&missing, run_missing, StepIdx::ZERO, 1);
@@ -192,7 +192,7 @@
         assert_eq!(missing.pending_action_get(run_missing), None);
         assert_no_completion_mutation(&missing, run_missing, &state, &trace, seq);
 
-        let mut mismatched = Shard::new(small_config());
+        let mut mismatched = Shard::new(small_config()).expect("valid test configuration");
         let run_mismatch = RunId::new(51_033);
         submit_run(&mut mismatched, run_mismatch, require_workflow("suspended", suspended_workflow())?, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
         let pending = mismatched.pending_action_get(run_mismatch);

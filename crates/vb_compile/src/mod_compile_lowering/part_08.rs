@@ -13,6 +13,8 @@ use vb_core::{
     CompiledWorkflow, ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract,
     SlotBranch, SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
+#[path = "local_resource_contract.rs"]
+mod local_resource_contract;
 
 impl SlotCompiler {
     /// Interns a cold source literal in deterministic identifier order.
@@ -145,6 +147,7 @@ impl SlotCompiler {
 
     /// Pushes a compiled node into the node array.
     pub fn push_node(&mut self, node: CompiledNode) {
+        local_resource_contract::include(&mut self.resource_contract, &node.kind);
         self.nodes.push(node);
     }
 
@@ -181,9 +184,7 @@ impl SlotCompiler {
             accessors: self.accessors.into_boxed_slice(),
             constants: self.constants.into_boxed_slice(),
             entry: StepIdx::new(0),
-            // NB: ResourceContract::DEFAULT is used when no explicit contract is provided.
-            // Callers needing a specific contract should use compile_source(contract).
-            resource_contract: ResourceContract::DEFAULT,
+            resource_contract: self.resource_contract,
             step_names: Box::new([]),
             input_slots: self.input_slots.into_boxed_slice(),
         })

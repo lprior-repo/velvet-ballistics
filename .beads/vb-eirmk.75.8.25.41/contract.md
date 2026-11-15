@@ -1,0 +1,7 @@
+# Unused expression pool bounds
+
+Both existing checked constructors must reject every LoadSlot or LoadConst operand outside the actual WorkflowParts pools, including unused programs. Use the existing SlotOutOfBounds and ConstOutOfBounds errors. Preserve all pre-existing profile, structural, stack, accessor, metadata, resource, loop, retry and active slot-flow checks and their error ordering by checking remaining pool bounds only after the existing shared validations. No new public API, errors, layouts, schemas, formats, dependencies, profiles or gates.
+
+Public constructor tests use real compiler-derived parts for valid last indices and exact-length/MAX failures, an otherwise-valid current IR fixture for empty pools, and exact stack/accessor/active-flow precedence controls. No unchecked constructor, execution grant or artifact-authentication claim. Independent CODE/TEST review and scoped package/canonical checks are required. CPU/cloud only; no benchmarks.
+
+The existing taint evaluator error tests must retain exact EngineError payload99 after checked construction starts rejecting their malformed operands. Reuse the existing test-util-only unchecked constructor solely for these defense-in-depth evaluator tests, after asserting exact rejection by both real checked constructors. All ordinary taint fixtures remain checked; no production constructor, feature, visibility or evaluator change. This test-only injection is not admission evidence. Preserve the original evaluator error assertions and all taint tests.

@@ -51,7 +51,7 @@ fn handle_action_completion_journal_first() -> Result<(), String> {
     }
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(EnvelopeFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let wf = require_workflow("suspended_workflow", suspended_workflow())?;
     let run = RunId::new(50_020);
     assert_eq!(
@@ -205,7 +205,7 @@ fn handle_action_failure_journal_first() {
     }
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(ActionFailedFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -364,7 +364,7 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
     let shared: SharedRuntimeJournal = std::sync::Arc::new(ActionFailedFailsOnce {
         failed: std::sync::atomic::AtomicBool::new(false),
     });
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let run = RunId::new(50_050);
     submit_run(
         &mut shard,
@@ -470,7 +470,7 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
         queue.clone(),
     ));
     let shared: SharedRuntimeJournal = adapter.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let run = RunId::new(50_060);
     submit_run(
         &mut shard,

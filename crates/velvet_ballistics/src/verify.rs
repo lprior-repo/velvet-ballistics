@@ -171,22 +171,27 @@ pub(crate) fn verify_success_report(
         "node_count": result.node_count,
         "checks": &result.checks,
         "warnings": &result.warnings,
-        "artifact": {
-            "source_digest_hex": result.digest_hex.as_str(),
-            "ir_digest_hex": result.digest_hex.as_str(),
-            "node_count": result.node_count
-        },
-        "replay": {
-            "gates_passed": &result.checks,
-            "gate_sequence": &result.checks,
-            "replay_safe": true
-        },
-        "durability": {
-            "profile": "none",
-            "journal_written": false
-        },
+        "artifact": artifact_report(result),
+        "replay": replay_report(result),
+        "durability": { "profile": "none", "journal_written": false },
         "repair_hints": [],
         "exit_code": cli_exit_code_number(CliExitCode::Success)
+    })
+}
+
+fn artifact_report(result: &VerifyOk) -> serde_json::Value {
+    serde_json::json!({
+        "source_digest_hex": result.digest_hex.as_str(),
+        "ir_digest_hex": result.ir_digest_hex.as_str(),
+        "node_count": result.node_count
+    })
+}
+
+fn replay_report(result: &VerifyOk) -> serde_json::Value {
+    serde_json::json!({
+        "gates_passed": &result.checks,
+        "gate_sequence": &result.checks,
+        "replay_safe": true
     })
 }
 

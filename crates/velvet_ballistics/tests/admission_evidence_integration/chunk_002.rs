@@ -73,11 +73,7 @@ fn submit_artifact_then_run_succeeds() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new(
-        shard_count,
-        test_config(),
-        vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, test_config(), vb_runtime::journal::NoopRuntimeJournal::shared()).expect("valid test configuration");
     let run_id = RunId::new(1);
     match runtime.submit_direct(run_id, workflow) {
         Ok(()) => {}
@@ -141,11 +137,7 @@ fn run_without_artifact_under_relaxed_policy() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new(
-        shard_count,
-        test_config(),
-        vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, test_config(), vb_runtime::journal::NoopRuntimeJournal::shared()).expect("valid test configuration");
     let run_id = RunId::new(2);
     match runtime.submit_direct(run_id, workflow) {
         Ok(()) => {}
@@ -197,11 +189,7 @@ fn submit_artifact_yaml_compiled_then_run_with_inputs_taints() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new(
-        shard_count,
-        test_config(),
-        vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, test_config(), vb_runtime::journal::NoopRuntimeJournal::shared()).expect("valid test configuration");
     let run_id = RunId::new(99);
     match runtime.submit_direct(run_id, workflow) {
         Ok(()) => {}

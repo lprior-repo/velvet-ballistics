@@ -32,7 +32,7 @@ fn resource_contract_field_independence() -> TestResult<()> {
         (
             "max_steps",
             ResourceContract {
-                max_steps: 9999,
+                max_steps: 999,
                 ..base_contract
             },
         ),
@@ -46,7 +46,7 @@ fn resource_contract_field_independence() -> TestResult<()> {
         (
             "max_constants",
             ResourceContract {
-                max_constants: 65534,
+                max_constants: 8191,
                 ..base_contract
             },
         ),

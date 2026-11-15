@@ -1,0 +1,13 @@
+version: velvet-ballistics/v1
+name: cold_timer_prefix_qualification
+when: {manual: {}}
+vars: {prompt: question}
+steps:
+  - id: prompt
+    set: {output: prompt_text, value: "$vars.prompt"}
+  - id: duration
+    set: {output: duration_ms, value: "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0"}
+  - id: question
+    ask: {prompt: "$prompt", timeout: "$duration"}
+  - id: done
+    finish: {result: "$question"}

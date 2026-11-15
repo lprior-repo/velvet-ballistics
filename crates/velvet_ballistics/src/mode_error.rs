@@ -52,38 +52,34 @@ impl fmt::Display for ModeError {
 }
 
 pub(crate) fn command_mode(command: &Command) -> CommandMode {
-    match command {
-        Command::Validate { .. }
-        | Command::Verify { .. }
-        | Command::Explain { .. }
-        | Command::Compile { .. }
-        | Command::Graph { .. }
-        | Command::Simulate { .. }
-        | Command::BenchRun { .. }
-        | Command::AgentContext { .. }
-        | Command::Status { .. }
-        | Command::SystemStatus { .. }
-        | Command::ActionList { .. }
-        | Command::ActionInspect { .. }
-        | Command::Help { .. }
-        | Command::Version => CommandMode::Pure,
-        Command::Run { .. }
-        | Command::RunCompiled { .. }
-        | Command::Submit { .. }
-        | Command::Inspect { .. }
-        | Command::Events { .. }
-        | Command::Replay { .. }
-        | Command::Trace { .. }
-        | Command::Retry { .. }
-        | Command::Resume { .. }
-        | Command::Doctor { .. }
-        | Command::Answer { .. }
-        | Command::Diff { .. }
-        | Command::Incident { .. }
-        | Command::Cancel { .. }
-        | Command::AiContext { .. } => CommandMode::Storage,
-        Command::IpcServe { .. } => CommandMode::Runtime,
+    if is_pure_command(command) {
+        CommandMode::Pure
+    } else if matches!(command, Command::IpcServe { .. }) {
+        CommandMode::Runtime
+    } else {
+        CommandMode::Storage
     }
+}
+
+fn is_pure_command(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::Validate { .. }
+            | Command::Verify { .. }
+            | Command::Explain { .. }
+            | Command::Compile { .. }
+            | Command::Graph { .. }
+            | Command::Simulate { .. }
+            | Command::BenchRun { .. }
+            | Command::AgentContext { .. }
+            | Command::Status { .. }
+            | Command::SystemStatus { .. }
+            | Command::ActionList { .. }
+            | Command::ActionInspect { .. }
+            | Command::Help { .. }
+            | Command::Version
+            | Command::WorkflowDiff { db: None, .. }
+    )
 }
 
 #[cfg(test)]
@@ -293,3 +289,7 @@ mod tests {
         assert_eq!(code, CliExitCode::StorageError);
     }
 }
+
+#[cfg(test)]
+#[path = "mode_error/workflow_diff_tests.rs"]
+mod workflow_diff_tests;

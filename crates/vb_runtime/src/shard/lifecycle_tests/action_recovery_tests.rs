@@ -208,11 +208,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     };
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
-        config,
-        shared_journal,
-        store.clone(),
-    );
+    let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(config, shared_journal, store.clone()).expect("valid test configuration");
 
     let mut frame = vb_core::frame::RunFrame::new(run_id, vb_core::ids::StepIdx::ZERO, 2, 2)?;
     frame.write_slot(
@@ -596,11 +592,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let fresh_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
-    let mut fresh_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
-        fresh_config,
-        fresh_journal.clone(),
-        shard.artifact_store.clone(),
-    );
+    let mut fresh_shard = crate::shard::Shard::new_with_journal_and_artifact_store(fresh_config, fresh_journal.clone(), shard.artifact_store.clone()).expect("valid test configuration");
 
     // Capture fresh shard pre-state: empty pending and journal.
     let fresh_pending = fresh_shard.pending_boundary_snapshot(0, 8);
@@ -708,11 +700,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let positive_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
-    let mut positive_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
-        positive_config,
-        positive_journal.clone(),
-        shard.artifact_store.clone(),
-    );
+    let mut positive_shard = crate::shard::Shard::new_with_journal_and_artifact_store(positive_config, positive_journal.clone(), shard.artifact_store.clone()).expect("valid test configuration");
 
     let valid_result = positive_shard.handle_recover(valid_command);
     assert!(
@@ -975,7 +963,7 @@ fn recovery_gate_shard() -> Result<
     };
     let journal = RecoveryGateJournal::shared();
     let shard =
-        crate::shard::Shard::new_with_journal_and_artifact_store(config, journal.clone(), store);
+        crate::shard::Shard::new_with_journal_and_artifact_store(config, journal.clone(), store).expect("valid test configuration");
     Ok((
         shard,
         journal,
@@ -1168,7 +1156,7 @@ fn restore_open_gates_rejects_foreign_run_gate() -> Result<(), Box<dyn std::erro
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = crate::shard::Shard::new(config);
+    let mut shard = crate::shard::Shard::new(config).expect("valid test configuration");
     let run_id = vb_core::ids::RunId::new(1);
     let foreign = recovery_test_open_gate(vb_core::ids::RunId::new(99), 7);
     assert_eq!(
@@ -1196,7 +1184,7 @@ fn restore_open_gates_rejects_duplicate_gate_id() -> Result<(), Box<dyn std::err
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = crate::shard::Shard::new(config);
+    let mut shard = crate::shard::Shard::new(config).expect("valid test configuration");
     let run_id = vb_core::ids::RunId::new(1);
     let open = recovery_test_open_gate(run_id, 7);
     shard.restore_open_gates(run_id, std::slice::from_ref(&open))?;
@@ -1225,7 +1213,7 @@ fn restore_open_gates_enforces_registry_cap() -> Result<(), Box<dyn std::error::
         max_open_gates: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = crate::shard::Shard::new(config);
+    let mut shard = crate::shard::Shard::new(config).expect("valid test configuration");
     let run_id = vb_core::ids::RunId::new(1);
     let first = recovery_test_open_gate(run_id, 7);
     let second = recovery_test_open_gate(run_id, 8);

@@ -119,7 +119,8 @@ fn unix_socket_command_18_records_local_claim_in_reopened_kind_55()
         vb_core::policy::RuntimePolicy::Strict,
     )?;
     let artifact_digest = accepted.digest;
-    let mut runtime = Runtime::new(NonZeroUsize::MIN, config, shared);
+    let mut runtime =
+        Runtime::new(NonZeroUsize::MIN, config, shared).expect("valid test configuration");
     let input_digest = vb_storage::inputs::compute_input_digest(&[])?;
     runtime.submit_direct(run, workflow)?;
     runtime.tick_all()?;

@@ -60,13 +60,13 @@ impl Shard {
         step: StepIdx,
         kind: PendingTimerKind,
         generation: u64,
-    ) -> PendingTimer {
-        PendingTimer {
+    ) -> RuntimeResult<PendingTimer> {
+        Ok(PendingTimer {
             step,
             kind,
             generation,
-            deadline: awaiting_deadline(state, step),
-        }
+            deadline: awaiting_deadline(state, step)?,
+        })
     }
 
     pub(super) fn scheduled_timer_generation(

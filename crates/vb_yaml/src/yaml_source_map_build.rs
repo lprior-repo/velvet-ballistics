@@ -51,15 +51,17 @@ fn source_map_from_events(text: &str, events: &[YamlEvent]) -> SourceMap {
 
 /// Convert an EventSpan to a SourceSpan.
 fn event_span_to_source_span(text: &str, span: EventSpan) -> SourceSpan {
-    let (end_line, end_col) = line_col(text, span.end);
-    SourceSpan::new(
-        span.start,
-        span.end,
-        span.line,
-        span.column,
-        end_line,
-        end_col,
-    )
+    let start = parser_offset_to_byte(text, span.start);
+    let end = parser_offset_to_byte(text, span.end);
+    let (start_line, start_col) = line_col(text, start);
+    let (end_line, end_col) = line_col(text, end);
+    SourceSpan::new(start, end, start_line, start_col, end_line, end_col)
+}
+
+fn parser_offset_to_byte(text: &str, character_index: usize) -> usize {
+    text.char_indices()
+        .nth(character_index)
+        .map_or(text.len(), |(offset, _)| offset)
 }
 
 /// Build a cold semantic source map for commonly diagnosed author paths.
@@ -188,24 +190,18 @@ fn is_trigger_container_path(path: &str) -> bool {
 }
 
 fn line_col(text: &str, offset: usize) -> (usize, usize) {
-    let mut line = 1usize;
-    let mut col = 1usize;
-    let mut cursor = 0usize;
-    for ch in text.chars() {
-        if cursor >= offset {
-            break;
-        }
-        if ch == '\n' {
-            line = line.saturating_add(1);
-            col = 1;
-        } else {
-            col = col.saturating_add(1);
-        }
-        cursor = match cursor.checked_add(ch.len_utf8()) {
-            Some(next) => next,
-            None => break,
-        };
-    }
+    let (line, col, _) = text
+        .char_indices()
+        .take_while(|(index, _)| *index < offset)
+        .fold(
+            (1usize, 1usize, false),
+            |(line, col, previous_cr), (_, ch)| match ch {
+                '\r' => (line.saturating_add(1), 1, true),
+                '\n' if previous_cr => (line, col, false),
+                '\n' => (line.saturating_add(1), 1, false),
+                _ => (line, col.saturating_add(1), false),
+            },
+        );
     (line, col)
 }
 

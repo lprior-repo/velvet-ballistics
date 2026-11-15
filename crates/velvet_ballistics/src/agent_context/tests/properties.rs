@@ -206,13 +206,15 @@ proptest! {
     }
 
     #[test]
-    fn prop_build_commands_count_is_22(version in "\\PC*") {
+    fn prop_build_commands_match_implemented_surface(version in "\\PC*") {
         let result = build(&version);
         let commands = result
             .get("commands")
             .and_then(serde_json::Value::as_object)
-            .expect("commands must be an object");
-        prop_assert_eq!(commands.len(), 22);
+            .ok_or_else(|| TestCaseError::fail("commands must be an object"))?;
+        let actual: std::collections::BTreeSet<_> = commands.keys().map(String::as_str).collect();
+        let expected: std::collections::BTreeSet<_> = super::IMPLEMENTED_COMMAND_NAMES.iter().copied().collect();
+        prop_assert_eq!(actual, expected);
     }
 
     #[test]

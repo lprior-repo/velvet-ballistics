@@ -28,7 +28,7 @@ impl ShardConfig {
     }
 }
 
-fn validate_command_queue_capacity(capacity: usize) -> RuntimeResult<()> {
+pub(crate) fn validate_command_queue_capacity(capacity: usize) -> RuntimeResult<()> {
     if !is_valid_command_queue_capacity(capacity) {
         return Err(RuntimeError::CommandQueueCapacityExceeded {
             capacity,

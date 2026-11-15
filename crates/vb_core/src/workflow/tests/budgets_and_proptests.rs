@@ -317,7 +317,10 @@ fn total_steps_budget_parts() -> WorkflowParts {
             budget_node(2, CompiledNodeKind::Nop),
         ],
         1,
-        budget_contract(3, 1),
+        ResourceContract {
+            max_collect_items: 1_000_001,
+            ..budget_contract(3, 1)
+        },
     )
 }
 
@@ -860,7 +863,7 @@ mod proptests {
 
     #[test]
     fn resource_contract_default_has_reasonable_max_steps() {
-        assert_eq!(ResourceContract::DEFAULT.max_steps, 10_000);
+        assert_eq!(ResourceContract::DEFAULT.max_steps, 1_000);
     }
 
     #[test]

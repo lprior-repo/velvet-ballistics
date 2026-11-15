@@ -207,7 +207,8 @@ impl RuntimeJournal for FailingRuntimeJournal {
 fn handle_resume_returns_error_when_drive_run_fails() {
     // Reject the initial drive once, allow Resumed, then reject its drive evidence.
     let journal = FailingRuntimeJournal::shared_for_resume_drive_failure();
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard =
+        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
     let source = RuntimeError::StorageJournalAppend {
         source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
     };
@@ -251,7 +252,8 @@ fn handle_resume_returns_error_when_drive_run_fails() {
 #[test]
 fn failed_resumed_append_restores_resumable_for_retry() {
     let journal = FailingRuntimeJournal::shared(FailAt::Resumed);
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard =
+        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
 
     let run_id = RunId::new(6);
     let wf = suspended_workflow().expect("workflow must compile");
@@ -302,7 +304,8 @@ fn failed_resumed_append_restores_resumable_for_retry() {
 #[test]
 fn observe_resume_drive_result_does_not_drop_drive_run_error() {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard =
+        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
     let run_id = RunId::new(4);
     let wf = suspended_workflow().expect("workflow must compile");
     submit_suspended(&shard, run_id, wf);
@@ -315,7 +318,8 @@ fn observe_resume_drive_result_does_not_drop_drive_run_error() {
     );
 
     let failing_journal = FailingRuntimeJournal::shared_for_resume_drive_failure();
-    let mut shard2 = Shard::new_with_journal(small_config(), failing_journal);
+    let mut shard2 =
+        Shard::new_with_journal(small_config(), failing_journal).expect("valid test configuration");
     let source = RuntimeError::StorageJournalAppend {
         source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
     };
@@ -482,7 +486,8 @@ fn handle_submit_journal_before_state_insert_noorphan_journal_record() {
     // the system is in an inconsistent state.
 
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard =
+        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
 
     let run_id = RunId::new(100);
     // Use suspended_workflow so the run stays in Resumable state (not finished)
@@ -536,7 +541,8 @@ fn handle_submit_propagates_journal_failure_before_drive_run() {
     // Use a journal that fails on the first append (RunSubmitted).
     // handle_submit should return an error before calling drive_run.
     let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(FailAt::AnyAppend);
-    let mut shard = Shard::new_with_journal(small_config(), failing_journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), failing_journal.clone())
+        .expect("valid test configuration");
 
     let run_id = RunId::new(200);
     let wf = finished_workflow().expect("workflow must compile");
@@ -573,7 +579,8 @@ fn handle_submit_propagates_journal_failure_before_drive_run() {
 #[test]
 fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard =
+        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
 
     let run_id = RunId::new(300);
     let wf = finished_workflow().expect("workflow must compile");
@@ -642,7 +649,8 @@ fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
 fn handle_resume_propagates_flush_evidence_failure() {
     let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(FailAt::Drive);
     let config = small_config();
-    let mut shard = Shard::new_with_journal(config, failing_journal);
+    let mut shard =
+        Shard::new_with_journal(config, failing_journal).expect("valid test configuration");
 
     let run_id = RunId::new(500);
     let wf = suspended_workflow().expect("workflow must compile");
@@ -685,7 +693,8 @@ fn small_config() -> ShardConfig {
 
 fn resume_error_from_resumed_append_failure(run_id: RunId, source: RuntimeError) -> ResumeError {
     let journal = SourceFailingRuntimeJournal::shared(source);
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard =
+        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
     let wf = suspended_workflow().expect("workflow must compile");
     submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must make run resumable");

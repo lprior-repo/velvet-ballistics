@@ -319,10 +319,11 @@ fn validation_accepts_max_expr_stack_at_hard_limit() {
 
 #[test]
 fn validation_accepts_max_steps_at_boundary() {
-    let parts = nop_parts(contract(u16::MAX, 10, 10, 10, 10, 10));
+    let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW).unwrap_or(u16::MAX);
+    let parts = nop_parts(contract(max_steps, 10, 10, 10, 10, 10));
     match CompiledWorkflow::try_from_parts(parts) {
         Ok(_) => {}
-        Err(e) => panic!("Expected Ok at u16::MAX for max_steps, got: {e:?}"),
+        Err(e) => panic!("Expected Ok at the hard limit for max_steps, got: {e:?}"),
     }
 }
 
@@ -337,10 +338,11 @@ fn validation_accepts_max_slots_at_boundary() {
 
 #[test]
 fn validation_accepts_max_constants_at_boundary() {
-    let parts = const_parts(contract(10, 10, u16::MAX, 10, 10, 10), Box::new([]));
+    let max_constants = u16::try_from(vb_core::limits::MAX_CONSTANTS).unwrap_or(u16::MAX);
+    let parts = const_parts(contract(10, 10, max_constants, 10, 10, 10), Box::new([]));
     match CompiledWorkflow::try_from_parts(parts) {
         Ok(_) => {}
-        Err(e) => panic!("Expected Ok at u16::MAX for max_constants, got: {e:?}"),
+        Err(e) => panic!("Expected Ok at the hard limit for max_constants, got: {e:?}"),
     }
 }
 
