@@ -56,7 +56,7 @@
 //   - `BudgetDimension`
 //     <- crates/vb_core/src/budget/validate_error.rs:100-147
 //   - `validate_resource_contract`
-//     <- crates/vb_core/src/workflow/resource_limits.rs:124-130
+//     <- crates/vb_core/src/workflow/resource_limits.rs:124-135
 //   - `validate_entry`
 //     <- crates/vb_core/src/workflow/validate.rs:147-149
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
@@ -625,9 +625,9 @@ pub enum SpecKindRef {
     NonZero(u32),
 }
 /// Mirrors the production `WholeWorkflowBudget` field set at
-/// `crates/vb_core/src/budget/compute.rs:20-96`: the computed budget
+/// `crates/vb_core/src/budget/compute.rs:21-97`: the computed budget
 /// `WholeWorkflowBudget::compute` derives by walking the IR
-/// (budget/compute.rs:103-109). Production `u64` fields stay `u64`;
+/// (budget/compute.rs:104-110). Production `u64` fields stay `u64`;
 /// production `u16` fields are promoted to `u32` per this
 /// file's numeric-mirror convention. The seven fields
 /// `BoundednessPolicy::DEFAULT.validate` never reads
@@ -824,7 +824,7 @@ pub struct SpecWorkflowParts {
     /// Caller-supplied computed budget consumed by step 4
     /// (`validate_budget`, workflow/validate.rs:113-119). Production
     /// derives it with `WholeWorkflowBudget::compute`
-    /// (budget/compute.rs:103-109) and validates it against
+    /// (budget/compute.rs:104-110) and validates it against
     /// `BoundednessPolicy::DEFAULT` (budget/validate.rs:60-84); the
     /// projection checks the supplied value with `budget_error`
     /// instead, so the compute walk stays with the caller.
@@ -2462,7 +2462,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::EmptyNodes);
     }
     let node_count = parts.nodes_len;
-    // 1a. resource contract bounds (workflow/resource_limits.rs:124-130).
+    // 1a. resource contract bounds (workflow/resource_limits.rs:124-135).
     // The TooLarge arms live in `check_resource_contract_limits`
     // (workflow/resource_limits.rs:33-122): steps (workflow/resource_limits.rs:33-122,
     // MAX_STEPS_PER_WORKFLOW 65535), slots (workflow/resource_limits.rs:33-122,
@@ -2482,7 +2482,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // over-cap arm returns ResourceContractTooLarge, matching
     // production; the zero-transitions check below returns
     // ResourceContractExceeded after the expr-stack loop, matching
-    // `validate_transitions_nonzero` (workflow/resource_limits.rs:137-144).
+    // `validate_transitions_nonzero` (workflow/resource_limits.rs:142-149).
     // The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
     // true inventory lengths. Each is checked against its contract
@@ -2699,7 +2699,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // from already-validated nodes, so the projection treats it as
     // passing for inputs that reached this step.
     // ---- Step 4: budget validation ----
-    // Production calls WholeWorkflowBudget::compute (budget/compute.rs:103-109)
+    // Production calls WholeWorkflowBudget::compute (budget/compute.rs:104-110)
     // then BoundednessPolicy::DEFAULT.validate (budget/validate.rs:88-146);
     // validate_budget_result (workflow/validate.rs:121-130) collapses
     // any BudgetError to BudgetPolicyExceeded. The projection checks

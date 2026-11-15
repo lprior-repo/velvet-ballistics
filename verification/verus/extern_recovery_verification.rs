@@ -1092,7 +1092,7 @@ pub fn hydrate_run_frame_preconditions_pure(
 
 /// Pure decision fn mirroring
 /// `SummaryRecoveryBoundary::hydrate_run_frame` at
-/// `crates/vb_runtime/src/recovery.rs:232-234`.
+/// `crates/vb_runtime/src/recovery.rs:253-255`.
 ///
 /// Production body: `Err(RuntimeError::UnsupportedFullRecoveryHydration)`
 /// unconditionally. Pure projection: always false (never succeeds).

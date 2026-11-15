@@ -63,10 +63,10 @@
 //                                               the flag assignments and
 //                                               evidence wrap in
 //                                               `prepare_with_profile` at
-//                                               crates/vb_storage/src/admission/verification.rs:39-42;
+//                                               crates/vb_storage/src/admission/verification.rs:40-43;
 //                                               enforced by
 //                                               `verify_accepted_artifact` at
-//                                               verification.rs:60-90 via
+//                                               verification.rs:61-108 via
 //                                               `verify_expected_bindings`
 //                                               at verification.rs:163-178)
 //   - `digest_eq`                              <- extern_admission_artifact_model.rs
@@ -206,7 +206,7 @@ pub open spec fn prepared_evidence_version() -> int {
 // `prepare_with_profile` then sets exactly `bounded_claimed` and
 // `idempotency_verified_claimed` true and wraps the rebuilt evidence
 // as `Verified` at schema version 3
-// (`crates/vb_storage/src/admission/verification.rs:39-42`).
+// (`crates/vb_storage/src/admission/verification.rs:40-43`).
 //
 // Contract (non-vacuous): the production function returns `true`
 // iff the proof carries exactly the prepared shape: gate_count 0,
@@ -253,7 +253,7 @@ pub fn artifact_digest_bound_exec(artifact: &production::AcceptedArtifact) -> bo
 // and `Unverified` evidence `VerificationProof::new` leaves at
 // crates/vb_storage/src/admission/proof.rs:125-141, plus the flag assignments and evidence wrap
 // in `prepare_with_profile` at
-// `crates/vb_storage/src/admission/verification.rs:39-42`.
+// `crates/vb_storage/src/admission/verification.rs:40-43`.
 pub assume_specification[ production::proof_matches_prepared_shape ](
     proof: &production::VerificationProof,
 ) -> (r: bool)
@@ -313,7 +313,7 @@ pub assume_specification[ production::artifact_digest_bound ](
 /// `replayable_claimed` false (production `verification_proof_core`
 /// at `crates/vb_storage/src/admission/proof.rs:103-118` plus the flag
 /// assignments in `prepare_with_profile` at
-/// `crates/vb_storage/src/admission/verification.rs:39-42`).
+/// `crates/vb_storage/src/admission/verification.rs:40-43`).
 pub open spec fn prepared_proof_flags(
     bounded: bool,
     taint_safe: bool,
@@ -347,7 +347,7 @@ pub open spec fn prepared_proof_collections(
 /// Spec view: true iff the proof's evidence is the `Verified` variant
 /// carrying the prepared schema version (production
 /// `checked_evidence_schema` at
-/// `crates/vb_storage/src/admission/verification.rs:104-117` rejects
+/// `crates/vb_storage/src/admission/verification.rs:122-135` rejects
 /// `Unverified`, `Packed`, and any `Verified` evidence at a stale
 /// schema version).
 pub open spec fn evidence_is_verified_v3(evidence: &production::ArtifactEvidence) -> bool {

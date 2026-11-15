@@ -14,10 +14,10 @@
 //     Production constructs gate_count 0, not 15: `verification_proof_core`
 //     (crates/vb_storage/src/admission/proof.rs:103-118) forces gate_count 0,
 //     durable false, and all flags false; `prepare_with_profile`
-//     (crates/vb_storage/src/admission/verification.rs:30-56) sets only
+//     (crates/vb_storage/src/admission/verification.rs:31-57) sets only
 //     bounded_claimed and idempotency_verified_claimed true. The 15-gate
 //     shape exists only in the AlwaysPresentArtifactStore fixture
-//     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91).
+//     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:76-93).
 //   - RunAdmission struct mirrors `vb_runtime::admission::RunAdmission`
 //     at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:6-34.
 //   - RunAdmission::new mirrors
@@ -30,7 +30,7 @@
 //     validation; it prepares then calls private submit_prepared_artifact
 //     (crates/vb_storage/src/admission.rs:114-136), which owns the Strict tag
 //     check, sequence issuance and readback. `verify_accepted_artifact`
-//     (crates/vb_storage/src/admission/verification.rs:60-90) enforces the
+//     (crates/vb_storage/src/admission/verification.rs:61-108) enforces the
 //     prepared shape by recompute-and-compare, any deviation returned to
 //     admission callers as ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:15-22).
@@ -321,9 +321,9 @@ pub const PREPARED_GATE_COUNT: u8 = 0;
 // Prepared-proof gate-count decision. Production constructs gate_count 0;
 // the bool is the prepared profile's claimed flags (bounded_claimed and
 // idempotency_verified_claimed, set by `prepare_with_profile` at
-// crates/vb_storage/src/admission/verification.rs:30-56). The legacy
+// crates/vb_storage/src/admission/verification.rs:31-57). The legacy
 // 15-gate shape exists only in the AlwaysPresentArtifactStore fixture
-// (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91)
+// (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:76-93)
 // and is rejected by real validation.
 pub open spec fn spec_all_required_gates_accepted(
     gate_count: u8,
