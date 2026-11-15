@@ -28,11 +28,11 @@
 //     Delegates to shared profile construction:
 //     crates/vb_core/src/workflow/profile_construct.rs:9-22
 //   - `validate_parts` structural validation
-//     <- crates/vb_core/src/workflow/validate.rs:20-46
+//     <- crates/vb_core/src/workflow/validate.rs:21-47
 //   - `validate_budget` budget policy validation
-//     <- crates/vb_core/src/workflow/validate.rs:113-119
+//     <- crates/vb_core/src/workflow/validate.rs:114-120
 //   - `validate_budget_result` budget error collapse
-//     <- crates/vb_core/src/workflow/validate.rs:121-130
+//     <- crates/vb_core/src/workflow/validate.rs:122-131
 //   - `WholeWorkflowBudget` field set
 //     <- crates/vb_core/src/budget/compute.rs:21-97
 //   - `WholeWorkflowBudget::compute`
@@ -58,10 +58,10 @@
 //   - `validate_resource_contract`
 //     <- crates/vb_core/src/workflow/resource_limits.rs:124-135
 //   - `validate_entry`
-//     <- crates/vb_core/src/workflow/validate.rs:147-149
+//     <- crates/vb_core/src/workflow/validate.rs:148-150
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
-//     <- crates/vb_core/src/workflow/validate.rs:151-170
-//     <- crates/vb_core/src/workflow/validate.rs:199-207
+//     <- crates/vb_core/src/workflow/validate.rs:152-172
+//     <- crates/vb_core/src/workflow/validate.rs:201-209
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:13-152
 //   - `validate_slots`
 //     <- crates/vb_core/src/workflow/validate_node_kind.rs:154-159
@@ -97,11 +97,11 @@
 //     <- crates/vb_core/src/limits.rs:71-71
 //     <- crates/vb_core/src/limits.rs:75-75
 //   - `validate_reduce_branch_targets`
-//     <- crates/vb_core/src/workflow/validate.rs:172-185
+//     <- crates/vb_core/src/workflow/validate.rs:174-187
 //   - `validate_for_each_next_targets`
-//     <- crates/vb_core/src/workflow/validate.rs:187-197
+//     <- crates/vb_core/src/workflow/validate.rs:189-199
 //   - `validate_input_constraint`
-//     <- crates/vb_core/src/workflow/validate.rs:85-111
+//     <- crates/vb_core/src/workflow/validate.rs:86-112
 //   - `CompiledInputConstraint` field set
 //     <- crates/vb_core/src/workflow/input_constraint.rs:13-43
 //   - `validate_expr`, `validate_step`, `validate_slot`, `validate_const`
@@ -585,7 +585,7 @@ pub struct SpecAccessor {
 /// Mirrors the four numeric bounds of the production
 /// `CompiledInputConstraint` at
 /// `crates/vb_core/src/workflow/input_constraint.rs:13-43`. Only the bounds
-/// `validate_input_constraint` (workflow/validate.rs:85-111) reads are
+/// `validate_input_constraint` (workflow/validate.rs:86-112) reads are
 /// mirrored; `optional`, `nullable`, `default_value`, `element`,
 /// `allow_extra`, and `secret` are out of scope for the validation
 /// decision. Flattened `has_` / value pairs follow the `SpecNodeMeta`
@@ -697,7 +697,7 @@ pub struct SpecWorkflowParts {
     /// `out_error_slot[i]` = the slot index in `node.error_slot` if
     /// Some, else u32::MAX.
     /// `out_id[i]` = `node.id` (StepIdx as u32) — used by
-    /// `validate_node_id` (workflow/validate.rs:132-145).
+    /// `validate_node_id` (workflow/validate.rs:133-146).
     /// `out_kind_disc[i]` = closed-set discriminant for the node kind
     /// (see `spec_node_kind_disc`).
     /// `out_has_branch_table[i]` = 1 iff the kind carries a
@@ -712,12 +712,12 @@ pub struct SpecWorkflowParts {
     pub accessors: Vec<SpecAccessor>,
     pub resource_contract: SpecResourceContract,
     /// Flattened input slot indices consumed by `validate_input_slots`
-    /// (workflow/validate.rs:48-83). Each value is the slot index of one
+    /// (workflow/validate.rs:49-84). Each value is the slot index of one
     /// input slot declaration. The projection checks: all in-bounds,
     /// no duplicates, strictly increasing order.
     pub input_slots: Vec<u32>,
     /// Per-slot constraint inventory consumed by the per-slot
-    /// `validate_input_constraint` (workflow/validate.rs:85-111).
+    /// `validate_input_constraint` (workflow/validate.rs:86-112).
     /// `input_constraints[i]` is the constraint of `input_slots[i]`.
     /// The projection treats a missing entry (an
     /// `input_constraints` shorter than `input_slots`) as an
@@ -822,7 +822,7 @@ pub struct SpecWorkflowParts {
     /// symbol at or beyond `symbols_count`.
     pub build_object_field_symbols: Vec<Vec<u32>>,
     /// Caller-supplied computed budget consumed by step 4
-    /// (`validate_budget`, workflow/validate.rs:113-119). Production
+    /// (`validate_budget`, workflow/validate.rs:114-120). Production
     /// derives it with `WholeWorkflowBudget::compute`
     /// (budget/compute.rs:104-110) and validates it against
     /// `BoundednessPolicy::DEFAULT` (budget/validate.rs:60-84); the
@@ -889,7 +889,7 @@ pub struct SpecNodeMeta {
     /// `body` step of the branch-target pair
     /// (`validate_reduce_branch_targets` /
     /// `validate_for_each_next_targets`,
-    /// workflow/validate.rs:172-185 / workflow/validate.rs:187-197).
+    /// workflow/validate.rs:174-187 / workflow/validate.rs:189-199).
     pub branch_body: u32,
     /// `done` step of the branch-target pair.
     pub branch_done: u32,
@@ -1018,8 +1018,8 @@ pub const fn spec_workflow_error_is_bound_violation(e: SpecWorkflowError) -> boo
 // Pure decision fn: branch-target alias
 // ============================================================================
 /// Pure projection of `validate_reduce_branch_targets`
-/// (workflow/validate.rs:172-185) and `validate_for_each_next_targets`
-/// (workflow/validate.rs:187-197). Returns the alias error when the
+/// (workflow/validate.rs:174-187) and `validate_for_each_next_targets`
+/// (workflow/validate.rs:189-199). Returns the alias error when the
 /// node's branch-target pair aliases (`body == done`); `None`
 /// otherwise, including when the caller supplied no branch targets
 /// (`has_branch_targets == 0`) or the kind carries no branch pair.
@@ -1041,7 +1041,7 @@ pub fn branch_target_alias_error(meta: SpecNodeMeta) -> Option<SpecWorkflowError
 // Pure decision fn: input-constraint consistency
 // ============================================================================
 /// Pure projection of `validate_input_constraint`
-/// (workflow/validate.rs:85-111), in production order: min/max range,
+/// (workflow/validate.rs:86-112), in production order: min/max range,
 /// then min_length/max_length range, then negative length bounds.
 /// Returns `InconsistentInputConstraint` for the first inconsistency;
 /// `None` when the constraint is consistent. The
@@ -1141,7 +1141,7 @@ pub fn kind_ref_error(
 /// its `DEFAULT` cap (budget/validate.rs:60-84), or `None` when every
 /// dimension is within caps. Production collapses the typed
 /// `BudgetError` to `WorkflowError::BudgetPolicyExceeded`
-/// (`validate_budget_result`, workflow/validate.rs:121-130), so the
+/// (`validate_budget_result`, workflow/validate.rs:122-131), so the
 /// projection carries no dimension payload: the first-violation
 /// order is modelled by the check order itself. Caps, in
 /// production order: total steps 1_000_000, total slots 65_535,
@@ -1234,7 +1234,7 @@ pub fn budget_error(budget: SpecComputedBudget) -> Option<SpecWorkflowError> {
 }
 
 /// Pure projection of `validate_node_id`
-/// (workflow/validate.rs:132-145): returns `Some(NodeIdMismatch)`
+/// (workflow/validate.rs:133-146): returns `Some(NodeIdMismatch)`
 /// when the node's id differs from its table position, or `None`
 /// when they match. Production's `u16::try_from(index)` arm is
 /// unreachable on inputs that reach step 1e: step 1a caps
@@ -1421,7 +1421,7 @@ pub fn build_object_symbols_error(parts: &SpecWorkflowParts) -> Option<SpecWorkf
 
 /// Pure projection of `validate_node_common`, `validate_node_kind`,
 /// and the branch-target alias checks at
-/// `crates/vb_core/src/workflow/validate.rs:151-170`, applied to a
+/// `crates/vb_core/src/workflow/validate.rs:152-172`, applied to a
 /// single node's flattened metadata. The projection returns
 /// `None` when the node passes every per-node check; otherwise it
 /// returns the *first* specific failure the production body would
@@ -1449,7 +1449,7 @@ pub fn validate_node_pure(
     constants_len: u32,
     symbols_count: u32,
 ) -> Option<SpecWorkflowError> {
-    // 1. validate_node_common (workflow/validate.rs:199-207)
+    // 1. validate_node_common (workflow/validate.rs:201-209)
     if meta.has_output == 1 && meta.out_slot >= slot_count {
         return Some(SpecWorkflowError::SlotOutOfBounds);
     }
@@ -1481,8 +1481,8 @@ pub fn validate_node_pure(
     ) {
         return Some(err);
     }
-    // 3. validate_reduce_branch_targets (workflow/validate.rs:172-185)
-    // + validate_for_each_next_targets (workflow/validate.rs:187-197).
+    // 3. validate_reduce_branch_targets (workflow/validate.rs:174-187)
+    // + validate_for_each_next_targets (workflow/validate.rs:189-199).
     // Production runs these after validate_node_kind, per node, in
     // node order; the projection calls the shared alias decision
     // here so the first aliasing node reports first.
@@ -2410,7 +2410,7 @@ pub fn nested_together_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowEr
 /// body short-circuits via `?`-propagation in this order:
 ///
 ///   1. `validate_parts(&parts)?` — structural validation
-///      (workflow/validate.rs:20-46).
+///      (workflow/validate.rs:21-47).
 ///   2. `loop_regions::validate(&parts)?` — loop-region pairing,
 ///      relations, edge closure, and recovery support
 ///      (loop_regions.rs:96-109). The projection models all four
@@ -2425,9 +2425,9 @@ pub fn nested_together_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowEr
 ///      already-validated region tables, so the projection treats it
 ///      as passing for inputs that reached this step.
 ///   4. `validate_budget(&parts)?` — whole-workflow budget
-///      (workflow/validate.rs:113-119).
+///      (workflow/validate.rs:114-120).
 ///   5. `validate_input_slots(&parts)?` — input slot bounds,
-///      duplicates, and ordering (workflow/validate.rs:48-83).
+///      duplicates, and ordering (workflow/validate.rs:49-84).
 ///
 /// `validate_parts` itself walks (in this order):
 ///   - empty nodes check,
@@ -2565,7 +2565,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if contract.max_transitions_per_tick == 0 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
-    // 1b. entry bounds (workflow/validate.rs:147-149, workflow/validate.rs:20-46).
+    // 1b. entry bounds (workflow/validate.rs:148-150, workflow/validate.rs:21-47).
     if parts.entry >= node_count {
         return SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds);
     }
@@ -2596,8 +2596,8 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // no kind-payload references.
     let empty_refs: Vec<SpecKindRef> = Vec::new();
     for (index, meta) in parts.nodes_meta.iter().enumerate() {
-        // validate_node_id (workflow/validate.rs:132-145), before
-        // validate_node for this node (workflow/validate.rs:151-170).
+        // validate_node_id (workflow/validate.rs:133-146), before
+        // validate_node for this node (workflow/validate.rs:152-172).
         if let Some(err) = node_id_error(*meta, index) {
             return SpecValidationResult::Err(err);
         }
@@ -2701,7 +2701,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // ---- Step 4: budget validation ----
     // Production calls WholeWorkflowBudget::compute (budget/compute.rs:104-110)
     // then BoundednessPolicy::DEFAULT.validate (budget/validate.rs:88-146);
-    // validate_budget_result (workflow/validate.rs:121-130) collapses
+    // validate_budget_result (workflow/validate.rs:122-131) collapses
     // any BudgetError to BudgetPolicyExceeded. The projection checks
     // the caller-supplied `computed_budget` inventory with
     // `budget_error`, which mirrors the 23 validated dimensions in
@@ -2713,9 +2713,9 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     // ---- Step 5: input slot validation ----
     // Production calls validate_input_slots(&parts)? (crates/vb_core/src/workflow/compiled.rs:47-49,
-    // body at workflow/validate.rs:48-83). The projection checks: all
+    // body at workflow/validate.rs:49-84). The projection checks: all
     // input slot indices in-bounds, no duplicates, strictly increasing,
-    // then the per-slot validate_input_constraint (workflow/validate.rs:85-111) from the
+    // then the per-slot validate_input_constraint (workflow/validate.rs:86-112) from the
     // caller-supplied `input_constraints` inventory (a missing entry
     // is unconstrained).
     let mut prev_slot: Option<u32> = None;
