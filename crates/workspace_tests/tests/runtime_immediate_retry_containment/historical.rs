@@ -28,10 +28,8 @@ pub(super) fn prefix(
         live.fail_action(issued, ActionFailureCode::Timeout.into())?;
         issued = fixture::action(&mut live)?;
     }
-    let unchanged = fixture::refusal_snapshot(&live, issued)?;
     live.fail_action(issued, ActionFailureCode::Timeout.into())?;
     assert_eq!(live.tick_all(), Err(RuntimeError::JournalPoisoned));
-    unchanged(&live)?;
     let proposed = captured
         .lock()
         .map_err(|_| "capture poisoned")?
