@@ -1277,10 +1277,9 @@ pub proof fn lemma_entry_in_bounds_on_success(
     // The spec mirror's Ok branch requires every short-circuit
     // guard to have passed; in particular the entry-bounds guard.
     if parts.entry >= parts.nodes_len {
-        // The mirror's first conditional branch (after the empty
-        // nodes guard) catches this exact violation.
-        assert(try_from_parts_pure_spec(parts)
-            == SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds));
+        // The entry-bounds guard sits after the resource-contract
+        // guards, so a coincident resource violation reports first;
+        // either way the mirror rejects the input.
         assert(!spec_validation_ok(try_from_parts_pure_spec(parts)));
         assert(!spec_validation_ok(result));
     } else {
@@ -2570,17 +2569,17 @@ pub open spec fn spec_nested_together_error(parts: &SpecWorkflowParts) -> Option
 /// Spec-level mirror of the projection result. The spec proofs
 /// reference this so the `assume_specification` ensures clauses
 /// resolve through the spec mirror rather than the opaque body.
-/// The mirror collapses the per-step ordering of the production
-/// validator to a single spec-level decision: an input is valid iff
-/// every precondition the production body checks holds. (The full
-/// per-step projection is in `extern_try_from_parts.rs` and is
+/// The mirror preserves the production validator's top-level guard
+/// order (empty nodes, resource contract, entry bounds, then the
+/// per-inventory checks) so the first error agrees with production
+/// `validate_parts` and the extern projection's Step 1 order; the
+/// per-step detail inside the later stages stays collapsed. (The
+/// full per-step projection is in `extern_try_from_parts.rs` and is
 /// opaque to Verus; this mirror is the contract layer the spec
 /// proofs reason about.)
 pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if parts.nodes_meta.len() == 0 {
         SpecValidationResult::Err(SpecWorkflowError::EmptyNodes)
-    } else if parts.entry >= parts.nodes_len {
-        SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds)
     } else if parts.resource_contract.max_steps > 1000 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_slots > 65535 {
@@ -2629,6 +2628,8 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(spec_expr_stack_error(parts, 0).unwrap())
     } else if parts.resource_contract.max_transitions_per_tick == 0 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+    } else if parts.entry >= parts.nodes_len {
+        SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds)
     } else if spec_exprs_error(parts, 0) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_exprs_error(parts, 0).unwrap())
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
@@ -2792,7 +2793,9 @@ pub proof fn lemma_entry_out_of_bounds_rejected(parts: &SpecWorkflowParts)
         parts.nodes_len > 0,
         parts.entry >= parts.nodes_len,
     ensures
-        // The validator returns Err(EntryOutOfBounds).
+        // The validator rejects the input. When the entry is out
+        // of bounds and a resource guard also fires, the resource
+        // error reports first, so no exact variant is claimed here.
         !spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
 }
@@ -2885,8 +2888,6 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
     // nodes_len is non-zero).
     if parts.nodes_meta.len() == 0 {
         // Empty nodes case: skip (already required non-empty).
-    } else if parts.entry >= parts.nodes_len {
-        // Entry out of bounds: skip (already required in range).
     } else if parts.resource_contract.max_steps > 1000 {
         // Resource contract too large: skip.
     } else if parts.resource_contract.max_slots > 65535 {
@@ -2935,6 +2936,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Expression stack usage: skip (already required valid).
     } else if parts.resource_contract.max_transitions_per_tick == 0 {
         // Resource contract exceeded: skip.
+    } else if parts.entry >= parts.nodes_len {
+        // Entry out of bounds: skip (already required in range).
     } else if spec_exprs_error(parts, 0) != None::<SpecWorkflowError> {
         // Expressions: skip (already required valid).
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
