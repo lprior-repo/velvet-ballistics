@@ -2802,10 +2802,10 @@ pub proof fn lemma_entry_out_of_bounds_rejected(parts: &SpecWorkflowParts)
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/resource_limits.rs:33-122,
 /// `MAX_STEPS_PER_WORKFLOW` 1000, crates/vb_core/src/limits.rs:11). The production
-/// field is `u16`, so this arm cannot fire on a real production
-/// contract; the projection models the check as written over the
-/// `u32`-promoted spec field, where the over-cap input is
-/// reachable.
+/// field is `u16` with no validating constructor, so over-cap values
+/// 1001..=65535 are reachable in real production contracts and this
+/// arm fires on them; the projection models the check as written
+/// over the `u32`-promoted spec field.
 pub proof fn lemma_resource_contract_too_large_rejected(parts: &SpecWorkflowParts)
     requires
         parts.resource_contract.max_steps > 1000,
@@ -7073,10 +7073,10 @@ pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/resource_limits.rs:33-122,
 /// `MAX_CONSTANTS` 8192, crates/vb_core/src/limits.rs:23). The production field is
-/// `u16`, so this arm cannot fire on a real production contract;
-/// the projection models the check as written over the
-/// `u32`-promoted spec field, where the over-cap input is
-/// reachable.
+/// `u16` with no validating constructor, so over-cap values
+/// 8193..=65535 are reachable in real production contracts and this
+/// arm fires on them; the projection models the check as written
+/// over the `u32`-promoted spec field.
 pub proof fn lemma_constants_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -8397,10 +8397,10 @@ pub proof fn lemma_zero_transitions_after_limits(parts: &SpecWorkflowParts)
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/resource_limits.rs:33-122,
 /// `MAX_STEPS_PER_WORKFLOW` 1000, crates/vb_core/src/limits.rs:11). The production
-/// field is `u16`, so this arm cannot fire on a real production
-/// contract; the projection models the check as written over the
-/// `u32`-promoted spec field, where the over-cap input is
-/// reachable.
+/// field is `u16` with no validating constructor, so over-cap values
+/// 1001..=65535 are reachable in real production contracts and this
+/// arm fires on them; the projection models the check as written
+/// over the `u32`-promoted spec field.
 pub proof fn lemma_steps_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
