@@ -835,16 +835,14 @@ pub struct SpecWorkflowParts {
     /// `CompiledNodeKind` discriminant order
     /// (crates/vb_core/src/workflow/node_kind.rs:14-210): only the
     /// ForEachStart limit (crates/vb_core/src/workflow/node_kind.rs:52-58),
+    /// ForEachConcurrentStart limit (crates/vb_core/src/workflow/node_kind.rs:183-190),
     /// CollectStart limit and page_size (crates/vb_core/src/workflow/node_kind.rs:87-93),
     /// TogetherStart branch_count (crates/vb_core/src/workflow/node_kind.rs:68-71), and
     /// TogetherJoin branch_count (crates/vb_core/src/workflow/node_kind.rs:81-85)
     /// are read, against `max_collect_items` and `max_fanout` of the
     /// resource contract; every other variant returns `Ok`. The
     /// projection treats a missing entry (a `node_kinds` shorter
-    /// than `nodes_meta`) as `Nop` for the tail nodes. The
-    /// `ForEachConcurrentStart` limit arm has no `SpecNodeKind`
-    /// variant (the discriminant model covers 0..=33 only), so it
-    /// is not modelled here.
+    /// than `nodes_meta`) as `Nop` for the tail nodes.
     pub node_kinds: Vec<SpecNodeKind>,
     /// Symbol inventory of the constant pool consumed by
     /// `validate_constants_symbols` (workflow/validate_refs.rs:166-176).
@@ -1586,7 +1584,9 @@ pub fn validate_node_pure(
 /// of `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172). Runs
 /// after the branch-target alias checks, per node, in node order:
 /// `ForEachStart` limit against `max_collect_items`
-/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `CollectStart` limit then
+/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `ForEachConcurrentStart`
+/// limit against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:183-190); `CollectStart` limit then
 /// page_size against `max_collect_items`
 /// (crates/vb_core/src/workflow/node_kind.rs:87-93); `TogetherStart` branch
 /// count against `max_fanout` (crates/vb_core/src/workflow/node_kind.rs:68-71);
@@ -1594,9 +1594,7 @@ pub fn validate_node_pure(
 /// (crates/vb_core/src/workflow/node_kind.rs:81-85). Each breached cap returns
 /// `ResourceContractExceeded`, matching `check_actual_within_declared`
 /// (crates/vb_core/src/workflow/resource_limits.rs:187-197); every other kind
-/// returns `None`. The `ForEachConcurrentStart` limit arm has no
-/// `SpecNodeKind` variant (the discriminant model covers 0..=33 only), so it
-/// is not modelled here.
+/// returns `None`.
 ///
 /// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
 /// The spec-side mirror in `try_from_parts.rs` is the contract; this
@@ -1608,6 +1606,13 @@ pub fn local_resources_error(
 ) -> Option<SpecWorkflowError> {
     match kind {
         SpecNodeKind::ForEachStart { limit, .. } => {
+            if *limit > contract.max_collect_items {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::ForEachConcurrentStart { limit, .. } => {
             if *limit > contract.max_collect_items {
                 Some(SpecWorkflowError::ResourceContractExceeded)
             } else {

@@ -636,7 +636,9 @@ pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<S
 /// of `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172). Runs
 /// after the branch-target alias checks, per node, in node order:
 /// `ForEachStart` limit against `max_collect_items`
-/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `CollectStart` limit then
+/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `ForEachConcurrentStart`
+/// limit against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:183-190); `CollectStart` limit then
 /// page_size against `max_collect_items`
 /// (crates/vb_core/src/workflow/node_kind.rs:87-93); `TogetherStart` branch
 /// count against `max_fanout` (crates/vb_core/src/workflow/node_kind.rs:68-71);
@@ -644,15 +646,20 @@ pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<S
 /// (crates/vb_core/src/workflow/node_kind.rs:81-85). Each breached cap returns
 /// `ResourceContractExceeded`, matching `check_actual_within_declared`
 /// (crates/vb_core/src/workflow/resource_limits.rs:187-197); every other kind
-/// returns `None`. The `ForEachConcurrentStart` limit arm has no
-/// `SpecNodeKind` variant (the discriminant model covers 0..=33 only), so it
-/// is not modelled here.
+/// returns `None`.
 pub open spec fn spec_local_resources_error(
     kind: SpecNodeKind,
     contract: SpecResourceContract,
 ) -> Option<SpecWorkflowError> {
     match kind {
         SpecNodeKind::ForEachStart { limit, .. } => {
+            if (limit as int) > (contract.max_collect_items as int) {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::ForEachConcurrentStart { limit, .. } => {
             if (limit as int) > (contract.max_collect_items as int) {
                 Some(SpecWorkflowError::ResourceContractExceeded)
             } else {
@@ -9740,6 +9747,36 @@ pub proof fn lemma_local_resources_before_accessor_path(parts: &SpecWorkflowPart
         == Some(SpecWorkflowError::AccessorPathTooDeep));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 188: the ForEachConcurrentStart limit rejection. A
+/// `ForEachConcurrentStart` node whose limit exceeds the contract's
+/// `max_collect_items` is rejected with `ResourceContractExceeded`
+/// (production `local_resources::validate`,
+/// crates/vb_core/src/workflow/validate/local_resources.rs:6-8, via
+/// `check_actual_within_declared`,
+/// crates/vb_core/src/workflow/resource_limits.rs:187-197).
+pub proof fn lemma_foreach_concurrent_start_limit_rejected(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+)
+    requires
+        kind
+            == (SpecNodeKind::ForEachConcurrentStart {
+                input: 0u32,
+                item_slot: 1u32,
+                limit: 11u32,
+                at_once: 2u32,
+                body: 3u32,
+                join: 4u32,
+            }),
+        contract.max_collect_items == 10u32,
+    ensures
+        spec_local_resources_error(kind, contract)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_local_resources_error(kind, contract)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
 }
 
 fn main() {}
