@@ -84,3 +84,7 @@ path = "../workspace_tests/tests/cli/explain_execution_plan.rs"
 [[test]]
 name = "events_filters"
 path = "../workspace_tests/tests/cli/events_filters.rs"
+
+[[test]]
+name = "answer_help"
+path = "../workspace_tests/tests/cli/answer_help.rs"

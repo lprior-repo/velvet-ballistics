@@ -66,6 +66,13 @@ impl<'a> StepReferenceResolver<'a> {
         &self,
         reference: &'r str,
     ) -> Result<(SlotIdx, Option<&'r str>), CompileError> {
+        if let Some(name) = reference.strip_prefix("$attempt.number.") {
+            return Err(CompileError::UnknownReferenceName {
+                kind: "attempt",
+                reference: reference.into(),
+                name: name.into(),
+            });
+        }
         let original = self.resolve_direct(reference);
         if let Ok(slot) = original {
             return Ok((slot, None));

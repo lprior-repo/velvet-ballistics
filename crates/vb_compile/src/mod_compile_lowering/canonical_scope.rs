@@ -66,6 +66,8 @@ pub(in crate::mod_compile_lowering) fn validate_output_alias(
     output: &str,
 ) -> Result<(), crate::CompileError> {
     let reserved = output.starts_with('$')
+        || output == "attempt"
+        || output.starts_with("attempt.")
         || ["input.", "vars.", "secrets.", "step.", "steps."]
             .iter()
             .any(|root| output.starts_with(root));

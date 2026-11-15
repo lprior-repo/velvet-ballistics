@@ -19,8 +19,11 @@ mod part_11;
 mod part_12;
 mod part_13;
 mod part_14;
+mod repeat_attempt_usage;
 mod skipped_outputs;
 mod source_slot_reservation;
+
+pub(in crate::mod_compile_lowering) use repeat_attempt_usage::repeat_body_uses_attempt_number;
 
 // vb-tkcc7: dead always-false-gated kani/ and kani_proofs/ harness dirs deleted outright
 // (stale pre-refactor StepAst refs; no kani CI runner covers vb_compile).

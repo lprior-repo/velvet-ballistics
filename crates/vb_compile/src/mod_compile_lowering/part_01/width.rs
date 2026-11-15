@@ -45,7 +45,11 @@ pub(in crate::mod_compile_lowering) fn body_width(
                 }
                 crate::StepPrimitive::Repeat { body, .. } => {
                     pending.push((body, false));
-                    4
+                    if super::repeat_body_uses_attempt_number(body) {
+                        5
+                    } else {
+                        4
+                    }
                 }
                 crate::StepPrimitive::Aggregate { body, .. } => {
                     pending.push((body, false));
