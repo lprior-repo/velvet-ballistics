@@ -76,7 +76,7 @@ pub enum SpecSlotValue {
 }
 
 /// Mirror of `Taint` discriminant set at
-/// `crates/vb_core/src/value/taint.rs:10-21`.
+/// `crates/vb_core/src/value/taint.rs:15-26`.
 #[derive(Clone, Copy)]
 pub enum SpecTaint {
     Clean,

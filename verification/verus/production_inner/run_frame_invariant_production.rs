@@ -38,8 +38,8 @@
 // assumes the external contracts and does not establish that relation.
 // `crates/vb_core/src/frame.rs:106-116`
 // Production `crates/vb_core/src/frame.rs:106-116`
-// Production `crates/vb_core/src/value/taint.rs:10-21`
-// Production `crates/vb_core/src/value/taint.rs:31-41`
+// Production `crates/vb_core/src/value/taint.rs:15-26`
+// Production `crates/vb_core/src/value/taint.rs:36-46`
 // Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:1-31`
 // Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:35-55`
 // Production `crates/vb_core/src/frame/parts/impl_001_construct.rs:60-94`
@@ -140,7 +140,7 @@ impl SlotIdx {
 // Slot value types — mirrors of `crates/vb_core/src/value/taint.rs`
 // and `crates/vb_core/src/value/slot.rs`
 // ============================================================================
-/// Mirror of the `Taint` discriminant set at `crates/vb_core/src/value/taint.rs:10-21`.
+/// Mirror of the `Taint` discriminant set at `crates/vb_core/src/value/taint.rs:15-26`.
 /// Discriminant order mirrors the production `#[repr(u8)]` ordering
 /// (Clean=0, DerivedFromSecret=1, Secret=2, Random=3, TimeDependent=4).
 ///
