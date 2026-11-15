@@ -567,14 +567,14 @@ pub open spec fn spec_nodes_id_error(metas: &Vec<SpecNodeMeta>, i: int) -> Optio
 }
 
 /// Spec-level mirror of `validate_concurrent_pair`
-/// (crates/vb_core/src/workflow/concurrent/pair.rs:13-34), the
+/// (crates/vb_core/src/workflow/concurrent/pair.rs:9-32), the
 /// concurrent-source/join pairing check run inside
 /// `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172)
 /// for the three concurrent start kinds, and inside
 /// `concurrent_lane_end::validate`
-/// (crates/vb_core/src/workflow/concurrent/lane_end.rs:57-73) and
+/// (crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61) and
 /// `kind_refs::validate`
-/// (crates/vb_core/src/workflow/concurrent/kind_refs.rs:6-24) for
+/// (crates/vb_core/src/workflow/concurrent/kind_refs.rs:6-22) for
 /// `ConcurrentLaneEnd` / `ConcurrentGroupJoin` nodes. Resolves the
 /// start index from the node's kind inventory entry (a missing
 /// entry means the node carries no concurrent-pair payload, so
@@ -604,7 +604,7 @@ pub open spec fn spec_concurrent_pair_error(parts: &SpecWorkflowParts, i: int) -
 }
 
 /// Spec-level mirror of the start half of `validate_concurrent_pair`
-/// (crates/vb_core/src/workflow/concurrent/pair.rs:13-34): the `at`
+/// (crates/vb_core/src/workflow/concurrent/pair.rs:9-32): the `at`
 /// lookup of the start step, the no-output / no-next / no-retry
 /// shape, and the kind-to-join extraction, in production order. A
 /// missing kind inventory entry for the start means no join is
@@ -642,7 +642,7 @@ pub open spec fn spec_concurrent_pair_at_error(parts: &SpecWorkflowParts, start:
 }
 
 /// Spec-level mirror of the join half of `validate_concurrent_pair`
-/// (crates/vb_core/src/workflow/concurrent/pair.rs:13-34):
+/// (crates/vb_core/src/workflow/concurrent/pair.rs:9-32):
 /// `check_join_direction`, `check_output`, and
 /// `check_continuation`, in production order. The join step must
 /// run forward from the start, resolve to a node with the
@@ -9942,7 +9942,7 @@ pub proof fn lemma_foreach_concurrent_start_limit_rejected(
 /// concurrent start node carrying an output slot is rejected
 /// with `LoopRegionUnpaired` (production
 /// `validate_concurrent_pair`,
-/// crates/vb_core/src/workflow/concurrent/pair.rs:13-34, via
+/// crates/vb_core/src/workflow/concurrent/pair.rs:9-32, via
 /// `validate_node`, crates/vb_core/src/workflow/validate.rs:152-172).
 pub proof fn lemma_concurrent_pair_output_rejected(parts: &SpecWorkflowParts, i: int)
     requires
@@ -9965,7 +9965,7 @@ pub proof fn lemma_concurrent_pair_output_rejected(parts: &SpecWorkflowParts, i:
 /// concurrent start whose join step does not run forward from
 /// the start is rejected with `BackwardEdge` (production
 /// `validate_concurrent_pair`,
-/// crates/vb_core/src/workflow/concurrent/pair.rs:13-34, via
+/// crates/vb_core/src/workflow/concurrent/pair.rs:9-32, via
 /// `validate_node`, crates/vb_core/src/workflow/validate.rs:152-172).
 pub proof fn lemma_concurrent_pair_backward_join_rejected(parts: &SpecWorkflowParts, i: int)
     requires
