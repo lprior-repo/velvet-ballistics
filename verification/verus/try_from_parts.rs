@@ -572,7 +572,12 @@ pub open spec fn spec_nodes_id_error(metas: &Vec<SpecNodeMeta>, i: int) -> Optio
 /// entry (a `kind_refs` shorter than `nodes_meta`) means the node
 /// carries no kind-payload references, so its kind-ref walk is
 /// vacuous and only the common bounds, branch-table, and alias
-/// checks apply.
+/// checks apply. After those checks each node runs the
+/// `local_resources` check (workflow/validate/local_resources.rs:4-23), the
+/// last check of `validate_node` (workflow/validate.rs:152-172); a
+/// missing kind entry (a `node_kinds` shorter than `nodes_meta`)
+/// means the node carries no local-resource payload, so that check
+/// is vacuous.
 pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<SpecWorkflowError>
     decreases parts.nodes_meta.len() - i
 {
@@ -609,9 +614,73 @@ pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<S
             if node_err != None::<SpecWorkflowError> {
                 node_err
             } else {
-                spec_nodes_error(parts, i + 1)
+                let local_err = if i < parts.node_kinds.len() {
+                    spec_local_resources_error(parts.node_kinds[i], parts.resource_contract)
+                } else {
+                    None
+                };
+                if local_err != None::<SpecWorkflowError> {
+                    local_err
+                } else {
+                    spec_nodes_error(parts, i + 1)
+                }
             }
         }
+    }
+}
+
+/// Spec-level mirror of `local_resources::validate`
+/// (crates/vb_core/src/workflow/validate/local_resources.rs:4-23), the last check
+/// of `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172). Runs
+/// after the branch-target alias checks, per node, in node order:
+/// `ForEachStart` limit against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `CollectStart` limit then
+/// page_size against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:87-93); `TogetherStart` branch
+/// count against `max_fanout` (crates/vb_core/src/workflow/node_kind.rs:68-71);
+/// `TogetherJoin` branch count against `max_fanout`
+/// (crates/vb_core/src/workflow/node_kind.rs:81-85). Each breached cap returns
+/// `ResourceContractExceeded`, matching `check_actual_within_declared`
+/// (crates/vb_core/src/workflow/resource_limits.rs:187-197); every other kind
+/// returns `None`. The `ForEachConcurrentStart` limit arm has no
+/// `SpecNodeKind` variant (the discriminant model covers 0..=33 only), so it
+/// is not modelled here.
+pub open spec fn spec_local_resources_error(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+) -> Option<SpecWorkflowError> {
+    match kind {
+        SpecNodeKind::ForEachStart { limit, .. } => {
+            if (limit as int) > (contract.max_collect_items as int) {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::CollectStart { limit, page_size, .. } => {
+            if (limit as int) > (contract.max_collect_items as int) {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else if (page_size as int) > (contract.max_collect_items as int) {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::TogetherStart { branch_count, .. } => {
+            if (branch_count as int) > (contract.max_fanout as int) {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::TogetherJoin { branch_count, .. } => {
+            if (branch_count as int) > (contract.max_fanout as int) {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        _ => None,
     }
 }
 
@@ -9430,6 +9499,245 @@ pub proof fn lemma_pool_bounds_after_input_slots(parts: &SpecWorkflowParts)
     assert(spec_exprs_pool_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds));
+}
+
+/// Lemma 181: the ForEachStart limit rejection. A `ForEachStart`
+/// node whose limit exceeds the contract's `max_collect_items` is
+/// rejected with `ResourceContractExceeded` (production
+/// `local_resources::validate`,
+/// crates/vb_core/src/workflow/validate/local_resources.rs:6-8, via
+/// `check_actual_within_declared`,
+/// crates/vb_core/src/workflow/resource_limits.rs:187-197).
+pub proof fn lemma_foreach_start_limit_rejected(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+)
+    requires
+        kind
+            == (SpecNodeKind::ForEachStart {
+                input: 0u32,
+                item_slot: 1u32,
+                limit: 11u32,
+                body: 2u32,
+                done: 3u32,
+            }),
+        contract.max_collect_items == 10u32,
+    ensures
+        spec_local_resources_error(kind, contract)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_local_resources_error(kind, contract)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 182: the CollectStart limit rejection. A `CollectStart`
+/// node whose limit exceeds the contract's `max_collect_items` is
+/// rejected with `ResourceContractExceeded` (production
+/// `local_resources::validate`,
+/// crates/vb_core/src/workflow/validate/local_resources.rs:9-14, via
+/// `check_actual_within_declared`,
+/// crates/vb_core/src/workflow/resource_limits.rs:187-197).
+pub proof fn lemma_collect_start_limit_rejected(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+)
+    requires
+        kind
+            == (SpecNodeKind::CollectStart {
+                source: 0u32,
+                limit: 11u32,
+                page_size: 5u32,
+                body: 2u32,
+                done: 3u32,
+            }),
+        contract.max_collect_items == 10u32,
+    ensures
+        spec_local_resources_error(kind, contract)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_local_resources_error(kind, contract)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 183: the CollectStart page_size rejection. A
+/// `CollectStart` node whose limit is within cap but whose
+/// page_size exceeds the contract's `max_collect_items` is rejected
+/// with `ResourceContractExceeded` (production
+/// `local_resources::validate`,
+/// crates/vb_core/src/workflow/validate/local_resources.rs:9-14, via
+/// `check_actual_within_declared`,
+/// crates/vb_core/src/workflow/resource_limits.rs:187-197).
+pub proof fn lemma_collect_start_page_size_rejected(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+)
+    requires
+        kind
+            == (SpecNodeKind::CollectStart {
+                source: 0u32,
+                limit: 5u32,
+                page_size: 11u32,
+                body: 2u32,
+                done: 3u32,
+            }),
+        contract.max_collect_items == 10u32,
+    ensures
+        spec_local_resources_error(kind, contract)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_local_resources_error(kind, contract)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 184: the TogetherStart branch-count rejection. A
+/// `TogetherStart` node whose branch count exceeds the contract's
+/// `max_fanout` is rejected with `ResourceContractExceeded`
+/// (production `local_resources::validate`,
+/// crates/vb_core/src/workflow/validate/local_resources.rs:15-17, via
+/// `check_actual_within_declared`,
+/// crates/vb_core/src/workflow/resource_limits.rs:187-197).
+pub proof fn lemma_together_start_branch_count_rejected(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+)
+    requires
+        kind
+            == (SpecNodeKind::TogetherStart { branch_count: 11u32, join: 1u32 }),
+        contract.max_fanout == 10u32,
+    ensures
+        spec_local_resources_error(kind, contract)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_local_resources_error(kind, contract)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 185: the TogetherJoin branch-count rejection. A
+/// `TogetherJoin` node whose branch count exceeds the contract's
+/// `max_fanout` is rejected with `ResourceContractExceeded`
+/// (production `local_resources::validate`,
+/// crates/vb_core/src/workflow/validate/local_resources.rs:18-20, via
+/// `check_actual_within_declared`,
+/// crates/vb_core/src/workflow/resource_limits.rs:187-197).
+pub proof fn lemma_together_join_branch_count_rejected(
+    kind: SpecNodeKind,
+    contract: SpecResourceContract,
+)
+    requires
+        kind
+            == (SpecNodeKind::TogetherJoin { branch_count: 11u32, accumulator: 1u32 }),
+        contract.max_fanout == 10u32,
+    ensures
+        spec_local_resources_error(kind, contract)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_local_resources_error(kind, contract)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 186: the local-resources rejection at the top level. A
+/// workflow whose per-node validation reports
+/// `ResourceContractExceeded` is rejected with
+/// `ResourceContractExceeded`: the mirror runs the per-node loop
+/// after the accessor-root check and before the accessor-path
+/// check (production `validate_parts`, workflow/validate.rs:21-47;
+/// extern Step 1e).
+pub proof fn lemma_local_resources_top_level_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == Some(SpecWorkflowError::ResourceContractExceeded),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 187: the local-resources rejection runs before the
+/// accessor-path check. A workflow whose per-node validation
+/// reports `ResourceContractExceeded` and whose accessor paths are
+/// also invalid is rejected with `ResourceContractExceeded`: the
+/// mirror runs the per-node loop before the accessor-path scan
+/// (production `validate_parts`, workflow/validate.rs:21-47; extern
+/// Steps 1e-1f).
+pub proof fn lemma_local_resources_before_accessor_path(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == Some(SpecWorkflowError::ResourceContractExceeded),
+        spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(spec_accessors_path_error(parts, 0)
+        == Some(SpecWorkflowError::AccessorPathTooDeep));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
 }
 
 fn main() {}

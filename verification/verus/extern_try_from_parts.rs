@@ -806,6 +806,24 @@ pub struct SpecWorkflowParts {
     /// projection treats a missing entry (a `kind_refs` shorter than
     /// `nodes_meta`) as an empty inventory for the tail nodes.
     pub kind_refs: Vec<Vec<SpecKindRef>>,
+    /// Per-node kind inventory consumed by `local_resources::validate`
+    /// (crates/vb_core/src/workflow/validate/local_resources.rs:4-23), the last check
+    /// of `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172).
+    /// `node_kinds[i]` is node i's `SpecNodeKind` in production
+    /// `CompiledNodeKind` discriminant order
+    /// (crates/vb_core/src/workflow/node_kind.rs:14-210): only the
+    /// ForEachStart limit (crates/vb_core/src/workflow/node_kind.rs:52-58),
+    /// CollectStart limit and page_size (crates/vb_core/src/workflow/node_kind.rs:87-93),
+    /// TogetherStart branch_count (crates/vb_core/src/workflow/node_kind.rs:68-71), and
+    /// TogetherJoin branch_count (crates/vb_core/src/workflow/node_kind.rs:81-85)
+    /// are read, against `max_collect_items` and `max_fanout` of the
+    /// resource contract; every other variant returns `Ok`. The
+    /// projection treats a missing entry (a `node_kinds` shorter
+    /// than `nodes_meta`) as `Nop` for the tail nodes. The
+    /// `ForEachConcurrentStart` limit arm has no `SpecNodeKind`
+    /// variant (the discriminant model covers 0..=33 only), so it
+    /// is not modelled here.
+    pub node_kinds: Vec<SpecNodeKind>,
     /// Symbol inventory of the constant pool consumed by
     /// `validate_constants_symbols` (workflow/validate_refs.rs:166-176).
     /// `constants_symbols` lists, in pool order, the `SymbolId`
@@ -1534,6 +1552,66 @@ pub fn validate_node_pure(
     // node order; the projection calls the shared alias decision
     // here so the first aliasing node reports first.
     branch_target_alias_error(meta)
+}
+
+/// Pure projection of `local_resources::validate`
+/// (crates/vb_core/src/workflow/validate/local_resources.rs:4-23), the last check
+/// of `validate_node` (crates/vb_core/src/workflow/validate.rs:152-172). Runs
+/// after the branch-target alias checks, per node, in node order:
+/// `ForEachStart` limit against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:52-58); `CollectStart` limit then
+/// page_size against `max_collect_items`
+/// (crates/vb_core/src/workflow/node_kind.rs:87-93); `TogetherStart` branch
+/// count against `max_fanout` (crates/vb_core/src/workflow/node_kind.rs:68-71);
+/// `TogetherJoin` branch count against `max_fanout`
+/// (crates/vb_core/src/workflow/node_kind.rs:81-85). Each breached cap returns
+/// `ResourceContractExceeded`, matching `check_actual_within_declared`
+/// (crates/vb_core/src/workflow/resource_limits.rs:187-197); every other kind
+/// returns `None`. The `ForEachConcurrentStart` limit arm has no
+/// `SpecNodeKind` variant (the discriminant model covers 0..=33 only), so it
+/// is not modelled here.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn local_resources_error(
+    kind: &SpecNodeKind,
+    contract: &SpecResourceContract,
+) -> Option<SpecWorkflowError> {
+    match kind {
+        SpecNodeKind::ForEachStart { limit, .. } => {
+            if *limit > contract.max_collect_items {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::CollectStart { limit, page_size, .. } => {
+            if *limit > contract.max_collect_items {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else if *page_size > contract.max_collect_items {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::TogetherStart { branch_count, .. } => {
+            if *branch_count > contract.max_fanout {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        SpecNodeKind::TogetherJoin { branch_count, .. } => {
+            if *branch_count > contract.max_fanout {
+                Some(SpecWorkflowError::ResourceContractExceeded)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 // ============================================================================
 // Pure decision fn: loop-region pairing
@@ -2649,7 +2727,10 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // 1e. per-node loop: validate_node_id + validate_node.
     // The kind-ref inventory is per node; a missing entry (a
     // `kind_refs` shorter than `nodes_meta`) means the node carries
-    // no kind-payload references.
+    // no kind-payload references. The kind inventory is per node
+    // too; a missing entry (a `node_kinds` shorter than
+    // `nodes_meta`) means the node carries no local-resource
+    // payload, so its `local_resources` check is vacuous.
     let empty_refs: Vec<SpecKindRef> = Vec::new();
     for (index, meta) in parts.nodes_meta.iter().enumerate() {
         // validate_node_id (workflow/validate.rs:133-146), before
@@ -2673,6 +2754,15 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         );
         if let Some(err) = per_node_err {
             return SpecValidationResult::Err(err);
+        }
+        // local_resources::validate
+        // (crates/vb_core/src/workflow/validate/local_resources.rs:4-23), the last
+        // check of validate_node (crates/vb_core/src/workflow/validate.rs:152-172),
+        // after the alias checks above.
+        if let Some(kind) = parts.node_kinds.get(index) {
+            if let Some(err) = local_resources_error(kind, &contract) {
+                return SpecValidationResult::Err(err);
+            }
         }
     }
     // 1f. validate_accessor_paths (workflow/validate_refs.rs:133-163) —
