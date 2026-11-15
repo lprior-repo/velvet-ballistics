@@ -138,6 +138,11 @@ fn queued_resume_preserves_initial_state_after_compatibility_gate_blocks_start()
     let counters_before = shard.counters().snapshot();
     let pending_actions_before = shard.pending_action_clone();
     let pending_timers_before = shard.pending_timer_count();
+    let frame_before = shard
+        .run_state_get(run)
+        .expect("blocked run remains active")
+        .frame
+        .clone();
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
 
     let error = shard.tick().expect_err("initial run must not resume");
@@ -177,6 +182,10 @@ fn queued_resume_preserves_initial_state_after_compatibility_gate_blocks_start()
         Some(super::super::RuntimeState::Initial)
     );
     assert!(shard.run_state_contains(run));
+    assert_eq!(
+        shard.run_state_get(run).map(|state| &state.frame),
+        Some(&frame_before)
+    );
     assert_eq!(shard.pending_action_clone(), pending_actions_before);
     assert_eq!(shard.pending_timer_count(), pending_timers_before);
     assert_eq!(
