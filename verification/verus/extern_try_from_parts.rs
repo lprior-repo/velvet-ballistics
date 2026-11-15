@@ -2480,8 +2480,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // (workflow/resource_limits.rs:33-122, MAX_QUEUE_DEPTH 1048576), journal (workflow/resource_limits.rs:33-122,
     // MAX_JOURNAL_BATCH_BYTES 16777216). The transitions
     // over-cap arm returns ResourceContractTooLarge, matching
-    // production; the zero-transitions check below returns
+    // production; the zero step-budget check below returns
     // ResourceContractExceeded after the expr-stack loop, matching
+    // the inline check (workflow/resource_limits.rs:129-133), and
+    // the zero-transitions check below returns
+    // ResourceContractExceeded after it, matching
     // `validate_transitions_nonzero` (workflow/resource_limits.rs:142-149).
     // The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
@@ -2564,6 +2567,9 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         if expression.max_stack > contract.max_expr_stack {
             return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
         }
+    }
+    if contract.max_step_budget_per_tick == 0 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
     if contract.max_transitions_per_tick == 0 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
