@@ -7,7 +7,7 @@
 // In-tree production-source mirror for the `Taint` enum and taint lattice
 // helper fns consumed by `verification/verus/taint_lattice.rs`.
 //
-// The `Taint` enum below is a VERBATIM copy of lines 10-21 of
+// The `Taint` enum below is a VERBATIM copy of lines 17-28 of
 // `crates/vb_core/src/value/taint.rs`:
 //
 //   - Variant set:        Clean, DerivedFromSecret, Secret, Random,
@@ -17,7 +17,7 @@
 //   - Attributes:         #[non_exhaustive]
 //
 // `join_taint(a, b)` is a VERBATIM copy of `crates/vb_core/src/value/taint.rs`
-// lines 84-100 (the production free fn that picks the higher-ranked
+// lines 102-118 (the production free fn that picks the higher-ranked
 // variant). The verbatim copy preserves the inline discriminant-match
 // style production uses — production does NOT extract `rank` as a
 // method on `Taint`.
@@ -37,7 +37,7 @@
 // `impl Enum { fn }` blocks inside spec-mode `verus!` modules.
 // Production `value/taint.rs` does not export a method form either; the
 // discriminant pattern is inlined inside `join_taint` (see lines
-// 85-91 and 92-98 of value/taint.rs).
+// 103-109 and 110-116 of value/taint.rs).
 //
 // ============================================================================
 // DRIFT POLICY
@@ -95,7 +95,7 @@ pub enum Taint {
 }
 
 /// Free-fn form of the inline discriminant pattern that production's
-/// `value/taint.rs:85-91` and `value/taint.rs:92-98` use inside `join_taint`.
+/// `value/taint.rs:103-109` and `value/taint.rs:110-116` use inside `join_taint`.
 /// Kept as a free fn (not `impl Taint::rank(&self)`) because Verus
 /// 0.2026.05.05 panics on `impl Enum { fn }` inside spec-mode `verus!`.
 /// Models the production discriminant mapping byte-for-byte.

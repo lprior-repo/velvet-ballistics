@@ -57,7 +57,7 @@
 //   - `SlotCell` representation         <- extern::SlotCell
 //                                          (mirror of crates/vb_core/src/value/taint.rs:39-49)
 //   - `Taint` discriminant set          <- extern::Taint
-//                                          (mirror of value/taint.rs:10-21;
+//                                          (mirror of value/taint.rs:17-28;
 //                                           Clean=0, DerivedFromSecret=1,
 //                                           Secret=2, Random=3,
 //                                           TimeDependent=4)
