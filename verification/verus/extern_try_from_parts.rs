@@ -531,6 +531,9 @@ pub enum SpecNodeKind {
         owner: u32,
         /// `result.is_some()` flattened to 1, else 0.
         has_result: u8,
+        /// The `result` slot value when `has_result` is 1;
+        /// ignored otherwise (caller supplies 0).
+        result_slot: u32,
     },
     ConcurrentGroupJoin { owner: u32 },
 }
@@ -1529,7 +1532,11 @@ pub fn build_object_symbols_error(parts: &SpecWorkflowParts) -> Option<SpecWorkf
 /// start index from the node's kind inventory entry (a missing
 /// entry means the node carries no concurrent-pair payload, so
 /// the check is vacuous) and delegates to
-/// `concurrent_pair_at_error`.
+/// `concurrent_pair_at_error`; for a `ConcurrentLaneEnd` node
+/// the arm runs the full lane-end check (`lane_end_error`),
+/// which runs the shape check before the pair check on the
+/// owner, in production `lane_end::validate` order
+/// (`crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61`).
 ///
 /// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
 /// The spec-side mirror in `try_from_parts.rs` is the contract; this
@@ -1540,7 +1547,9 @@ pub fn concurrent_pair_error(parts: &SpecWorkflowParts, index: usize) -> Option<
         Some(SpecNodeKind::ForEachConcurrentStart { .. }) => index,
         Some(SpecNodeKind::TogetherConcurrentStart { .. }) => index,
         Some(SpecNodeKind::FirstSuccessStart { .. }) => index,
-        Some(SpecNodeKind::ConcurrentLaneEnd { owner, .. }) => *owner as usize,
+        Some(SpecNodeKind::ConcurrentLaneEnd { .. }) => {
+            return lane_end_error(parts, index);
+        }
         Some(SpecNodeKind::ConcurrentGroupJoin { owner }) => *owner as usize,
         Some(_) => return None,
         None => return None,
@@ -1642,6 +1651,92 @@ pub fn concurrent_join_error(
     }
     if node.next_step >= parts.nodes_len {
         return Some(SpecWorkflowError::StepOutOfBounds);
+    }
+    None
+}
+
+/// Pure projection of `concurrent_lane_end::validate`
+/// (`crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61`):
+/// the no-output / no-retry shape, the pair check on the
+/// owner, the result-slot bound, the join derivation, and
+/// the bounds / routing / error-route half, in production
+/// order. A missing kind inventory entry for the owner
+/// means its join is unknown, so the join half is vacuous;
+/// a present entry of a non-concurrent-start kind is
+/// unpaired.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn lane_end_error(parts: &SpecWorkflowParts, index: usize) -> Option<SpecWorkflowError> {
+    let meta = match parts.nodes_meta.get(index) {
+        Some(meta) => meta,
+        None => return None,
+    };
+    let (owner, has_result, result_slot) = match parts.node_kinds.get(index) {
+        Some(SpecNodeKind::ConcurrentLaneEnd { owner, has_result, result_slot }) => {
+            (*owner as usize, *has_result, *result_slot)
+        }
+        Some(_) => return None,
+        None => return None,
+    };
+    if meta.has_output == 1 {
+        return Some(SpecWorkflowError::LoopRegionUnpaired);
+    }
+    if meta.has_retry == 1 {
+        return Some(SpecWorkflowError::LoopRegionUnpaired);
+    }
+    if let Some(err) = concurrent_pair_at_error(parts, owner) {
+        return Some(err);
+    }
+    if has_result == 1 && result_slot >= parts.slot_count {
+        return Some(SpecWorkflowError::SlotOutOfBounds);
+    }
+    let join = match parts.node_kinds.get(owner) {
+        Some(SpecNodeKind::ForEachConcurrentStart { join, .. }) => *join as usize,
+        Some(SpecNodeKind::TogetherConcurrentStart { join, .. }) => *join as usize,
+        Some(SpecNodeKind::FirstSuccessStart { join, .. }) => *join as usize,
+        Some(_) => return Some(SpecWorkflowError::LoopRegionUnpaired),
+        None => return None,
+    };
+    lane_end_bounds_error(parts, index, owner, join)
+}
+
+/// Pure projection of the join half of `concurrent_lane_end::validate`
+/// (`crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61`):
+/// `check_bounds`, `check_routing`, and `check_error_routes`, in
+/// production order. The lane end must sit strictly between its
+/// owner and the join, route its next step to the join, and keep
+/// its error handler inside the region.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn lane_end_bounds_error(
+    parts: &SpecWorkflowParts,
+    index: usize,
+    owner: usize,
+    join: usize,
+) -> Option<SpecWorkflowError> {
+    if !(owner < index && index < join) {
+        return Some(SpecWorkflowError::LoopRegionCrossing);
+    }
+    let meta = match parts.nodes_meta.get(index) {
+        Some(meta) => meta,
+        None => return None,
+    };
+    if meta.has_next == 0 {
+        return Some(SpecWorkflowError::LoopRegionUnpaired);
+    }
+    if meta.next_step as usize != join {
+        return Some(SpecWorkflowError::LoopRegionUnpaired);
+    }
+    if meta.has_on_error == 1
+        && (meta.on_error_step as usize <= owner || meta.on_error_step as usize >= join)
+    {
+        return Some(SpecWorkflowError::LoopRegionCrossing);
     }
     None
 }
@@ -2962,9 +3057,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             None => &empty_refs,
         };
         // validate_node_common (workflow/validate.rs:201-209),
-        // then the concurrent-pair check for a concurrent start,
-        // lane-end, or join node (workflow/validate.rs:152-172),
-        // then the kind-ref inventory and the branch-target alias
+        // then the concurrent check for a concurrent start,
+        // lane-end, or join node (workflow/validate.rs:152-172):
+        // the pair check for a start or join node, the
+        // lane-end check for a lane-end node, then the
+        // kind-ref inventory and the branch-target alias
         // checks: production order inside validate_node.
         if let Some(err) = validate_node_common(*meta, parts.slot_count, node_count) {
             return SpecValidationResult::Err(err);

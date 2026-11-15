@@ -579,7 +579,12 @@ pub open spec fn spec_nodes_id_error(metas: &Vec<SpecNodeMeta>, i: int) -> Optio
 /// start index from the node's kind inventory entry (a missing
 /// entry means the node carries no concurrent-pair payload, so
 /// the check is vacuous) and delegates to
-/// `spec_concurrent_pair_at_error`.
+/// `spec_concurrent_pair_at_error`; for a `ConcurrentLaneEnd`
+/// node the arm runs the full lane-end check
+/// (`spec_concurrent_lane_end_error`), which runs the shape
+/// check before the pair check on the owner, in production
+/// `lane_end::validate` order
+/// (crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61).
 pub open spec fn spec_concurrent_pair_error(parts: &SpecWorkflowParts, i: int) -> Option<
     SpecWorkflowError,
 > {
@@ -592,9 +597,7 @@ pub open spec fn spec_concurrent_pair_error(parts: &SpecWorkflowParts, i: int) -
                 spec_concurrent_pair_at_error(parts, i)
             },
             SpecNodeKind::FirstSuccessStart { .. } => spec_concurrent_pair_at_error(parts, i),
-            SpecNodeKind::ConcurrentLaneEnd { owner, .. } => {
-                spec_concurrent_pair_at_error(parts, owner as int)
-            },
+            SpecNodeKind::ConcurrentLaneEnd { .. } => spec_concurrent_lane_end_error(parts, i),
             SpecNodeKind::ConcurrentGroupJoin { owner } => {
                 spec_concurrent_pair_at_error(parts, owner as int)
             },
@@ -688,6 +691,102 @@ pub open spec fn spec_concurrent_join_error(
     }
 }
 
+/// Spec-level mirror of `concurrent_lane_end::validate`
+/// (crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61):
+/// the no-output / no-retry shape, the pair check on the
+/// owner, the result-slot bound, the join derivation, and
+/// the bounds / routing / error-route half, in production
+/// order. A missing kind inventory entry for the owner
+/// means its join is unknown, so the join half is vacuous;
+/// a present entry of a non-concurrent-start kind is
+/// unpaired.
+pub open spec fn spec_concurrent_lane_end_error(parts: &SpecWorkflowParts, i: int) -> Option<
+    SpecWorkflowError,
+> {
+    if i < 0 || i >= parts.nodes_meta.len() || i >= parts.node_kinds.len() {
+        None
+    } else {
+        match parts.node_kinds[i] {
+            SpecNodeKind::ConcurrentLaneEnd { owner, has_result, result_slot } => {
+                let pair_err = spec_concurrent_pair_at_error(parts, owner as int);
+                if parts.nodes_meta[i].has_output == 1 {
+                    Some(SpecWorkflowError::LoopRegionUnpaired)
+                } else if parts.nodes_meta[i].has_retry == 1 {
+                    Some(SpecWorkflowError::LoopRegionUnpaired)
+                } else if pair_err != None::<SpecWorkflowError> {
+                    pair_err
+                } else if has_result == 1
+                    && (result_slot as int) >= (parts.slot_count as int)
+                {
+                    Some(SpecWorkflowError::SlotOutOfBounds)
+                } else if (owner as int) >= parts.node_kinds.len() {
+                    None
+                } else {
+                    match parts.node_kinds[owner as int] {
+                        SpecNodeKind::ForEachConcurrentStart { join, .. } => {
+                            spec_concurrent_lane_end_bounds_error(
+                                parts,
+                                i,
+                                owner as int,
+                                join as int,
+                            )
+                        },
+                        SpecNodeKind::TogetherConcurrentStart { join, .. } => {
+                            spec_concurrent_lane_end_bounds_error(
+                                parts,
+                                i,
+                                owner as int,
+                                join as int,
+                            )
+                        },
+                        SpecNodeKind::FirstSuccessStart { join, .. } => {
+                            spec_concurrent_lane_end_bounds_error(
+                                parts,
+                                i,
+                                owner as int,
+                                join as int,
+                            )
+                        },
+                        _ => Some(SpecWorkflowError::LoopRegionUnpaired),
+                    }
+                }
+            },
+            _ => None,
+        }
+    }
+}
+
+/// Spec-level mirror of the join half of
+/// `concurrent_lane_end::validate`
+/// (crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61):
+/// `check_bounds`, `check_routing`, and `check_error_routes`,
+/// in production order. The lane end must sit strictly
+/// between its owner and the join, route its next step to
+/// the join, and keep its error handler inside the region.
+pub open spec fn spec_concurrent_lane_end_bounds_error(
+    parts: &SpecWorkflowParts,
+    end: int,
+    owner: int,
+    join: int,
+) -> Option<SpecWorkflowError> {
+    if !(owner < end && end < join) {
+        Some(SpecWorkflowError::LoopRegionCrossing)
+    } else if end < 0 || end >= parts.nodes_meta.len() {
+        None
+    } else if parts.nodes_meta[end].has_next == 0 {
+        Some(SpecWorkflowError::LoopRegionUnpaired)
+    } else if (parts.nodes_meta[end].next_step as int) != join {
+        Some(SpecWorkflowError::LoopRegionUnpaired)
+    } else if parts.nodes_meta[end].has_on_error == 1
+        && ((parts.nodes_meta[end].on_error_step as int) <= owner
+            || (parts.nodes_meta[end].on_error_step as int) >= join)
+    {
+        Some(SpecWorkflowError::LoopRegionCrossing)
+    } else {
+        None
+    }
+}
+
 /// Spec-level mirror of the step-1e per-node loop: walks the node
 /// table from index `i`; for each node checks `validate_node_id`
 /// before `validate_node` (workflow/validate.rs:21-47), returning
@@ -696,11 +795,14 @@ pub open spec fn spec_concurrent_join_error(
 /// entry (a `kind_refs` shorter than `nodes_meta`) means the node
 /// carries no kind-payload references, so its kind-ref walk is
 /// vacuous and only the common bounds, branch-table, pair, and
-/// alias checks apply. The pair check runs after the common
+/// alias checks apply. The concurrent check runs after the common
 /// bounds and before the kind-ref inventory, in production
-/// `validate_node` order (workflow/validate.rs:152-172); a missing
+/// `validate_node` order (workflow/validate.rs:152-172): for a
+/// concurrent start or join node the pair check, for a
+/// `ConcurrentLaneEnd` node the lane-end check (which runs the
+/// pair check on the owner after the shape check); a missing
 /// kind entry (a `node_kinds` shorter than `nodes_meta`) means
-/// the node carries no concurrent-pair payload, so that check is
+/// the node carries no concurrent payload, so that check is
 /// vacuous. After those checks each node runs the
 /// `local_resources` check (workflow/validate/local_resources.rs:4-23), the
 /// last check of `validate_node` (workflow/validate.rs:152-172); a
@@ -10091,6 +10193,221 @@ pub proof fn lemma_concurrent_pair_before_accessor_path(parts: &SpecWorkflowPart
     assert(spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep));
     assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
         SpecWorkflowError::LoopRegionUnpaired,
+    ));
+}
+
+/// Lemma 193: the concurrent lane-end output rejection. A
+/// `ConcurrentLaneEnd` node carrying an output slot is rejected
+/// with `LoopRegionUnpaired` (production
+/// `concurrent_lane_end::validate`,
+/// crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61, via
+/// `validate_node`, crates/vb_core/src/workflow/validate.rs:152-172).
+pub proof fn lemma_concurrent_lane_end_output_rejected(parts: &SpecWorkflowParts, i: int)
+    requires
+        i >= 0,
+        i < parts.nodes_meta.len(),
+        i < parts.node_kinds.len(),
+        parts.nodes_meta[i].id as int == i,
+        parts.nodes_meta[i].has_output == 1,
+        parts.node_kinds[i] == (SpecNodeKind::ConcurrentLaneEnd {
+            owner: 0u32,
+            has_result: 0u8,
+            result_slot: 0u32,
+        }),
+    ensures
+        spec_concurrent_pair_error(parts, i) == Some(SpecWorkflowError::LoopRegionUnpaired),
+{
+    assert(spec_concurrent_pair_error(parts, i) == Some(SpecWorkflowError::LoopRegionUnpaired));
+}
+
+/// Lemma 194: the concurrent lane-end result-slot rejection. A
+/// `ConcurrentLaneEnd` node whose result slot is at or beyond
+/// `slot_count` is rejected with `SlotOutOfBounds` (production
+/// `concurrent_lane_end::validate`,
+/// crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61, via
+/// `validate_node`, crates/vb_core/src/workflow/validate.rs:152-172).
+pub proof fn lemma_concurrent_lane_end_result_slot_rejected(parts: &SpecWorkflowParts)
+    requires
+        2 < parts.nodes_meta.len(),
+        2 < parts.node_kinds.len(),
+        parts.nodes_meta[0].id as int == 0,
+        parts.nodes_meta[0].has_output == 0,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_retry == 0,
+        parts.node_kinds[0] == (SpecNodeKind::TogetherConcurrentStart {
+            branch_count: 1u32,
+            join: 2u32,
+        }),
+        parts.nodes_meta[1].id as int == 1,
+        parts.nodes_meta[1].has_output == 0,
+        parts.nodes_meta[1].has_retry == 0,
+        parts.nodes_meta[1].has_next == 1,
+        parts.nodes_meta[1].next_step as int == 2,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.node_kinds[1] == (SpecNodeKind::ConcurrentLaneEnd {
+            owner: 0u32,
+            has_result: 1u8,
+            result_slot: 5u32,
+        }),
+        parts.nodes_meta[2].id as int == 2,
+        parts.nodes_meta[2].has_output == 1,
+        parts.nodes_meta[2].out_slot as int == 0,
+        parts.nodes_meta[2].has_next == 1,
+        parts.nodes_meta[2].next_step as int == 3,
+        parts.node_kinds[2] == (SpecNodeKind::ConcurrentGroupJoin { owner: 0u32 }),
+        parts.slot_count == 1,
+        parts.nodes_len == 4,
+    ensures
+        spec_concurrent_pair_error(parts, 1) == Some(SpecWorkflowError::SlotOutOfBounds),
+{
+    assert(spec_concurrent_pair_error(parts, 1) == Some(SpecWorkflowError::SlotOutOfBounds));
+}
+
+/// Lemma 195: the concurrent lane-end bounds rejection. A
+/// `ConcurrentLaneEnd` node sitting after its owner's join
+/// is rejected with `LoopRegionCrossing` (production
+/// `concurrent_lane_end::validate`,
+/// crates/vb_core/src/workflow/concurrent/lane_end.rs:45-61, via
+/// `validate_node`, crates/vb_core/src/workflow/validate.rs:152-172).
+pub proof fn lemma_concurrent_lane_end_bounds_rejected(parts: &SpecWorkflowParts)
+    requires
+        3 < parts.nodes_meta.len(),
+        3 < parts.node_kinds.len(),
+        parts.nodes_meta[0].id as int == 0,
+        parts.nodes_meta[0].has_output == 0,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_retry == 0,
+        parts.node_kinds[0] == (SpecNodeKind::TogetherConcurrentStart {
+            branch_count: 1u32,
+            join: 2u32,
+        }),
+        parts.nodes_meta[2].id as int == 2,
+        parts.nodes_meta[2].has_output == 1,
+        parts.nodes_meta[2].out_slot as int == 0,
+        parts.nodes_meta[2].has_next == 1,
+        parts.nodes_meta[2].next_step as int == 4,
+        parts.node_kinds[2] == (SpecNodeKind::ConcurrentGroupJoin { owner: 0u32 }),
+        parts.nodes_meta[3].id as int == 3,
+        parts.nodes_meta[3].has_output == 0,
+        parts.nodes_meta[3].has_retry == 0,
+        parts.node_kinds[3] == (SpecNodeKind::ConcurrentLaneEnd {
+            owner: 0u32,
+            has_result: 0u8,
+            result_slot: 0u32,
+        }),
+        parts.slot_count == 1,
+        parts.nodes_len == 5,
+    ensures
+        spec_concurrent_pair_error(parts, 3) == Some(SpecWorkflowError::LoopRegionCrossing),
+{
+    assert(spec_concurrent_pair_error(parts, 3) == Some(SpecWorkflowError::LoopRegionCrossing));
+}
+
+/// Lemma 196: the concurrent lane-end rejection at the top level. A
+/// workflow whose per-node validation reports `LoopRegionCrossing`
+/// is rejected with `LoopRegionCrossing`: the mirror runs the
+/// per-node loop after the accessor-root check and before the
+/// accessor-path check (production `validate_parts`,
+/// crates/vb_core/src/workflow/validate.rs:21-47; extern Step 1e).
+pub proof fn lemma_concurrent_lane_end_top_level_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing),
+    ensures
+        try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+            SpecWorkflowError::LoopRegionCrossing,
+        ),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing));
+    assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+        SpecWorkflowError::LoopRegionCrossing,
+    ));
+}
+
+/// Lemma 197: the concurrent lane-end rejection runs before the
+/// accessor-path check. A workflow whose per-node validation
+/// reports `LoopRegionCrossing` and whose accessor paths are
+/// also invalid is rejected with `LoopRegionCrossing`: the
+/// mirror runs the per-node loop before the accessor-path scan
+/// (production `validate_parts`,
+/// crates/vb_core/src/workflow/validate.rs:21-47; extern
+/// Steps 1e-1f).
+pub proof fn lemma_concurrent_lane_end_before_accessor_path(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing),
+        spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep),
+    ensures
+        try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+            SpecWorkflowError::LoopRegionCrossing,
+        ),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == Some(SpecWorkflowError::LoopRegionCrossing));
+    assert(spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep));
+    assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Err(
+        SpecWorkflowError::LoopRegionCrossing,
     ));
 }
 
