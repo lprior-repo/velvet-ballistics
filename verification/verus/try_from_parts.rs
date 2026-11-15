@@ -533,8 +533,8 @@ pub open spec fn spec_kind_ref_error(
 /// Returns `Some(NodeIdMismatch)` when the node's id differs from
 /// its table position, or `None` when they match. Production's
 /// `u16::try_from(index)` arm is unreachable on inputs that reach
-/// step 1e: step 1a caps `max_steps` at 65535, so every table
-/// position is below 65536 and the conversion cannot fail.
+/// step 1e: step 1a caps `max_steps` at 1000, so every table
+/// position is below 1000 and the conversion cannot fail.
 pub open spec fn spec_node_id_error(meta: SpecNodeMeta, index: int) -> Option<SpecWorkflowError> {
     if (meta.id as int) == index {
         None
@@ -2581,11 +2581,11 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::EmptyNodes)
     } else if parts.entry >= parts.nodes_len {
         SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds)
-    } else if parts.resource_contract.max_steps > 65535 {
+    } else if parts.resource_contract.max_steps > 1000 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_slots > 65535 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
-    } else if parts.resource_contract.max_constants > 65535 {
+    } else if parts.resource_contract.max_constants > 8192 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_accessors > 8192 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
@@ -2801,14 +2801,14 @@ pub proof fn lemma_entry_out_of_bounds_rejected(parts: &SpecWorkflowParts)
 /// whose `max_steps` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/resource_limits.rs:33-122,
-/// `MAX_STEPS_PER_WORKFLOW` 65535, crates/vb_core/src/limits.rs:11). The production
+/// `MAX_STEPS_PER_WORKFLOW` 1000, crates/vb_core/src/limits.rs:11). The production
 /// field is `u16`, so this arm cannot fire on a real production
 /// contract; the projection models the check as written over the
 /// `u32`-promoted spec field, where the over-cap input is
 /// reachable.
 pub proof fn lemma_resource_contract_too_large_rejected(parts: &SpecWorkflowParts)
     requires
-        parts.resource_contract.max_steps > 65535,
+        parts.resource_contract.max_steps > 1000,
     ensures
         !spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -2837,9 +2837,9 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -2887,11 +2887,11 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Empty nodes case: skip (already required non-empty).
     } else if parts.entry >= parts.nodes_len {
         // Entry out of bounds: skip (already required in range).
-    } else if parts.resource_contract.max_steps > 65535 {
+    } else if parts.resource_contract.max_steps > 1000 {
         // Resource contract too large: skip.
     } else if parts.resource_contract.max_slots > 65535 {
         // Resource contract too large: skip.
-    } else if parts.resource_contract.max_constants > 65535 {
+    } else if parts.resource_contract.max_constants > 8192 {
         // Resource contract too large: skip.
     } else if parts.resource_contract.max_accessors > 8192 {
         // Resource contract too large: skip.
@@ -2987,7 +2987,7 @@ pub proof fn lemma_ref_none_sentinel()
     ensures
         // spec_ref_none() > any reasonable slot/step count.
         // In production, slot_count <= MAX_SLOTS_PER_WORKFLOW = 65535
-        // and node_count <= MAX_STEPS_PER_WORKFLOW = 65535; both are
+        // and node_count <= MAX_STEPS_PER_WORKFLOW = 1000; both are
         // < u32::MAX, so the sentinel never collides with a real index.
         (0xFFFFFFFFu32 as int) > 65535,
 {
@@ -3768,9 +3768,9 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         parts.nodes_meta.len() == 2,
         parts.nodes_len == 2,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -3835,9 +3835,9 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
         parts.nodes_meta.len() == 2,
         parts.nodes_len == 2,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -3909,9 +3909,9 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
         parts.nodes_meta.len() == 2,
         parts.nodes_len == 2,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -4055,9 +4055,9 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
         parts.nodes_meta.len() == 3,
         parts.nodes_len == 3,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -4151,9 +4151,9 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
         parts.nodes_meta.len() == 4,
         parts.nodes_len == 4,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -4278,9 +4278,9 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
         parts.nodes_meta.len() == 4,
         parts.nodes_len == 4,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -4390,9 +4390,9 @@ pub proof fn lemma_reachability_unreachable_rejected(parts: &SpecWorkflowParts)
         parts.nodes_meta.len() == 2,
         parts.nodes_len == 2,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -4513,9 +4513,9 @@ pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
         parts.nodes_meta.len() == 5,
         parts.nodes_len == 5,
         parts.entry == 0u32,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -5701,9 +5701,9 @@ pub proof fn lemma_budget_pairing_before_budget(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -5758,9 +5758,9 @@ pub proof fn lemma_budget_before_input_slots(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -5817,9 +5817,9 @@ pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowPa
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6134,9 +6134,9 @@ pub proof fn lemma_expr_before_budget(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6359,9 +6359,9 @@ pub proof fn lemma_accessor_path_before_reachability(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6458,9 +6458,9 @@ pub proof fn lemma_expr_stack_before_exprs(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6504,9 +6504,9 @@ pub proof fn lemma_expr_stack_within_cap_reaches_exprs(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6658,9 +6658,9 @@ pub proof fn lemma_symbols_before_reachability(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6709,9 +6709,9 @@ pub proof fn lemma_symbols_within_bounds_reaches_reachability(parts: &SpecWorkfl
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6776,9 +6776,9 @@ pub proof fn lemma_constants_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6814,9 +6814,9 @@ pub proof fn lemma_accessors_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6853,9 +6853,9 @@ pub proof fn lemma_expressions_count_over_cap_rejected(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6899,9 +6899,9 @@ pub proof fn lemma_resource_counts_first_over_cap_wins(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6940,9 +6940,9 @@ pub proof fn lemma_resource_counts_before_exprs(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -6981,9 +6981,9 @@ pub proof fn lemma_resource_counts_within_cap_reaches_exprs(parts: &SpecWorkflow
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7026,9 +7026,9 @@ pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7072,7 +7072,7 @@ pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
 /// `max_constants` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/resource_limits.rs:33-122,
-/// `MAX_CONSTANTS` 65535, crates/vb_core/src/limits.rs:23). The production field is
+/// `MAX_CONSTANTS` 8192, crates/vb_core/src/limits.rs:23). The production field is
 /// `u16`, so this arm cannot fire on a real production contract;
 /// the projection models the check as written over the
 /// `u32`-promoted spec field, where the over-cap input is
@@ -7081,9 +7081,9 @@ pub proof fn lemma_constants_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants > 65535,
+        parts.resource_contract.max_constants > 8192,
     ensures
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
@@ -7101,9 +7101,9 @@ pub proof fn lemma_accessors_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors > 8192,
     ensures
         try_from_parts_pure_spec(parts)
@@ -7122,9 +7122,9 @@ pub proof fn lemma_expressions_limit_over_cap_rejected(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions > 4096,
     ensures
@@ -7149,9 +7149,9 @@ pub proof fn lemma_contract_limits_first_over_cap_wins(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants > 65535,
+        parts.resource_contract.max_constants > 8192,
         parts.resource_contract.max_accessors > 8192,
         parts.resource_contract.max_expressions > 4096,
     ensures
@@ -7172,9 +7172,9 @@ pub proof fn lemma_contract_limits_before_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors > 8192,
         parts.constants_len > parts.resource_contract.max_constants,
     ensures
@@ -7196,9 +7196,9 @@ pub proof fn lemma_contract_limits_within_cap_reaches_usage(parts: &SpecWorkflow
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7238,9 +7238,9 @@ pub proof fn lemma_contract_limits_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants == 65535,
+        parts.resource_contract.max_constants == 8192,
         parts.resource_contract.max_accessors == 8192,
         parts.resource_contract.max_expressions == 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7292,9 +7292,9 @@ pub proof fn lemma_step_budget_limit_over_cap_rejected(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7318,9 +7318,9 @@ pub proof fn lemma_input_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7347,9 +7347,9 @@ pub proof fn lemma_output_bytes_limit_over_cap_rejected(parts: &SpecWorkflowPart
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7377,9 +7377,9 @@ pub proof fn lemma_blob_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7408,9 +7408,9 @@ pub proof fn lemma_ipc_payload_bytes_limit_over_cap_rejected(parts: &SpecWorkflo
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7443,9 +7443,9 @@ pub proof fn lemma_journal_batch_bytes_limit_over_cap_rejected(parts: &SpecWorkf
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7485,9 +7485,9 @@ pub proof fn lemma_byte_budget_limits_first_over_cap_wins(parts: &SpecWorkflowPa
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7517,9 +7517,9 @@ pub proof fn lemma_byte_budget_limits_before_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7549,9 +7549,9 @@ pub proof fn lemma_byte_budget_limits_within_cap_reaches_usage(parts: &SpecWorkf
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7589,9 +7589,9 @@ pub proof fn lemma_byte_budget_limits_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7643,9 +7643,9 @@ pub proof fn lemma_retry_attempts_limit_over_cap_rejected(parts: &SpecWorkflowPa
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7676,9 +7676,9 @@ pub proof fn lemma_fanout_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7710,9 +7710,9 @@ pub proof fn lemma_collect_items_limit_over_cap_rejected(parts: &SpecWorkflowPar
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7745,9 +7745,9 @@ pub proof fn lemma_queue_depth_limit_over_cap_rejected(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7785,9 +7785,9 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_first_over_cap_wins(parts: 
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7823,9 +7823,9 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_before_usage(parts: &SpecWo
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7853,9 +7853,9 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_within_cap_reaches_usage(pa
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -7893,9 +7893,9 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_at_cap_accepted(parts: &Spe
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8198,9 +8198,9 @@ pub proof fn lemma_transitions_limit_over_cap_rejected(parts: &SpecWorkflowParts
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8228,9 +8228,9 @@ pub proof fn lemma_transitions_input_limits_first_over_cap_wins(parts: &SpecWork
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8255,9 +8255,9 @@ pub proof fn lemma_transitions_limit_before_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8283,9 +8283,9 @@ pub proof fn lemma_transitions_within_cap_reaches_usage(parts: &SpecWorkflowPart
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8322,9 +8322,9 @@ pub proof fn lemma_transitions_limit_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8376,9 +8376,9 @@ pub proof fn lemma_zero_transitions_after_limits(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8396,7 +8396,7 @@ pub proof fn lemma_zero_transitions_after_limits(parts: &SpecWorkflowParts)
 /// `max_steps` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/resource_limits.rs:33-122,
-/// `MAX_STEPS_PER_WORKFLOW` 65535, crates/vb_core/src/limits.rs:11). The production
+/// `MAX_STEPS_PER_WORKFLOW` 1000, crates/vb_core/src/limits.rs:11). The production
 /// field is `u16`, so this arm cannot fire on a real production
 /// contract; the projection models the check as written over the
 /// `u32`-promoted spec field, where the over-cap input is
@@ -8405,7 +8405,7 @@ pub proof fn lemma_steps_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps > 65535,
+        parts.resource_contract.max_steps > 1000,
     ensures
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
@@ -8427,7 +8427,7 @@ pub proof fn lemma_slots_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots > 65535,
     ensures
         try_from_parts_pure_spec(parts)
@@ -8451,7 +8451,7 @@ pub proof fn lemma_steps_slots_limits_first_over_cap_wins(parts: &SpecWorkflowPa
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps > 65535,
+        parts.resource_contract.max_steps > 1000,
         parts.resource_contract.max_slots > 65535,
     ensures
         try_from_parts_pure_spec(parts)
@@ -8473,9 +8473,9 @@ pub proof fn lemma_steps_slots_within_cap_reaches_usage(parts: &SpecWorkflowPart
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8511,9 +8511,9 @@ pub proof fn lemma_steps_limit_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps == 65535,
+        parts.resource_contract.max_steps == 1000,
         parts.resource_contract.max_slots <= 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,
@@ -8563,9 +8563,9 @@ pub proof fn lemma_slots_limit_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
         parts.entry < parts.nodes_len,
-        parts.resource_contract.max_steps <= 65535,
+        parts.resource_contract.max_steps <= 1000,
         parts.resource_contract.max_slots == 65535,
-        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_constants <= 8192,
         parts.resource_contract.max_accessors <= 8192,
         parts.resource_contract.max_expressions <= 4096,
         parts.resource_contract.max_expr_stack <= 64,

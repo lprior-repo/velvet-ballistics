@@ -946,7 +946,7 @@ pub const fn spec_node_kind_finish() -> u32 { 33 }
 /// `Option<StepIdx> / Option<SlotIdx>`; the projection flattens
 /// this to `(has_X, X-as-u32-or-sentinel)`. `SPEC_REF_NONE`
 /// exceeds every legitimate slot/step count (slot_count <= 65535,
-/// node_count <= 65535) so it never collides with a real index.
+/// node_count <= 1000) so it never collides with a real index.
 pub const fn spec_ref_none() -> u32 { u32::MAX }
 /// Discriminants for the `EdgeOrigin` of a loop-region edge check
 /// (`validate_edge`, loop_regions/edges.rs:64-88). The projection
@@ -1238,8 +1238,8 @@ pub fn budget_error(budget: SpecComputedBudget) -> Option<SpecWorkflowError> {
 /// when the node's id differs from its table position, or `None`
 /// when they match. Production's `u16::try_from(index)` arm is
 /// unreachable on inputs that reach step 1e: step 1a caps
-/// `max_steps` at 65535 and rejects a longer table first, so
-/// every table position is below 65536 and the conversion cannot
+/// `max_steps` at 1000 and rejects a longer table first, so
+/// every table position is below 1000 and the conversion cannot
 /// fail; the projection compares the ids directly and models no
 /// overflow error.
 ///
@@ -2465,9 +2465,9 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // 1a. resource contract bounds (workflow/resource_limits.rs:124-135).
     // The TooLarge arms live in `check_resource_contract_limits`
     // (workflow/resource_limits.rs:33-122): steps (workflow/resource_limits.rs:33-122,
-    // MAX_STEPS_PER_WORKFLOW 65535), slots (workflow/resource_limits.rs:33-122,
+    // MAX_STEPS_PER_WORKFLOW 1000), slots (workflow/resource_limits.rs:33-122,
     // MAX_SLOTS_PER_WORKFLOW 65535), constants (workflow/resource_limits.rs:33-122,
-    // MAX_CONSTANTS 65535), accessors (workflow/resource_limits.rs:33-122,
+    // MAX_CONSTANTS 8192), accessors (workflow/resource_limits.rs:33-122,
     // MAX_ACCESSORS 8192), expressions (workflow/resource_limits.rs:33-122, MAX_EXPRESSIONS
     // 4096), expr_stack, step_budget (workflow/resource_limits.rs:33-122, MAX_STEP_BUDGET
     // 10000), transitions (workflow/resource_limits.rs:33-122, MAX_STEP_BUDGET 10000),
@@ -2491,7 +2491,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // ResourceContractTooLarge, and the projection returns the
     // first one that fires.
     let contract = parts.resource_contract;
-    if contract.max_steps > 65535 {
+    if contract.max_steps > 1000 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
     if parts.nodes_len > contract.max_steps {
@@ -2500,7 +2500,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if contract.max_slots > 65535 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
-    if contract.max_constants > 65535 {
+    if contract.max_constants > 8192 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
     if contract.max_accessors > 8192 {
