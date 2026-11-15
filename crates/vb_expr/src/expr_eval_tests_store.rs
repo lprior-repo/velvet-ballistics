@@ -398,7 +398,9 @@
     fn eval_helper_with_store_has_checks_object_key() -> ExprResult<()> {
         use vb_core::value_store::ObjectField;
         let mut store = ValueStore::new();
-        let key = vb_core::ids::SymbolId::new(42);
+        let key = store
+            .insert_symbol("present")
+            .map_err(|_| ExprError::UnexpectedEof)?;
         let obj = store
             .insert_object(
                 vec![ObjectField {
@@ -419,8 +421,12 @@
     fn eval_helper_with_store_has_returns_false_for_missing_key() -> ExprResult<()> {
         use vb_core::value_store::ObjectField;
         let mut store = ValueStore::new();
-        let key_present = vb_core::ids::SymbolId::new(1);
-        let key_absent = vb_core::ids::SymbolId::new(99);
+        let key_present = store
+            .insert_symbol("present")
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let key_absent = store
+            .insert_symbol("missing")
+            .map_err(|_| ExprError::UnexpectedEof)?;
         let obj = store
             .insert_object(
                 vec![ObjectField {

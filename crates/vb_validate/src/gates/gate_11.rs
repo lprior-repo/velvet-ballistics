@@ -110,7 +110,12 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
         }
     }
     validate_loop_pairings(parts)?;
-    Ok(())
+    vb_core::workflow::validate_concurrent_structure(parts).map_err(|error| {
+        crate::ValidationError::NodeKindConstraintViolation {
+            node_index: parts.entry.as_usize(),
+            detail: error.to_string(),
+        }
+    })
 }
 
 fn validate_loop_pairings(parts: &WorkflowParts) -> ValidationResult<()> {

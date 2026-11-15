@@ -4775,7 +4775,7 @@ pub proof fn lemma_nested_together_sequential_accepted(parts: &SpecWorkflowParts
 /// Lemma 46: the slot-before-step first error. A ForEachNext node
 /// whose iterator slot is out of bounds and whose body step is also
 /// out of bounds is rejected with `SlotOutOfBounds` (production
-/// `validate_slot_and_steps`, workflow/validate_node_kind.rs:192-200, checks the
+/// `validate_slot_and_steps`, workflow/validate_node_kind.rs:197-205, checks the
 /// slot first).
 pub proof fn lemma_kind_ref_slot_before_step_rejected(
     meta: SpecNodeMeta,
@@ -4836,7 +4836,7 @@ pub proof fn lemma_kind_ref_step_before_slot_rejected(
 /// Lemma 48: the const-reference rejection. A ReduceStart node whose
 /// `initial` const index is out of bounds is rejected with
 /// `ConstOutOfBounds` (production `validate_reduce_start`,
-/// workflow/validate_node_kind.rs:231-245, checks input, accumulator, const, then
+/// workflow/validate_node_kind.rs:236-250, checks input, accumulator, const, then
 /// the two steps, in that order). This closes the approximation the
 /// old projection carried for the reduce kinds, which returned `None`
 /// for the const check.
@@ -4903,7 +4903,7 @@ pub proof fn lemma_kind_ref_expr_rejected(
 /// Lemma 50: the Choose branch interleaved order. A Choose node whose
 /// first branch is in bounds and whose second branch condition expr
 /// is out of bounds is rejected with `ExpressionInvalid` (production
-/// `validate_expr_choose`, workflow/validate_node_kind.rs:289-300, checks each
+/// `validate_expr_choose`, workflow/validate_node_kind.rs:287-298, checks each
 /// branch condition then its target, in branch order).
 pub proof fn lemma_kind_ref_choose_branch_order_rejected(
     meta: SpecNodeMeta,
@@ -4967,7 +4967,7 @@ pub proof fn lemma_kind_ref_empty_branch_table_first_rejected(
 /// Lemma 52: the list-items count-cap rejection. A BuildList node
 /// with more items than `MAX_LIST_ITEMS_PER_VALUE` is rejected with
 /// `ResourceContractExceeded` (production `validate_build_list`,
-/// workflow/validate_node_kind.rs:156-163, checks the cap before the items).
+/// workflow/validate_node_kind.rs:161-168, checks the cap before the items).
 pub proof fn lemma_kind_ref_count_cap_rejected(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -4996,7 +4996,7 @@ pub proof fn lemma_kind_ref_count_cap_rejected(
 /// Lemma 53: the nonzero rejection. A RepeatStart node with zero
 /// max attempts is rejected with `ResourceContractExceeded`
 /// (production `validate_repeat_start`,
-/// workflow/validate_node_kind.rs:259-267, checks the nonzero bound before the
+/// workflow/validate_node_kind.rs:264-272, checks the nonzero bound before the
 /// two steps).
 pub proof fn lemma_kind_ref_nonzero_rejected(
     meta: SpecNodeMeta,
@@ -7939,7 +7939,7 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_at_cap_accepted(parts: &Spe
 /// Lemma 151: the object-fields count-cap rejection. A BuildObject node
 /// with more fields than `MAX_OBJECT_FIELDS_PER_VALUE` is rejected with
 /// `ResourceContractExceeded` (production `validate_build_object`,
-/// workflow/validate_node_kind.rs:165-178, checks the cap before the per-field
+/// workflow/validate_node_kind.rs:170-183, checks the cap before the per-field
 /// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, crates/vb_core/src/limits.rs:75).
 pub proof fn lemma_build_object_fields_over_cap_rejected(
     meta: SpecNodeMeta,
@@ -7969,7 +7969,7 @@ pub proof fn lemma_build_object_fields_over_cap_rejected(
 /// Lemma 152: the zero branch-count rejection. A TogetherJoin node
 /// with zero branches is rejected with `ResourceContractExceeded`
 /// (production TogetherJoin arm, workflow/validate_node_kind.rs:14-147, calls
-/// `validate_nonzero_u16` (workflow/validate_node_kind.rs:223-229) before the accumulator slot).
+/// `validate_nonzero_u16` (workflow/validate_node_kind.rs:228-234) before the accumulator slot).
 pub proof fn lemma_together_join_zero_branch_count_rejected(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -7998,7 +7998,7 @@ pub proof fn lemma_together_join_zero_branch_count_rejected(
 /// Lemma 153: the list-items cap precedes slot validation. A BuildList
 /// node over the items cap is rejected with `ResourceContractExceeded`
 /// even when a following slot is out of bounds (production
-/// `validate_build_list`, workflow/validate_node_kind.rs:156-163, checks the cap
+/// `validate_build_list`, workflow/validate_node_kind.rs:161-168, checks the cap
 /// before `validate_slots`; cap `MAX_LIST_ITEMS_PER_VALUE` 65535,
 /// crates/vb_core/src/limits.rs:71).
 pub proof fn lemma_build_list_items_before_slots(
@@ -8030,7 +8030,7 @@ pub proof fn lemma_build_list_items_before_slots(
 /// A BuildObject node over the fields cap is rejected with
 /// `ResourceContractExceeded` even when a following slot is out of
 /// bounds (production `validate_build_object`,
-/// workflow/validate_node_kind.rs:165-178, checks the cap before the per-field
+/// workflow/validate_node_kind.rs:170-183, checks the cap before the per-field
 /// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, crates/vb_core/src/limits.rs:75).
 pub proof fn lemma_build_object_fields_before_slots(
     meta: SpecNodeMeta,
@@ -8062,7 +8062,7 @@ pub proof fn lemma_build_object_fields_before_slots(
 /// with `ResourceContractExceeded` even when the accumulator slot is
 /// out of bounds (production TogetherJoin arm,
 /// workflow/validate_node_kind.rs:14-147, calls `validate_nonzero_u16`
-/// (workflow/validate_node_kind.rs:223-229) before the accumulator slot).
+/// (workflow/validate_node_kind.rs:228-234) before the accumulator slot).
 pub proof fn lemma_together_join_zero_branch_count_before_accumulator(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -8091,7 +8091,7 @@ pub proof fn lemma_together_join_zero_branch_count_before_accumulator(
 /// Lemma 156: the at-cap object-fields acceptance. A BuildObject node
 /// with exactly `MAX_OBJECT_FIELDS_PER_VALUE` fields and an in-bounds
 /// slot passes the per-node check (production `validate_build_object`,
-/// workflow/validate_node_kind.rs:165-178, rejects only above the cap).
+/// workflow/validate_node_kind.rs:170-183, rejects only above the cap).
 pub proof fn lemma_build_object_fields_at_cap_accepted(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -8157,7 +8157,7 @@ pub proof fn lemma_together_join_branch_count_one_accepted(
 /// Lemma 158: the at-cap list-items acceptance. A BuildList node with
 /// exactly `MAX_LIST_ITEMS_PER_VALUE` items and an in-bounds slot
 /// passes the per-node check (production `validate_build_list`,
-/// workflow/validate_node_kind.rs:156-163, rejects only above the cap).
+/// workflow/validate_node_kind.rs:161-168, rejects only above the cap).
 pub proof fn lemma_build_list_items_at_cap_accepted(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,

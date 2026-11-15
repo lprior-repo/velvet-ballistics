@@ -292,26 +292,38 @@ fn blackhat_helper_ends_with_matches_engine() -> Result<(), CoreError> {
 fn blackhat_helper_has_matches_engine_list_membership() -> Result<(), CoreError> {
     let mut store = ValueStore::new();
     let list = insert_numbers(&mut store, &[1, 2, 3])?;
+    let key = insert_text(&mut store, "present")?;
+    let missing = insert_text(&mut store, "missing")?;
+    let object = store.insert_object(Box::from([
+        crate::value_store::ObjectField::clean(key, SlotValue::I64(2)),
+    ]))?;
     let present = eval_stack_helper(
         ExprOp::Has,
         &mut store,
-        &[SlotValue::List(list), SlotValue::I64(2)],
+        &[SlotValue::Object(object), SlotValue::Symbol(key)],
     )?;
     if present != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: has should find list member".into(),
+            reason: "BLACKHAT BH-OPS-07: has should find object key".into(),
         });
     }
     let absent = eval_stack_helper(
         ExprOp::Has,
         &mut store,
-        &[SlotValue::List(list), SlotValue::I64(9)],
+        &[SlotValue::Object(object), SlotValue::Symbol(missing)],
     )?;
     if absent != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: has should miss absent member".into(),
+            reason: "BLACKHAT BH-OPS-07: has should miss absent key".into(),
         });
     }
+    let (forward, replay) = helper_contract_results(
+        ExprOp::Has,
+        &mut store,
+        &[(SlotValue::List(list), Taint::Clean), (SlotValue::I64(2), Taint::Clean)],
+    )?;
+    assert_eq!(forward, Err(crate::EngineError::TypeMismatch { expected: "object", found: "list" }));
+    assert_eq!(replay, Err(ReplayError::ExpressionEvalFailed { step: StepIdx::new(1) }));
     Ok(())
 }
 
@@ -342,7 +354,14 @@ fn blackhat_helper_exists_matches_engine() -> Result<(), CoreError> {
             reason: "BLACKHAT BH-OPS-07: exists should fail for null".into(),
         });
     }
-    check_helper_type_error(ExprOp::Exists, &[SlotValue::I64(1)])
+    let (forward, replay) = helper_contract_results(
+        ExprOp::Exists,
+        &mut store,
+        &[(SlotValue::I64(1), Taint::Clean)],
+    )?;
+    assert_eq!(forward, Ok((SlotValue::Bool(true), Taint::Clean)));
+    assert_eq!(replay, Ok((SlotValue::Bool(true), Taint::Clean)));
+    Ok(())
 }
 
 #[test]

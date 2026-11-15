@@ -180,6 +180,11 @@ pub(super) fn eval_helper_has_with_store(
         .map_err(|_| ExprError::InvalidReference {
             reference: format!("object:{obj_id:?}"),
         })?;
+    store
+        .symbol(key_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{key_id:?}"),
+        })?;
     let found = fields.iter().any(|f| f.key == key_id);
     Ok(SlotValue::Bool(found))
 }

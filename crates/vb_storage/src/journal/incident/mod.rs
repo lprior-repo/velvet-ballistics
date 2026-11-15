@@ -92,6 +92,11 @@ pub fn analyze_incident_events(events: &[JournalEvent]) -> IncidentAnalysis {
                 failure_code = "RunCancelled".to_string();
                 failed_at_step = last_step_started;
             }
+            JournalEvent::RunKilled { .. } => {
+                failure_found = true;
+                failure_code = "RunKilled".to_string();
+                failed_at_step = last_step_started;
+            }
             _ => {}
         }
     }

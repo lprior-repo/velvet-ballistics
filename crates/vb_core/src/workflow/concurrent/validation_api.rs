@@ -12,7 +12,7 @@ pub fn validate_concurrent_node_kind(
     if !is_concurrent(kind) {
         return Ok(());
     }
-    super::concurrent_kind_refs::validate(kind, parts)
+    super::kind_refs::validate(kind, parts)
 }
 
 /// Validate concurrent structure on actual geometry; new-kind-free graphs no-op.
@@ -20,5 +20,6 @@ pub fn validate_concurrent_structure(parts: &WorkflowParts) -> Result<(), Workfl
     if !parts.nodes.iter().any(|node| is_concurrent(&node.kind)) {
         return Ok(());
     }
+    super::concurrent_together_policy::validate(parts)?;
     super::concurrent_analyze::analyze(parts).map(drop)
 }

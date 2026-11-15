@@ -77,7 +77,11 @@ pub(super) fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::Object
 pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotValue> {
     match helper {
         ExprHelper::Exists => eval_helper_exists(args),
-        ExprHelper::Length | ExprHelper::Count => eval_helper_length(args),
+        ExprHelper::Length => eval_helper_length(args),
+        ExprHelper::Count => {
+            one_arg(args, ExprHelper::Count)?;
+            eval_helper_length(args)
+        }
         ExprHelper::Empty => eval_helper_empty(args),
         ExprHelper::Unique => eval_helper_unique(args),
         ExprHelper::Contains => eval_helper_contains(args),

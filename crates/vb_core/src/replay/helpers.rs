@@ -118,30 +118,24 @@ fn eval_ends_with(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result
 }
 
 fn eval_has(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
-    let (list, item) = pop_pair(stack)?;
-    let list_id = expect_list(list)?;
-    let (found, taint) = store
-        .list_contains_with_taint(list_id, item)
-        .map_err(|_| failed())?;
-    stack.join_operand_taint(taint);
+    let (object, key) = pop_pair(stack)?;
+    let object_id = expect_object(object)?;
+    let key = expect_symbol(key)?;
+    let fields = store.object(object_id).map_err(|_| failed())?;
+    store.symbol(key).map_err(|_| failed())?;
+    let found = fields.iter().any(|field| field.key == key);
     stack.push(SlotValue::Bool(found))
 }
 
-fn eval_exists(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
+fn eval_exists(stack: &mut ReplayExprStack, _store: &mut ValueStore) -> Result<(), ReplayError> {
     let value = stack.pop()?;
-    match value {
-        SlotValue::Null => stack.push(SlotValue::Bool(false)),
-        SlotValue::Object(object_id) => {
-            let fields = store.object(object_id).map_err(|_| failed())?;
-            stack.push(SlotValue::Bool(!fields.is_empty()))
-        }
-        _ => Err(failed()),
-    }
+    stack.push(SlotValue::Bool(!matches!(value, SlotValue::Null)))
 }
 
 fn eval_length(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
     let value = stack.pop()?;
     let len = match value {
+        SlotValue::Null => 0,
         SlotValue::Symbol(id) => {
             let text = store.symbol(id).map_err(|_| failed())?;
             text.len()
