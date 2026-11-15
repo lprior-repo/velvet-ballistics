@@ -110,15 +110,15 @@
 //     <- crates/vb_core/src/workflow/validate_refs.rs:56-62
 //     <- crates/vb_core/src/workflow/validate_refs.rs:64-70
 //   - `validate_accessor`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:105-118
+//     <- crates/vb_core/src/workflow/validate_refs.rs:117-130
 //   - `validate_symbol`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:182-188
+//     <- crates/vb_core/src/workflow/validate_refs.rs:194-200
 //   - `validate_accessor_paths`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:121-151
+//     <- crates/vb_core/src/workflow/validate_refs.rs:133-163
 //   - `validate_constants_symbols`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:154-164
+//     <- crates/vb_core/src/workflow/validate_refs.rs:166-176
 //   - `validate_build_object_symbols`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:167-179
+//     <- crates/vb_core/src/workflow/validate_refs.rs:179-191
 //   - `MAX_PATH_DEPTH`
 //     <- crates/vb_core/src/limits.rs:59-59
 //   - `validate_reachability`
@@ -534,7 +534,7 @@ pub struct SpecNode {
 /// `expr_stack_effect` at workflow/expr_program.rs:162-175): `Push` covers `LoadSlot` /
 /// `LoadConst` (effect 0,1); `LoadAccessor` covers `LoadAccessor`
 /// (effect 0,1) and carries the accessor index for the
-/// `validate_accessor` bound check (workflow/validate_refs.rs:105-118);
+/// `validate_accessor` bound check (workflow/validate_refs.rs:117-130);
 /// `Unary` covers `Not`, `Exists`, `Length`, `Empty`, `Sum`,
 /// `Count`, `Unique` (effect 1,1); `AppendIf` covers `AppendIf`
 /// (effect 3,1); `Binary` covers every remaining op (`Eq`,
@@ -563,7 +563,7 @@ pub struct SpecExprProgram {
 /// `crates/vb_core/src/workflow/parts.rs:60-65`: `Field` carries the
 /// interned symbol id, `Index` the list index. The `u32::MAX`
 /// index value is reserved by `validate_accessor_paths`
-/// (workflow/validate_refs.rs:121-151) and is modelled by
+/// (workflow/validate_refs.rs:133-163) and is modelled by
 /// `accessor_path_error`.
 #[derive(Clone, Copy)]
 pub enum SpecPathSegment {
@@ -801,7 +801,7 @@ pub struct SpecWorkflowParts {
     /// `nodes_meta`) as an empty inventory for the tail nodes.
     pub kind_refs: Vec<Vec<SpecKindRef>>,
     /// Symbol inventory of the constant pool consumed by
-    /// `validate_constants_symbols` (workflow/validate_refs.rs:154-164).
+    /// `validate_constants_symbols` (workflow/validate_refs.rs:166-176).
     /// `constants_symbols` lists, in pool order, the `SymbolId`
     /// of every `ConstValue::Symbol` constant
     /// (crates/vb_core/src/value/slot.rs:64); non-`Symbol` constants contribute no
@@ -809,10 +809,10 @@ pub struct SpecWorkflowParts {
     /// and no sentinel is needed. The projection returns
     /// `SymbolOutOfBounds` for the first entry at or beyond
     /// `symbols_count`, matching production's `validate_symbol`
-    /// (workflow/validate_refs.rs:182-188).
+    /// (workflow/validate_refs.rs:194-200).
     pub constants_symbols: Vec<u32>,
     /// Per-node BuildObject field-symbol inventory consumed by
-    /// `validate_build_object_symbols` (workflow/validate_refs.rs:167-179).
+    /// `validate_build_object_symbols` (workflow/validate_refs.rs:179-191).
     /// `build_object_field_symbols[i]` is node i's BuildObject
     /// field symbols in field order; nodes of any other kind
     /// carry an empty entry. The projection treats a missing
@@ -1280,7 +1280,7 @@ fn expr_stack_effect(op: SpecExprOp) -> (u32, u32) {
 /// then the computed-required == claimed-max_stack comparison,
 /// and finally `validate_expression_accessors`
 /// (workflow/validate_refs.rs:83-93) with `validate_accessor`
-/// (workflow/validate_refs.rs:105-118). Every failure is a `CoreError`
+/// (workflow/validate_refs.rs:117-130). Every failure is a `CoreError`
 /// collapsed by `WorkflowError::Expression(#[from] CoreError)`
 /// (workflow/parts.rs:60-65) to `SpecWorkflowError::ExpressionInvalid`,
 /// so the projection returns `Some(ExpressionInvalid)` for the
@@ -1335,11 +1335,11 @@ pub fn expr_error(program: &SpecExprProgram, accessors_len: u32) -> Option<SpecW
 }
 
 /// Pure projection of `validate_accessor_paths`
-/// (workflow/validate_refs.rs:121-151) for one accessor program, in
+/// (workflow/validate_refs.rs:133-163) for one accessor program, in
 /// production order: the path length against `MAX_PATH_DEPTH`
 /// (crates/vb_core/src/limits.rs:59), then each segment in
 /// order — `Field(symbol)` via `validate_symbol`
-/// (workflow/validate_refs.rs:182-188, `symbol.get() < symbols_count`
+/// (workflow/validate_refs.rs:194-200, `symbol.get() < symbols_count`
 /// else `SymbolOutOfBounds`), `Index(u32::MAX)` via the reserved
 /// value arm (`ExpressionInvalid`). Returns the first failure,
 /// or `None` when the path validates.
@@ -1373,9 +1373,9 @@ pub fn accessor_path_error(
 }
 
 /// Pure projection of `validate_constants_symbols`
-/// (workflow/validate_refs.rs:154-164): each `ConstValue::Symbol`
+/// (workflow/validate_refs.rs:166-176): each `ConstValue::Symbol`
 /// constant in pool order via `validate_symbol`
-/// (workflow/validate_refs.rs:182-188, `symbol.get() < symbols_count`
+/// (workflow/validate_refs.rs:194-200, `symbol.get() < symbols_count`
 /// else `SymbolOutOfBounds`). Reads the caller-supplied
 /// symbol-only `constants_symbols` inventory, so non-`Symbol`
 /// constants never reach the check. Returns the first failure,
@@ -1395,9 +1395,9 @@ pub fn constants_symbols_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflow
 }
 
 /// Pure projection of `validate_build_object_symbols`
-/// (workflow/validate_refs.rs:167-179): each `BuildObject` field symbol,
+/// (workflow/validate_refs.rs:179-191): each `BuildObject` field symbol,
 /// node by node in node order and field by field in field order,
-/// via `validate_symbol` (workflow/validate_refs.rs:182-188,
+/// via `validate_symbol` (workflow/validate_refs.rs:194-200,
 /// `symbol.get() < symbols_count` else `SymbolOutOfBounds`).
 /// Reads the caller-supplied `build_object_field_symbols`
 /// inventory; a missing entry means the node carries no
@@ -2576,13 +2576,13 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // `expr_error` models the full per-op detail (op count at
     // workflow/expr_program.rs:116-124, stack simulation at workflow/expr_program.rs:103-114 with
     // effects at workflow/expr_program.rs:162-175, final depth at workflow/expr_program.rs:146-154, max_stack
-    // mismatch at 974-983, accessor bounds at workflow/validate_refs.rs:105-118).
+    // mismatch at 974-983, accessor bounds at workflow/validate_refs.rs:117-130).
     for expression in &parts.expressions {
         if let Some(err) = expr_error(expression, parts.accessors_len) {
             return SpecValidationResult::Err(err);
         }
     }
-    // 1d. validate_accessors (workflow/validate_refs.rs:95-103) — root
+    // 1d. validate_accessors (workflow/validate_refs.rs:107-115) — root
     // slot bounds only. Path depth and per-segment checks live in
     // the validate_accessor_paths step below (1f).
     for accessor in &parts.accessors {
@@ -2619,7 +2619,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             return SpecValidationResult::Err(err);
         }
     }
-    // 1f. validate_accessor_paths (workflow/validate_refs.rs:121-151) —
+    // 1f. validate_accessor_paths (workflow/validate_refs.rs:133-163) —
     // per accessor, in order: path depth against MAX_PATH_DEPTH
     // (crates/vb_core/src/limits.rs:59), then per-segment Field symbol bounds and
     // reserved Index(u32::MAX). Runs after the per-node loop, in
@@ -2630,7 +2630,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         }
     }
     // 1g. validate_constants_symbols + validate_build_object_symbols
-    // (workflow/validate_refs.rs:154-164) — per-symbol detail modelled from
+    // (workflow/validate_refs.rs:166-176) — per-symbol detail modelled from
     // the caller-supplied `constants_symbols` and
     // `build_object_field_symbols` inventories, in production order:
     // the constant pool first, then the BuildObject fields.

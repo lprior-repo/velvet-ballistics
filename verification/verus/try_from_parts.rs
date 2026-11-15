@@ -276,7 +276,7 @@ pub assume_specification[ production::expr_error ](
 /// `Field` symbol at or beyond `symbols_count`,
 /// `Some(ExpressionInvalid)` for the first reserved
 /// `Index(u32::MAX)`, or `None` when the path validates, in
-/// production order (workflow/validate_refs.rs:121-151).
+/// production order (workflow/validate_refs.rs:133-163).
 pub assume_specification[ production::accessor_path_error ](
     accessor: &SpecAccessor,
     symbols_count: u32,
@@ -301,7 +301,7 @@ pub assume_specification[ production::constants_symbols_error ](
 /// Returns `Some(SymbolOutOfBounds)` for the first BuildObject
 /// field symbol at or beyond `symbols_count`, or `None` when
 /// every field symbol validates, in production order
-/// (workflow/validate_refs.rs:167-179).
+/// (workflow/validate_refs.rs:179-191).
 pub assume_specification[ production::build_object_symbols_error ](
     parts: &SpecWorkflowParts,
 ) -> (err: Option<SpecWorkflowError>)
@@ -625,7 +625,7 @@ pub open spec fn spec_expr_sim_error(
 
 /// Spec-level mirror of `validate_expression_accessors`
 /// (workflow/validate_refs.rs:83-93) with `validate_accessor`
-/// (workflow/validate_refs.rs:105-118): walks `ops` from index `i` and
+/// (workflow/validate_refs.rs:117-130): walks `ops` from index `i` and
 /// returns `Some(ExpressionInvalid)` for the first `LoadAccessor`
 /// index at or beyond `accessors_len`, or `None` when every
 /// accessor reference is in bounds.
@@ -723,7 +723,7 @@ pub open spec fn spec_exprs_error(
 }
 
 /// Spec-level mirror of the per-segment walk in
-/// `validate_accessor_paths` (workflow/validate_refs.rs:121-151): walks
+/// `validate_accessor_paths` (workflow/validate_refs.rs:133-163): walks
 /// `segments` from index `i` and returns `Some(SymbolOutOfBounds)`
 /// for the first `Field` symbol at or beyond `symbols_count`,
 /// `Some(ExpressionInvalid)` for the first reserved
@@ -758,7 +758,7 @@ pub open spec fn spec_accessor_path_segment_error(
 }
 
 /// Spec-level mirror of `production::accessor_path_error`: the
-/// `validate_accessor_paths` decision (workflow/validate_refs.rs:121-151)
+/// `validate_accessor_paths` decision (workflow/validate_refs.rs:133-163)
 /// for one accessor, in production order: path length against
 /// `MAX_PATH_DEPTH` (16, crates/vb_core/src/limits.rs:59), then the per-segment
 /// walk. Returns the first failure, or `None` when the path
@@ -778,7 +778,7 @@ pub open spec fn spec_accessor_path_error(
 /// `parts.accessors` from index `i` and returns the first
 /// accessor-path error in accessor order, or `None` when every
 /// path validates. Production validates accessor `i` fully
-/// before accessor `i + 1` (workflow/validate_refs.rs:121-151), after
+/// before accessor `i + 1` (workflow/validate_refs.rs:133-163), after
 /// the per-node loop (workflow/validate.rs:20-45).
 pub open spec fn spec_accessors_path_error(
     parts: &SpecWorkflowParts,
@@ -799,13 +799,13 @@ pub open spec fn spec_accessors_path_error(
 }
 
 /// Spec-level mirror of the `validate_constants_symbols` scan
-/// (workflow/validate_refs.rs:154-164): walks the caller-supplied
+/// (workflow/validate_refs.rs:166-176): walks the caller-supplied
 /// symbol-only `constants_symbols` inventory from index `i` and
 /// returns `Some(SymbolOutOfBounds)` for the first symbol at or
 /// beyond `symbols_count`, or `None` when every pooled symbol
 /// validates. Production checks each `ConstValue::Symbol`
 /// constant in pool order via `validate_symbol`
-/// (workflow/validate_refs.rs:182-188).
+/// (workflow/validate_refs.rs:194-200).
 pub open spec fn spec_constants_symbols_error(
     parts: &SpecWorkflowParts,
     i: int,
@@ -822,7 +822,7 @@ pub open spec fn spec_constants_symbols_error(
 }
 
 /// Spec-level mirror of one node's BuildObject field scan in
-/// `validate_build_object_symbols` (workflow/validate_refs.rs:167-179):
+/// `validate_build_object_symbols` (workflow/validate_refs.rs:179-191):
 /// walks `fields` from index `j` and returns
 /// `Some(SymbolOutOfBounds)` for the first field symbol at or
 /// beyond `symbols_count`, or `None` when every field validates.
@@ -843,7 +843,7 @@ pub open spec fn spec_build_object_field_symbols_error(
 }
 
 /// Spec-level mirror of the per-node loop in
-/// `validate_build_object_symbols` (workflow/validate_refs.rs:167-179):
+/// `validate_build_object_symbols` (workflow/validate_refs.rs:179-191):
 /// walks the caller-supplied `build_object_field_symbols`
 /// inventory from node index `i`, scanning each node's fields
 /// in field order, and returns the first `SymbolOutOfBounds`,
@@ -6010,7 +6010,7 @@ pub proof fn lemma_expr_max_stack_mismatch_rejected(program: SpecExprProgram)
 /// whose only op loads accessor 3 with only 2 accessors is
 /// rejected with `ExpressionInvalid` (production
 /// `validate_expression_accessors`, workflow/validate_refs.rs:83-93,
-/// with `validate_accessor`, workflow/validate_refs.rs:105-118).
+/// with `validate_accessor`, workflow/validate_refs.rs:117-130).
 pub proof fn lemma_expr_accessor_out_of_bounds_rejected(program: SpecExprProgram)
     requires
         program.ops.len() == 1,
@@ -6173,7 +6173,7 @@ pub proof fn lemma_expr_before_budget(parts: &SpecWorkflowParts)
 /// whose path holds 17 segments is rejected with
 /// `AccessorPathTooDeep`: production rejects any path longer
 /// than `MAX_PATH_DEPTH` (16, crates/vb_core/src/limits.rs:59),
-/// workflow/validate_refs.rs:121-151.
+/// workflow/validate_refs.rs:133-163.
 pub proof fn lemma_accessor_path_depth_rejected(accessor: SpecAccessor)
     requires
         accessor.path.len() == 17,
@@ -6187,7 +6187,7 @@ pub proof fn lemma_accessor_path_depth_rejected(accessor: SpecAccessor)
 /// Lemma 97: the field-symbol out-of-bounds rejection. An
 /// accessor whose only segment is `Field(5)` with
 /// `symbols_count` 5 is rejected with `SymbolOutOfBounds`
-/// (production `validate_symbol`, workflow/validate_refs.rs:182-188).
+/// (production `validate_symbol`, workflow/validate_refs.rs:194-200).
 pub proof fn lemma_accessor_path_field_symbol_rejected(accessor: SpecAccessor)
     requires
         accessor.path.len() == 1,
@@ -6202,7 +6202,7 @@ pub proof fn lemma_accessor_path_field_symbol_rejected(accessor: SpecAccessor)
 /// Lemma 98: the reserved-index rejection. An accessor whose
 /// only segment is `Index(u32::MAX)` is rejected with
 /// `ExpressionInvalid` (production reserved-value arm,
-/// workflow/validate_refs.rs:121-151).
+/// workflow/validate_refs.rs:133-163).
 pub proof fn lemma_accessor_path_reserved_index_rejected(accessor: SpecAccessor)
     requires
         accessor.path.len() == 1,
@@ -6219,7 +6219,7 @@ pub proof fn lemma_accessor_path_reserved_index_rejected(accessor: SpecAccessor)
 /// reports the first accessor's error: the scan returns the
 /// first accessor's decision without consulting later accessors
 /// (production validates accessor `i` fully before accessor
-/// `i + 1`, workflow/validate_refs.rs:121-151).
+/// `i + 1`, workflow/validate_refs.rs:133-163).
 pub proof fn lemma_accessors_first_accessor_wins(parts: &SpecWorkflowParts)
     requires
         parts.accessors.len() == 2,
@@ -6244,7 +6244,7 @@ pub proof fn lemma_accessors_first_accessor_wins(parts: &SpecWorkflowParts)
 /// is a reserved `Index(u32::MAX)` reports the field error: the
 /// scan returns the first segment's decision without consulting
 /// later segments (production walks segments in order,
-/// workflow/validate_refs.rs:121-151).
+/// workflow/validate_refs.rs:133-163).
 pub proof fn lemma_accessor_path_first_segment_wins(accessor: SpecAccessor)
     requires
         accessor.path.len() == 2,
@@ -6265,7 +6265,7 @@ pub proof fn lemma_accessor_path_first_segment_wins(accessor: SpecAccessor)
 
 /// Lemma 101: the empty path is accepted. An accessor with no
 /// segments validates: the depth check passes and the segment
-/// walk has nothing to reject (workflow/validate_refs.rs:121-151).
+/// walk has nothing to reject (workflow/validate_refs.rs:133-163).
 pub proof fn lemma_accessor_path_empty_accepted(accessor: SpecAccessor)
     requires
         accessor.path.len() == 0,
@@ -6300,7 +6300,7 @@ proof fn lemma_segment_scan_field_zero_ok(
 /// Lemma 102: depth exactly 16 is accepted. An accessor whose
 /// path holds 16 in-bounds `Field(0)` segments validates: the
 /// depth cap is `MAX_PATH_DEPTH` (16, crates/vb_core/src/limits.rs:59), so only
-/// lengths above 16 reject (workflow/validate_refs.rs:121-151).
+/// lengths above 16 reject (workflow/validate_refs.rs:133-163).
 pub proof fn lemma_accessor_path_depth_16_accepted(accessor: SpecAccessor)
     requires
         accessor.path.len() == 16,
@@ -6316,7 +6316,7 @@ pub proof fn lemma_accessor_path_depth_16_accepted(accessor: SpecAccessor)
 /// Lemma 103: the largest non-reserved index is accepted. An
 /// accessor whose only segment is `Index(u32::MAX - 1)`
 /// validates: only the reserved `u32::MAX` value rejects
-/// (workflow/validate_refs.rs:121-151).
+/// (workflow/validate_refs.rs:133-163).
 pub proof fn lemma_accessor_path_max_index_accepted(accessor: SpecAccessor)
     requires
         accessor.path.len() == 1,
@@ -6334,7 +6334,7 @@ pub proof fn lemma_accessor_path_max_index_accepted(accessor: SpecAccessor)
 /// Lemma 104: the largest in-bounds field symbol is accepted. An
 /// accessor whose only segment is `Field(4)` with
 /// `symbols_count` 5 validates: `validate_symbol` accepts
-/// `symbol.get() < symbols_count` (workflow/validate_refs.rs:182-188).
+/// `symbol.get() < symbols_count` (workflow/validate_refs.rs:194-200).
 pub proof fn lemma_accessor_path_last_symbol_accepted(accessor: SpecAccessor)
     requires
         accessor.path.len() == 1,
@@ -6541,8 +6541,8 @@ pub proof fn lemma_expr_stack_within_cap_reaches_exprs(parts: &SpecWorkflowParts
 /// Lemma 111: the pooled-symbol rejection. A workflow whose only
 /// pooled symbol is at or beyond `symbols_count` is rejected with
 /// `SymbolOutOfBounds` (production `validate_constants_symbols`,
-/// workflow/validate_refs.rs:154-164, via `validate_symbol`,
-/// workflow/validate_refs.rs:182-188).
+/// workflow/validate_refs.rs:166-176, via `validate_symbol`,
+/// workflow/validate_refs.rs:194-200).
 pub proof fn lemma_constants_symbol_out_of_bounds_rejected(parts: &SpecWorkflowParts)
     requires
         parts.constants_symbols.len() == 1,
@@ -6558,7 +6558,7 @@ pub proof fn lemma_constants_symbol_out_of_bounds_rejected(parts: &SpecWorkflowP
 /// Lemma 112: the largest in-bounds pooled symbol is accepted. A
 /// workflow whose only pooled symbol is `4` with `symbols_count`
 /// 5 validates: `validate_symbol` accepts
-/// `symbol.get() < symbols_count` (workflow/validate_refs.rs:182-188).
+/// `symbol.get() < symbols_count` (workflow/validate_refs.rs:194-200).
 pub proof fn lemma_constants_symbol_last_accepted(parts: &SpecWorkflowParts)
     requires
         parts.constants_symbols.len() == 1,
@@ -6576,7 +6576,7 @@ pub proof fn lemma_constants_symbol_last_accepted(parts: &SpecWorkflowParts)
 /// second is in bounds reports the error from the first symbol:
 /// the scan returns the first symbol's decision without consulting
 /// later symbols (production iterates the constant pool in order,
-/// workflow/validate_refs.rs:154-164).
+/// workflow/validate_refs.rs:166-176).
 pub proof fn lemma_constants_symbol_first_out_of_bounds_wins(parts: &SpecWorkflowParts)
     requires
         parts.constants_symbols.len() == 2,
@@ -6596,8 +6596,8 @@ pub proof fn lemma_constants_symbol_first_out_of_bounds_wins(parts: &SpecWorkflo
 /// whose only BuildObject field symbol is at or beyond
 /// `symbols_count` is rejected with `SymbolOutOfBounds`
 /// (production `validate_build_object_symbols`,
-/// workflow/validate_refs.rs:167-179, via `validate_symbol`,
-/// workflow/validate_refs.rs:182-188).
+/// workflow/validate_refs.rs:179-191, via `validate_symbol`,
+/// workflow/validate_refs.rs:194-200).
 pub proof fn lemma_build_object_symbol_out_of_bounds_rejected(parts: &SpecWorkflowParts)
     requires
         parts.build_object_field_symbols.len() == 1,
@@ -6622,7 +6622,7 @@ pub proof fn lemma_build_object_symbol_out_of_bounds_rejected(parts: &SpecWorkfl
 /// is in bounds reports the error from the first field: the scan
 /// returns the first field's decision without consulting later
 /// fields (production iterates fields in order,
-/// workflow/validate_refs.rs:167-179).
+/// workflow/validate_refs.rs:179-191).
 pub proof fn lemma_build_object_symbol_first_out_of_bounds_wins(parts: &SpecWorkflowParts)
     requires
         parts.build_object_field_symbols.len() == 1,
