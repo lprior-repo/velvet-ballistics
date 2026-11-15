@@ -77,7 +77,12 @@ fn runtime_input_slot_kind_mismatch_preserves_stable_diagnostic_code() {
         RuntimeError::UNSUPPORTED_OPERATION_CODE
     );
     assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x2005));
-    assert_eq!(error.runtime_code(), None);
+    assert_eq!(
+        error.runtime_code(),
+        Some(vb_core::errors::CoreError::INPUT_TYPE_MISMATCH_RUNTIME_CODE)
+    );
+    assert_eq!(error.symbolic_code().as_str(), "UNSUPPORTED_OPERATION");
+    assert_eq!(error.to_string(), "runtime input slot kind mismatch");
 }
 
 #[test]
@@ -244,6 +249,19 @@ fn previously_unregistered_runtime_codes_map_to_specific_symbolic_codes() {
         Some("ROLLBACK_FAILED")
     );
     assert_eq!(rollback.symbolic_code().as_str(), "RUN_NOT_FOUND");
+    let rollback = RuntimeError::RollbackFailed {
+        operation: "test",
+        primary: Box::new(RuntimeError::RuntimeInputSlotKindMismatch {
+            slot: vb_core::SlotIdx::new(0),
+            expected: vb_core::InputSlotKind::I64,
+            actual: vb_core::InputSlotKind::Bool,
+        }),
+        rollback: Box::new(RuntimeError::RunNotFound),
+    };
+    assert_eq!(
+        rollback.runtime_code(),
+        Some(vb_core::errors::CoreError::INPUT_TYPE_MISMATCH_RUNTIME_CODE)
+    );
 }
 
 #[test]

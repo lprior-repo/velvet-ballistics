@@ -73,10 +73,29 @@ fn strict_owned_activation_rechecks_host_presence_and_preserves_canonical_refere
         StorageRuntimeJournal::shared_strict(journal.clone()),
     )
     .expect("valid test configuration");
+    let Err(error) = runtime.activate_owned_submission(run, source.digest) else {
+        return Err("missing secret activation unexpectedly succeeded".into());
+    };
+    assert_eq!(error, RuntimeError::SecretUnavailable);
+    assert_eq!(error.runtime_code(), Some("SECRET_UNAVAILABLE"));
     assert_eq!(
-        runtime.activate_owned_submission(run, source.digest),
-        Err(RuntimeError::SecretUnavailable)
+        error.diagnostic_code(),
+        RuntimeError::SECRET_UNAVAILABLE_CODE
     );
+    assert_eq!(error.symbolic_code().as_str(), "SECRET_UNAVAILABLE");
+    assert_eq!(
+        error.to_string(),
+        "SECRET_UNAVAILABLE: secret requirement unavailable"
+    );
+    assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
+    assert_eq!(
+        runtime.pending_boundary_snapshot(8).command_queue_depth(),
+        0
+    );
+    assert!(matches!(
+        runtime.inspect_run_state(run),
+        Err(RuntimeError::RunNotFound)
+    ));
     assert_eq!(journal.events_for_run_full(run)?, initial);
     runtime.set_available_secret_names(Box::new([Box::from("TOKEN")]));
     runtime.activate_owned_submission(run, source.digest)?;

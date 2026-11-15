@@ -90,6 +90,7 @@ fn collect_all_runtime_codes() -> BTreeSet<String> {
             envelope: dig,
         },
         vb_runtime::RuntimeError::InvalidActionCompletion,
+        vb_runtime::RuntimeError::SecretUnavailable,
         vb_runtime::RuntimeError::EngineDriveFailed {
             run: vb_core::ids::RunId::new(1),
             source: Box::new(vb_core::errors::CoreError::QueueFull),
@@ -156,6 +157,7 @@ const MAPPED_CODES: &[&str] = &[
     "ADMISSION_DURABILITY_ERROR",
     "BUDGET_EXCEEDED",
     "CAPABILITY_DENIED",
+    "SECRET_UNAVAILABLE",
 ];
 
 const UNMAPPED_CODES_WITH_RATIONALE: &[(&str, &str)] = &[
@@ -213,10 +215,7 @@ const UNMAPPED_CODES_WITH_RATIONALE: &[(&str, &str)] = &[
     ),
 ];
 
-const PARTIALLY_MAPPED_CODES: &[(&str, &str)] = &[(
-    "SECRET_UNAVAILABLE",
-    "Partially mapped: JournalError::SecretUnavailable exists at storage layer but has no runtime_code() source",
-)];
+const PARTIALLY_MAPPED_CODES: &[(&str, &str)] = &[];
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -226,7 +225,7 @@ const PARTIALLY_MAPPED_CODES: &[(&str, &str)] = &[(
 fn section17_coverage_report_mapped_codes_match_runtime() {
     let runtime_codes = collect_all_runtime_codes();
 
-    assert_eq!(MAPPED_CODES.len(), 19, "golden mapped count must be 19");
+    assert_eq!(MAPPED_CODES.len(), 20, "golden mapped count must be 20");
 
     for code in MAPPED_CODES {
         assert!(
@@ -255,15 +254,15 @@ fn section17_coverage_report_counts_are_correct() {
     let partial_count = PARTIALLY_MAPPED_CODES.len();
     let total = mapped_count + unmapped_count + partial_count;
 
-    assert_eq!(mapped_count, 19, "expected 19 mapped Section 17 codes");
+    assert_eq!(mapped_count, 20, "expected 20 mapped Section 17 codes");
     assert_eq!(unmapped_count, 13, "expected 13 unmapped Section 17 codes");
     assert_eq!(
-        partial_count, 1,
-        "expected 1 partially mapped Section 17 code"
+        partial_count, 0,
+        "expected no partially mapped Section 17 codes"
     );
     assert_eq!(
         total, 33,
-        "expected 33 unique Section 17 codes (19 mapped + 13 unmapped + 1 partially mapped)"
+        "expected 33 unique Section 17 codes (20 mapped + 13 unmapped)"
     );
 
     // Verify the mapped count against actual production runtime_codes

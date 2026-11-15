@@ -30,6 +30,7 @@ const SECTION_17_MAPPED: &[&str] = &[
     "ADMISSION_DURABILITY_ERROR",
     "BUDGET_EXCEEDED",
     "CAPABILITY_DENIED",
+    "SECRET_UNAVAILABLE",
 ];
 
 const SECTION_17_UNMAPPED: &[&str] = &[
@@ -46,7 +47,6 @@ const SECTION_17_UNMAPPED: &[&str] = &[
     "RESULT_REFERENCE_MISSING",
     "PAYLOAD_TOO_LARGE", // runtime-specific (diff from Section 16 PAYLOAD_TOO_LARGE)
     "REPLAY_DIVERGED",
-    "SECRET_UNAVAILABLE",
 ];
 
 /// Collect all unique runtime_code values returned by CoreError variants.
@@ -132,6 +132,7 @@ fn runtime_error_runtime_codes() -> BTreeSet<String> {
             envelope: dig,
         },
         vb_runtime::RuntimeError::InvalidActionCompletion,
+        vb_runtime::RuntimeError::SecretUnavailable,
         vb_runtime::RuntimeError::EngineDriveFailed {
             run: vb_core::ids::RunId::new(1),
             source: Box::new(vb_core::errors::CoreError::QueueFull),
