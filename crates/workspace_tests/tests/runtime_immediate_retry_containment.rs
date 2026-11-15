@@ -7,6 +7,8 @@ use vb_runtime::{
 };
 use vb_storage::{FjallJournal, JournalEvent};
 
+#[path = "runtime_immediate_retry_containment/attempt_identity.rs"]
+mod attempt_identity;
 #[path = "runtime_immediate_retry_containment/cut.rs"]
 mod cut;
 #[path = "runtime_immediate_retry_containment/fixture.rs"]
@@ -155,5 +157,82 @@ fn ambiguous(handler: bool, resumed: bool, owned: bool) -> TestResult {
     drop(recovered);
     drop(journal);
     assert_eq!(rows(&path)?, before);
+    Ok(())
+}
+
+#[test]
+fn resolved_scalar_failure_with_wrong_compiled_capacity_is_refused_without_mutation() -> TestResult
+{
+    let directory = tempfile::tempdir()?;
+    let (journal, live, issued) = fixture::crashed(directory.path(), true, false, false)?;
+    let mut schedule = journal
+        .events_for_run_full(RUN)?
+        .into_iter()
+        .find(|event| matches!(event, JournalEvent::ActionScheduledTicket { .. }))
+        .ok_or("issued schedule absent")?;
+    if let JournalEvent::ActionScheduledTicket { ticket, .. } = &mut schedule {
+        assert_eq!(ticket.capacity, 3);
+        ticket.capacity = 2;
+    }
+    let workflow =
+        vb_compile::compile_workflow(fixture::source(true, Some((3, "0ms"))).as_bytes())?;
+    let artifact = live
+        .inspect_run_state(RUN)?
+        .admission
+        .as_ref()
+        .ok_or("actual admission absent")?
+        .artifact_digest();
+    let receipt = fixture::receipt(&journal, &workflow, artifact)?;
+    drop(live);
+    drop(journal);
+    {
+        let database = fjall::Database::builder(directory.path()).open()?;
+        let keyspace = database.keyspace("run_event", fjall::KeyspaceCreateOptions::default)?;
+        let encoded = vb_storage::codec::encode_record(
+            vb_storage::constants::MAGIC_JOURNAL_EVENT,
+            schedule.record_kind(),
+            schedule.seq().get(),
+            &schedule,
+            u32::MAX,
+        )?;
+        keyspace.insert(
+            vb_storage::keys::run_event_key(RUN, schedule.seq())?,
+            encoded,
+        )?;
+        database.persist(fjall::PersistMode::SyncAll)?;
+    }
+    let before = rows(directory.path())?;
+    let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
+    let prefix = journal.events_for_run_full(RUN)?;
+    assert!(prefix.iter().any(|event| matches!(event, JournalEvent::ActionScheduledTicket { ticket, .. } if ticket.capacity == 2)));
+    let mut recovered = runtime(vb_runtime::journal::StorageRuntimeJournal::shared_strict(
+        journal.clone(),
+    ))?;
+    let pending = recovered.pending_boundary_snapshot(8);
+    let counters = recovered.counters_snapshot();
+    let quota = recovered.usage_snapshot();
+    let expected = RuntimeError::RecoveryCannotResume {
+        reason: String::from("pending_action_capacity_mismatch"),
+    };
+    assert_eq!(recovered.recover_product(RUN).err(), Some(expected.clone()));
+    assert_eq!(recovered.recover_and_resume(RUN), Err(expected));
+    assert_eq!(recovered.pending_boundary_snapshot(8), pending);
+    recovered.tick_all()?;
+    assert_eq!(recovered.pending_boundary_snapshot(8), pending);
+    assert_eq!(recovered.counters_snapshot(), counters);
+    assert_eq!(recovered.usage_snapshot(), quota);
+    assert_eq!(
+        recovered.inspect_run_state(RUN),
+        Err(RuntimeError::RunNotFound)
+    );
+    assert_eq!(
+        recovered.lookup_pending_action_ticket(RUN, u64::from(issued.step.get())),
+        None
+    );
+    assert_eq!(journal.events_for_run_full(RUN)?, prefix);
+    assert_eq!(fixture::receipt(&journal, &workflow, artifact)?, receipt);
+    drop(recovered);
+    drop(journal);
+    assert_eq!(rows(directory.path())?, before);
     Ok(())
 }

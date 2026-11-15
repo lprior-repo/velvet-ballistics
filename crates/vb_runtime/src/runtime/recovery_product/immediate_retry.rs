@@ -15,7 +15,7 @@ pub(super) fn validate(events: &[JournalEvent], workflow: &CompiledWorkflow) -> 
     let Some(failed) = latest_failed_action(events) else {
         return Ok(());
     };
-    let Some(ticket) = remaining_immediate_retry(&failed, workflow) else {
+    let Some(ticket) = remaining_immediate_retry(&failed, workflow)? else {
         return Ok(());
     };
     if selected_failure_outcome(&failed, workflow, ticket) {
@@ -52,19 +52,25 @@ fn latest_failed_action(events: &[JournalEvent]) -> Option<FailedAction<'_>> {
 fn remaining_immediate_retry(
     failed: &FailedAction<'_>,
     workflow: &CompiledWorkflow,
-) -> Option<ActionTicket> {
-    let node = workflow.node(failed.step)?;
-    let policy = node.retry?;
+) -> RuntimeResult<Option<ActionTicket>> {
+    let Some(node) = workflow.node(failed.step) else {
+        return Ok(None);
+    };
+    let Some(policy) = node.retry else {
+        return Ok(None);
+    };
     if policy.delay_ms != 0
         || !matches!(node.kind, CompiledNodeKind::Do { action, .. } if action == failed.action)
     {
-        return None;
+        return Ok(None);
     }
-    let ticket = matching_schedule(failed)?;
-    (ticket.attempt > 0
-        && ticket.attempt < policy.max_attempts
-        && ticket.capacity == policy.max_attempts)
-        .then_some(ticket)
+    let Some(ticket) = matching_schedule(failed) else {
+        return Ok(None);
+    };
+    if ticket.capacity != policy.max_attempts {
+        return Err(super::attempts::action_capacity_mismatch());
+    }
+    Ok((ticket.attempt > 0 && ticket.attempt < policy.max_attempts).then_some(ticket))
 }
 
 fn matching_schedule(failed: &FailedAction<'_>) -> Option<ActionTicket> {
