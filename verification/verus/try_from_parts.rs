@@ -678,12 +678,12 @@ pub open spec fn spec_expr_error(
 
 /// Spec-level mirror of the step-1a per-expression `max_stack`
 /// check in `validate_expr_stack_usage`
-/// (workflow/resource_limits.rs:194-208): walks `parts.expressions` from
+/// (workflow/resource_limits.rs:199-213): walks `parts.expressions` from
 /// index `i` and returns `Some(ResourceContractExceeded)` for the
 /// first program whose `max_stack` exceeds the contract cap, or
 /// `None` when every program fits. Production rejects when any
 /// `expression.max_stack > max_expr_stack`, inside
-/// `validate_resource_contract` (workflow/resource_limits.rs:124-130).
+/// `validate_resource_contract` (workflow/resource_limits.rs:124-135).
 pub open spec fn spec_expr_stack_error(
     parts: &SpecWorkflowParts,
     i: int,
@@ -4806,7 +4806,7 @@ pub proof fn lemma_kind_ref_slot_before_step_rejected(
 /// whose entry step is out of bounds and whose accumulator slot is
 /// also out of bounds is rejected with `StepOutOfBounds` (production
 /// `validate_two_steps` then `validate_slot`,
-/// workflow/validate_node_kind.rs:14-147, checks the steps first).
+/// workflow/validate_node_kind.rs:13-152, checks the steps first).
 pub proof fn lemma_kind_ref_step_before_slot_rejected(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -6400,7 +6400,7 @@ pub proof fn lemma_accessor_path_before_reachability(parts: &SpecWorkflowParts)
 /// Lemma 106: the over-cap expression rejection. A workflow
 /// whose only expression claims a `max_stack` above the contract
 /// cap is rejected with `ResourceContractExceeded` (production
-/// `validate_expr_stack_usage`, workflow/resource_limits.rs:194-208).
+/// `validate_expr_stack_usage`, workflow/resource_limits.rs:199-213).
 pub proof fn lemma_expr_stack_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.expressions.len() == 1,
@@ -6415,7 +6415,7 @@ pub proof fn lemma_expr_stack_over_cap_rejected(parts: &SpecWorkflowParts)
 /// Lemma 107: the at-cap expression is accepted. A workflow whose
 /// only expression claims a `max_stack` exactly equal to the
 /// contract cap validates: production rejects only when
-/// `max_stack > max_expr_stack` (workflow/resource_limits.rs:194-208).
+/// `max_stack > max_expr_stack` (workflow/resource_limits.rs:199-213).
 pub proof fn lemma_expr_stack_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.expressions.len() == 1,
@@ -6432,7 +6432,7 @@ pub proof fn lemma_expr_stack_at_cap_accepted(parts: &SpecWorkflowParts)
 /// within it reports the over-cap error from the first expression:
 /// the scan returns the first expression's decision without
 /// consulting later expressions (production iterates expressions
-/// in order, workflow/resource_limits.rs:194-208).
+/// in order, workflow/resource_limits.rs:199-213).
 pub proof fn lemma_expr_stack_first_over_cap_wins(parts: &SpecWorkflowParts)
     requires
         parts.expressions.len() == 2,
@@ -6453,7 +6453,7 @@ pub proof fn lemma_expr_stack_first_over_cap_wins(parts: &SpecWorkflowParts)
 /// failing expression is rejected with the stack error, not the
 /// expression error (production `validate_resource_contract` runs
 /// `validate_expr_stack_usage` before `validate_expressions`,
-/// workflow/resource_limits.rs:124-130 and workflow/validate_refs.rs:72-81).
+/// workflow/resource_limits.rs:124-135 and workflow/validate_refs.rs:72-81).
 pub proof fn lemma_expr_stack_before_exprs(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -6498,7 +6498,7 @@ pub proof fn lemma_expr_stack_before_exprs(parts: &SpecWorkflowParts)
 /// whose expression check fails is rejected with the expression
 /// error, not the stack error (production
 /// `validate_expr_stack_usage` passes, then
-/// `validate_expressions` runs, workflow/resource_limits.rs:124-130 and
+/// `validate_expressions` runs, workflow/resource_limits.rs:124-135 and
 /// workflow/validate_refs.rs:72-81).
 pub proof fn lemma_expr_stack_within_cap_reaches_exprs(parts: &SpecWorkflowParts)
     requires
@@ -6770,7 +6770,7 @@ pub proof fn lemma_constants_symbols_before_build_object(parts: &SpecWorkflowPar
 /// Lemma 119: the constants-count rejection. A workflow whose
 /// constant pool is longer than the contract cap is rejected with
 /// `ResourceContractExceeded` (production
-/// `validate_resource_usage`, workflow/resource_limits.rs:151-180, Constants
+/// `validate_resource_usage`, workflow/resource_limits.rs:156-185, Constants
 /// arm: `parts.constants.len()` against `max_constants`).
 pub proof fn lemma_constants_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
@@ -6808,7 +6808,7 @@ pub proof fn lemma_constants_count_over_cap_rejected(parts: &SpecWorkflowParts)
 /// Lemma 120: the accessors-count rejection. A workflow whose
 /// accessor table is longer than the contract cap is rejected with
 /// `ResourceContractExceeded` (production
-/// `validate_resource_usage`, workflow/resource_limits.rs:151-180, Accessors
+/// `validate_resource_usage`, workflow/resource_limits.rs:156-185, Accessors
 /// arm: `parts.accessors.len()` against `max_accessors`).
 pub proof fn lemma_accessors_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
@@ -6847,7 +6847,7 @@ pub proof fn lemma_accessors_count_over_cap_rejected(parts: &SpecWorkflowParts)
 /// Lemma 121: the expressions-count rejection. A workflow whose
 /// expression table is longer than the contract cap is rejected with
 /// `ResourceContractExceeded` (production
-/// `validate_resource_usage`, workflow/resource_limits.rs:151-180, Expressions
+/// `validate_resource_usage`, workflow/resource_limits.rs:156-185, Expressions
 /// arm: `parts.expressions.len()` against `max_expressions`).
 pub proof fn lemma_expressions_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
@@ -6890,7 +6890,7 @@ pub proof fn lemma_expressions_count_over_cap_rejected(parts: &SpecWorkflowParts
 /// `ResourceContractExceeded` (production
 /// `validate_resource_usage` runs the Constants arm before the
 /// Accessors arm before the Expressions arm,
-/// workflow/resource_limits.rs:151-180). All three arms return the same
+/// workflow/resource_limits.rs:156-185). All three arms return the same
 /// `ResourceContractExceeded` value, so their relative order is
 /// unobservable in the top-level result; this pins the combined
 /// rejection with the Constants arm first in production order,
@@ -6935,7 +6935,7 @@ pub proof fn lemma_resource_counts_first_over_cap_wins(parts: &SpecWorkflowParts
 /// expression is rejected with the count error, not the
 /// expression error (production `validate_resource_contract` runs
 /// `validate_resource_usage` before `validate_expressions`,
-/// workflow/resource_limits.rs:124-130 and workflow/validate_refs.rs:72-81).
+/// workflow/resource_limits.rs:124-135 and workflow/validate_refs.rs:72-81).
 pub proof fn lemma_resource_counts_before_exprs(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -6975,7 +6975,7 @@ pub proof fn lemma_resource_counts_before_exprs(parts: &SpecWorkflowParts)
 /// table all fit their contract caps and whose expression check
 /// fails is rejected with the expression error, not the count
 /// error (production `validate_resource_usage` passes, then
-/// `validate_expressions` runs, workflow/resource_limits.rs:124-130 and
+/// `validate_expressions` runs, workflow/resource_limits.rs:124-135 and
 /// workflow/validate_refs.rs:72-81).
 pub proof fn lemma_resource_counts_within_cap_reaches_exprs(parts: &SpecWorkflowParts)
     requires
@@ -7019,7 +7019,7 @@ pub proof fn lemma_resource_counts_within_cap_reaches_exprs(parts: &SpecWorkflow
 /// constant pool, accessor table, and expression table are each
 /// exactly at their contract cap validates: production rejects
 /// only when the actual count exceeds the declared cap
-/// (workflow/resource_limits.rs:151-180). The boundary equalities imply
+/// (workflow/resource_limits.rs:156-185). The boundary equalities imply
 /// the lemma 15 requires, so the well-formed acceptance carries
 /// the result.
 pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
@@ -7167,7 +7167,7 @@ pub proof fn lemma_contract_limits_first_over_cap_wins(parts: &SpecWorkflowParts
 /// pool is rejected with the limits error, not the usage error
 /// (production `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
-/// `validate_resource_usage`, workflow/resource_limits.rs:124-130).
+/// `validate_resource_usage`, workflow/resource_limits.rs:124-135).
 pub proof fn lemma_contract_limits_before_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7190,8 +7190,8 @@ pub proof fn lemma_contract_limits_before_usage(parts: &SpecWorkflowParts)
 /// hard limits and whose constant pool is over its contract cap is
 /// rejected with the usage error, not the limits error (production
 /// `check_resource_contract_limits` passes, then
-/// `validate_resource_usage` runs, workflow/resource_limits.rs:124-130 and
-/// workflow/resource_limits.rs:151-180).
+/// `validate_resource_usage` runs, workflow/resource_limits.rs:124-135 and
+/// workflow/resource_limits.rs:156-185).
 pub proof fn lemma_contract_limits_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7510,7 +7510,7 @@ pub proof fn lemma_byte_budget_limits_first_over_cap_wins(parts: &SpecWorkflowPa
 /// over-cap constant pool is rejected with the limits error, not
 /// the usage error (production `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
-/// `validate_resource_usage`, workflow/resource_limits.rs:124-130). The
+/// `validate_resource_usage`, workflow/resource_limits.rs:124-135). The
 /// transitions over-cap arm precedes the input arm in the mirror,
 /// so the lemma requires it within cap.
 pub proof fn lemma_byte_budget_limits_before_usage(parts: &SpecWorkflowParts)
@@ -7543,8 +7543,8 @@ pub proof fn lemma_byte_budget_limits_before_usage(parts: &SpecWorkflowParts)
 /// cap is rejected with the usage error, not the limits error
 /// (production
 /// `check_resource_contract_limits` passes, then
-/// `validate_resource_usage` runs, workflow/resource_limits.rs:124-130 and
-/// workflow/resource_limits.rs:151-180).
+/// `validate_resource_usage` runs, workflow/resource_limits.rs:124-135 and
+/// workflow/resource_limits.rs:156-185).
 pub proof fn lemma_byte_budget_limits_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7816,7 +7816,7 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_first_over_cap_wins(parts: 
 /// with the limits error, not the usage error (production
 /// `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
-/// `validate_resource_usage`, workflow/resource_limits.rs:124-130). The
+/// `validate_resource_usage`, workflow/resource_limits.rs:124-135). The
 /// transitions over-cap arm precedes the retry arm in the mirror,
 /// so the lemma requires it within cap.
 pub proof fn lemma_retry_fanout_collect_queue_limits_before_usage(parts: &SpecWorkflowParts)
@@ -7848,7 +7848,7 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_before_usage(parts: &SpecWo
 /// over its contract cap is rejected with the usage error, not the
 /// limits error (production `check_resource_contract_limits`
 /// passes, then `validate_resource_usage` runs,
-/// workflow/resource_limits.rs:124-130 and workflow/resource_limits.rs:151-180).
+/// workflow/resource_limits.rs:124-135 and workflow/resource_limits.rs:156-185).
 pub proof fn lemma_retry_fanout_collect_queue_limits_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7968,7 +7968,7 @@ pub proof fn lemma_build_object_fields_over_cap_rejected(
 
 /// Lemma 152: the zero branch-count rejection. A TogetherJoin node
 /// with zero branches is rejected with `ResourceContractExceeded`
-/// (production TogetherJoin arm, workflow/validate_node_kind.rs:14-147, calls
+/// (production TogetherJoin arm, workflow/validate_node_kind.rs:13-152, calls
 /// `validate_nonzero_u16` (workflow/validate_node_kind.rs:228-234) before the accumulator slot).
 pub proof fn lemma_together_join_zero_branch_count_rejected(
     meta: SpecNodeMeta,
@@ -8061,7 +8061,7 @@ pub proof fn lemma_build_object_fields_before_slots(
 /// slot check. A TogetherJoin node with zero branches is rejected
 /// with `ResourceContractExceeded` even when the accumulator slot is
 /// out of bounds (production TogetherJoin arm,
-/// workflow/validate_node_kind.rs:14-147, calls `validate_nonzero_u16`
+/// workflow/validate_node_kind.rs:13-152, calls `validate_nonzero_u16`
 /// (workflow/validate_node_kind.rs:228-234) before the accumulator slot).
 pub proof fn lemma_together_join_zero_branch_count_before_accumulator(
     meta: SpecNodeMeta,
@@ -8124,7 +8124,7 @@ pub proof fn lemma_build_object_fields_at_cap_accepted(
 /// Lemma 157: the one-branch acceptance. A TogetherJoin node with a
 /// branch count of one and an in-bounds accumulator slot passes the
 /// per-node check (production TogetherJoin arm,
-/// workflow/validate_node_kind.rs:14-147, rejects only a zero branch count).
+/// workflow/validate_node_kind.rs:13-152, rejects only a zero branch count).
 pub proof fn lemma_together_join_branch_count_one_accepted(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -8250,7 +8250,7 @@ pub proof fn lemma_transitions_input_limits_first_over_cap_wins(parts: &SpecWork
 /// over-cap step count is rejected with the limits error, not the
 /// usage error (production `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
-/// `validate_resource_usage`, workflow/resource_limits.rs:124-130).
+/// `validate_resource_usage`, workflow/resource_limits.rs:124-135).
 pub proof fn lemma_transitions_limit_before_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -8277,8 +8277,8 @@ pub proof fn lemma_transitions_limit_before_usage(parts: &SpecWorkflowParts)
 /// constant pool is over its contract cap is rejected with the
 /// usage error, not the limits error (production
 /// `check_resource_contract_limits` passes, then
-/// `validate_resource_usage` runs, workflow/resource_limits.rs:124-130 and
-/// workflow/resource_limits.rs:151-180).
+/// `validate_resource_usage` runs, workflow/resource_limits.rs:124-135 and
+/// workflow/resource_limits.rs:156-185).
 pub proof fn lemma_transitions_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -8369,8 +8369,8 @@ pub proof fn lemma_transitions_limit_at_cap_accepted(parts: &SpecWorkflowParts)
 /// input-bytes cap is rejected with the limits error, not the
 /// zero-transitions error (production `validate_resource_contract`
 /// runs `check_resource_contract_limits` before
-/// `validate_transitions_nonzero`, workflow/resource_limits.rs:124-130 and
-/// workflow/resource_limits.rs:137-144): the input arm precedes the moved zero arm in the
+/// `validate_transitions_nonzero`, workflow/resource_limits.rs:124-135 and
+/// workflow/resource_limits.rs:142-149): the input arm precedes the moved zero arm in the
 /// mirror.
 pub proof fn lemma_zero_transitions_after_limits(parts: &SpecWorkflowParts)
     requires
@@ -8467,8 +8467,8 @@ pub proof fn lemma_steps_slots_limits_first_over_cap_wins(parts: &SpecWorkflowPa
 /// with the usage error, not the limits error (production
 /// `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
-/// `validate_resource_usage`, workflow/resource_limits.rs:124-130 and
-/// workflow/resource_limits.rs:151-180).
+/// `validate_resource_usage`, workflow/resource_limits.rs:124-135 and
+/// workflow/resource_limits.rs:156-185).
 pub proof fn lemma_steps_slots_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,

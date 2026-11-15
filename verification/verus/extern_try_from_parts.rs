@@ -56,7 +56,7 @@
 //   - `BudgetDimension`
 //     <- crates/vb_core/src/budget/validate_error.rs:100-147
 //   - `validate_resource_contract`
-//     <- crates/vb_core/src/workflow/resource_limits.rs:124-130
+//     <- crates/vb_core/src/workflow/resource_limits.rs:124-135
 //   - `validate_entry`
 //     <- crates/vb_core/src/workflow/validate.rs:147-149
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
@@ -2462,7 +2462,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::EmptyNodes);
     }
     let node_count = parts.nodes_len;
-    // 1a. resource contract bounds (workflow/resource_limits.rs:124-130).
+    // 1a. resource contract bounds (workflow/resource_limits.rs:124-135).
     // The TooLarge arms live in `check_resource_contract_limits`
     // (workflow/resource_limits.rs:33-122): steps (workflow/resource_limits.rs:33-122,
     // MAX_STEPS_PER_WORKFLOW 65535), slots (workflow/resource_limits.rs:33-122,
@@ -2482,7 +2482,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // over-cap arm returns ResourceContractTooLarge, matching
     // production; the zero-transitions check below returns
     // ResourceContractExceeded after the expr-stack loop, matching
-    // `validate_transitions_nonzero` (workflow/resource_limits.rs:137-144).
+    // `validate_transitions_nonzero` (workflow/resource_limits.rs:142-149).
     // The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
     // true inventory lengths. Each is checked against its contract
