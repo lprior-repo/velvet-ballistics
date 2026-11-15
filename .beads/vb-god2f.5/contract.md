@@ -1,0 +1,13 @@
+# Actual completion taint guard
+
+Parent: vb-god2f. Child: vb-god2f.5. Base: b9c1b711959ca6e98077539bf01bba7b49120ea4. This runtime-only work is disjoint from vb-m4l84 core join proof and the compile adapter.
+
+The actual completion guard must accept exactly when the supplied output taint is at least the propagated required taint in the current five-valued order Clean < DerivedFromSecret < Secret < Random < TimeDependent. DeterministicPure and IdempotentExternal preserve the input taint as required; AtLeastOnceExternal requires Clean for Clean input and DerivedFromSecret for each nonclean input. A refused tuple returns the exact existing RuntimeError::ActionTaintDowngrade { required, supplied }. All 3 Idempotency x 5 input Taint x 5 supplied Taint tuples are included without assumed accepted RunState or narrowed enum generators.
+
+Extract the current calculation and typed result into one crate-private production function. The current reject_taint_downgrade must read the real frame first and invoke that function. Preserve frame-read error mapping, preflight ordering, ticket/slot/size checks, journal-before-mutation behavior, public APIs, enum definitions, serialized formats and dependencies. No core taint/join/action source, existing Kani core source, registry or gate changes.
+
+Native exhaustive tests and symbolic Kani harnesses must call the actual production validator with independent explicit expected propagation/order tables, exact rejection fields and acceptance/rejection reachability covers. A genuine Strict public Runtime scenario must obtain actual issued tickets, first accept a tainted completion to produce the second action's tainted input, refuse a downgrade without journal/state/pending mutation, then accept the correct taint and persist the exact completion envelope. No raw accepted/admitted state or fabricated ticket is permitted.
+
+Evidence must include scoped actual Kani output with full default checks, symbolic finite domains, resource caps and exact commands; native original and exhaustive controls; source lint/format; one meaningful production guard mutation causing failure, followed by exact source hash restoration. Independent CODE, TEST and proof review remain required. No broad CI, GPU, Python, temporary-path work or benchmarks.
+
+The proof claim is limited to the extracted production validator's finite typed tuple semantics. Full RunState construction, frame access, ticket/slot/size validation, journal atomicity, failure routing, general recovery and the larger vb-god2f preflight/ordering claim remain OPEN. Existing core join laws are dependencies, not proof closure inherited by this child.

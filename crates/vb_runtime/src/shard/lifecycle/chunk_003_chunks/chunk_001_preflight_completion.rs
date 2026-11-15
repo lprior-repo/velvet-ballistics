@@ -1,15 +1,15 @@
+use vb_core::ValueStore;
 use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionOutcome, ActionOutputReady, ActionTicket,
     RetryPolicy as VbCoreRetryPolicy,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
-use vb_core::value::{join_taint, SlotValue, Taint};
+use vb_core::value::{SlotValue, Taint, join_taint};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
-use vb_core::ValueStore;
 
 use crate::engine::{
-    drive_deterministic_full, EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal,
+    EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
 };
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -168,12 +168,25 @@ fn reject_taint_downgrade(
         .frame
         .read_taint(input)
         .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-    let required = vb_core::action::propagate_action_taint(contract.idempotency, input_taint);
+    validate_completion_taint(contract.idempotency, input_taint, supplied)
+}
+
+pub(crate) fn validate_completion_taint(
+    idempotency: vb_core::action::Idempotency,
+    input_taint: Taint,
+    supplied: Taint,
+) -> RuntimeResult<()> {
+    let required = vb_core::action::propagate_action_taint(idempotency, input_taint);
     if join_taint(required, supplied) == supplied {
         Ok(())
     } else {
         Err(RuntimeError::ActionTaintDowngrade { required, supplied })
     }
+}
+
+#[cfg(any(test, kani))]
+mod completion_taint_checks {
+    include!("completion_taint_checks.rs");
 }
 
 fn encoded_len_u32(len: usize, max: u32) -> RuntimeResult<u32> {

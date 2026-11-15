@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
+
 use super::slot::SlotValue;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +10,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 #[non_exhaustive]
+#[cfg_attr(verus_keep_ghost, verifier::verify)]
+#[cfg_attr(verus_keep_ghost, verifier::external_derive(erialize))]
 pub enum Taint {
     /// Slot contains no secret-derived data.
     Clean = 0,
@@ -81,6 +86,15 @@ impl SlotCell {
 
 /// Joins two taint levels, returning the more restrictive one.
 #[must_use]
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out => ensures
+    out == if (match a {
+        Taint::Clean => 0u8, Taint::DerivedFromSecret => 1, Taint::Secret => 2,
+        Taint::Random => 3, Taint::TimeDependent => 4,
+    }) >= (match b {
+        Taint::Clean => 0u8, Taint::DerivedFromSecret => 1, Taint::Secret => 2,
+        Taint::Random => 3, Taint::TimeDependent => 4,
+    }) { a } else { b },
+))]
 pub fn join_taint(a: Taint, b: Taint) -> Taint {
     let a_disc: u8 = match a {
         Taint::Clean => 0,
