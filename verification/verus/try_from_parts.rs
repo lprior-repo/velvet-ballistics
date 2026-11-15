@@ -621,6 +621,8 @@ pub open spec fn spec_nodes_error(parts: &SpecWorkflowParts, i: int) -> Option<S
 pub open spec fn spec_expr_effect(op: SpecExprOp) -> (int, int) {
     match op {
         SpecExprOp::Push => (0, 1),
+        SpecExprOp::LoadSlot(_) => (0, 1),
+        SpecExprOp::LoadConst(_) => (0, 1),
         SpecExprOp::LoadAccessor(_) => (0, 1),
         SpecExprOp::Unary => (1, 1),
         SpecExprOp::AppendIf => (3, 1),
@@ -769,6 +771,74 @@ pub open spec fn spec_exprs_error(
             err
         } else {
             spec_exprs_error(parts, i + 1)
+        }
+    }
+}
+
+/// Spec-level mirror of `validate_expression_pool_bounds`
+/// (workflow/validate_refs.rs:95-105) for one program: walks `ops`
+/// from index `i` and returns `Some(SlotOutOfBounds)` for the first
+/// `LoadSlot` index at or beyond `slot_count` (`validate_slot`,
+/// workflow/validate_refs.rs:56-62), `Some(ConstOutOfBounds)` for
+/// the first `LoadConst` index at or beyond `constants_len`
+/// (`validate_const`, workflow/validate_refs.rs:64-70), or `None`
+/// when every pool reference is in bounds.
+pub open spec fn spec_expr_pool_error(
+    ops: &Vec<SpecExprOp>,
+    i: int,
+    slot_count: int,
+    constants_len: int,
+) -> Option<SpecWorkflowError>
+    decreases ops.len() - i
+{
+    if i < 0 || i >= ops.len() {
+        None
+    } else {
+        match ops[i] {
+            SpecExprOp::LoadSlot(slot) => {
+                if (slot as int) >= slot_count {
+                    Some(SpecWorkflowError::SlotOutOfBounds)
+                } else {
+                    spec_expr_pool_error(ops, i + 1, slot_count, constants_len)
+                }
+            }
+            SpecExprOp::LoadConst(constant) => {
+                if (constant as int) >= constants_len {
+                    Some(SpecWorkflowError::ConstOutOfBounds)
+                } else {
+                    spec_expr_pool_error(ops, i + 1, slot_count, constants_len)
+                }
+            }
+            _ => spec_expr_pool_error(ops, i + 1, slot_count, constants_len),
+        }
+    }
+}
+
+/// Spec-level mirror of the step-6 per-expression loop: walks
+/// `parts.expressions` from index `i` and returns the first pool
+/// error in expression order, or `None` when every program's pool
+/// references are in bounds. Production checks expression `i`
+/// fully before expression `i + 1`
+/// (workflow/validate_refs.rs:95-105).
+pub open spec fn spec_exprs_pool_error(
+    parts: &SpecWorkflowParts,
+    i: int,
+) -> Option<SpecWorkflowError>
+    decreases parts.expressions.len() - i
+{
+    if i < 0 || i >= parts.expressions.len() {
+        None
+    } else {
+        let err = spec_expr_pool_error(
+            &parts.expressions[i].ops,
+            0,
+            parts.slot_count as int,
+            parts.constants_len as int,
+        );
+        if err != None::<SpecWorkflowError> {
+            err
+        } else {
+            spec_exprs_pool_error(parts, i + 1)
         }
     }
 }
@@ -2666,9 +2736,11 @@ pub open spec fn spec_nested_together_error(parts: &SpecWorkflowParts) -> Option
 /// resolve through the spec mirror rather than the opaque body.
 /// The mirror preserves the production validator's top-level guard
 /// order (empty nodes, resource contract, entry bounds, expressions,
-/// accessor roots, per-node validation, then the per-inventory checks) so the first error agrees with production
-/// `validate_parts` and the extern projection's Step 1 order; the
-/// per-step detail inside the later stages stays collapsed. (The
+/// accessor roots, per-node validation, then the per-inventory checks,
+/// loop-region validation, budget, input slots, and finally the
+/// expression pool-bounds check) so the first error agrees with production
+/// `validate_parts` and `validate_shared_parts` and the extern projection's
+/// Step 1-6 order; the per-step detail inside the later stages stays collapsed. (The
 /// full per-step projection is in `extern_try_from_parts.rs` and is
 /// opaque to Verus; this mirror is the contract layer the spec
 /// proofs reason about.)
@@ -2770,7 +2842,12 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
                             if (slot_err != None::<SpecWorkflowError>) {
                                 SpecValidationResult::Err(slot_err.unwrap())
                             } else {
-                                SpecValidationResult::Ok
+                                let pool_err = spec_exprs_pool_error(parts, 0);
+                                if pool_err != None::<SpecWorkflowError> {
+                                    SpecValidationResult::Err(pool_err.unwrap())
+                                } else {
+                                    SpecValidationResult::Ok
+                                }
                             }
                         }
                     }
@@ -2980,6 +3057,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         // The projection returns Ok for these inputs. The spec
         // mirror walks through the chain of conditional guards
@@ -3074,6 +3152,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
         assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
         assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
+        assert(spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>);
         assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Ok);
     }
 }
@@ -6273,7 +6352,7 @@ pub proof fn lemma_exprs_first_expression_wins(parts: &SpecWorkflowParts)
 /// budget is rejected with the expression error, not the budget
 /// error (production `validate_parts` runs
 /// `validate_expressions` before `validate_budget`,
-/// workflow/validate.rs:21-47 and 43-79).
+/// workflow/validate.rs:21-47 and workflow/validate.rs:114-120).
 pub proof fn lemma_expr_before_budget(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7227,6 +7306,7 @@ pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -7443,6 +7523,7 @@ pub proof fn lemma_contract_limits_at_cap_accepted(parts: &SpecWorkflowParts)
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -7804,6 +7885,7 @@ pub proof fn lemma_byte_budget_limits_at_cap_accepted(parts: &SpecWorkflowParts)
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -8118,6 +8200,7 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_at_cap_accepted(parts: &Spe
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -8549,6 +8632,7 @@ pub proof fn lemma_transitions_limit_at_cap_accepted(parts: &SpecWorkflowParts)
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -8741,6 +8825,7 @@ pub proof fn lemma_steps_limit_at_cap_accepted(parts: &SpecWorkflowParts)
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -8795,6 +8880,7 @@ pub proof fn lemma_slots_limit_at_cap_accepted(parts: &SpecWorkflowParts)
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
         spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == None::<SpecWorkflowError>,
     ensures
         spec_validation_ok(try_from_parts_pure_spec(parts)),
 {
@@ -9119,6 +9205,231 @@ pub proof fn lemma_zero_step_budget_before_zero_transitions(parts: &SpecWorkflow
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 178: the pool-bounds slot rejection at the top level. A
+/// workflow whose expression pool scan reports `SlotOutOfBounds` is
+/// rejected with `SlotOutOfBounds`: the mirror runs the pool-bounds
+/// check after the input-slots check, last in the chain (production
+/// `validate_expression_pool_bounds`, workflow/validate_refs.rs:95-105,
+/// called last in `validate_shared_parts`,
+/// workflow/profile_construct.rs:25-39; extern Step 6).
+pub proof fn lemma_pool_bounds_slot_top_level_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
+        input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_forward_edges_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_nested_together_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>);
+    assert(spec_loop_relations_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_loop_edges_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>);
+    assert(input_slots_valid(parts) == None::<SpecWorkflowError>);
+    assert(spec_exprs_pool_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds));
+}
+
+/// Lemma 179: the pool-bounds const rejection at the top level. A
+/// workflow whose expression pool scan reports `ConstOutOfBounds` is
+/// rejected with `ConstOutOfBounds`: the mirror runs the pool-bounds
+/// check after the input-slots check, last in the chain (production
+/// `validate_expression_pool_bounds`, workflow/validate_refs.rs:95-105,
+/// called last in `validate_shared_parts`,
+/// workflow/profile_construct.rs:25-39; extern Step 6).
+pub proof fn lemma_pool_bounds_const_top_level_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
+        input_slots_valid(parts) == None::<SpecWorkflowError>,
+        spec_exprs_pool_error(parts, 0) == Some(SpecWorkflowError::ConstOutOfBounds),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ConstOutOfBounds),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_forward_edges_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_nested_together_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>);
+    assert(spec_loop_relations_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_loop_edges_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>);
+    assert(input_slots_valid(parts) == None::<SpecWorkflowError>);
+    assert(spec_exprs_pool_error(parts, 0) == Some(SpecWorkflowError::ConstOutOfBounds));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ConstOutOfBounds));
+}
+
+/// Lemma 180: the pool-bounds check runs after the input-slots
+/// check. A workflow with an out-of-bounds input slot and an
+/// out-of-bounds pool reference is rejected with
+/// `InputSlotOutOfBounds`: the mirror runs the input-slots check
+/// before the pool-bounds check (production `validate_shared_parts`
+/// runs `validate_input_slots` before `validate_expression_pool_bounds`,
+/// workflow/profile_construct.rs:25-39; extern Steps 5-6).
+pub proof fn lemma_pool_bounds_after_input_slots(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 1000,
+        parts.resource_contract.max_slots <= 65535,
+        parts.resource_contract.max_constants <= 8192,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_step_budget_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_nodes_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
+        input_slots_valid(parts) == Some(SpecWorkflowError::InputSlotOutOfBounds),
+        spec_exprs_pool_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_root_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_forward_edges_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_nested_together_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>);
+    assert(spec_loop_relations_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_loop_edges_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>);
+    assert(input_slots_valid(parts) == Some(SpecWorkflowError::InputSlotOutOfBounds));
+    assert(spec_exprs_pool_error(parts, 0) == Some(SpecWorkflowError::SlotOutOfBounds));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds));
 }
 
 fn main() {}
