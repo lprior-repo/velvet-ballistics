@@ -267,10 +267,75 @@ fn compiler_inferred_local_caps_preserve_hard_and_whole_workflow_policy_refusals
         vb_compile::compile_workflow(nested.as_bytes()).expect_err("whole workflow policy");
     assert!(matches!(
         errors.0.as_slice(),
-        [vb_compile::CompileError::Workflow(
-            WorkflowError::BudgetPolicyExceeded {
-                detail: vb_core::budget::BudgetDimension::TotalSteps
-            }
-        )]
+        [vb_compile::CompileError::UnboundedWorkflow {
+            detail: vb_core::budget::BudgetDimension::TotalSteps
+        }]
     ));
+    for error in errors.iter() {
+        assert_unbounded(error, vb_core::budget::BudgetDimension::TotalSteps);
+    }
+    assert!(vb_compile::compile_workflow(nested.replace("max: 1024", "max: 4").as_bytes()).is_ok());
+}
+
+fn assert_unbounded(error: &vb_compile::CompileError, detail: vb_core::budget::BudgetDimension) {
+    assert_eq!(
+        error,
+        &vb_compile::CompileError::UnboundedWorkflow { detail }
+    );
+    assert_eq!(
+        error.to_string(),
+        format!("compiled workflow IR failed validation: budget policy exceeded: {detail}")
+    );
+    assert_eq!(error.code().as_str(), "LIMIT_EXCEEDED");
+    assert_eq!(error.diagnostic_code().as_str(), "LIMIT_EXCEEDED");
+    assert!(std::error::Error::source(error).is_none());
+}
+
+#[test]
+fn public_budget_error_conversion_preserves_distinct_dimensions() {
+    use vb_core::budget::BudgetDimension;
+    for detail in [BudgetDimension::TotalSlots, BudgetDimension::TimerEntries] {
+        let error = vb_compile::CompileError::from(WorkflowError::BudgetPolicyExceeded { detail });
+        assert_unbounded(&error, detail);
+    }
+}
+
+#[test]
+fn public_nonbudget_error_conversion_preserves_payload_source_and_diagnostic() {
+    for (original, code) in [
+        (
+            WorkflowError::ResourceContractExceeded {
+                resource: ContractResource::CollectItems,
+            },
+            "LIMIT_EXCEEDED",
+        ),
+        (
+            WorkflowError::ResourceContractTooLarge {
+                resource: ContractResource::CollectItems,
+            },
+            "LIMIT_EXCEEDED",
+        ),
+        (
+            WorkflowError::StepCountOverflow { actual: u64::MAX },
+            "INVALID_COMPILED_WORKFLOW",
+        ),
+        (
+            WorkflowError::DepthOverflow { depth: u16::MAX },
+            "LIMIT_EXCEEDED",
+        ),
+    ] {
+        let error = vb_compile::CompileError::from(original.clone());
+        assert_eq!(error, vb_compile::CompileError::Workflow(original.clone()));
+        assert_eq!(
+            error.to_string(),
+            format!("compiled workflow IR failed validation: {original}")
+        );
+        assert_eq!(error.code().as_str(), code);
+        assert_eq!(error.diagnostic_code().as_str(), code);
+        assert_eq!(
+            std::error::Error::source(&error)
+                .and_then(|source| source.downcast_ref::<WorkflowError>()),
+            Some(&original)
+        );
+    }
 }
