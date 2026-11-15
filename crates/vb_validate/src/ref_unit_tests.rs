@@ -153,4 +153,96 @@ mod tests {
             Err(ValidationError::UnknownReference { .. })
         ));
     }
+
+    #[test]
+    fn legacy_known_steps_keep_rejection_with_production_tables() {
+        let tables: crate::references::RefTables =
+            make_tables(&[], &[], &[], &["build", "build", "done"]);
+        for reference in ["$step.build.result", "$steps.done.result", "$steps.build"] {
+            assert_eq!(
+                validate_single_reference(reference, &tables),
+                Err(ValidationError::FutureReference {
+                    reference: reference.to_owned(),
+                })
+            );
+            assert_eq!(
+                crate::references::validate_single_reference(reference, &tables),
+                Ok(())
+            );
+        }
+        for reference in ["$steps.missing.result", "$build.result"] {
+            assert_eq!(
+                validate_single_reference(reference, &tables),
+                Err(ValidationError::UnknownReference {
+                    reference: reference.to_owned(),
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn legacy_workflow_keeps_first_reference_error() {
+        let mut workflow: crate::references::WorkflowRefs = WorkflowRefs {
+            inputs: vec!["user".to_owned()],
+            vars: vec![],
+            secrets: vec![],
+            step_ids: vec!["build".to_owned()],
+            references: vec![
+                "$input.user.profile".to_owned(),
+                "$steps.build.result".to_owned(),
+                "$input.missing".to_owned(),
+            ],
+        };
+        assert_eq!(
+            validate_references(&workflow),
+            Err(ValidationError::FutureReference {
+                reference: "$steps.build.result".to_owned(),
+            })
+        );
+        workflow.references = vec![
+            "$input.user.profile".to_owned(),
+            "$input.missing".to_owned(),
+            "$steps.build.result".to_owned(),
+        ];
+        assert_eq!(
+            validate_references(&workflow),
+            Err(ValidationError::UnknownReference {
+                reference: "$input.missing".to_owned(),
+            })
+        );
+        workflow.references = vec!["$now".to_owned(), "$steps.build.result".to_owned()];
+        assert_eq!(
+            validate_references(&workflow),
+            Err(ValidationError::DirectRuntimeReference)
+        );
+    }
+
+    #[test]
+    fn legacy_unknown_secrets_keep_reference_errors() {
+        let tables = make_tables(&[], &[], &["token"], &["build"]);
+        for reference in ["$secrets.missing", "$secrets.missing.value"] {
+            assert_eq!(
+                validate_single_reference(reference, &tables),
+                Err(ValidationError::UnknownReference {
+                    reference: reference.to_owned(),
+                })
+            );
+            assert_eq!(
+                crate::references::validate_single_reference(reference, &tables),
+                Err(ValidationError::SecretNotDeclared {
+                    secret: "missing".to_owned(),
+                })
+            );
+        }
+        let workflow = WorkflowRefs {
+            references: vec!["$secrets.missing.value".to_owned(), "$now".to_owned()],
+            ..WorkflowRefs::default()
+        };
+        assert_eq!(
+            validate_references(&workflow),
+            Err(ValidationError::UnknownReference {
+                reference: "$secrets.missing.value".to_owned(),
+            })
+        );
+    }
 }
