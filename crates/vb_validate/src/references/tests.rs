@@ -605,3 +605,71 @@ fn step_reference_allowed_without_context_via_workflow_validation() {
     // Then it succeeds (no context means allow)
     assert_eq!(result, Ok(()));
 }
+
+#[test]
+fn workflow_constructor_preserves_names_and_step_order() {
+    let workflow = WorkflowRefs {
+        inputs: vec!["user".to_owned()],
+        vars: vec!["count".to_owned()],
+        secrets: vec!["token".to_owned()],
+        step_ids: vec!["second".to_owned(), "first".to_owned(), "second".to_owned()],
+        references: vec![],
+    };
+    let tables = RefTables::build(&workflow);
+    assert!(tables.contains_input("user"));
+    assert!(!tables.contains_input("count"));
+    assert!(tables.contains_var("count"));
+    assert!(!tables.contains_var("token"));
+    assert!(tables.contains_secret("token"));
+    assert!(!tables.contains_secret("user"));
+    assert!(tables.contains_step_id("second"));
+    assert_eq!(tables.step_index("second"), Some(0));
+    assert_eq!(tables.step_index("first"), Some(1));
+    assert_eq!(tables.step_index("missing"), None);
+    assert_eq!(
+        validate_single_reference_with_context("$steps.second.result", &tables, Some(1)),
+        Ok(())
+    );
+    assert_eq!(
+        validate_single_reference_with_context("$steps.first.result", &tables, Some(1)),
+        Err(ValidationError::FutureReference {
+            reference: "$steps.first.result".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn reference_table_constructors_keep_owned_names() {
+    let mut workflow = WorkflowRefs {
+        inputs: vec!["user".to_owned()],
+        vars: vec!["count".to_owned()],
+        secrets: vec!["token".to_owned()],
+        step_ids: vec!["done".to_owned()],
+        references: vec![],
+    };
+    let built = RefTables::build(&workflow);
+    let sliced = RefTables::from_slices(
+        &workflow.inputs,
+        &workflow.vars,
+        &workflow.secrets,
+        &workflow.step_ids,
+    );
+    workflow.inputs.clear();
+    workflow.vars.clear();
+    workflow.secrets.clear();
+    workflow.step_ids.clear();
+    for tables in [&built, &sliced] {
+        assert!(tables.contains_input("user"));
+        assert!(tables.contains_var("count"));
+        assert!(tables.contains_secret("token"));
+        assert!(tables.contains_step_id("done"));
+        assert_eq!(tables.step_index("done"), Some(0));
+        assert_eq!(validate_single_reference("$input.user", tables), Ok(()));
+        assert_eq!(
+            validate_single_reference("$input.missing", tables),
+            Err(ValidationError::UnknownReference {
+                reference: "$input.missing".to_owned(),
+            })
+        );
+    }
+}
