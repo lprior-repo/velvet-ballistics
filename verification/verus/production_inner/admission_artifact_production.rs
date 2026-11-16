@@ -32,7 +32,7 @@
 //                                                 (crates/vb_core/src/artifact.rs:80-97)
 //   - `vb_core::artifact::ArtifactEvidence`      (crates/vb_core/src/artifact.rs:101-108)
 //   - `vb_core::action_pack::PackedArtifactEvidence`
-//                                                 (crates/vb_core/src/action_pack.rs:133-138)
+//                                                 (crates/vb_core/src/action_pack.rs:137-142)
 //   - `vb_core::policy::RuntimePolicy`           (crates/vb_core/src/policy.rs:194-201)
 //
 // Stub substitutions: the production `WorkflowDigest` is a newtype
@@ -255,7 +255,7 @@ pub enum ArtifactEvidence {
 // Production mirror: vb_core::action_pack::ActionPack (opaque marker)
 // ---------------------------------------------------------------------------
 //
-// Production `ActionPack` (crates/vb_core/src/action_pack.rs:108-129)
+// Production `ActionPack` (crates/vb_core/src/action_pack.rs:112-133)
 // declares ten fields over nine further digest types
 // (`ManifestDigest`, `ExecutorIdentity`, `ExecutorVersionDigest`,
 // `CapabilityScopeSpec`, `ReceiptSchemaDigest`, `TimeoutPolicy`,
@@ -272,10 +272,10 @@ pub struct ActionPack(pub ());
 // Production mirror: vb_core::action_pack::PackedArtifactEvidence
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_core/src/action_pack.rs:133-138`
+// Production `crates/vb_core/src/action_pack.rs:137-142`
 //
 // Verbatim mirror of `vb_core::action_pack::PackedArtifactEvidence` at
-// `crates/vb_core/src/action_pack.rs:133-138`. Production `packs` is
+// `crates/vb_core/src/action_pack.rs:137-142`. Production `packs` is
 // `Box<[ActionPack]>`; the mirror carries `Vec<ActionPack>` for the
 // same reason the proof slices are `Vec` (see the header note).
 #[derive(Clone)]
