@@ -12,13 +12,15 @@ use vb_runtime::engine::{
 };
 use vb_runtime::primitives::collect::CollectStates;
 
-const FLOAT_NEGATION_CASES: [(f64, u64); 8] = [
+const FLOAT_NEGATION_CASES: [(f64, u64); 10] = [
     (0.0, 0x8000_0000_0000_0000),
     (-0.0, 0x0000_0000_0000_0000),
     (f64::MAX, 0xffef_ffff_ffff_ffff),
     (-f64::MAX, 0x7fef_ffff_ffff_ffff),
     (f64::from_bits(1), 0x8000_0000_0000_0001),
     (f64::from_bits(0x8000_0000_0000_0001), 1),
+    (1.0, 0xbff0_0000_0000_0000),
+    (-1.0, 0x3ff0_0000_0000_0000),
     (12.5, 0xc029_0000_0000_0000),
     (-12.5, 0x4029_0000_0000_0000),
 ];
@@ -86,6 +88,37 @@ fn workflow_value(signal: RuntimeSignal) -> Result<SlotValue, String> {
 }
 
 #[test]
+fn literal_negation_preserves_signed_zero_bits_in_both_compilers() -> Result<(), String> {
+    for (expression, expected) in [
+        ("-0.0", 0x8000_0000_0000_0000),
+        ("--0.0", 0),
+        ("-(-0.0)", 0),
+    ] {
+        let bytecode = bytecode_eval(expression, SlotValue::Null, SlotValue::Null)
+            .map_err(|error| error.to_string())?;
+        assert_float_bits(bytecode, expected)?;
+        let signal = workflow_eval(expression, SlotValue::Null, SlotValue::Null)
+            .map_err(|error| error.to_string())?;
+        assert_float_bits(workflow_value(signal)?, expected)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn double_integer_negation_preserves_boundaries_in_both_compilers() -> Result<(), String> {
+    for input in [0, 1, -1, i64::MAX, -9_223_372_036_854_775_807] {
+        let value = SlotValue::I64(input);
+        let bytecode = bytecode_eval("--$input.x", value, SlotValue::Null)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(bytecode, value, "input {input}");
+        let signal = workflow_eval("--$input.x", value, SlotValue::Null)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(workflow_value(signal)?, value, "input {input}");
+    }
+    Ok(())
+}
+
+#[test]
 fn bytecode_negation_preserves_negative_zero_for_a_runtime_slot() -> Result<(), Box<dyn Error>> {
     let (program, constants) = vb_expr::bytecode::compile_expr("-$input.x", &|reference: &str| {
         (reference == "$input.x").then_some(SlotIdx::ZERO)
@@ -134,6 +167,12 @@ fn compiled_workflow_negation_preserves_negative_zero_for_a_runtime_slot()
 fn bytecode_negation_flips_float_bits_and_checked_integer_values() -> Result<(), String> {
     for (input, expected) in FLOAT_NEGATION_CASES {
         let value = float_slot(input)?;
+        let ast_single = vb_expr::eval_unary_op(vb_expr::eval::UnaryOp::Neg, value)
+            .map_err(|error| error.to_string())?;
+        assert_float_bits(ast_single, expected)?;
+        let ast_double = vb_expr::eval_unary_op(vb_expr::eval::UnaryOp::Neg, ast_single)
+            .map_err(|error| error.to_string())?;
+        assert_float_bits(ast_double, input.to_bits())?;
         let single = bytecode_eval("-$input.x", value, SlotValue::Null)
             .map_err(|error| error.to_string())?;
         assert_float_bits(single, expected)?;
@@ -148,6 +187,9 @@ fn bytecode_negation_flips_float_bits_and_checked_integer_values() -> Result<(),
         (i64::MAX, -9_223_372_036_854_775_807),
         (-9_223_372_036_854_775_807, i64::MAX),
     ] {
+        let ast = vb_expr::eval_unary_op(vb_expr::eval::UnaryOp::Neg, SlotValue::I64(input))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(ast, SlotValue::I64(expected), "input {input}");
         let result = bytecode_eval("-$input.x", SlotValue::I64(input), SlotValue::Null)
             .map_err(|error| error.to_string())?;
         if result != SlotValue::I64(expected) {

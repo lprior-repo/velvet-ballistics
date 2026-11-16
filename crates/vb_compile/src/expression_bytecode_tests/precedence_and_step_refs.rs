@@ -264,6 +264,10 @@ fn double_negation_in_helper() -> Result<(), String> {
     let (ops, constants, _max_stack) = lower("exists(--5)")?;
     // Const -1, Const -1, Const 5, Mul, Mul, Exists
     adv_ensure(constants.len() == 3, "should have 3 constants")?;
+    adv_ensure(
+        constants == vec![ConstValue::I64(-1), ConstValue::I64(-1), ConstValue::I64(5)],
+        "double negation constants must preserve order",
+    )?;
     let mul_count = ops.iter().filter(|op| matches!(op, ExprOp::Mul)).count();
     adv_ensure(mul_count == 2, "should have 2 Mul ops for double negation")?;
     let has_exists = ops.iter().any(|op| matches!(op, ExprOp::Exists));

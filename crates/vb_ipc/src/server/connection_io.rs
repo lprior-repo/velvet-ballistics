@@ -12,6 +12,10 @@ use vb_runtime::runtime::Runtime;
 
 const IO_OPERATIONS_PER_TURN: usize = 64;
 
+#[cfg(test)]
+#[path = "connection_io_write_tests.rs"]
+mod write_tests;
+
 enum ReadProgress {
     Incomplete,
     Closed,
@@ -135,14 +139,26 @@ fn clone_registry(poll: &mio::Poll) -> Result<mio::Registry, IpcServerError> {
 }
 
 fn write_pending_chunk(client: &mut ClientConnection) -> Result<WriteResult, IpcServerError> {
-    match client.stream.write(&client.write_buffer) {
+    write_pending_bytes(
+        &mut client.stream,
+        &mut client.write_buffer,
+        &mut client.write_ready,
+    )
+}
+
+fn write_pending_bytes(
+    writer: &mut impl Write,
+    pending: &mut Vec<u8>,
+    ready: &mut bool,
+) -> Result<WriteResult, IpcServerError> {
+    match writer.write(pending) {
         Ok(0) => Ok(WriteResult::Closed),
         Ok(count) => {
-            client.write_buffer.drain(..count).for_each(|_| ());
+            pending.drain(..count).for_each(|_| ());
             Ok(WriteResult::Wrote)
         }
         Err(source) if source.kind() == std::io::ErrorKind::WouldBlock => {
-            client.write_ready = false;
+            *ready = false;
             Ok(WriteResult::WouldBlock)
         }
         Err(source) if source.kind() == std::io::ErrorKind::Interrupted => {

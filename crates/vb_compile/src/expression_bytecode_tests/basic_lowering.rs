@@ -351,13 +351,21 @@ fn deeply_nested_arithmetic_produces_valid_bytecode() -> Result<(), String> {
 #[test]
 fn nested_negation_produces_correct_bytecode() -> Result<(), String> {
     // --5 should produce: LoadConst(-1), LoadConst(-1), LoadConst(5), Mul, Mul
-    let (ops, _constants, _max_stack) = lower("--5")?;
+    let (ops, constants, max_stack) = lower("--5")?;
     adv_ensure(ops.len() == 5, "nested negation should produce 5 ops")?;
     // Check last two ops are Mul
     let fourth = ops.get(3).ok_or("missing 4th op")?;
     let fifth = ops.get(4).ok_or("missing 5th op")?;
     adv_ensure(matches!(fourth, ExprOp::Mul), "4th op should be Mul")?;
     adv_ensure(matches!(fifth, ExprOp::Mul), "5th op should be Mul")?;
+    adv_ensure(
+        constants == vec![ConstValue::I64(-1), ConstValue::I64(-1), ConstValue::I64(5)],
+        "nested negation constants must preserve order",
+    )?;
+    adv_ensure(
+        max_stack == 3,
+        "nested negation should require stack depth 3",
+    )?;
     Ok(())
 }
 
