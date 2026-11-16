@@ -8,7 +8,7 @@ proofs). The CI baseline (`moon run :ci`) only gates on a small slice of each.
 
 | Verifier | Total artifacts | In CI baseline | Manual only |
 | --- | --- | --- | --- |
-| Kani harnesses (`#[kani::proof]`) | 751 | 33 (23 `vb_core` + 7 `vb_validate` + 3 heavy) | 718 |
+| Kani source harness definitions | 751 | 76 source matches (66 `vb_core` + 7 `vb_validate` + 3 heavy) | 675 outside configured filters |
 | TLA+ root specs (`.tla`) | 25 | 2 (`WorkflowBoundedAdmission`, `IdempotencySafety`) | 23 |
 | Verus spec files (`verification/verus/*.rs`) | 72 | 0 | 72 |
 
@@ -16,29 +16,29 @@ Counts above are tree counts at main `f557c6b5` (2026-11-15). Kani is a count of
 
 ## CI Baseline
 
-### Kani (8 harnesses, `moon run :kani-baseline`)
+### Kani (8 light filter groups, `moon run :kani-baseline`)
 
 **`vb_core`** — `cargo kani --lib -p vb_core --all-features`, logs to
 `.evidence/kani/baseline/vb_core.log`:
 
-| # | Harness filter | Claim class | Inventory under filter |
+| # | Harness filter | Claim class | Source definitions under filter |
 | - | --- | --- | --- |
 | 1 | `kani_step_budget_try_take_arbitrary::kani_step_budget_try_take_arbitrary` | arithmetic / no-overflow | 1 |
 | 2 | `kani_idempotency_gates::` (12 named harnesses) | idempotency / contract | 12 |
 | 3 | `kani_taint::` | taint / lattice-no-panic | 6 |
-| 4 | `kani_workflow_budget_harnesses::` | workflow-budget / bounded-compute | 4 |
+| 4 | `kani_workflow_budget_harnesses::` | workflow-budget / bounded-compute | 47 |
 
 **`vb_validate`** — `cargo kani --lib -p vb_validate --all-features`, logs to
 `.evidence/kani/baseline/vb_validate.log`:
 
-| # | Harness filter | Claim class | Inventory under filter |
+| # | Harness filter | Claim class | Source definitions under filter |
 | - | --- | --- | --- |
 | 5 | `kani_gate_08_arbitrary_parts_valid_accessors_pass` | gate-08 / structural-valid-accessors | 1 |
 | 6 | `kani_gate_08_arbitrary_parts_root_oob_rejected` | gate-08 / structural-root-oob-rejection | 1 |
 | 7 | `kani_gate_08_arbitrary_parts_symbol_oob_rejected` | gate-08 / structural-symbol-oob-rejection | 1 |
 | 8 | `kani_step_primitives::` | step-primitives / constant-content | 4 |
 
-Heavy split (`kani-baseline-heavy`, separate CBMC invocation to avoid cumulative OOM): 3 more `kani_idempotency_gates::` harnesses by name — `verify_idempotency_symbolic_key_taints_are_classified`, `validate_action_outcome_symbolic_completion_matrix`, `verify_idempotency_retry_policy_matrix_is_total`. Baseline total: 33 harnesses (23 `vb_core` + 7 `vb_validate` + 3 heavy).
+Heavy split (`kani-baseline-heavy`, separate CBMC invocation to avoid cumulative OOM): 3 more `kani_idempotency_gates::` harnesses by name — `verify_idempotency_symbolic_key_taints_are_classified`, `validate_action_outcome_symbolic_completion_matrix`, `verify_idempotency_retry_policy_matrix_is_total`. Configured baseline filters match 76 source definitions (66 `vb_core` + 7 `vb_validate` + 3 heavy). The `kani_workflow_budget_harnesses::` prefix includes 4 direct harnesses and all 43 nested `budget_case!` expansions through `budget_generators::compute_partition::cases`. This is a static source/filter intersection, not a compiled harness listing or a successful proof count. No Kani listing or proof campaign was run for this refresh.
 
 Baseline is fail-closed: each per-package log must contain
 `VERIFICATION:- SUCCESSFUL`; absence is BLOCKER.
@@ -71,7 +71,7 @@ plus 120-minute budget per PR). The full-workspace sweep
 
 ## Exploratory Kani Harnesses (Top 10 by Package)
 
-The 718 non-baseline harnesses are distributed across nine crates with harnesses (`vb_core`, `vb_expr`, `vb_ipc`, `vb_runtime`, `vb_storage`, `vb_validate`, `vb_yaml`, `velvet_ballistics`, `workspace_tests`). The ten highest-leverage files outside the CI baseline:
+The 675 source harness definitions outside the configured baseline filters are distributed across nine crates with harnesses (`vb_core`, `vb_expr`, `vb_ipc`, `vb_runtime`, `vb_storage`, `vb_validate`, `vb_yaml`, `velvet_ballistics`, `workspace_tests`). The ten highest-leverage files outside the CI baseline:
 
 | Rank | Module | Package | Harnesses | Subject |
 | - | --- | --- | --- | --- |
@@ -92,9 +92,9 @@ Per-crate totals: `vb_core` 348, `vb_storage` 167, `vb_runtime` 119, `vb_validat
 
 ### Kani
 
-- **718 of 751 harnesses are exploratory.** Only 33 short-circuit the PR gate; the rest depend on developer invocation of `cargo kani --harness <name>` per package.
+- **675 of 751 source harness definitions fall outside configured baseline filters.** The filters select 76 source definitions; compiled availability and successful verification were not measured in this refresh. Harnesses outside those filters require separate per-package invocation.
 - **Seven of the nine crates with harnesses have zero harnesses in `kani-baseline`.** Only `vb_core` and `vb_validate` are gated; `vb_expr`, `vb_ipc`, `vb_runtime`, `vb_storage`, `vb_yaml`, `velvet_ballistics`, and `workspace_tests` have none in the baseline. The single-filter `cargo kani --harness <name>` form used in `.moon/tasks/kani.yml` (legacy `verify-kani` / `verify-kani-vb-validate`) is not in `ci:` either.
-- **Module-level filters remain for three modules.** `kani_taint::` (6), `kani_workflow_budget_harnesses::` (4), and `kani_step_primitives::` (4) are gated as whole modules; `kani_idempotency_gates::` is now enumerated per function (12 in `kani-baseline`, 3 in `kani-baseline-heavy`), leaving 1 of its 16 harnesses outside the baseline. The heavy harnesses were split into `kani-baseline-heavy` because each generates 390K–1.3M GOTO steps and cumulative runs OOM (per `.moon/tasks/kani.yml`).
+- **Module-level filters remain for three modules.** `kani_taint::` (6), `kani_workflow_budget_harnesses::` (47 source definitions, including 43 nested macro expansions), and `kani_step_primitives::` (4) are gated as whole modules; `kani_idempotency_gates::` is now enumerated per function (12 in `kani-baseline`, 3 in `kani-baseline-heavy`), leaving 1 of its 16 harnesses outside the baseline. The heavy harnesses were split into `kani-baseline-heavy` because each generates 390K–1.3M GOTO steps and cumulative runs OOM (per `.moon/tasks/kani.yml`).
 - **Orphan harness — resolved.** `kani_step_primitives::` is wired: `crates/vb_validate/src/verification/mod.rs:24` declares `#[cfg(kani)] pub mod kani_step_primitives;`, its 4 harnesses are in `kani-baseline`, and the baseline reaches all of its listed filters.
 
 ### TLA+
@@ -119,11 +119,7 @@ production code:
    `vb_yaml`, and `vb_verification`. Promote one high-value harness per
    package (e.g. `kani_digest_determinism` in `vb_compile`,
    `kani_recovery_hydrate` in `vb_runtime`) and gate them through `ci:`.
-3. **Promote additional `vb_core` harnesses.** The
-   `kani_idempotency_gates::` and `kani_taint::` module-level filters
-   already compile 17 + 6 harnesses per run; split each into a
-   per-function filter to make CBMC cost (and CI time) proportional to the
-   harnesses actually required for the PR.
+3. **Promote additional `vb_core` harnesses.** Idempotency filters already name 12 light and 3 heavy harnesses individually. The `kani_taint::` and `kani_workflow_budget_harnesses::` module filters match 6 and 47 source definitions; consider per-function filters when changing their scope.
 4. **Gate `verify-tlc` from `ci:`** for the two baseline specs and add a
    `tlc-baseline` task in `.moon/tasks/tlc.yml` analogous to `kani-baseline`
    with a `TLC_RUN_SUCCESSFUL` sentinel grep. This makes the TLA+ gate
