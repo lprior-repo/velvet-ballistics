@@ -38,7 +38,7 @@
 //                                               crates/vb_core/src/artifact.rs:9-30,
 //                                               :34-43, :47-65, :69-76, :80-97,
 //                                               :101-108)
-//   - `PackedArtifactEvidence` (mirror of crates/vb_core/src/action_pack.rs:133-138),
+//   - `PackedArtifactEvidence` (mirror of crates/vb_core/src/action_pack.rs:137-142),
 //     `ActionId` (mirror of crates/vb_core/src/ids/mod.rs:73),
 //     `RuntimePolicy` (mirror of crates/vb_core/src/policy.rs:194-201)
 //                                               <- extern_admission_artifact_model.rs
