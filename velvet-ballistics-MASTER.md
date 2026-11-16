@@ -1149,6 +1149,7 @@ velvet-ballistics/
     config.toml
   crates/
     vb_core/
+    vb_http/
     vb_yaml/
     vb_validate/
     vb_expr/
@@ -1162,7 +1163,7 @@ velvet-ballistics/
   crates/workspace_tests/
 ```
 
-Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `velvet_ballistics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
+Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_http`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `velvet_ballistics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
 
 Removed crates: `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are not active current-scope workspace requirements. They must not appear as active workspace members or current release gates.
 
@@ -1345,6 +1346,7 @@ The `ui` command and Makepad desktop application are removed from the current co
 [workspace]
 members = [
   "crates/vb_core",
+  "crates/vb_http",
   "crates/vb_yaml",
   "crates/vb_validate",
   "crates/vb_expr",

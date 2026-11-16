@@ -11,6 +11,7 @@ parent: velvet-ballistics-MASTER.md
 [workspace]
 members = [
   "crates/vb_core",
+  "crates/vb_http",
   "crates/vb_yaml",
   "crates/vb_validate",
   "crates/vb_expr",
