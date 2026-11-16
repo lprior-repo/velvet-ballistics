@@ -1,0 +1,22 @@
+[package]
+name = "vb_http"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[features]
+local-conformance = []
+
+[dependencies]
+blake3.workspace = true
+postcard.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+vb_core = { path = "../vb_core" }
+ureq = { version = "=3.5.2", default-features = false, features = ["rustls"] }
+
+[dev-dependencies]
+mio = { workspace = true, features = ["os-poll", "net"] }
+
+[lints]
+workspace = true

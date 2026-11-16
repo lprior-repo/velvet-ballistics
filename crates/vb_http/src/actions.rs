@@ -72,7 +72,29 @@ impl WorkflowCountAction {
         ))
     }
 
-    #[cfg(test)]
+    /// Closed local-suite probe; no caller-supplied profile or execution authority.
+    #[cfg(feature = "local-conformance")]
+    pub(crate) fn local_profile_digest_checks(&self) -> Result<[bool; 5], RequestRejection> {
+        let base = self.request_digest()?;
+        let profile = crate::request_profile::for_media(self.endpoint.media);
+        Ok([
+            base == self.digest_with_profile(profile)?,
+            base != self.digest_with_profile(crate::request_profile::RequestProfile {
+                accept: "application/json", ..profile
+            })?,
+            base != self.digest_with_profile(crate::request_profile::RequestProfile {
+                user_agent: "velvet-ballistics/local-conformance-probe", ..profile
+            })?,
+            base != self.digest_with_profile(crate::request_profile::RequestProfile {
+                api_version: Some("2099-01-01"), ..profile
+            })?,
+            base != self.digest_with_profile(crate::request_profile::RequestProfile {
+                projection_schema: "github-workflow-count-i64-v2", ..profile
+            })?,
+        ])
+    }
+
+    #[cfg(any(test, feature = "local-conformance"))]
     pub(crate) fn fixture(endpoint: PinnedGet, http: HttpLimits, decode: DecodeLimits) -> Self {
         Self {
             endpoint,
