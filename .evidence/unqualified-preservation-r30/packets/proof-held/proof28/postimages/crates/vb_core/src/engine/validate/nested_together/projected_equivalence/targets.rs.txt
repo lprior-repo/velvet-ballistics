@@ -1,0 +1,130 @@
+vstd::prelude::verus! {
+
+use crate::nested_legacy::nested_projection::{
+    decoded,
+    projected_found,
+    next_visited,
+    next_stack,
+    legacy_reference,
+    projected_summary,
+};
+use crate::nested_legacy::nested_projection::{
+    project_keys,
+    legacy_weight,
+    projected_pair,
+    projected_first_pair,
+    legacy_walk,
+    branches_from,
+    outer_from,
+    outer_result,
+    one_branch,
+    Visit,
+    target_row,
+};
+
+spec fn projected_result(
+    p: &LegacyParts,
+    idx: usize,
+    stop: usize,
+    outer: u32,
+    keys: Set<u16>,
+    v: Set<usize>,
+) -> TogetherWalkVisit {
+    match crate::nested_legacy::nested_projection::projected_result(p, idx, stop, outer, keys, v) {
+        Visit::Continue => TogetherWalkVisit::Continue,
+        Visit::Overflow => TogetherWalkVisit::Overflow,
+        Visit::Found(raw) => TogetherWalkVisit::Found(StepIdx::from_raw_spec(raw)),
+    }
+}
+
+use crate::nested_legacy::SpecNodeMeta as Meta;
+use crate::workflow::{CompiledNode as Node, CompiledNodeKind as K, NodeContinuation as Next};
+
+// Exactly the fields consumed by the nested decision. Unobserved target rows are supplied by their owner.
+spec fn raw_targets(n: &Node, unobserved: Seq<u32>) -> Seq<u32> {
+    match &n.kind {
+        K::ForEachConcurrentStart { body, join, .. } => seq![
+            body.raw_spec() as u32,
+            join.raw_spec() as u32,
+        ],
+        K::ForEachStart { body, done, .. }
+        | K::CollectStart { body, done, .. }
+        | K::RepeatStart { body, done, .. }
+        | K::ReduceStart { body, done, .. } => seq![body.raw_spec() as u32, done.raw_spec() as u32],
+        K::TogetherStart { branches, join, .. }
+        | K::TogetherConcurrentStart { branches, join, .. }
+        | K::FirstSuccessStart { branches, join, .. } => branches@.map_values(
+            |b: StepIdx| b.raw_spec() as u32,
+        ).push(join.raw_spec() as u32),
+        _ => unobserved,
+    }
+}
+
+fn advance_projection_index(index: usize, bound: usize) -> (out: usize)
+    requires
+        index < bound,
+    ensures
+        out as int == index as int + 1,
+        out <= bound,
+{
+    match index.checked_add(1) {
+        Some(next) => next,
+        None => {
+            assert(false);
+            index
+        },
+    }
+}
+
+fn branch_target_values(branches: &[StepIdx], join: StepIdx) -> (out: Vec<u32>)
+    ensures
+        out@ == branches@.map_values(|step: StepIdx| step.raw_spec() as u32).push(
+            join.raw_spec() as u32,
+        ),
+{
+    let mut values = Vec::new();
+    let mut index = 0usize;
+    while index < branches.len()
+        invariant
+            index <= branches@.len(),
+            values@ == branches@.map_values(|step: StepIdx| step.raw_spec() as u32).take(
+                index as int,
+            ),
+        decreases branches@.len() - index,
+    {
+        if let Some(step) = branches.get(index) {
+            values.push(u32::from(step.get()));
+        }
+        assert(values@ =~= branches@.map_values(|step: StepIdx| step.raw_spec() as u32).take(
+            index as int + 1,
+        ));
+        index = advance_projection_index(index, branches.len());
+    }
+    assert(values@ =~= branches@.map_values(|step: StepIdx| step.raw_spec() as u32));
+    values.push(u32::from(join.get()));
+    values
+}
+
+fn native_targets(n: &Node, fallback: Vec<u32>) -> (out: Vec<u32>)
+    ensures
+        out@ == raw_targets(n, fallback@),
+{
+    let mut values = Vec::new();
+    match &n.kind {
+        K::ForEachConcurrentStart { body, join: done, .. }
+        | K::ForEachStart { body, done, .. }
+        | K::CollectStart { body, done, .. }
+        | K::RepeatStart { body, done, .. }
+        | K::ReduceStart { body, done, .. } => {
+            values.push(u32::from(body.get()));
+            values.push(u32::from(done.get()));
+            values
+        },
+        K::TogetherStart { branches, join, .. }
+        | K::TogetherConcurrentStart { branches, join, .. }
+        | K::FirstSuccessStart { branches, join, .. } => branch_target_values(branches, *join),
+        _ => fallback,
+    }
+}
+
+} // verus!

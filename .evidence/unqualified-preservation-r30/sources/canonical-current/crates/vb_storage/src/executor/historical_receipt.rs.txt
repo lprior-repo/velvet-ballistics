@@ -1,0 +1,53 @@
+use super::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
+use crate::VerifiedHistoricalArtifact;
+use vb_core::action_pack::{ActionPackDigest, CapabilityScopeSpec, RecoveryClass};
+use vb_core::{ActionTicket, WorkflowDigest};
+
+pub(crate) fn reconcile(
+    verified: &VerifiedHistoricalArtifact,
+    adapter: &mut FjallRegister,
+    ticket: ActionTicket,
+    scope: CapabilityScopeSpec,
+    value: i64,
+) -> Result<RegisterReceipt, ExecutorError> {
+    let pack = checked_pack(verified, ticket.action, scope)?;
+    let grant = RegisterGrant {
+        artifact: verified.digest(),
+        pack: pack_digest(pack)?,
+        ticket,
+        scope,
+        timeout_ms: pack.timeout.timeout_ms,
+    };
+    grant.validate(ticket)?;
+    super::register::reconcile_checked(adapter, &grant, ticket, value)
+}
+
+fn checked_pack(
+    verified: &VerifiedHistoricalArtifact,
+    action: vb_core::ActionId,
+    scope: CapabilityScopeSpec,
+) -> Result<&vb_core::action_pack::ActionPack, ExecutorError> {
+    let vb_core::artifact::ArtifactEvidence::Packed(packed) =
+        &verified.artifact().verification.evidence
+    else {
+        return Err(ExecutorError::CatalogRequired);
+    };
+    let index = packed
+        .packs
+        .binary_search_by_key(&action, |pack| pack.action)
+        .map_err(|_| ExecutorError::PackMismatch)?;
+    let pack = packed.packs.get(index).ok_or(ExecutorError::PackMismatch)?;
+    if pack.scope != scope {
+        return Err(ExecutorError::Unauthorized);
+    }
+    if pack.recovery != RecoveryClass::ReconcileReceipt {
+        return Err(ExecutorError::PackMismatch);
+    }
+    Ok(pack)
+}
+
+fn pack_digest(pack: &vb_core::action_pack::ActionPack) -> Result<ActionPackDigest, ExecutorError> {
+    Ok(ActionPackDigest::from_digest(WorkflowDigest::from_bytes(
+        blake3::hash(&postcard::to_allocvec(pack)?).into(),
+    )))
+}

@@ -1,0 +1,130 @@
+use crate::StoredActionRegistry;
+use crate::stored_contracts::wire::ColdActionContract;
+use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
+use vb_core::{ActionId, Capability};
+use vb_validate::{ValidationError, ValidationResult};
+
+pub(super) fn validate(
+    parts: &WorkflowParts,
+    registry: &StoredActionRegistry,
+) -> ValidationResult<()> {
+    validate_references(parts, registry)?;
+    registry.0.iter().try_for_each(validate_capabilities)?;
+    registry.0.iter().try_for_each(|contract| {
+        if parts.nodes.iter().any(|node| matches!(node.kind, CompiledNodeKind::Do { action, .. } if action == contract.id)) {
+            Ok(())
+        } else {
+            Err(ValidationError::ActionContractOrphan { action_id: usize::from(contract.id.get()) })
+        }
+    })
+}
+
+fn validate_references(
+    parts: &WorkflowParts,
+    registry: &StoredActionRegistry,
+) -> ValidationResult<()> {
+    parts
+        .nodes
+        .iter()
+        .enumerate()
+        .try_for_each(|(node_index, node)| {
+            if let CompiledNodeKind::Do { action, .. } = node.kind
+                && !registry.0.iter().any(|contract| contract.id == action)
+            {
+                return Err(ValidationError::ActionContractMissing {
+                    action_id: usize::from(action.get()),
+                    node_index,
+                });
+            }
+            Ok(())
+        })
+}
+
+fn validate_capabilities(contract: &ColdActionContract) -> ValidationResult<()> {
+    contract
+        .required_capabilities
+        .iter()
+        .enumerate()
+        .try_for_each(|(index, capability)| validate_capability(contract.id, index, capability))?;
+    validate_no_duplicates(contract)
+}
+
+fn validate_no_duplicates(contract: &ColdActionContract) -> ValidationResult<()> {
+    contract
+        .required_capabilities
+        .iter()
+        .enumerate()
+        .find_map(|(duplicate_index, duplicate)| {
+            contract
+                .required_capabilities
+                .iter()
+                .take(duplicate_index)
+                .enumerate()
+                .find(|(_, first)| {
+                    first.action_id() == duplicate.action_id() && first.name() == duplicate.name()
+                })
+                .map(|(first_index, _)| ValidationError::CapabilityDuplicate {
+                    action_id: usize::from(contract.id.get()),
+                    first_index,
+                    duplicate_index,
+                    name: duplicate.name().to_owned(),
+                })
+        })
+        .map_or(Ok(()), Err)
+}
+
+fn validate_capability(
+    action: ActionId,
+    index: usize,
+    capability: &Capability,
+) -> ValidationResult<()> {
+    validate_name(action, index, capability.name())?;
+    if capability.action_id() != action {
+        return Err(ValidationError::CapabilityActionMismatch {
+            contract_action_id: usize::from(action.get()),
+            capability_action_id: usize::from(capability.action_id().get()),
+            capability_index: index,
+        });
+    }
+    Ok(())
+}
+
+fn validate_name(action: ActionId, index: usize, name: &str) -> ValidationResult<()> {
+    validate_name_length(action, index, name.len())?;
+    if !valid_capability_name(name) {
+        return Err(ValidationError::CapabilityNameInvalid {
+            action_id: usize::from(action.get()),
+            capability_index: index,
+            name: name.to_owned(),
+        });
+    }
+    Ok(())
+}
+
+fn validate_name_length(action: ActionId, index: usize, len: usize) -> ValidationResult<()> {
+    if len == 0 {
+        return Err(ValidationError::CapabilityNameEmpty {
+            action_id: usize::from(action.get()),
+            capability_index: index,
+        });
+    }
+    let max = vb_validate::gates::MAX_CAPABILITY_NAME_BYTES;
+    if len > max {
+        return Err(ValidationError::CapabilityNameTooLong {
+            action_id: usize::from(action.get()),
+            capability_index: index,
+            len,
+            max,
+        });
+    }
+    Ok(())
+}
+
+fn valid_capability_name(name: &str) -> bool {
+    name.bytes().try_fold(true, |start, byte| match byte {
+        b'.' => (!start).then_some(true),
+        b'a'..=b'z' => Some(false),
+        b'0'..=b'9' | b'_' => (!start).then_some(false),
+        _ => None,
+    }) == Some(false)
+}

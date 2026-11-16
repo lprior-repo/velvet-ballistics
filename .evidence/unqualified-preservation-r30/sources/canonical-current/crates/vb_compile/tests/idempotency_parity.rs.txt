@@ -1,0 +1,216 @@
+use vb_compile::{CompileError, CompileErrors, check_idempotency_gates};
+use vb_core::ActionId;
+use vb_core::action::{
+    ActionContract, ActionName, Idempotency as I, RetrySafety as R, SideEffect as S,
+};
+use vb_validate::idempotency_contract::{
+    IdempotencyContractViolation, validate_action_idempotency_contract,
+};
+
+const EFFECTS: [S; 7] = [
+    S::Pure,
+    S::LocalRead,
+    S::LocalWrite,
+    S::ExternalRead,
+    S::ExternalWrite,
+    S::Process,
+    S::UnsafeShell,
+];
+const SAFETY: [R; 4] = [
+    R::Idempotent,
+    R::RequiresIdempotencyKey,
+    R::NotRetrySafe,
+    R::Unknown,
+];
+const IDEMPOTENCY: [I; 3] = [
+    I::DeterministicPure,
+    I::IdempotentExternal,
+    I::AtLeastOnceExternal,
+];
+
+// Independent declaration oracle: these are the exhaustive permitted records,
+// including the nonretry declaration; no production classifier computes it.
+const LEGAL: [(I, S, R); 7] = [
+    (I::DeterministicPure, S::Pure, R::Idempotent),
+    (I::IdempotentExternal, S::ExternalRead, R::Idempotent),
+    (
+        I::IdempotentExternal,
+        S::ExternalRead,
+        R::RequiresIdempotencyKey,
+    ),
+    (I::IdempotentExternal, S::ExternalWrite, R::Idempotent),
+    (
+        I::IdempotentExternal,
+        S::ExternalWrite,
+        R::RequiresIdempotencyKey,
+    ),
+    (
+        I::AtLeastOnceExternal,
+        S::ExternalWrite,
+        R::RequiresIdempotencyKey,
+    ),
+    (I::AtLeastOnceExternal, S::ExternalWrite, R::NotRetrySafe),
+];
+
+fn contract(idempotency: I, side_effect: S, retry_safety: R) -> ActionContract {
+    ActionContract {
+        id: ActionId::new(17),
+        name: ActionName::from_static_infallible("parity.action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 2048,
+        timeout_ms: 1000,
+        idempotency,
+        side_effect,
+        retry_safety,
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn check(candidate: &ActionContract, accepted: bool) {
+    let expected_static = if accepted {
+        Ok(())
+    } else {
+        Err(IdempotencyContractViolation::InvalidContract {
+            action: candidate.id,
+            side_effect: candidate.side_effect,
+            idempotency: candidate.idempotency,
+            retry_safety: candidate.retry_safety,
+        })
+    };
+    let expected_compile = if accepted {
+        Ok(())
+    } else {
+        Err(CompileErrors(vec![CompileError::IdempotencyViolation {
+            action: candidate.id,
+            side_effect: candidate.side_effect,
+            reason: format!(
+                "invalid idempotency classification: {:?}/{:?}/{:?}",
+                candidate.idempotency, candidate.side_effect, candidate.retry_safety
+            )
+            .into_boxed_str(),
+        }]))
+    };
+    assert_eq!(
+        validate_action_idempotency_contract(candidate),
+        expected_static,
+        "{candidate:?}"
+    );
+    assert_eq!(
+        check_idempotency_gates(std::slice::from_ref(candidate)),
+        expected_compile,
+        "{candidate:?}"
+    );
+}
+
+#[test]
+fn pure_declarations_require_exact_deterministic_idempotent_pair() {
+    for idempotency in IDEMPOTENCY {
+        for safety in SAFETY {
+            check(
+                &contract(idempotency, S::Pure, safety),
+                idempotency == I::DeterministicPure && safety == R::Idempotent,
+            );
+        }
+    }
+}
+
+#[test]
+fn local_process_and_shell_declarations_have_no_legal_exhaustive_mapping() {
+    for effect in [S::LocalRead, S::LocalWrite, S::Process, S::UnsafeShell] {
+        for idempotency in IDEMPOTENCY {
+            for safety in SAFETY {
+                check(&contract(idempotency, effect, safety), false);
+            }
+        }
+    }
+}
+
+#[test]
+fn idempotent_external_read_and_write_declarations_accept_conditional_key_requirement() {
+    for effect in [S::ExternalRead, S::ExternalWrite] {
+        for safety in [R::Idempotent, R::RequiresIdempotencyKey] {
+            check(&contract(I::IdempotentExternal, effect, safety), true);
+        }
+    }
+}
+
+#[test]
+fn at_least_once_write_accepts_keyed_or_nonretry_declaration_only() {
+    for (safety, accepted) in [
+        (R::Idempotent, false),
+        (R::RequiresIdempotencyKey, true),
+        (R::NotRetrySafe, true),
+        (R::Unknown, false),
+    ] {
+        check(
+            &contract(I::AtLeastOnceExternal, S::ExternalWrite, safety),
+            accepted,
+        );
+    }
+}
+
+#[test]
+fn deterministic_pure_refuses_every_nonpure_effect() {
+    for effect in [
+        S::LocalRead,
+        S::LocalWrite,
+        S::ExternalRead,
+        S::ExternalWrite,
+        S::Process,
+        S::UnsafeShell,
+    ] {
+        for safety in SAFETY {
+            check(&contract(I::DeterministicPure, effect, safety), false);
+        }
+    }
+}
+
+#[test]
+fn exhaustive_84_declarations_have_independent_exact_compiler_and_validator_outcomes() {
+    let mut checked = 0;
+    for idempotency in IDEMPOTENCY {
+        for effect in EFFECTS {
+            for safety in SAFETY {
+                check(
+                    &contract(idempotency, effect, safety),
+                    LEGAL.contains(&(idempotency, effect, safety)),
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert_eq!(checked, 84);
+}
+
+#[test]
+fn legal_nonretry_metadata_is_not_globally_rejected() {
+    check(
+        &contract(I::AtLeastOnceExternal, S::ExternalWrite, R::NotRetrySafe),
+        true,
+    );
+}
+
+#[test]
+fn unknown_safety_never_passes_declaration_validation() {
+    for idempotency in IDEMPOTENCY {
+        for effect in EFFECTS {
+            check(&contract(idempotency, effect, R::Unknown), false);
+        }
+    }
+}
+
+#[test]
+fn all_legal_declarations_preserve_input_records_and_registry_order() {
+    let candidates: Vec<_> = LEGAL
+        .into_iter()
+        .map(|(i, e, r)| contract(i, e, r))
+        .collect();
+    let before = candidates.clone();
+    for candidate in &candidates {
+        check(candidate, true);
+    }
+    assert_eq!(check_idempotency_gates(&candidates), Ok(()));
+    assert_eq!(candidates, before);
+}

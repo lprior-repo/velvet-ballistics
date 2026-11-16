@@ -1,0 +1,112 @@
+use super::{StoredContractError, wire::*};
+use vb_core::action::ActionName;
+use vb_core::{
+    ActionContract, ActionId, Capability, Idempotency, RetrySafety, SideEffect, WorkflowDigest,
+};
+
+/// Borrowed metadata and original byte identity; this view carries no effect authority.
+#[derive(Debug, Clone, Copy)]
+pub struct StoredActionContract<'a>(pub(super) &'a ColdActionContract);
+
+impl<'a> StoredActionContract<'a> {
+    /// Original numeric action identifier.
+    pub const fn id(self) -> ActionId {
+        self.0.id
+    }
+    /// Original action name, without rewriting its persisted representation.
+    pub fn name(self) -> &'a ActionName {
+        &self.0.name
+    }
+    /// Original declared input width.
+    pub const fn input_slot_count(self) -> u16 {
+        self.0.input_slot_count
+    }
+    /// Original declared output width.
+    pub const fn output_slot_count(self) -> u16 {
+        self.0.output_slot_count
+    }
+    /// Original encoded input bound.
+    pub const fn max_input_bytes(self) -> u32 {
+        self.0.max_input_bytes
+    }
+    /// Original encoded output bound.
+    pub const fn max_output_bytes(self) -> u32 {
+        self.0.max_output_bytes
+    }
+    /// Original attempt deadline bound.
+    pub const fn timeout_ms(self) -> u64 {
+        self.0.timeout_ms
+    }
+    /// Original required capability declarations.
+    pub fn required_capabilities(self) -> &'a [Capability] {
+        &self.0.required_capabilities
+    }
+
+    /// Exact original declaration encoding, including its historical scalar tags.
+    pub fn wire_bytes(self) -> Result<Vec<u8>, StoredContractError> {
+        Ok(postcard::to_allocvec(self.0)?)
+    }
+
+    /// Exact original per-action ABI, independent of canonical classification.
+    pub fn abi_digest(self) -> Result<WorkflowDigest, StoredContractError> {
+        Ok(WorkflowDigest::from_bytes(
+            blake3::hash(&self.wire_bytes()?).into(),
+        ))
+    }
+
+    /// Project only the unambiguous consistent Pure tuple; this returns data, not authority.
+    pub fn try_canonical(self) -> Result<ActionContract, StoredContractError> {
+        if self.0.side_effect != ColdSideEffect::None
+            || self.0.idempotency != ColdIdempotency::DeterministicPure
+            || self.0.retry_safety != ColdRetrySafety::Safe
+        {
+            return Err(StoredContractError::UnsupportedHistoricalClassification {
+                action: self.0.id,
+            });
+        }
+        Ok(self.project(
+            SideEffect::Pure,
+            Idempotency::DeterministicPure,
+            RetrySafety::Idempotent,
+        ))
+    }
+
+    pub(crate) fn try_current_canonical(self) -> Result<ActionContract, StoredContractError> {
+        if self.0.side_effect != ColdSideEffect::None
+            || self.0.idempotency != ColdIdempotency::IdempotentExternal
+        {
+            return self.try_canonical();
+        }
+        let retry = match self.0.retry_safety {
+            ColdRetrySafety::Safe => RetrySafety::Idempotent,
+            ColdRetrySafety::KeyRequired => RetrySafety::RequiresIdempotencyKey,
+            ColdRetrySafety::Unsafe => return self.try_canonical(),
+        };
+        Ok(self.project(
+            SideEffect::ExternalRead,
+            Idempotency::IdempotentExternal,
+            retry,
+        ))
+    }
+
+    fn project(
+        self,
+        side_effect: SideEffect,
+        idempotency: Idempotency,
+        retry_safety: RetrySafety,
+    ) -> ActionContract {
+        ActionContract {
+            id: self.0.id,
+            name: self.0.name.clone(),
+            input_slot_count: self.0.input_slot_count,
+            output_slot_count: self.0.output_slot_count,
+            max_input_bytes: self.0.max_input_bytes,
+            max_output_bytes: self.0.max_output_bytes,
+            timeout_ms: self.0.timeout_ms,
+            idempotency,
+            side_effect,
+            retry_safety,
+            required_capabilities: self.0.required_capabilities.clone(),
+        }
+    }
+}

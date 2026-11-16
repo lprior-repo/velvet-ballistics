@@ -1,0 +1,200 @@
+{
+  "status": "Frozen wrap handoff; no further work units or main push from this chat",
+  "centralMainWriter": "01a1d89d-0806-7863-8410-2ae357529ab2",
+  "workspace": "/home/lewis/src/isoloated/vb-engine-proof28-r24",
+  "combinedCandidate": {
+    "beads": [
+      "vb-eirmk.75.8.25.28",
+      "vb-wnvj0"
+    ],
+    "finalBranchOrTip": null,
+    "representation": "Source-only aggregate patch after Git-step stop; exact per-file preimages replace a final tip",
+    "componentBase": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "patch": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/combined.patch",
+      "sha256": "87caead66576367dc593650dab2525888d690ae40f3db7b141d91fa8fd017289"
+    },
+    "files": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/files.json",
+      "sha256": "2f7cd16ca73df7eab7ac25381f7fdb4287b171c6da717bc290eb2d15a1c88696"
+    },
+    "fileCount": 73,
+    "sourceImports": 38,
+    "independentlyReviewedCitationFiles": 37,
+    "traversalSupplementFiles": 2,
+    "source": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/source",
+    "currentR18PreimagesMatchedAtPackaging": true,
+    "plainPatchDryRun": {
+      "exit": 0,
+      "command": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/patch-check.command.json",
+        "sha256": "4aa4de6a4747580c26da62d79c324c73d258a35521c54c481f00a915d98d598b"
+      },
+      "stdout": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/patch-check.stdout",
+        "sha256": "acc48c72bc66447c3aa1635d3eafb17e1336e6adfadb19c3899a00a653da3b3f"
+      }
+    },
+    "commitProposal": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/final-handoff/commit-message.txt",
+      "sha256": "285035b97edb3683f0457288a9040927f0e5510fdeaef2862043dba29cbfabcd"
+    },
+    "integrationRule": "Apply this one aggregate patch, not its component alternatives. Match files.json preimages; preserve every unrelated change and current taint source. A postimage match means that path is already selected. Stop on any other mismatch."
+  },
+  "reviews": {
+    "native14Code": {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/cursor-review/review.md",
+      "sha256": "80eef5d0c7e560356fba294c2fe3d9a8b32a0d40e83b3f48d5857e465cd2e43e"
+    },
+    "native14Test": {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/native14-test-review/test-suite-review.md",
+      "sha256": "46f6ad366e448246eeddcaac071bbf3bb02122da6415027f478f6ceefc68835d"
+    },
+    "native14Packet": {
+      "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/native14-qualified.json",
+      "sha256": "14eeb04372b44c4030d1b9f70d1f606ea2e1b77ffe854641ec991714cceb911a"
+    },
+    "v4Code": {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/bridge-code-review/review.md",
+      "sha256": "6a7d974db61e6e8d8e167b1a1277c920aea1a1affcc3274c939f3efbf9fe1fa7"
+    },
+    "v4CodeReceipt": {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/bridge-code-review/receipt.sha256",
+      "sha256": "605f7143d0d12a5df4bd2ea27579e7663203d28589eeac375c77c566a1ee3db5"
+    },
+    "v4Test": {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/test-review.md",
+      "sha256": "3b8a17d886c6adf5fa85f9381184253ec2482fdc0a84522a02fd9219b26ad954"
+    },
+    "v4TestReceipt": {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/test-receipt.sha256",
+      "sha256": "56ceca6f3002dc2852db6c2dfe16884f75b4fe89414480084648c44cb76e18fb"
+    },
+    "citationCode": {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/citation-v4-code-review/review.md",
+      "sha256": "3676b7c844ae0d50312f18f191876935d5efac40403023e08af45eed0bf9a4ec"
+    },
+    "traversalCitationCode": {
+      "path": "/home/lewis/src/isoloated/vb-cursor-code-review-r24/.evidence/citation-v4-code-review/final-traversal/review.md",
+      "sha256": "1872e6409c4b6bcd79f2d9907bdc7d8285f6fd7a7b0090eb563b9d3d2d2bfc25"
+    },
+    "authorReport": {
+      "path": "/home/lewis/src/isoloated/vb-walk-math-factor-r24/.evidence/combined-qualification-r24/report-v4.md",
+      "sha256": "56575252651b396b9abad7bba2c080c839b1ae05a24f6f4c1af86fac3eb400ca"
+    },
+    "authorEvidence": {
+      "path": "/home/lewis/src/isoloated/vb-walk-math-factor-r24/.evidence/combined-qualification-r24/v4-evidence.sha256",
+      "sha256": "999bd997071815fceff6ebab22eb8a6c09b8aeb13265ad22b480c3afd60e84d1"
+    },
+    "executableSourceManifest": {
+      "path": "/home/lewis/src/isoloated/vb-walk-math-factor-r24/.evidence/combined-qualification-r24/v4-frozen.json",
+      "sha256": "5876ebcc1aebcdef7b28fe0dfb414f980d5618369b22a1b144bbd4d0cb37b33d"
+    },
+    "postCommentPacket": {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/citations/final-traversal/packet.md",
+      "sha256": "d6de0692ee4087fdfafc18843280b6dcde461d16a5036f8a8d93b30a2cd12bb2"
+    },
+    "postCommentReceipt": {
+      "path": "/home/lewis/src/isoloated/vb-proof28-route-r24/.evidence/v4-integration-test/citations/final-traversal/receipt.sha256",
+      "sha256": "66f1236343db8a47061634e7d7828579e3aff9a489722096b11402e851d38f39"
+    }
+  },
+  "observedChecks": {
+    "independentFullNativeCore": "4034/4034 passed, 0 skipped; original manifests/devdeps/lock, pinned nightly, all-features, -Dwarnings, 2 Cargo jobs, 4 test threads",
+    "independentNativeParity": "5192 public outputs identical to freshly built original; 2 public boundary and 7 actual private cursor checks pass",
+    "directPrivateKernel": "73 verified, 0 errors; actual Found-to-None body negative 72/1",
+    "owningV4": "197 verified, 0 errors independently CODE and TEST; --no-cheating, one verifier thread, actual owning source, no extern vb_core adapter",
+    "v4Negatives": "Native endpoint None and executable concurrent discriminant 35-to-12 each reject unchanged postconditions, 196/1",
+    "canonicalLegacy": "323 verified, 0 errors; 17 unrelated existing assumed specifications retained in companion target, absent from owning scope",
+    "originalRegression": "Original concurrent/loop failures changed from 2 mismatches to 0 across unchanged four native fixtures and mapper; two incorrect legacy rejection literals corrected; exact native pair assertions retained",
+    "independentProjectionLiterals": "25 exact pair/None assertions pass, same stdout digest",
+    "nativeErasure": "Entire 4933438-byte compiler-expanded baseline reproduced after removing exactly one added blank line; no executable difference",
+    "nativeSourceChecks": "Strict Clippy, Cargo fmt, verusfmt, native metadata all exit 0; source-length scans 1543 production files with 0 over limit plus exact compile-split check exit 0",
+    "sourceBounds": "7 semantic proof modules <=225 physical lines; all72 helper functions <=25 logical lines, unchanged checker",
+    "postCommentCitationGate": "56 unit tests, 47 CLI tests, 1098 citation checks, 0 failures, exit 0",
+    "productionBinding": "0 vacuum, 34 inherited weak bindings; static hygiene only, no registry closure",
+    "compatibility": {
+      "frozenShippedTaint": {
+        "sha256": "c9a8d701a313dcedb2886ef30c635bb7138ab86c12341d73d8a3572803e57080",
+        "result": "199 verified, 0 errors, exit 0",
+        "command": {
+          "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/shipped-compat.command.json",
+          "sha256": "958d8fb04adab6c9739b9c9a2b731c1e3fed2551a720cf33c1112d90c442db1d"
+        },
+        "stdout": {
+          "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/shipped-compat.stdout",
+          "sha256": "6e3086f646f593813d3bffe82f7f26c4904b959aaa2cbd5088fd295a351a2e68"
+        }
+      },
+      "currentR18Taint": {
+        "sha256": "df46b7d0a5f54a123208a5627426c718e3fdaf6c83ece380fbc6bb6a847af965",
+        "result": "exit1 before proof: E0432 missing SlotCell in frame.rs42/value.rs12; cfg(not(verus_keep_ghost)) removes it",
+        "command": {
+          "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/current-compat.command.json",
+          "sha256": "69fea5b12a628819e73d5874e8d295f858d9523923a79d174aab580b6248b603"
+        },
+        "stdout": {
+          "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/current-compat.stdout",
+          "sha256": "0bece74f87b0af7fe9af021b47ca2c67aa585581d042d4fbbe2f3c5def42981f"
+        }
+      }
+    }
+  },
+  "otherDeliverables": {
+    "recoveryUnion": {
+      "bead": "vb-og12k",
+      "status": "Scoped CODE+TEST approved; waiting central integration",
+      "bookmark": "codex/recovery-proof-r24",
+      "tip": "d4f419048532322d4dcc1a74558c2922f417ace6",
+      "remotePushed": false,
+      "manifest": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/ready.json",
+        "sha256": "80a02e33c21800d0ed0f845e7e1fbf58b8b7ebdbaeca1bf49db3912680139616"
+      },
+      "results": "10/0 Verus, OR-to-AND negative rejected, independent focused native15/15, strict lint/fmt/binding/drift0; full storage author run timed out124 in unchanged journal properties, not a full package pass"
+    },
+    "taintJoin": {
+      "bead": "vb-m4l84",
+      "status": "Tracker CLOSED; central reported original leaf landed, no duplicate patch in aggregate",
+      "preservedBookmark": "codex/taint-proof-r24",
+      "preservedTip": "4a040c0a55e6216bf23558a92055abd86d92e7bc",
+      "manifest": {
+        "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/taint-ready.json",
+        "sha256": "aeedc311f16225c15b55721247b361b9c5d90ceebd3b6587cedae3397cfa72f6"
+      }
+    },
+    "recoveryErrorRefinement": {
+      "bead": "vb-god2f.6",
+      "status": "IN_PROGRESS, actual-return binding blocked",
+      "report": {
+        "path": "/home/lewis/src/isoloated/vb-recovery-refinement-r24/.evidence/recovery-refinement-r24/report.md",
+        "sha256": "e08095dbd3bb8d77cb0b40bb302559ce6875d71c1bee3d511db5b5809201ff11"
+      },
+      "results": "Actual native4/4 pass; old universal InvalidRecoveryHydration expectation genuinely fails with RecoveryCannotResume slot_taint; exact tests restored,4/4 pass; no actual-return proof claimed"
+    }
+  },
+  "blockers": [
+    "Current r18 taint revision df46 cfg-gates SlotCell out of ghost builds. Central-owned .7 is closed for its standalone target, but owning-core composition now fails E0432. The aggregate deliberately does not edit/revert this taint source. Reconcile this integration blocker before claiming V4 on current main.",
+    "Actual public WorkflowError/RuntimeError error graphs contain CoreError -> chrono DateTime<Utc>. Pinned Verus translates unsupported unused enum payloads too. No new trust/opaque type/body assumption, dependency, compiler feature or public representation change was authorized. Public .28 and actual recovery .6 return proofs remain OPEN.",
+    "No protected registry/gate edits were made. Direct owning proof registry wiring, post-integration joined moon ci and central publication remain unverified.",
+    "The first independent CODE adapter wrote compiled output into author out/v4-marking. Source/logs were unaffected; that compiled artifact is explicitly excluded. Corrected CODE replay used its own output and passed197/0. No compiled-library publication claim."
+  ],
+  "preservedState": {
+    "additionalLocalNativeRefs": [
+      {
+        "bookmark": "codex/proof28-private-kernel-r24",
+        "tip": "f89791e26d87a5f339b8877545227659a620fc34"
+      },
+      {
+        "bookmark": "codex/proof28-private-scans-r24",
+        "tip": "483e93a82dc3a4544f04eef6fd571d123cf593bc"
+      }
+    ],
+    "gitStops": [
+      "Installed JJ0.46 rejected obsolete --allow-new on recovery publication; no retry",
+      "Abbreviated read-only Git object lookups were ambiguous; no ref/state mutation, no subsequent retries/pushes"
+    ],
+    "policy": "Every workspace, reference, source snapshot and raw report preserved. No main edits/push, history rewriting, cleanup/deletion, new dependency, schema/API change, GPU, Python or benchmark."
+  },
+  "beadSync": "Pending final root bd dolt push; separate sync receipt will record actual exit"
+}

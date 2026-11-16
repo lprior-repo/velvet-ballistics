@@ -1,0 +1,113 @@
+use super::HistoricalArtifactError;
+use crate::{AcceptedArtifact, JournalError};
+use vb_core::workflow::{CompiledNodeKind, WorkflowIrProfile};
+use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest, WorkflowParts};
+
+pub(super) fn decode(
+    artifact: &AcceptedArtifact,
+    packed: bool,
+) -> Result<CompiledWorkflow, HistoricalArtifactError> {
+    let parts = decode_parts(artifact)?;
+    let workflow = if concurrent_parts(&parts, packed) {
+        CompiledWorkflow::try_from_concurrent_parts(parts)
+    } else {
+        CompiledWorkflow::try_from_parts(parts)
+    };
+    Ok(workflow.map_err(JournalError::WorkflowReconstruction)?)
+}
+
+fn decode_parts(artifact: &AcceptedArtifact) -> Result<WorkflowParts, HistoricalArtifactError> {
+    let len = u32::try_from(artifact.ir.len()).map_err(|_| JournalError::ArtifactMalformed)?;
+    if len > crate::constants::MAX_COMPILED_IR_BYTES {
+        return Err(JournalError::PayloadTooLarge {
+            len,
+            max: crate::constants::MAX_COMPILED_IR_BYTES,
+        }
+        .into());
+    }
+    let (parts, rest): (WorkflowParts, _) =
+        postcard::take_from_bytes(&artifact.ir).map_err(JournalError::PostcardDecodeFailed)?;
+    if !rest.is_empty() {
+        return Err(JournalError::ArtifactMalformed.into());
+    }
+    Ok(parts)
+}
+
+fn concurrent_parts(parts: &WorkflowParts, packed: bool) -> bool {
+    !packed
+        && parts.nodes.iter().any(|node| {
+            matches!(
+                node.kind,
+                CompiledNodeKind::ForEachConcurrentStart { .. }
+                    | CompiledNodeKind::TogetherConcurrentStart { .. }
+                    | CompiledNodeKind::FirstSuccessStart { .. }
+                    | CompiledNodeKind::ConcurrentLaneEnd { .. }
+                    | CompiledNodeKind::ConcurrentGroupJoin { .. }
+            )
+        })
+}
+
+pub(super) fn historical(
+    artifact: &AcceptedArtifact,
+    workflow: &CompiledWorkflow,
+    policy: RuntimePolicy,
+    packed: bool,
+) -> Result<WorkflowParts, JournalError> {
+    let parts = checked_parts(workflow)?;
+    vb_validate::shared::validate(&parts).map_err(JournalError::ArtifactValidation)?;
+    super::gate12::validate(&parts, &artifact.action_contracts)
+        .map_err(JournalError::ArtifactValidation)?;
+    super::contracts::validate_registry(&artifact.action_contracts)?;
+    super::contracts::validate_legacy_tuples(&artifact.action_contracts)?;
+    if !packed
+        && policy == RuntimePolicy::Strict
+        && super::contracts::effectful_count(&artifact.action_contracts) != 0
+    {
+        return Err(JournalError::MissingRequiredProofFlag {
+            flag: "executor_conformance",
+        });
+    }
+    check_digest(&parts, workflow.digest())?;
+    Ok(parts)
+}
+
+pub(super) fn canonical(
+    artifact: &AcceptedArtifact,
+    workflow: &CompiledWorkflow,
+) -> Result<(), JournalError> {
+    let parts = checked_parts(workflow)?;
+    let contracts = artifact.action_contracts.try_current_canonical()?;
+    vb_validate::shared::validate_with_contracts(&parts, &contracts)
+        .map_err(JournalError::ArtifactValidation)?;
+    vb_validate::idempotency_contract::validate_workflow_idempotency_contracts(&parts, &contracts)
+        .map_err(JournalError::ArtifactIdempotencyValidation)?;
+    vb_core::action::validate_action_registry(&contracts)
+        .map_err(JournalError::ArtifactActionRegistry)?;
+    check_digest(&parts, workflow.digest())?;
+    Ok(())
+}
+
+pub(crate) fn checked_parts(workflow: &CompiledWorkflow) -> Result<WorkflowParts, JournalError> {
+    let parts = workflow.to_parts();
+    let checked = match workflow.ir_profile() {
+        WorkflowIrProfile::LegacyV2 => CompiledWorkflow::try_from_parts(parts.clone()),
+        WorkflowIrProfile::ConcurrentV3 => {
+            CompiledWorkflow::try_from_concurrent_parts(parts.clone())
+        }
+    };
+    checked.map_err(JournalError::WorkflowReconstruction)?;
+    Ok(parts)
+}
+
+pub(crate) fn check_digest(
+    parts: &WorkflowParts,
+    expected: WorkflowDigest,
+) -> Result<(), JournalError> {
+    let mut canonical = parts.clone();
+    canonical.digest = WorkflowDigest::from_bytes([0; 32]);
+    let bytes = postcard::to_allocvec(&canonical).map_err(JournalError::PostcardEncodeFailed)?;
+    if super::proof::digest(&bytes) != expected {
+        return Err(JournalError::ArtifactChecksumMismatch);
+    }
+    Ok(())
+}

@@ -1,0 +1,65 @@
+[
+  {
+    "id": "vb-og12k",
+    "paths": [
+      "crates/vb_storage/src/recovery/types/unsupported.rs",
+      "verification/verus/unsupported_recovery_state.rs"
+    ],
+    "tip": "d4f419048532322d4dcc1a74558c2922f417ace6",
+    "status": "already_in_main881_no_reapply",
+    "files": [
+      {
+        "path": "crates/vb_storage/src/recovery/types/unsupported.rs",
+        "sha256": "91c3e6c4d1858894ebcd3b52ca07b1bb214d8a767cc418792123a5617a228ba1",
+        "matches_frozen": true
+      },
+      {
+        "path": "verification/verus/unsupported_recovery_state.rs",
+        "sha256": "9c33723ad8bde618b74145a8c3eaeb43fe594bb72a5cc2f519f50130d7e3ec81",
+        "matches_frozen": true
+      }
+    ]
+  },
+  {
+    "id": "numeric-refusal-citations",
+    "paths": [
+      "verification/verus/extern_recovery_verification.rs",
+      "verification/verus/recovery_types_production_bridge.rs"
+    ],
+    "tip": "2e69ff7f2cf9e03f48c3a3c0217711ac39a5b72e",
+    "status": "already_in_main881_no_reapply",
+    "files": [
+      {
+        "path": "verification/verus/extern_recovery_verification.rs",
+        "sha256": "3600e293b0adde42f108fe293a73170657a5bf9adf380a09461df0d50f43c5a6",
+        "matches_frozen": true
+      },
+      {
+        "path": "verification/verus/recovery_types_production_bridge.rs",
+        "sha256": "2abeca101c059a419e1a48279cfc3240622a9c079da07347f7205163f0882787",
+        "matches_frozen": true
+      }
+    ]
+  },
+  {
+    "id": "numeric-timer-citations",
+    "paths": [
+      "verification/verus/extern_ipc_runtime_transitions.rs",
+      "verification/verus/ipc_runtime_transitions.rs"
+    ],
+    "tip": "0af9ff2a3108e98f0992e037f0ce521b35e18b4b",
+    "status": "already_in_main881_no_reapply",
+    "files": [
+      {
+        "path": "verification/verus/extern_ipc_runtime_transitions.rs",
+        "sha256": "7a7c8bebbcdb69a8ff5f503bd026354cc3eedfe229efa31c427e9216b13b2df7",
+        "matches_frozen": true
+      },
+      {
+        "path": "verification/verus/ipc_runtime_transitions.rs",
+        "sha256": "d2bbeb37c7815b08c0f19c86d266c9025e81f8c79f6176e6eb99fa314e89c6ff",
+        "matches_frozen": true
+      }
+    ]
+  }
+]

@@ -1,0 +1,141 @@
+vstd::prelude::verus! {
+
+spec fn projected_outer(d: u32, t: Seq<u32>) -> Option<(Seq<u32>, u32)> {
+    if (d == 12 || d == 35) && t.len() > 0 {
+        Some((t.drop_last(), t.last()))
+    } else {
+        None
+    }
+}
+
+spec fn actual_outer(n: &Node) -> Option<(Seq<u32>, u32)> {
+    match &n.kind {
+        K::TogetherStart { branches, join, .. }
+        | K::TogetherConcurrentStart { branches, join, .. } => Some(
+            (branches@.map_values(|b: StepIdx| b.raw_spec() as u32), join.raw_spec() as u32),
+        ),
+        _ => None,
+    }
+}
+
+#[verifier::inline]
+spec fn row_identity(n: &Node, row: Meta) -> bool {
+    row.id as int == n.id.raw_spec() as int && row.kind_disc == native_disc(&n.kind)
+        && match n.routing.next {
+        Next::End => row.has_next == 0 && row.next_step == u32::MAX,
+        Next::Step(step) => row.has_next == 1 && row.next_step == step.raw_spec() as u32,
+    }
+}
+
+fn project_row_identity(n: &Node, mut row: Meta) -> (out: Meta)
+    ensures
+        row_identity(n, out),
+{
+    row.id = u32::from(n.id.get());
+    row.kind_disc = disc(&n.kind);
+    match n.routing.next {
+        Next::End => {
+            row.has_next = 0;
+            row.next_step = u32::MAX;
+        },
+        Next::Step(step) => {
+            row.has_next = 1;
+            row.next_step = u32::from(step.get());
+        },
+    }
+    row
+}
+
+#[verifier::inline]
+spec fn row_projection(n: &Node, row: Meta, targets: Seq<u32>, fallback: Seq<u32>) -> bool {
+    row.id as int == n.id.raw_spec() as int && row.kind_disc == native_disc(&n.kind) && targets
+        == raw_targets(n, fallback) && (row.kind_disc == 12 || row.kind_disc == 35)
+        == matches!(&n.kind, K::TogetherStart { .. } | K::TogetherConcurrentStart { .. })
+        && projected_outer(row.kind_disc, targets) == actual_outer(n) && forall|prefix: Seq<usize>|
+        decoded(row, targets, prefix) == successor_stack(n, prefix)
+}
+
+fn project_nested_row(n: &Node, row: Meta, fallback: Vec<u32>) -> (out: (Meta, Vec<u32>))
+    ensures
+        row_projection(n, out.0, out.1@, fallback@),
+{
+    let row = project_row_identity(n, row);
+    let targets = native_targets(n, fallback);
+    match &n.kind {
+        K::TogetherStart { branches, join, .. }
+        | K::TogetherConcurrentStart { branches, join, .. }
+        | K::FirstSuccessStart { branches, join, .. } => {
+            assert(targets@.drop_last() =~= branches@.map_values(
+                |step: StepIdx| step.raw_spec() as u32,
+            ));
+            assert(targets@.drop_last().map_values(|raw: u32| raw as usize)
+                =~= branches@.map_values(|step: StepIdx| step.raw_spec() as usize));
+        },
+        _ => {},
+    }
+    assert forall|prefix: Seq<usize>|
+        decoded(row, targets@, prefix) == successor_stack(n, prefix) by {
+        assert(decoded(row, targets@, prefix) =~= successor_stack(n, prefix));
+    }
+    (row, targets)
+}
+
+use crate::nested_legacy::SpecWorkflowParts as LegacyParts;
+use crate::workflow::WorkflowParts as NativeParts;
+
+spec fn observed(n: &Node, m: Meta, t: Seq<u32>) -> bool {
+    m.id as int == n.id.raw_spec() as int && m.kind_disc == native_disc(&n.kind) && t
+        == raw_targets(n, Seq::empty()) && (m.kind_disc == 12 || m.kind_disc == 35)
+        == matches!(&n.kind,K::TogetherStart{..}|K::TogetherConcurrentStart{..}) && projected_outer(
+        m.kind_disc,
+        t,
+    ) == actual_outer(n) && (forall|prefix: Seq<usize>| #[trigger]
+        decoded(m, t, prefix) == successor_stack(n, prefix))
+}
+
+#[verifier::inline]
+spec fn table_prefix(p: &NativeParts, rows: Seq<Meta>, targets: Seq<Vec<u32>>, count: int) -> bool {
+    rows.len() == count && targets.len() == count && forall|index: int|
+        0 <= index < count ==> #[trigger] observed(&p.nodes@[index], rows[index], targets[index]@)
+}
+
+fn project_table_rows(p: &NativeParts, template: Meta) -> (out: (Vec<Meta>, Vec<Vec<u32>>))
+    ensures
+        table_prefix(p, out.0@, out.1@, p.nodes@.len() as int),
+{
+    let mut rows = Vec::new();
+    let mut targets = Vec::new();
+    let mut index = 0usize;
+    while index < p.nodes.len()
+        invariant
+            index <= p.nodes@.len(),
+            table_prefix(p, rows@, targets@, index as int),
+        decreases p.nodes@.len() - index,
+    {
+        if let Some(node) = p.nodes.get(index) {
+            let (row, values) = project_nested_row(node, template, Vec::new());
+            assert(observed(node, row, values@));
+            rows.push(row);
+            targets.push(values);
+        }
+        index = advance_projection_index(index, p.nodes.len());
+    }
+    (rows, targets)
+}
+
+fn project_nested_table(p: &NativeParts, mut target: LegacyParts, template: Meta) -> (out:
+    LegacyParts)
+    ensures
+        stored_image(p, &out),
+{
+    let (rows, targets) = project_table_rows(p, template);
+    target.nodes_meta = rows;
+    target.kind_targets = targets;
+    target.nodes_len = match u32::try_from(p.nodes.len()) {
+        Ok(length) => length,
+        Err(_) => u32::MAX,
+    };
+    target
+}
+
+} // verus!

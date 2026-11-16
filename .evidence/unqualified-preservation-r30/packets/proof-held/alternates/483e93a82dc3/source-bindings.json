@@ -1,0 +1,32 @@
+[
+  {
+    "path": "crates/vb_core/src/engine/validate/nested_together.rs",
+    "base": "f89791e26d87a5f339b8877545227659a620fc34",
+    "preimage_sha256": "97a3bad02c4cc079f33bd75336ed80fe58a5f112c744fa8a21f8717e80830496",
+    "sourcepost_sha256": "cfc8837f4485892afd85df5e452865bc2bdd80a6abeb6f102f5bac340fe9b463",
+    "readable": "alternates/483e93a82dc3/postimages/crates/vb_core/src/engine/validate/nested_together.rs.txt",
+    "bytes": 6436,
+    "current_main_sha256": "cde9cd4ab6ed7fe81ce6b3c6e0e028ed3e8bee0173d64ce0b7776dfb62b50681",
+    "current_main_relation": "archived_only_not_applied"
+  },
+  {
+    "path": "crates/vb_core/src/engine/validate/nested_together/scan_spec.rs",
+    "base": "f89791e26d87a5f339b8877545227659a620fc34",
+    "preimage_sha256": "e4ae38c6bf7edc3c5c6d3adeb243fc3eed8e96f5114917b641da1ce0ca4def9f",
+    "sourcepost_sha256": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4",
+    "readable": "alternates/483e93a82dc3/postimages/crates/vb_core/src/engine/validate/nested_together/scan_spec.rs.txt",
+    "bytes": 3518,
+    "current_main_sha256": null,
+    "current_main_relation": "archived_only_not_applied"
+  },
+  {
+    "path": "crates/vb_core/src/engine/validate/nested_together/successors.rs",
+    "base": "f89791e26d87a5f339b8877545227659a620fc34",
+    "preimage_sha256": "69836dc9c0c3cfb67748d12850fa3d061e3308c1577f0893f263b563a81055c6",
+    "sourcepost_sha256": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b",
+    "readable": "alternates/483e93a82dc3/postimages/crates/vb_core/src/engine/validate/nested_together/successors.rs.txt",
+    "bytes": 5357,
+    "current_main_sha256": null,
+    "current_main_relation": "archived_only_not_applied"
+  }
+]

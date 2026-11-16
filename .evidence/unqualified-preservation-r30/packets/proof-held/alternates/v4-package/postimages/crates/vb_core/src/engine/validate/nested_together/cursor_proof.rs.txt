@@ -1,0 +1,227 @@
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+
+type WalkBefore = (Seq<usize>, Set<usize>, int);
+
+#[verifier::inline]
+spec fn cursor_before_answer(query: WalkQuery, before: WalkBefore, policy: bool) -> Option<
+    StepIdx,
+> {
+    walk_reference(
+        query.nodes@,
+        query.keys@,
+        before.0,
+        query.stop,
+        query.outer,
+        before.1,
+        before.2,
+        policy,
+    )
+}
+
+#[verifier::inline]
+spec fn cursor_after_answer(cursor: &WalkCursor, event: TogetherWalkVisit, policy: bool) -> Option<
+    StepIdx,
+> {
+    match event {
+        TogetherWalkVisit::Found(step) => Some(step),
+        TogetherWalkVisit::Overflow if policy => Some(cursor.query.outer),
+        _ => cursor.answer(policy),
+    }
+}
+
+#[verifier::inline]
+spec fn cursor_initialized(cursor: &WalkCursor, query: WalkQuery, start: usize) -> bool {
+    cursor.query == query && cursor.stack@ == seq![start] && cursor.visited@ == Set::<
+        usize,
+    >::empty() && cursor.remaining@ == 1 + walk_weight_from(query.nodes@, Set::empty(), 0) as int
+}
+
+proof fn initialize_cursor_answers(cursor: &WalkCursor, query: WalkQuery, start: usize)
+    requires
+        cursor_initialized(cursor, query, start),
+    ensures
+        cursor.answer(false) == initial_walk(query, start, false),
+        cursor.answer(true) == initial_walk(query, start, true),
+{
+    reveal(initial_walk);
+    reveal(WalkCursor::answer);
+}
+
+spec fn cursor_event(query: WalkQuery, before: WalkBefore, index: usize) -> TogetherWalkVisit {
+    if !can_visit(query.nodes@.len(), index, query.stop, before.1) {
+        TogetherWalkVisit::Continue
+    } else if index > 65535 {
+        TogetherWalkVisit::Overflow
+    } else if is_nested_start(query.keys@, index, query.outer) {
+        TogetherWalkVisit::Found(StepIdx::from_raw_spec(index as u16))
+    } else {
+        TogetherWalkVisit::Continue
+    }
+}
+
+spec fn cursor_step_matches(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    index: usize,
+    event: TogetherWalkVisit,
+) -> bool {
+    let query = cursor.query;
+    before.0.len() > 0 && index == before.0.last() && walk_weight_from(
+        query.nodes@,
+        before.1,
+        0,
+    ) as int + before.0.len() as int <= before.2 && cursor.visited@ == walk_next_seen(
+        query.nodes@.len(),
+        index,
+        query.stop,
+        before.1,
+    ) && cursor.stack@ == walk_next_stack(
+        query.nodes@,
+        query.keys@,
+        before.0.drop_last(),
+        index,
+        query.stop,
+        query.outer,
+        before.1,
+    ) && cursor.remaining@ == before.2 - 1 && event == cursor_event(query, before, index)
+}
+
+spec fn cursor_answer_matches(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    event: TogetherWalkVisit,
+    policy: bool,
+) -> bool {
+    cursor_before_answer(cursor.query, before, policy) == cursor_after_answer(cursor, event, policy)
+}
+
+spec fn cursor_all_answers_match(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    event: TogetherWalkVisit,
+) -> bool {
+    cursor_answer_matches(cursor, before, event, false) && cursor_answer_matches(
+        cursor,
+        before,
+        event,
+        true,
+    )
+}
+
+spec fn cursor_continuing(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    index: usize,
+    event: TogetherWalkVisit,
+    policy: bool,
+) -> bool {
+    cursor_step_matches(cursor, before, index, event) && walk_continue_is_allowed(
+        cursor.query.nodes@.len(),
+        cursor.query.keys@,
+        index,
+        cursor.query.stop,
+        cursor.query.outer,
+        before.1,
+        policy,
+    )
+}
+
+proof fn cursor_continue_policy(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    index: usize,
+    event: TogetherWalkVisit,
+    policy: bool,
+)
+    requires
+        cursor_continuing(cursor, before, index, event, policy),
+    ensures
+        cursor_answer_matches(cursor, before, event, policy),
+{
+    let query = cursor.query;
+    assert(before.0 == before.0.drop_last().push(index));
+    assert(before.2 > 0);
+    walk_reference_continue_step(
+        query.nodes@,
+        query.keys@,
+        before.0.drop_last(),
+        index,
+        query.stop,
+        query.outer,
+        before.1,
+        before.2,
+        policy,
+    );
+}
+
+proof fn cursor_step_potential(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    index: usize,
+    event: TogetherWalkVisit,
+)
+    requires
+        cursor_step_matches(cursor, before, index, event),
+    ensures
+        cursor.valid(),
+{
+    let query = cursor.query;
+    walk_step_drops_potential(
+        query.nodes@,
+        query.keys@,
+        before.0.drop_last(),
+        index,
+        query.stop,
+        query.outer,
+        before.1,
+    );
+    assert(before.0.drop_last().len() + 1 == before.0.len());
+}
+
+proof fn cursor_step_policy(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    index: usize,
+    event: TogetherWalkVisit,
+    policy: bool,
+)
+    requires
+        cursor_step_matches(cursor, before, index, event),
+    ensures
+        cursor_answer_matches(cursor, before, event, policy),
+{
+    let query = cursor.query;
+    assert(before.0 == before.0.drop_last().push(index));
+    assert(before.2 > 0);
+    match event {
+        TogetherWalkVisit::Found(_) => {
+            reveal(walk_reference);
+        },
+        TogetherWalkVisit::Overflow if policy => {
+            reveal(walk_reference);
+        },
+        _ => {
+            cursor_continue_policy(cursor, before, index, event, policy);
+        },
+    }
+}
+
+proof fn complete_cursor_step(
+    cursor: &WalkCursor,
+    before: WalkBefore,
+    index: usize,
+    event: TogetherWalkVisit,
+)
+    requires
+        cursor_step_matches(cursor, before, index, event),
+    ensures
+        cursor.valid(),
+        cursor_all_answers_match(cursor, before, event),
+{
+    cursor_step_potential(cursor, before, index, event);
+    cursor_step_policy(cursor, before, index, event, false);
+    cursor_step_policy(cursor, before, index, event, true);
+}
+
+} // verus!

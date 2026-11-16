@@ -1,0 +1,140 @@
+use super::support::{Fixture, TestResult};
+use vb_core::value_store::transport::CheckpointTransportError;
+use vb_core::{ActionContract, Idempotency, SideEffect};
+use vb_runtime::run_continuation::{RunContinuationError, RunContinuationV1, TransportFailure};
+
+fn read_contract() -> TestResult<ActionContract> {
+    let mut contract = super::contracts::accepted()?;
+    contract.idempotency = Idempotency::IdempotentExternal;
+    contract.side_effect = SideEffect::ExternalRead;
+    Ok(contract)
+}
+
+#[test]
+fn hot_contract_mismatch_refuses_both_capture_paths_without_normalizing_or_mutation() -> TestResult
+{
+    for after in [false, true] {
+        let mut fixture = super::action_fixture::at_cut(after)?;
+        let authority = fixture.authority()?;
+        let contract = fixture
+            .state
+            .action_contracts
+            .first_mut()
+            .ok_or("contract missing")?;
+        contract.timeout_ms = contract
+            .timeout_ms
+            .checked_add(1)
+            .ok_or("timeout overflow")?;
+        let before = fixture.state.clone();
+        assert!(matches!(
+            RunContinuationV1::capture(&fixture.state, &authority),
+            Err(RunContinuationError::Contracts)
+        ));
+        assert_eq!(fixture.state, before);
+        let error = RunContinuationV1::capture_transport(
+            &fixture.state,
+            &authority,
+            super::golden::limits(1_048_576)?,
+        )
+        .err()
+        .ok_or("mismatched hot contracts normalized by borrowed capture")?;
+        assert!(matches!(
+            error.failure,
+            TransportFailure::Strong(ref inner) if matches!(**inner, RunContinuationError::Contracts)
+        ));
+        assert!(!error.strong_decode_started);
+        assert_eq!(fixture.state, before);
+    }
+    Ok(())
+}
+
+#[test]
+fn external_read_uses_original_cold_registry_in_owned_and_borrowed_wire() -> TestResult {
+    for after in [false, true] {
+        let fixture = super::action_fixture::at_cut_with_contract(after, read_contract()?)?;
+        let authority = fixture.authority()?;
+        let before = fixture.state.clone();
+        let ordinary = RunContinuationV1::capture(&fixture.state, &authority)?.to_bytes()?;
+        let borrowed = RunContinuationV1::capture_transport(
+            &fixture.state,
+            &authority,
+            super::golden::limits(1_048_576)?,
+        )?;
+        assert_eq!(borrowed.as_bytes(), ordinary);
+        let raw = fixture.artifact.action_contracts.wire_bytes()?;
+        assert_ne!(raw, postcard::to_allocvec(&fixture.state.action_contracts)?);
+        let start = registry_start(&ordinary, &fixture)?;
+        let end = start
+            .checked_add(raw.len())
+            .ok_or("registry range overflow")?;
+        assert_eq!(ordinary.get(start..end), Some(raw.as_slice()));
+        let decoded = RunContinuationV1::from_bytes(&ordinary, &authority)?;
+        let restored = decoded.restore(authority)?;
+        assert_eq!(restored.frame, before.frame);
+        assert_eq!(restored.store, before.store);
+        assert_eq!(restored.action_contracts, before.action_contracts);
+        assert_eq!(restored.admission, before.admission);
+        assert_eq!(fixture.state, before);
+    }
+    Ok(())
+}
+
+#[test]
+fn rebound_raw_registry_mismatch_refuses_owned_and_bounded_decode() -> TestResult {
+    let fixture = super::action_fixture::at_cut_with_contract(false, read_contract()?)?;
+    let authority = fixture.authority()?;
+    let before = fixture.state.clone();
+    let mut bytes = RunContinuationV1::capture(&fixture.state, &authority)?.to_bytes()?;
+    let start = registry_start(&bytes, &fixture)?;
+    let original = fixture.artifact.action_contracts.wire_bytes()?;
+    let mut changed = fixture.state.action_contracts.clone();
+    let contract = changed.first_mut().ok_or("contract missing")?;
+    contract.timeout_ms = contract
+        .timeout_ms
+        .checked_add(1)
+        .ok_or("timeout overflow")?;
+    let replacement =
+        vb_storage::StoredActionRegistry::try_from_canonical(&changed)?.wire_bytes()?;
+    assert_ne!(replacement, original);
+    assert_eq!(replacement.len(), original.len());
+    let end = start
+        .checked_add(replacement.len())
+        .ok_or("registry range overflow")?;
+    bytes
+        .get_mut(start..end)
+        .ok_or("registry missing")?
+        .copy_from_slice(&replacement);
+    rebind(&mut bytes)?;
+    assert!(matches!(
+        RunContinuationV1::from_bytes(&bytes, &authority),
+        Err(RunContinuationError::Contracts)
+    ));
+    let error = super::golden::reject(&bytes, &authority, super::golden::limits(1_048_576)?)?;
+    assert!(matches!(
+        error.failure,
+        TransportFailure::Bounds(CheckpointTransportError::Malformed("authority_bytes"))
+    ));
+    assert!(!error.strong_decode_started);
+    assert_eq!(fixture.state, before);
+    Ok(())
+}
+
+fn registry_start(bytes: &[u8], fixture: &Fixture) -> TestResult<usize> {
+    super::layout::positions(bytes, fixture)?
+        .into_iter()
+        .find_map(|(field, offset)| (field == "action_contracts").then_some(offset))
+        .ok_or_else(|| "registry offset missing".into())
+}
+
+fn rebind(bytes: &mut [u8]) -> TestResult {
+    let end = bytes.len().checked_sub(32).ok_or("digest missing")?;
+    let digest = blake3::derive_key(
+        "velvet-ballistics/run-continuation/v1",
+        bytes.get(..end).ok_or("body missing")?,
+    );
+    bytes
+        .get_mut(end..)
+        .ok_or("digest missing")?
+        .copy_from_slice(&digest);
+    Ok(())
+}

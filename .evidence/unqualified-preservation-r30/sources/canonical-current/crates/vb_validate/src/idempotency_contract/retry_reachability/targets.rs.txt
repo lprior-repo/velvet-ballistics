@@ -1,0 +1,159 @@
+use super::{E, IdempotencyContractResult};
+use vb_core::{
+    StepIdx,
+    workflow::{CompiledNode, CompiledNodeKind as K},
+};
+
+pub(super) fn visit(
+    node: &CompiledNode,
+    is_owner: bool,
+    mut add: impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    match &node.kind {
+        K::Finish { .. } | K::ConcurrentLaneEnd { .. } => {}
+        K::Jump { target } => add(*target)?,
+        _ => branching(node, is_owner, &mut add)?,
+    }
+    optional(node.routing.error.handler(), &mut add)
+}
+
+fn branching(
+    node: &CompiledNode,
+    is_owner: bool,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    match &node.kind {
+        K::Choose {
+            branches,
+            otherwise,
+        } => {
+            let targets = branches.iter().map(|branch| branch.target);
+            branches_and_fallback(targets, otherwise.step(), add)
+        }
+        K::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            let targets = branches.iter().map(|branch| branch.target);
+            branches_and_fallback(targets, otherwise.step(), add)
+        }
+        _ => iteration(node, is_owner, add),
+    }
+}
+
+fn branches_and_fallback(
+    mut branches: impl Iterator<Item = StepIdx>,
+    fallback: Option<StepIdx>,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    branches.try_for_each(&mut *add)?;
+    optional(fallback, add)
+}
+
+fn optional(
+    target: Option<StepIdx>,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    target.map_or(Ok(()), add)
+}
+
+fn pair(
+    first: StepIdx,
+    second: StepIdx,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    add(first)?;
+    add(second)
+}
+
+fn iteration(
+    node: &CompiledNode,
+    is_owner: bool,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    match &node.kind {
+        K::ForEachStart { body, done, .. }
+        | K::ForEachNext { body, done, .. }
+        | K::CollectStart { body, done, .. }
+        | K::CollectNext { body, done, .. }
+        | K::ReduceStart { body, done, .. }
+        | K::ReduceNext { body, done, .. } => pair(*body, *done, add),
+        _ => repetition(node, is_owner, add),
+    }
+}
+
+fn repetition(
+    node: &CompiledNode,
+    is_owner: bool,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    match &node.kind {
+        K::RepeatStart { body, .. }
+        | K::RepeatAttempt { body, .. }
+        | K::CollectPage { body, .. }
+        | K::ErrorHandler { body, .. } => add(*body),
+        K::RetryCheck {
+            body, exhausted, ..
+        } => {
+            add(*body)?;
+            optional((!is_owner).then_some(*exhausted), add)
+        }
+        K::RepeatCheck { done, .. } => {
+            add(*done)?;
+            optional(node.routing.next.step(), add)
+        }
+        _ => parallel(node, add),
+    }
+}
+
+fn parallel(
+    node: &CompiledNode,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    match &node.kind {
+        K::TogetherStart { branches, .. } => optional(branches.first().copied(), add),
+        K::TogetherBranch { entry, .. } => add(*entry),
+        K::ForEachConcurrentStart { body, join, .. } => pair(*body, *join, add),
+        K::TogetherConcurrentStart { branches, join, .. }
+        | K::FirstSuccessStart { branches, join, .. } => {
+            branches.iter().try_for_each(|target| add(*target))?;
+            add(*join)
+        }
+        _ => continuation(node, add),
+    }
+}
+
+fn continuation(
+    node: &CompiledNode,
+    add: &mut impl FnMut(StepIdx) -> IdempotencyContractResult<()>,
+) -> IdempotencyContractResult<()> {
+    if !has_continuation(&node.kind) {
+        return Err(E::RetryGraphInvalid {
+            node_index: usize::from(node.id.get()),
+        });
+    }
+    optional(node.routing.next.step(), add)
+}
+
+fn has_continuation(kind: &K) -> bool {
+    matches!(
+        kind,
+        K::Nop
+            | K::SetConst { .. }
+            | K::Copy { .. }
+            | K::EvalExpr { .. }
+            | K::BuildObject { .. }
+            | K::BuildList { .. }
+            | K::Do { .. }
+            | K::ForEachJoin { .. }
+            | K::TogetherJoin { .. }
+            | K::CollectFinish { .. }
+            | K::ReduceFinish { .. }
+            | K::RepeatFinish { .. }
+            | K::WaitUntil { .. }
+            | K::WaitEvent { .. }
+            | K::Ask { .. }
+            | K::AskResume { .. }
+            | K::ConcurrentGroupJoin { .. }
+    )
+}

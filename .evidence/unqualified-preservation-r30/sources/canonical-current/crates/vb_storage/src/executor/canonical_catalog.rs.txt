@@ -1,0 +1,185 @@
+use super::{ExecutedConformance, ExecutorError, RegisterGrant, RegisterReceipt};
+use crate::{AcceptedArtifact, FjallJournal, HistoricalArtifactError, StoredContractError};
+use vb_core::action_pack::{ActionPack, CapabilityScopeSpec, RecoveryClass};
+use vb_core::{ActionContract, ActionId, ActionTicket, CompiledWorkflow, RuntimePolicy};
+
+/// Checked historical adapter observations. Current policy admits no canonical local provider.
+#[derive(Debug, Clone)]
+pub struct ExecutorCatalog {
+    checked: ExecutedConformance,
+}
+
+impl ExecutorCatalog {
+    /// Execute the actual preserved scratch suite without issuing a production grant.
+    pub fn run_registered_conformance() -> Result<Self, ExecutorError> {
+        if !crate::historical::fingerprints::adapter_sources_match() {
+            return Err(ExecutorError::Conformance);
+        }
+        Ok(Self {
+            checked: super::conformance::execute_suite()?,
+        })
+    }
+
+    /// Inspect actual historical adapter observations, never provider declarations.
+    pub fn conformance(&self) -> &ExecutedConformance {
+        &self.checked
+    }
+
+    /// No current canonical tuple can register the preserved physical local writer.
+    pub fn register_pack(
+        &self,
+        contract: &ActionContract,
+        _scope: CapabilityScopeSpec,
+        _recovery: RecoveryClass,
+    ) -> Result<ActionPack, ExecutorError> {
+        check_classification(contract)?;
+        Err(ExecutorError::UnsupportedRegisteredClassification {
+            action: contract.id,
+        })
+    }
+
+    /// Current registered preparation refuses before creating a pack or writing storage.
+    pub fn prepare_artifact(
+        &self,
+        _workflow: &CompiledWorkflow,
+        _policy: RuntimePolicy,
+        contracts: &[ActionContract],
+        _packs: &[ActionPack],
+    ) -> Result<AcceptedArtifact, ExecutorError> {
+        contracts.iter().try_for_each(check_classification)?;
+        Err(unsupported_registry(contracts))
+    }
+
+    /// Registered submission refuses before any artifact counter or journal write.
+    pub fn submit_artifact(
+        &self,
+        _journal: &FjallJournal,
+        workflow: &CompiledWorkflow,
+        policy: RuntimePolicy,
+        contracts: &[ActionContract],
+        packs: &[ActionPack],
+    ) -> Result<AcceptedArtifact, ExecutorError> {
+        self.prepare_artifact(workflow, policy, contracts, packs)
+    }
+
+    /// Verify complete raw identities, then enforce the canonical projection boundary.
+    pub fn verify_artifact(
+        &self,
+        artifact: &AcceptedArtifact,
+        policy: RuntimePolicy,
+    ) -> Result<CompiledWorkflow, ExecutorError> {
+        let bytes = postcard::to_allocvec(artifact)?;
+        let verified = crate::verify_retained_artifact(&bytes, policy).map_err(executor_error)?;
+        let canonical = verified.try_canonical()?;
+        vb_core::action::validate_action_registry(&canonical)
+            .map_err(crate::JournalError::ArtifactActionRegistry)?;
+        Ok(verified.workflow().clone())
+    }
+
+    /// Canonical catalog paths cannot mint a grant for a retained local record.
+    pub fn issue_register_grant(
+        &self,
+        artifact: &AcceptedArtifact,
+        ticket: ActionTicket,
+        _scope: CapabilityScopeSpec,
+    ) -> Result<RegisterGrant, ExecutorError> {
+        self.verify_artifact(artifact, RuntimePolicy::Strict)?;
+        Err(ExecutorError::UnsupportedRegisteredClassification {
+            action: ticket.action,
+        })
+    }
+
+    /// Active receipt validation requires a supported canonical registered provider.
+    pub fn validate_receipt(
+        &self,
+        artifact: &AcceptedArtifact,
+        ticket: ActionTicket,
+        _value: i64,
+        _receipt: &RegisterReceipt,
+    ) -> Result<(), ExecutorError> {
+        self.verify_artifact(artifact, RuntimePolicy::Strict)?;
+        Err(ExecutorError::UnsupportedRegisteredClassification {
+            action: ticket.action,
+        })
+    }
+
+    /// Unsupported canonical registered providers cannot issue scoped authority.
+    pub fn issue_scoped_grant(
+        &self,
+        artifact: &AcceptedArtifact,
+        grant: &RegisterGrant,
+        _params: vb_core::ScopedGrantParams,
+    ) -> Result<vb_core::ScopedGrant, ExecutorError> {
+        self.verify_artifact(artifact, RuntimePolicy::Strict)?;
+        Err(ExecutorError::UnsupportedRegisteredClassification {
+            action: grant.ticket.action,
+        })
+    }
+
+    /// A gate receipt does not change the exhaustive canonical classification rule.
+    pub fn issue_scoped_grant_for_bound_gate(
+        &self,
+        artifact: &AcceptedArtifact,
+        grant: &RegisterGrant,
+        _params: vb_core::ScopedGrantParams,
+        _approval: &vb_core::manual_gate::BoundApprovalReceipt,
+    ) -> Result<vb_core::ScopedGrant, ExecutorError> {
+        self.verify_artifact(artifact, RuntimePolicy::Strict)?;
+        Err(ExecutorError::UnsupportedRegisteredClassification {
+            action: grant.ticket.action,
+        })
+    }
+
+    /// Dispatch scope is available only for a supported canonical registered provider.
+    pub fn declared_scope(
+        &self,
+        artifact: &AcceptedArtifact,
+        action: ActionId,
+    ) -> Result<CapabilityScopeSpec, ExecutorError> {
+        self.verify_artifact(artifact, RuntimePolicy::Strict)?;
+        Err(ExecutorError::UnsupportedRegisteredClassification { action })
+    }
+
+    /// Historical receipt reads have a separate sealed read-only operation.
+    pub fn require_receipt_recovery(
+        &self,
+        artifact: &AcceptedArtifact,
+        action: ActionId,
+    ) -> Result<(), ExecutorError> {
+        self.verify_artifact(artifact, RuntimePolicy::Strict)?;
+        Err(ExecutorError::UnsupportedRegisteredClassification { action })
+    }
+}
+
+fn check_classification(contract: &ActionContract) -> Result<(), ExecutorError> {
+    vb_core::retry_requirement(contract).map_err(|source| {
+        StoredContractError::InvalidCanonicalClassification {
+            action: contract.id,
+            source,
+        }
+    })?;
+    Ok(())
+}
+
+fn unsupported_registry(contracts: &[ActionContract]) -> ExecutorError {
+    contracts
+        .first()
+        .map_or(ExecutorError::PackMismatch, |contract| {
+            ExecutorError::UnsupportedRegisteredClassification {
+                action: contract.id,
+            }
+        })
+}
+
+fn executor_error(error: HistoricalArtifactError) -> ExecutorError {
+    match error {
+        HistoricalArtifactError::Artifact(error) => error.into(),
+        HistoricalArtifactError::Executor(error) => error,
+        HistoricalArtifactError::Contract(error) => error.into(),
+        HistoricalArtifactError::UnknownVerifierFamily { .. }
+        | HistoricalArtifactError::UnsupportedCanonicalPack
+        | HistoricalArtifactError::HistoricalSourceMismatch => {
+            crate::JournalError::ArtifactMalformed.into()
+        }
+    }
+}

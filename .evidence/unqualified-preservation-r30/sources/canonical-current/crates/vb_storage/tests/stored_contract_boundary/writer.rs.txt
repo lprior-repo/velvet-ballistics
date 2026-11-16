@@ -1,0 +1,209 @@
+use super::helpers::*;
+use vb_core::artifact::{ArtifactEvidence, ArtifactVerificationEvidence};
+use vb_core::{
+    ActionContract, CompiledWorkflow, Idempotency, RetrySafety, RuntimePolicy, SideEffect,
+    WorkflowDigest, WorkflowParts,
+};
+use vb_storage::{
+    ArtifactVerifierFamily, HistoricalArtifactError, JournalError, StoredActionRegistry,
+    StoredContractError, verify_retained_artifact,
+};
+
+fn base(
+    contract: &mut vb_storage::AcceptedArtifact,
+) -> TestResult<&mut ArtifactVerificationEvidence> {
+    match &mut contract.verification.evidence {
+        ArtifactEvidence::Verified(base) => Ok(base),
+        ArtifactEvidence::Packed(packed) => Ok(&mut packed.base),
+        ArtifactEvidence::Unverified => Err("verified fixture".into()),
+    }
+}
+
+fn workflow() -> TestResult<CompiledWorkflow> {
+    let parts: WorkflowParts = decode(&bytes("workflow.postcard")?)?;
+    Ok(CompiledWorkflow::try_from_parts(parts)?)
+}
+
+fn pure() -> TestResult<ActionContract> {
+    let cases = observations()?;
+    let case = cases
+        .iter()
+        .find(|case| case.0 == "i0-e0-r0")
+        .ok_or("pure native")?;
+    Ok(StoredActionRegistry::decode_exact(&case.2)?
+        .try_canonical()?
+        .first()
+        .ok_or("pure")?
+        .clone())
+}
+
+#[test]
+fn fresh_canonical_family_roundtrips_only_pure_and_contextual_external_read_inverses() -> TestResult
+{
+    [
+        (
+            SideEffect::Pure,
+            Idempotency::DeterministicPure,
+            RetrySafety::Idempotent,
+            "i0-e0-r0",
+        ),
+        (
+            SideEffect::ExternalRead,
+            Idempotency::IdempotentExternal,
+            RetrySafety::Idempotent,
+            "i1-e0-r0",
+        ),
+        (
+            SideEffect::ExternalRead,
+            Idempotency::IdempotentExternal,
+            RetrySafety::RequiresIdempotencyKey,
+            "i1-e0-r1",
+        ),
+    ]
+    .into_iter()
+    .try_for_each(
+        |(side_effect, idempotency, retry_safety, label)| -> TestResult {
+            let mut contract = pure()?;
+            contract.side_effect = side_effect;
+            contract.idempotency = idempotency;
+            contract.retry_safety = retry_safety;
+            let cases = observations()?;
+            let old = cases
+                .iter()
+                .find(|case| case.0 == label)
+                .ok_or("native tuple")?;
+            let fresh = vb_storage::admission::prepare_compiled_artifact(
+                &workflow()?,
+                RuntimePolicy::Strict,
+                &[contract.clone()],
+            )?;
+            assert_eq!(fresh.action_contracts.wire_bytes()?, old.2);
+            let checked =
+                verify_retained_artifact(&postcard::to_allocvec(&fresh)?, RuntimePolicy::Strict)?;
+            assert_eq!(
+                checked.verifier_family(),
+                ArtifactVerifierFamily::CanonicalCurrent
+            );
+            assert_eq!(checked.try_canonical()?.as_ref(), &[contract]);
+            assert_eq!(
+                vb_storage::admission::verify_accepted_artifact(&fresh)?.digest(),
+                workflow()?.digest()
+            );
+            if label != "i0-e0-r0" {
+                let historical = verify_retained_artifact(
+                    old.7.as_deref().ok_or("actual old Strict")?,
+                    RuntimePolicy::Strict,
+                )?;
+                assert!(matches!(
+                    historical.try_canonical(),
+                    Err(StoredContractError::UnsupportedHistoricalClassification { .. })
+                ));
+                assert_ne!(historical.digest(), fresh.digest);
+                assert!(matches!(
+                    fresh.action_contracts.try_canonical(),
+                    Err(StoredContractError::UnsupportedHistoricalClassification { .. })
+                ));
+            }
+            Ok(())
+        },
+    )
+}
+
+#[test]
+fn family_relabeling_and_unknown_source_claims_cannot_reinterpret_original_envelopes() -> TestResult
+{
+    let fresh = vb_storage::admission::prepare_compiled_artifact(
+        &workflow()?,
+        RuntimePolicy::Strict,
+        &[pure()?],
+    )?;
+    let mut fresh_copy = fresh.clone();
+    let current_verifier = base(&mut fresh_copy)?.verifier_digest;
+    let cases = observations()?;
+    let old = cases
+        .iter()
+        .find(|case| case.0 == "i1-e0-r0")
+        .ok_or("ambiguous old tuple")?;
+    let original: vb_storage::AcceptedArtifact = decode(old.7.as_ref().ok_or("Strict old")?)?;
+    let mut original_copy = original.clone();
+    let old_verifier = base(&mut original_copy)?.verifier_digest;
+    [(original.clone(), current_verifier), (fresh, old_verifier)]
+        .into_iter()
+        .try_for_each(|(mut value, verifier)| -> TestResult {
+            base(&mut value)?.verifier_digest = verifier;
+            rebind(&mut value)?;
+            assert!(matches!(
+                verify_retained_artifact(&postcard::to_allocvec(&value)?, RuntimePolicy::Strict),
+                Err(HistoricalArtifactError::Artifact(
+                    JournalError::ArtifactMalformed
+                ))
+            ));
+            Ok(())
+        })?;
+    let mut unknown = original;
+    base(&mut unknown)?.verifier_digest = WorkflowDigest::from_bytes([0; 32]);
+    rebind(&mut unknown)?;
+    assert!(matches!(
+        verify_retained_artifact(&postcard::to_allocvec(&unknown)?, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::UnknownVerifierFamily { .. })
+    ));
+    let mut packed = artifact("writes-key-required.artifact")?;
+    base(&mut packed)?.verifier_digest = current_verifier;
+    rebind(&mut packed)?;
+    assert!(matches!(
+        verify_retained_artifact(&postcard::to_allocvec(&packed)?, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::UnsupportedCanonicalPack)
+    ));
+    Ok(())
+}
+
+#[test]
+fn unsupported_writers_refuse_before_acceptance_counter_or_artifact_storage_changes() -> TestResult
+{
+    let scratch = tempfile::tempdir()?;
+    let path = scratch.path().join("journal");
+    {
+        let journal = vb_storage::FjallJournal::open(&path, None)?;
+        [
+            (
+                SideEffect::ExternalWrite,
+                Idempotency::IdempotentExternal,
+                RetrySafety::Idempotent,
+            ),
+            (
+                SideEffect::ExternalWrite,
+                Idempotency::IdempotentExternal,
+                RetrySafety::RequiresIdempotencyKey,
+            ),
+            (
+                SideEffect::ExternalWrite,
+                Idempotency::AtLeastOnceExternal,
+                RetrySafety::NotRetrySafe,
+            ),
+        ]
+        .into_iter()
+        .try_for_each(|(effect, idempotency, safety)| -> TestResult {
+            let mut contract = pure()?;
+            contract.side_effect = effect;
+            contract.idempotency = idempotency;
+            contract.retry_safety = safety;
+            assert!(matches!(
+                vb_storage::submit_artifact_with_contracts(
+                    &journal,
+                    &workflow()?,
+                    RuntimePolicy::Strict,
+                    &[contract]
+                ),
+                Err(JournalError::ArtifactContractRepresentation(
+                    StoredContractError::UnsupportedCanonicalRepresentation { .. }
+                ))
+            ));
+            assert!(journal.list_artifacts()?.is_empty());
+            Ok(())
+        })?;
+    }
+    let database = fjall::Database::builder(&path).open()?;
+    let space = database.keyspace("artifact_acceptance", fjall::KeyspaceCreateOptions::default)?;
+    assert!(space.get(b"last_issued")?.is_none());
+    Ok(())
+}

@@ -1,0 +1,129 @@
+vstd::prelude::verus! {
+
+spec fn pair_value(x: Option<(StepIdx, StepIdx)>) -> Option<(u32, u32)> {
+    match x {
+        Some((a, b)) => Some((a.raw_spec() as u32, b.raw_spec() as u32)),
+        None => None,
+    }
+}
+
+spec fn with_outer(o: StepIdx, x: Option<StepIdx>) -> Option<(u32, u32)> {
+    match x {
+        Some(i) => Some((o.raw_spec() as u32, i.raw_spec() as u32)),
+        None => None,
+    }
+}
+
+proof fn stored_starts(q: &NativeParts, n: nat)
+    requires
+        n <= q.nodes@.len(),
+    ensures
+        native_summary(q, n).0 == start_ids_before(q.nodes@, n).to_set(),
+        native_summary(q, n).1 == start_ids_before(q.nodes@, n).len(),
+    decreases n,
+{
+    if n > 0 {
+        stored_starts(q, (n - 1) as nat);
+        let node = q.nodes@[n - 1];
+        let prev = start_ids_before(q.nodes@, (n - 1) as nat);
+        if together_start(&node) {
+            prev.lemma_push_to_set_commute(node.id.raw_spec());
+        }
+    }
+}
+
+proof fn one_branch_agrees(
+    q: &NativeParts,
+    p: &LegacyParts,
+    k: Set<u16>,
+    e: StepIdx,
+    j: StepIdx,
+    o: StepIdx,
+)
+    requires
+        stored_image(q, p),
+    ensures
+        one_branch(p, k, e.raw_spec() as u32, j.raw_spec() as u32, o.raw_spec() as u32)
+            == with_outer(o, branch_result(q.nodes@, k, e, j, o)),
+{
+    let s = seq![e.raw_spec() as usize];
+    let stop = j.raw_spec() as usize;
+    let v = Set::<usize>::empty();
+    assert(narrow(s));
+    weight_image(q, p, v, 0);
+    let fuel = 1 + legacy_weight(p, v, 0) as int;
+    walks_agree(q, p, k, s, stop, o, v, fuel, false);
+    walks_agree(q, p, k, s, stop, o, v, fuel, true);
+}
+
+proof fn branch_suffix_agrees(
+    q: &NativeParts,
+    p: &LegacyParts,
+    k: Set<u16>,
+    entries: Seq<StepIdx>,
+    join: StepIdx,
+    outer: StepIdx,
+    i: nat,
+)
+    requires
+        stored_image(q, p),
+        i <= entries.len(),
+    ensures
+        branches_from(
+            p,
+            k,
+            entries.map_values(|x: StepIdx| x.raw_spec() as u32).push(join.raw_spec() as u32),
+            outer.raw_spec() as u32,
+            i as int,
+        ) == with_outer(outer, first_branch_from(q.nodes@, k, entries, join, outer, i)),
+    decreases entries.len() - i,
+{
+    if i < entries.len() {
+        one_branch_agrees(q, p, k, entries[i as int], join, outer);
+        branch_suffix_agrees(q, p, k, entries, join, outer, i + 1);
+    }
+}
+
+proof fn outer_suffix_agrees(q: &NativeParts, p: &LegacyParts, k: Set<u16>, i: nat)
+    requires
+        stored_image(q, p),
+        i <= q.nodes@.len(),
+    ensures
+        outer_from(p, k, i as int) == pair_value(first_outer_from(q.nodes@, k, i)),
+    decreases q.nodes@.len() - i,
+{
+    if i < q.nodes@.len() {
+        let n = &q.nodes@[i as int];
+        let m = p.nodes_meta@[i as int];
+        let t = p.kind_targets@[i as int]@;
+        assert(observed(n, m, t));
+        outer_suffix_agrees(q, p, k, i + 1);
+        match &n.kind {
+            K::TogetherStart { branches, join, .. }
+            | K::TogetherConcurrentStart { branches, join, .. } => {
+                branch_suffix_agrees(q, p, k, branches@, *join, n.id, 0);
+            },
+            _ => {},
+        }
+        assert(outer_result(p, k, i as int) == with_outer(n.id, node_result(q.nodes@, k, n)));
+    }
+}
+
+fn actual_first_pair_agreement(q: &NativeParts, template: LegacyParts, m: Meta) -> (out: (
+    Option<(StepIdx, StepIdx)>,
+    Option<(u32, u32)>,
+))
+    ensures
+        pair_value(out.0) == out.1,
+{
+    let p = project_nested_table(q, template, m);
+    proof {
+        crate::nested_legacy::nested_projection::unfold_pair(&p);
+        stored_starts(q, q.nodes@.len());
+        summary_simulation(q, &p, q.nodes@.len());
+        outer_suffix_agrees(q, &p, native_summary(q, q.nodes@.len()).0, 0);
+    }
+    (first_nested_together(&q.nodes), projected_first_pair(&p))
+}
+
+} // verus!

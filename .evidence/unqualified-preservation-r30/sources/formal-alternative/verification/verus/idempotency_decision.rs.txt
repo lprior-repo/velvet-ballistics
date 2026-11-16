@@ -1,0 +1,126 @@
+// PO-VERUS-017: canonical declaration classes and storage/validator parity.
+// Exact command: verus --crate-type=lib verification/verus/idempotency_decision.rs
+//
+// WEAK production binding through a four-field ActionContract projection.
+// Mirror exec bodies are verified without assumed specifications. Equality to
+// current production Rust remains a separately checked source/projection bridge;
+// the identifier drift gate alone does not establish that equality. These proofs
+// cover declaration legality, not retry graph reachability, key validation,
+// stored bytes, provider behavior, or execution authority. Historical tuple
+// checks are a separate compatibility implementation and are not changed here.
+use vstd::prelude::*;
+
+#[path = "extern_idempotency_decision.rs"]
+pub mod production;
+
+pub use production::{
+    is_contract_idempotency_accepted, is_statically_idempotent_contract, retry_requirement,
+    ActionContract, ActionId, Idempotency, IdempotencyContractViolation, IdempotencyViolation,
+    RetryRequirement, RetrySafety, SideEffect,
+};
+
+verus! {
+
+pub open spec fn spec_is_contract_idempotency_accepted(
+    e: SideEffect,
+    r: RetrySafety,
+    i: Idempotency,
+) -> bool {
+    production::declaration_class(i, e, r) != 3
+}
+
+pub open spec fn spec_is_statically_idempotent_contract(
+    e: SideEffect,
+    r: RetrySafety,
+    i: Idempotency,
+) -> bool {
+    production::declaration_class(i, e, r) != 3
+}
+
+// VERUS-DECISION-001: Pure alone is insufficient; both other declarations bind.
+pub proof fn proof_pure_requires_consistent_classification(i: Idempotency, r: RetrySafety)
+    ensures
+        spec_is_contract_idempotency_accepted(SideEffect::Pure, r, i) == (i
+            == Idempotency::DeterministicPure && r == RetrySafety::Idempotent),
+{
+}
+
+// VERUS-DECISION-002: Unknown retry safety has no admitted declaration.
+pub proof fn proof_unknown_retry_safety_rejected(i: Idempotency, e: SideEffect)
+    ensures
+        !spec_is_contract_idempotency_accepted(e, RetrySafety::Unknown, i),
+{
+}
+
+// VERUS-DECISION-003: Legal nonretry execution is distinct from invalidity.
+pub proof fn proof_at_least_once_exact_write_policy(e: SideEffect, r: RetrySafety)
+    ensures
+        spec_is_contract_idempotency_accepted(e, r, Idempotency::AtLeastOnceExternal) == (e
+            == SideEffect::ExternalWrite && (r == RetrySafety::RequiresIdempotencyKey || r
+            == RetrySafety::NotRetrySafe)),
+        production::declaration_class(
+            Idempotency::AtLeastOnceExternal,
+            SideEffect::ExternalWrite,
+            RetrySafety::NotRetrySafe,
+        ) == 2,
+{
+}
+
+// VERUS-DECISION-004: DeterministicPure admits exactly Pure/Idempotent.
+pub proof fn proof_deterministic_pure_exact_policy(e: SideEffect, r: RetrySafety)
+    ensures
+        spec_is_contract_idempotency_accepted(e, r, Idempotency::DeterministicPure) == (e
+            == SideEffect::Pure && r == RetrySafety::Idempotent),
+{
+}
+
+// VERUS-DECISION-005: Every external write requires a stable key, including Idempotent.
+pub proof fn proof_idempotent_external_exact_policy(e: SideEffect, r: RetrySafety)
+    ensures
+        spec_is_contract_idempotency_accepted(e, r, Idempotency::IdempotentExternal) == ((e
+            == SideEffect::ExternalRead || e == SideEffect::ExternalWrite) && (r
+            == RetrySafety::Idempotent || r == RetrySafety::RequiresIdempotencyKey)),
+        production::declaration_class(
+            Idempotency::IdempotentExternal,
+            SideEffect::ExternalWrite,
+            RetrySafety::Idempotent,
+        ) == 1,
+        production::declaration_class(
+            Idempotency::IdempotentExternal,
+            SideEffect::ExternalRead,
+            RetrySafety::Idempotent,
+        ) == 0,
+{
+}
+
+// VERUS-PARITY-003: both actual-shaped wrappers consume the verified policy.
+pub proof fn proof_storage_validate_parity(e: SideEffect, r: RetrySafety, i: Idempotency)
+    ensures
+        spec_is_contract_idempotency_accepted(e, r, i) == spec_is_statically_idempotent_contract(
+            e,
+            r,
+            i,
+        ),
+{
+}
+
+pub exec fn storage_is_contract_idempotency_accepted(contract: &ActionContract) -> (result: bool)
+    ensures
+        result == spec_is_contract_idempotency_accepted(
+            contract.side_effect,
+            contract.retry_safety,
+            contract.idempotency,
+        ),
+{
+    is_contract_idempotency_accepted(contract)
+}
+
+pub exec fn validate_is_statically_idempotent_contract(contract: &ActionContract) -> (result:
+    Result<(), IdempotencyContractViolation>)
+    ensures
+        production::validator_result_matches(contract, result),
+{
+    is_statically_idempotent_contract(contract)
+}
+
+} // verus!

@@ -1,0 +1,118 @@
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+spec fn successor_stack(node: &crate::workflow::CompiledNode, prefix: Seq<usize>) -> Seq<usize> {
+    let with_entries = match &node.kind {
+        CompiledNodeKind::ForEachConcurrentStart { body, .. } | CompiledNodeKind::ForEachStart { body, .. } | CompiledNodeKind::CollectStart { body, .. } | CompiledNodeKind::ReduceStart { body, .. } | CompiledNodeKind::RepeatStart { body, .. } => prefix.push(body.raw_spec() as usize),
+        CompiledNodeKind::TogetherStart { branches, .. } | CompiledNodeKind::TogetherConcurrentStart { branches, .. } | CompiledNodeKind::FirstSuccessStart { branches, .. } => prefix + branches@.map_values(|step: StepIdx| step.raw_spec() as usize),
+        _ => prefix,
+    };
+    match node.routing.next {
+        crate::workflow::NodeContinuation::End => with_entries,
+        crate::workflow::NodeContinuation::Step(next) => with_entries.push(next.raw_spec() as usize),
+    }
+}
+}
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(ensures final(stack)@ == successor_stack(node, old(stack)@)))]
+fn push_nested_group_entries(node: &crate::workflow::CompiledNode, stack: &mut Vec<usize>) {
+    match &node.kind {
+        CompiledNodeKind::ForEachConcurrentStart { body, .. }
+        | CompiledNodeKind::ForEachStart { body, .. }
+        | CompiledNodeKind::CollectStart { body, .. }
+        | CompiledNodeKind::ReduceStart { body, .. }
+        | CompiledNodeKind::RepeatStart { body, .. } => stack.push(body.as_usize()),
+        CompiledNodeKind::TogetherStart { branches, .. }
+        | CompiledNodeKind::TogetherConcurrentStart { branches, .. }
+        | CompiledNodeKind::FirstSuccessStart { branches, .. } => {
+            push_branch_entries(branches, stack);
+        }
+        _ => {}
+    }
+    if let Some(next) = node.routing.next.step() {
+        stack.push(next.as_usize());
+    }
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(ensures final(stack)@ == old(stack)@ + branches@.map_values(|s: StepIdx| s.raw_spec() as usize)))]
+fn push_branch_entries(branches: &[StepIdx], stack: &mut Vec<usize>) {
+    let mut index = 0usize;
+    while index < branches.len() {
+        #[cfg(verus_keep_ghost)]
+        invariant(
+            verus_proof_expr!(index <= branches@.len() && stack@ == old(stack)@ + branches@.map_values(|s: StepIdx| s.raw_spec() as usize).take(index as int)),
+        );
+        #[cfg(verus_keep_ghost)]
+        decreases(verus_proof_expr!(branches@.len() - index));
+        if let Some(step) = branches.get(index) {
+            stack.push(step.as_usize());
+        }
+        #[cfg(verus_keep_ghost)]
+        vstd::prelude::proof! {
+            assert(stack@ =~= old(stack)@ + branches@.map_values(|s: StepIdx| s.raw_spec() as usize).take(index as int + 1));
+        }
+        let Some(next_index) = index.checked_add(1) else {
+            return;
+        };
+        index = next_index;
+    }
+    #[cfg(verus_keep_ghost)]
+    vstd::prelude::proof! {
+        assert(index == branches@.len());
+        assert(branches@.map_values(|s: StepIdx| s.raw_spec() as usize).take(index as int) =~= branches@.map_values(|s: StepIdx| s.raw_spec() as usize));
+    }
+}
+
+#[cfg_attr(verus_keep_ghost, verifier::verify)]
+enum TogetherWalkVisit {
+    Continue,
+    Found(StepIdx),
+    Overflow,
+}
+
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+spec fn can_visit(len:nat,idx:usize,stop:usize,prior:Set<usize>) -> bool {
+    idx < len && idx != stop && !prior.contains(idx)
+}
+spec fn is_nested_start(keys:Set<u16>,idx:usize,outer:StepIdx) -> bool {
+    idx <= 65535 && idx as u16 != outer.raw_spec() && keys.contains(idx as u16)
+}
+}
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(result => ensures
+    final(visited)@ == if idx >= nodes@.len() || idx == stop_idx { old(visited)@ } else { old(visited)@.insert(idx) },
+    result == if !can_visit(nodes@.len(),idx,stop_idx,old(visited)@) { TogetherWalkVisit::Continue }
+        else if idx > 65535 { TogetherWalkVisit::Overflow }
+        else if is_nested_start(together_set@,idx,outer) { TogetherWalkVisit::Found(StepIdx::from_raw_spec(idx as u16)) }
+        else { TogetherWalkVisit::Continue },
+    final(stack)@ == if can_visit(nodes@.len(),idx,stop_idx,old(visited)@) && idx <= 65535 && !is_nested_start(together_set@,idx,outer) {
+        successor_stack(&nodes@[idx as int],old(stack)@)
+    } else { old(stack)@ }
+))]
+fn visit_together_node(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<u16>,
+    idx: usize,
+    stop_idx: usize,
+    outer: StepIdx,
+    visited: &mut std::collections::BTreeSet<usize>,
+    stack: &mut Vec<usize>,
+) -> TogetherWalkVisit {
+    if idx >= nodes.len() || idx == stop_idx || !visited.insert(idx) {
+        return TogetherWalkVisit::Continue;
+    }
+    let Ok(step_u16) = u16::try_from(idx) else {
+        return TogetherWalkVisit::Overflow;
+    };
+    let step = StepIdx::new(step_u16);
+    #[cfg(verus_keep_ghost)]
+    vstd::prelude::proof! { StepIdx::raw_roundtrip(step_u16); }
+    if step.get() != outer.get() && together_set.contains(&step.get()) {
+        return TogetherWalkVisit::Found(step);
+    }
+    let Some(node) = nodes.get(idx) else {
+        return TogetherWalkVisit::Continue;
+    };
+    push_nested_group_entries(node, stack);
+    TogetherWalkVisit::Continue
+}

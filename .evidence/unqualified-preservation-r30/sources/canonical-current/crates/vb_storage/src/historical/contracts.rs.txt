@@ -1,0 +1,80 @@
+use crate::stored_contracts::wire::{
+    ColdActionContract, ColdIdempotency, ColdRetrySafety, ColdSideEffect,
+};
+use crate::{JournalError, StoredActionRegistry};
+use vb_core::action::{ActionName, ActionRegistryError};
+use vb_core::{ActionId, Capability};
+
+pub(super) fn validate_registry(contracts: &StoredActionRegistry) -> Result<(), JournalError> {
+    contracts
+        .0
+        .iter()
+        .enumerate()
+        .try_for_each(|(index, contract)| {
+            let expected = ActionId::new(u16::try_from(index).map_err(|_| {
+                JournalError::ArtifactActionRegistry(ActionRegistryError::IndexOverflow { index })
+            })?);
+            if contract.id != expected {
+                return Err(JournalError::ArtifactActionRegistry(
+                    ActionRegistryError::IndexMismatch {
+                        index,
+                        expected,
+                        actual: contract.id,
+                    },
+                ));
+            }
+            ActionName::new(contract.name.as_str()).map_err(|source| {
+                JournalError::ArtifactActionRegistry(ActionRegistryError::InvalidName {
+                    action: contract.id,
+                    source,
+                })
+            })?;
+            Ok(())
+        })
+}
+
+pub(super) fn validate_legacy_tuples(contracts: &StoredActionRegistry) -> Result<(), JournalError> {
+    contracts.0.iter().try_for_each(|contract| {
+        if tuple_accepted(contract) {
+            Ok(())
+        } else {
+            Err(JournalError::ArtifactMalformed)
+        }
+    })
+}
+
+fn tuple_accepted(contract: &ColdActionContract) -> bool {
+    matches!(contract.side_effect, ColdSideEffect::None)
+        || (matches!(contract.idempotency, ColdIdempotency::IdempotentExternal)
+            && matches!(
+                contract.retry_safety,
+                ColdRetrySafety::Safe | ColdRetrySafety::KeyRequired
+            ))
+}
+
+pub(super) fn required_capabilities(
+    contracts: &StoredActionRegistry,
+) -> Result<Box<[Capability]>, JournalError> {
+    let total = contracts.0.iter().try_fold(0usize, |total, contract| {
+        total
+            .checked_add(contract.required_capabilities.len())
+            .ok_or(JournalError::ArtifactMalformed)
+    })?;
+    let mut required = Vec::new();
+    required
+        .try_reserve_exact(total)
+        .map_err(JournalError::AdmissionAllocationFailed)?;
+    contracts
+        .0
+        .iter()
+        .for_each(|contract| required.extend(contract.required_capabilities.iter().cloned()));
+    Ok(required.into_boxed_slice())
+}
+
+pub(super) fn effectful_count(contracts: &StoredActionRegistry) -> usize {
+    contracts
+        .0
+        .iter()
+        .filter(|contract| contract.side_effect != ColdSideEffect::None)
+        .count()
+}

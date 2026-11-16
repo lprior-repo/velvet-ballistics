@@ -1,0 +1,45 @@
+use super::{ActionContract, Idempotency, IdempotencyViolation, RetrySafety, SideEffect};
+
+/// Retry condition for a declaration that satisfies the exhaustive classification mapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetryRequirement {
+    /// Retry requires no external key.
+    Unconditional,
+    /// Retry requires valid deterministic key ingredients.
+    StableKey,
+    /// Declaration is legal only for execution without automatic retry.
+    Forbidden,
+}
+
+/// Classifies a declaration before deciding whether a particular retry is permitted.
+pub const fn retry_requirement(
+    contract: &ActionContract,
+) -> Result<RetryRequirement, IdempotencyViolation> {
+    use Idempotency::{AtLeastOnceExternal, DeterministicPure, IdempotentExternal};
+    use RetrySafety::{Idempotent, NotRetrySafe, RequiresIdempotencyKey};
+    use SideEffect::{ExternalRead, ExternalWrite, Pure};
+    match (
+        contract.idempotency,
+        contract.side_effect,
+        contract.retry_safety,
+    ) {
+        (DeterministicPure, Pure, Idempotent) | (IdempotentExternal, ExternalRead, Idempotent) => {
+            Ok(RetryRequirement::Unconditional)
+        }
+        (IdempotentExternal, ExternalRead, RequiresIdempotencyKey)
+        | (IdempotentExternal, ExternalWrite, Idempotent | RequiresIdempotencyKey)
+        | (AtLeastOnceExternal, ExternalWrite, RequiresIdempotencyKey) => {
+            Ok(RetryRequirement::StableKey)
+        }
+        (AtLeastOnceExternal, ExternalWrite, NotRetrySafe) => Ok(RetryRequirement::Forbidden),
+        _ => Err(invalid_classification(contract)),
+    }
+}
+
+const fn invalid_classification(contract: &ActionContract) -> IdempotencyViolation {
+    IdempotencyViolation::InvalidClassification {
+        idempotency: contract.idempotency,
+        side_effect: contract.side_effect,
+        retry_safety: contract.retry_safety,
+    }
+}

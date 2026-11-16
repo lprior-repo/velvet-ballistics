@@ -1,0 +1,215 @@
+use super::{ArtifactVerifierFamily, HistoricalArtifactError, VerifiedHistoricalArtifact};
+use crate::executor::ExecutorCatalog;
+use crate::{AcceptedArtifact, JournalError, StoredContractError};
+use vb_core::artifact::{ArtifactEvidence, ArtifactVerificationEvidence};
+use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest};
+
+#[derive(Clone, Copy)]
+struct CheckedIdentity {
+    family: ArtifactVerifierFamily,
+    verifier: WorkflowDigest,
+    packed: bool,
+}
+
+/// Verify complete original bytes and exact supported source/proof identities without activation.
+pub fn verify_retained_artifact(
+    bytes: &[u8],
+    policy: RuntimePolicy,
+) -> Result<VerifiedHistoricalArtifact, HistoricalArtifactError> {
+    let artifact = decode(bytes)?;
+    let identity = checked_identity(&artifact, policy)?;
+    let workflow = super::workflow::decode(&artifact, identity.packed)?;
+    verify_family(&artifact, &workflow, policy, identity)?;
+    seal(artifact, workflow, identity.family, bytes)
+}
+
+fn checked_identity(
+    artifact: &AcceptedArtifact,
+    policy: RuntimePolicy,
+) -> Result<CheckedIdentity, HistoricalArtifactError> {
+    let (base, packed) = evidence(artifact, policy)?;
+    let family = verifier_family(base.verifier_digest)?;
+    check_envelope(artifact, packed)?;
+    if family == ArtifactVerifierFamily::CanonicalCurrent && packed {
+        return Err(HistoricalArtifactError::UnsupportedCanonicalPack);
+    }
+    Ok(CheckedIdentity {
+        family,
+        verifier: base.verifier_digest,
+        packed,
+    })
+}
+
+fn checked_packs(
+    artifact: &AcceptedArtifact,
+) -> Result<Option<&[vb_core::action_pack::ActionPack]>, HistoricalArtifactError> {
+    if let ArtifactEvidence::Packed(packed) = &artifact.verification.evidence {
+        if !super::fingerprints::adapter_sources_match() {
+            return Err(HistoricalArtifactError::HistoricalSourceMismatch);
+        }
+        let checked = ExecutorCatalog::run_registered_conformance()?;
+        super::packs::validate(
+            &artifact.action_contracts,
+            &packed.packs,
+            checked.conformance(),
+        )?;
+        Ok(Some(packed.packs.as_ref()))
+    } else {
+        Ok(None)
+    }
+}
+
+fn verify_family(
+    artifact: &AcceptedArtifact,
+    workflow: &CompiledWorkflow,
+    policy: RuntimePolicy,
+    identity: CheckedIdentity,
+) -> Result<(), HistoricalArtifactError> {
+    let packs = checked_packs(artifact)?;
+    match identity.family {
+        ArtifactVerifierFamily::HistoricalMain => {
+            let parts = super::workflow::historical(artifact, workflow, policy, identity.packed)?;
+            validate_proof(artifact, &parts, policy, packs, identity.verifier)?;
+        }
+        ArtifactVerifierFamily::CanonicalCurrent => {
+            validate_proof(
+                artifact,
+                &workflow.to_parts(),
+                policy,
+                None,
+                identity.verifier,
+            )?;
+            super::workflow::canonical(artifact, workflow)?;
+        }
+    }
+    Ok(())
+}
+
+fn seal(
+    artifact: AcceptedArtifact,
+    workflow: CompiledWorkflow,
+    family: ArtifactVerifierFamily,
+    bytes: &[u8],
+) -> Result<VerifiedHistoricalArtifact, HistoricalArtifactError> {
+    let mut original = Vec::new();
+    original
+        .try_reserve_exact(bytes.len())
+        .map_err(|_| StoredContractError::Allocation)?;
+    original.extend_from_slice(bytes);
+    Ok(VerifiedHistoricalArtifact {
+        artifact,
+        workflow,
+        family,
+        bytes: original.into_boxed_slice(),
+    })
+}
+
+fn validate_proof(
+    artifact: &AcceptedArtifact,
+    parts: &vb_core::WorkflowParts,
+    policy: RuntimePolicy,
+    packs: Option<&[vb_core::action_pack::ActionPack]>,
+    verifier: WorkflowDigest,
+) -> Result<(), JournalError> {
+    let subject = super::proof::ProofSubject {
+        parts,
+        ir: &artifact.ir,
+        contracts: &artifact.action_contracts,
+    };
+    let expected = super::proof::expected(subject, policy, packs, verifier)?;
+    super::proof::compare(artifact, parts, &expected)
+}
+
+pub(crate) fn decode(bytes: &[u8]) -> Result<AcceptedArtifact, HistoricalArtifactError> {
+    if bytes.len() > 16_777_216 {
+        return Err(StoredContractError::BoundExceeded.into());
+    }
+    let (artifact, rest) =
+        postcard::take_from_bytes::<AcceptedArtifact>(bytes).map_err(StoredContractError::Codec)?;
+    if !rest.is_empty() {
+        return Err(StoredContractError::TrailingBytes.into());
+    }
+    if postcard::to_allocvec(&artifact).map_err(StoredContractError::Codec)? != bytes {
+        return Err(StoredContractError::NoncanonicalEncoding.into());
+    }
+    Ok(artifact)
+}
+
+fn evidence(
+    artifact: &AcceptedArtifact,
+    policy: RuntimePolicy,
+) -> Result<(&ArtifactVerificationEvidence, bool), HistoricalArtifactError> {
+    let (base, packed) = evidence_base(artifact)?;
+    if base.schema_version != 3 {
+        return Err(if packed {
+            JournalError::UnsupportedSchemaVersion {
+                version: base.schema_version,
+            }
+        } else {
+            crate::admission::verification::classify_evidence_held(base.schema_version)
+        }
+        .into());
+    }
+    if base.admission_policy != policy {
+        return Err(if packed {
+            crate::executor::ExecutorError::PackMismatch.into()
+        } else {
+            JournalError::ArtifactMalformed.into()
+        });
+    }
+    Ok((base, packed))
+}
+
+fn evidence_base(
+    artifact: &AcceptedArtifact,
+) -> Result<(&ArtifactVerificationEvidence, bool), HistoricalArtifactError> {
+    match &artifact.verification.evidence {
+        ArtifactEvidence::Verified(base) => Ok((base.as_ref(), false)),
+        ArtifactEvidence::Packed(packed) => Ok((&packed.base, true)),
+        ArtifactEvidence::Unverified => {
+            Err(crate::admission::verification::classify_evidence_held(1).into())
+        }
+    }
+}
+
+fn verifier_family(
+    digest: WorkflowDigest,
+) -> Result<ArtifactVerifierFamily, HistoricalArtifactError> {
+    if digest == super::fingerprints::verifier() {
+        return Ok(ArtifactVerifierFamily::HistoricalMain);
+    }
+    if digest == crate::admission::verification::verifier_digest() {
+        return Ok(ArtifactVerifierFamily::CanonicalCurrent);
+    }
+    Err(HistoricalArtifactError::UnknownVerifierFamily { digest })
+}
+
+fn check_envelope(
+    artifact: &AcceptedArtifact,
+    packed: bool,
+) -> Result<(), HistoricalArtifactError> {
+    check_ir_version(artifact.artifact_version)?;
+    if artifact.digest != artifact.verification.digest
+        || crate::admission::accepted_artifact_digest(artifact)? != artifact.digest
+    {
+        return Err(if packed {
+            crate::executor::ExecutorError::PackMismatch.into()
+        } else {
+            JournalError::ArtifactChecksumMismatch.into()
+        });
+    }
+    Ok(())
+}
+
+fn check_ir_version(held: crate::compat::SchemaVersion) -> Result<(), JournalError> {
+    let inputs = crate::compat::artifact_ir_version_inputs(held);
+    let classification = crate::compat::classify(inputs);
+    if classification.class.authorizes_live_effect() {
+        return Ok(());
+    }
+    Err(JournalError::ArtifactVersionIncompatible {
+        held,
+        required: inputs.required,
+        class: classification.class,
+    })
+}

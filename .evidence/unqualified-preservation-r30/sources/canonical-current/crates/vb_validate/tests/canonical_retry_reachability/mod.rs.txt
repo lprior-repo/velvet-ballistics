@@ -1,0 +1,276 @@
+use super::*;
+use vb_core::{
+    BranchCount, BranchIdx, ConstIdx, ExprIdx, FanoutLimit, MaxAttempts,
+    workflow::{BranchContinuation, Deadline, ErrorSink, ExprBranch, SlotBranch},
+};
+
+#[test]
+fn normal_execution_families_follow_continuation() {
+    for kind in [
+        K::Nop,
+        K::SetConst {
+            value: ConstIdx::new(0),
+        },
+        K::Copy { source: slot() },
+        K::EvalExpr {
+            expr: ExprIdx::new(0),
+        },
+        K::BuildObject {
+            fields: Box::new([]),
+        },
+        K::BuildList {
+            items: Box::new([]),
+        },
+        K::ForEachJoin { output: slot() },
+        K::TogetherJoin {
+            branch_count: BranchCount::new(1),
+            accumulator: slot(),
+        },
+        K::CollectFinish {
+            collector_slot: slot(),
+        },
+        K::ReduceFinish {
+            accumulator: slot(),
+        },
+        K::RepeatFinish { result: slot() },
+        K::WaitUntil {
+            deadline_slot: slot(),
+        },
+        K::WaitEvent {
+            event: slot(),
+            timeout_slot: Deadline::Unset,
+        },
+        K::Ask {
+            prompt: slot(),
+            timeout_slot: Deadline::Unset,
+        },
+        K::AskResume { answer: slot() },
+        K::ConcurrentGroupJoin { owner: step(3) },
+    ] {
+        check_kind(kind, true);
+    }
+}
+
+#[test]
+fn semantic_terminal_jump_and_owner_metadata_do_not_use_fallthrough() {
+    check_kind(K::Jump { target: step(3) }, false);
+    check_kind(K::Finish { result: slot() }, false);
+    check_kind(
+        K::ConcurrentLaneEnd {
+            owner: step(2),
+            result: None,
+        },
+        false,
+    );
+    let mut join = node(
+        step(1),
+        K::ConcurrentGroupJoin { owner: step(2) },
+        None,
+        Some(step(3)),
+    );
+    assert_eq!(
+        validate(
+            &parts(vec![
+                retry(0, 1, 4),
+                join.clone(),
+                action(2),
+                finish(3),
+                finish(4)
+            ]),
+            &[contract()]
+        ),
+        Ok(())
+    );
+    join.routing.next = Some(step(2)).into();
+    assert_eq!(
+        validate(
+            &parts(vec![retry(0, 1, 4), join, action(2), finish(3), finish(4)]),
+            &[contract()]
+        ),
+        refused()
+    );
+}
+
+#[test]
+fn choose_families_follow_branches_and_fallback_without_inert_next() {
+    check_kind(
+        K::Choose {
+            branches: Box::new([ExprBranch {
+                condition: ExprIdx::new(0),
+                target: step(2),
+            }]),
+            otherwise: BranchContinuation::Target(step(3)),
+        },
+        true,
+    );
+    check_kind(
+        K::ChooseSlot {
+            branches: Box::new([SlotBranch {
+                condition: slot(),
+                target: step(3),
+            }]),
+            otherwise: BranchContinuation::Target(step(2)),
+        },
+        true,
+    );
+    check_kind(
+        K::Choose {
+            branches: Box::new([ExprBranch {
+                condition: ExprIdx::new(0),
+                target: step(3),
+            }]),
+            otherwise: BranchContinuation::Target(step(3)),
+        },
+        false,
+    );
+    check_kind(
+        K::ChooseSlot {
+            branches: Box::new([SlotBranch {
+                condition: slot(),
+                target: step(3),
+            }]),
+            otherwise: BranchContinuation::End,
+        },
+        false,
+    );
+}
+
+#[test]
+fn bounded_loop_families_include_their_actual_body_and_done_edges() {
+    for (body, done) in [(step(2), step(3)), (step(3), step(2))] {
+        for kind in [
+            K::ForEachStart {
+                input: slot(),
+                item_slot: slot(),
+                limit: FanoutLimit::new(1),
+                body,
+                done,
+            },
+            K::ForEachNext {
+                iterator_slot: slot(),
+                body,
+                done,
+            },
+            K::CollectStart {
+                source: slot(),
+                limit: FanoutLimit::new(1),
+                page_size: 1,
+                body,
+                done,
+            },
+            K::CollectNext {
+                collector_slot: slot(),
+                body,
+                done,
+            },
+            K::ReduceStart {
+                limit: 1,
+                input: slot(),
+                accumulator: slot(),
+                initial: ConstIdx::new(0),
+                body,
+                done,
+            },
+            K::ReduceNext {
+                iterator_slot: slot(),
+                accumulator: slot(),
+                body,
+                done,
+            },
+        ] {
+            check_kind(kind, true);
+        }
+    }
+}
+
+#[test]
+fn body_only_loop_handler_and_serial_branch_metadata_is_not_an_execution_edge()
+-> Result<(), Box<dyn std::error::Error>> {
+    for kind in [
+        K::CollectPage {
+            collector_slot: slot(),
+            body: step(3),
+            done: step(2),
+        },
+        K::RepeatStart {
+            max_attempts: MaxAttempts::try_new(1)?,
+            body: step(3),
+            done: step(2),
+        },
+        K::RepeatAttempt {
+            attempt_slot: slot(),
+            body: step(3),
+            done: step(2),
+        },
+        K::ErrorHandler {
+            body: step(3),
+            handler: step(2),
+            error_slot: ErrorSink::Discard,
+        },
+        K::TogetherStart {
+            branches: Box::new([step(3), step(2)]),
+            join: step(2),
+        },
+        K::TogetherBranch {
+            branch: BranchIdx::new(0),
+            entry: step(3),
+            join: step(2),
+            accumulator: slot(),
+        },
+    ] {
+        check_kind(kind, false);
+    }
+    check_kind(
+        K::RepeatCheck {
+            attempt_slot: slot(),
+            done: step(3),
+        },
+        true,
+    );
+    Ok(())
+}
+
+#[test]
+fn concurrent_starts_include_every_lane_and_join() {
+    for (body, join) in [(step(2), step(3)), (step(3), step(2))] {
+        check_kind(
+            K::ForEachConcurrentStart {
+                input: slot(),
+                item_slot: slot(),
+                limit: FanoutLimit::new(1),
+                at_once: BranchCount::new(1),
+                body,
+                join,
+            },
+            true,
+        );
+    }
+    check_kind(
+        K::TogetherConcurrentStart {
+            branches: Box::new([step(3), step(2)]),
+            join: step(4),
+        },
+        true,
+    );
+    check_kind(
+        K::FirstSuccessStart {
+            branches: Box::new([step(3), step(2)]),
+            join: step(4),
+        },
+        true,
+    );
+    check_kind(
+        K::TogetherConcurrentStart {
+            branches: Box::new([step(3)]),
+            join: step(2),
+        },
+        true,
+    );
+    check_kind(
+        K::FirstSuccessStart {
+            branches: Box::new([step(3)]),
+            join: step(2),
+        },
+        true,
+    );
+}

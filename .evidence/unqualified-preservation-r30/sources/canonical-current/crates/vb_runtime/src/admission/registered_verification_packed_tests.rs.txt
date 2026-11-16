@@ -1,0 +1,94 @@
+/// Test store that provides a real executor catalog for Packed verification.
+struct CatalogProvidingStore {
+    catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>,
+    artifact: Option<AcceptedArtifact>,
+}
+
+impl AcceptedArtifactStore for CatalogProvidingStore {
+    fn load_accepted_artifact(
+        &self,
+        digest: vb_core::ids::WorkflowDigest,
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        self.artifact
+            .clone()
+            .filter(|a| a.digest == digest)
+            .ok_or(ArtifactEnvelopeError::ArtifactNotFound { digest })
+    }
+
+    fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> {
+        self.catalog.as_deref()
+    }
+}
+
+#[test]
+fn present_catalog_with_tampered_pack_fails_with_concrete_executor_error() -> Result<(), String> {
+    let tmp = tempfile::tempdir().map_err(|error| error.to_string())?;
+    let journal =
+        vb_storage::FjallJournal::open(tmp.path(), Some(vb_storage::FjallConfig::default()))
+            .map_err(|error| error.to_string())?;
+    let catalog = vb_storage::executor::ExecutorCatalog::run_registered_conformance()
+        .map_err(|error| error.to_string())?;
+    let raw =
+        include_bytes!("../../tests/fixtures/taxonomy60/writes-key-required/artifact.postcard");
+    let retained = vb_storage::verify_retained_artifact(raw, RuntimePolicy::Strict)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(retained.original_bytes(), raw);
+    assert_eq!(
+        retained.workflow().digest(),
+        retained.artifact().source_digest
+    );
+    let artifact = retained.artifact().clone();
+    let before = journal
+        .compiled_ir(artifact.digest)
+        .map_err(|error| error.to_string())?;
+    assert!(before.is_none());
+    let store = CatalogProvidingStore {
+        catalog: Some(Arc::new(catalog)),
+        artifact: Some(artifact.clone()),
+    };
+    assert!(matches!(
+        verify_stored_artifact_detailed(&store, &artifact, Some(RuntimePolicy::Strict)),
+        Err(StoredArtifactVerificationError::Executor(
+            vb_storage::executor::ExecutorError::Contract(
+                vb_storage::StoredContractError::ForbiddenAttestedClassification {
+                    action, side_effect: vb_core::SideEffect::LocalWrite,
+                }
+            )
+        )) if action == ActionId::new(0)
+    ));
+    assert_eq!(
+        journal
+            .compiled_ir(artifact.digest)
+            .map_err(|error| error.to_string())?,
+        before
+    );
+
+    let ArtifactEvidence::Packed(packed) = artifact.verification.evidence.clone() else {
+        return Err("expected authentic packed evidence".into());
+    };
+    let mut other_pack = packed.packs.first().ok_or("missing retained pack")?.clone();
+    other_pack.action = ActionId::new(99);
+    let mut tampered = artifact;
+    tampered.verification.evidence =
+        ArtifactEvidence::Packed(Box::new(vb_core::action_pack::PackedArtifactEvidence {
+            base: packed.base.clone(),
+            packs: Box::new([other_pack]),
+        }));
+    tampered.digest = vb_storage::admission::accepted_artifact_digest(&tampered)
+        .map_err(|error| error.to_string())?;
+    tampered.verification.digest = tampered.digest;
+    let result = verify_stored_artifact_detailed(&store, &tampered, Some(RuntimePolicy::Strict));
+    match result {
+        Err(StoredArtifactVerificationError::Executor(
+            vb_storage::executor::ExecutorError::PackMismatch,
+        )) => {}
+        other => return Err(format!("expected exact PackMismatch, got {other:?}")),
+    }
+    assert!(
+        journal
+            .compiled_ir(tampered.digest)
+            .map_err(|error| error.to_string())?
+            .is_none()
+    );
+    Ok(())
+}

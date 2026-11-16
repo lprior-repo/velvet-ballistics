@@ -1,0 +1,200 @@
+//! Nested Together validation over the constructor proof target’s existing metadata.
+use super::{SpecNodeMeta as Meta, SpecWorkflowParts as LegacyParts};
+use vstd::prelude::*;
+
+mod scan;
+mod walk;
+pub use scan::projected_pair;
+pub(crate) use scan::*;
+pub(crate) use walk::*;
+
+verus! {
+
+pub(crate) enum Visit {
+    Continue,
+    Overflow,
+    Found(u16),
+}
+
+pub(crate) open spec fn projected_entries(d: u32, t: Seq<u32>) -> Seq<u32> {
+    if (d == 9 || d == 15 || d == 19 || d == 22 || d == 34) && t.len() > 0 {
+        seq![t[0]]
+    } else if (d == 12 || d == 35 || d == 36) && t.len() > 0 {
+        t.drop_last()
+    } else {
+        Seq::empty()
+    }
+}
+
+pub(crate) open spec fn decoded(m: Meta, t: Seq<u32>, prefix: Seq<usize>) -> Seq<usize> {
+    let e = prefix + projected_entries(m.kind_disc, t).map_values(|b: u32| b as usize);
+    if m.has_next == 1 {
+        e.push(m.next_step as usize)
+    } else {
+        e
+    }
+}
+
+pub(crate) fn as_index(k: u32) -> (out: usize)
+    ensures
+        out as int == k as int,
+{
+    match usize::try_from(k) {
+        Ok(x) => x,
+        Err(_) => usize::MAX,
+    }
+}
+
+pub(crate) fn projected_push(m: Meta, t: &[u32], stack: &mut Vec<usize>)
+    ensures
+        final(stack)@ == decoded(m, t@, old(stack)@),
+{
+    let d = m.kind_disc;
+    let cap = if (d == 9 || d == 15 || d == 19 || d == 22 || d == 34) && !t.is_empty() {
+        1usize
+    } else if d == 12 || d == 35 || d == 36 {
+        match t.len().checked_sub(1) {
+            Some(entries) => entries,
+            None => 0usize,
+        }
+    } else {
+        0usize
+    };
+    assert(projected_entries(d, t@) =~= t@.take(cap as int));
+    let mut i = 0usize;
+    while i < cap
+        invariant
+            cap <= t.len(),
+            i <= cap,
+            projected_entries(d, t@) == t@.take(cap as int),
+            stack@ == old(stack)@ + t@.map_values(|r: u32| r as usize).take(i as int),
+        decreases cap - i,
+    {
+        if let Some(q) = t.get(i) {
+            stack.push(as_index(*q));
+        }
+        assert(stack@ =~= old(stack)@ + t@.map_values(|r: u32| r as usize).take(i as int + 1));
+        if let Some(next) = i.checked_add(1) {
+            i = next;
+        } else {
+            assert(false);
+        }
+    }
+    assert(t@.map_values(|r: u32| r as usize).take(cap as int) =~= projected_entries(
+        d,
+        t@,
+    ).map_values(|r: u32| r as usize));
+    if m.has_next == 1 {
+        stack.push(as_index(m.next_step));
+    }
+}
+
+pub(crate) open spec fn target_row(p: &LegacyParts, idx: usize) -> Seq<u32> {
+    if idx < p.kind_targets@.len() {
+        p.kind_targets@[idx as int]@
+    } else {
+        Seq::empty()
+    }
+}
+
+pub(crate) open spec fn applicable(
+    p: &LegacyParts,
+    idx: usize,
+    stop: usize,
+    v: Set<usize>,
+) -> bool {
+    idx < p.nodes_len && idx < p.nodes_meta@.len() && idx != stop && !v.contains(idx)
+}
+
+pub(crate) open spec fn projected_found(keys: Set<u16>, idx: usize, outer: u32) -> bool {
+    idx <= 65535 && idx as int != outer as int && keys.contains(idx as u16)
+}
+
+pub(crate) open spec fn next_visited(
+    p: &LegacyParts,
+    idx: usize,
+    stop: usize,
+    v: Set<usize>,
+) -> Set<usize> {
+    if idx >= p.nodes_len || idx == stop {
+        v
+    } else {
+        v.insert(idx)
+    }
+}
+
+pub(crate) open spec fn projected_result(
+    p: &LegacyParts,
+    idx: usize,
+    stop: usize,
+    outer: u32,
+    keys: Set<u16>,
+    v: Set<usize>,
+) -> Visit {
+    if !applicable(p, idx, stop, v) {
+        Visit::Continue
+    } else if idx > 65535 {
+        Visit::Overflow
+    } else if projected_found(keys, idx, outer) {
+        Visit::Found(idx as u16)
+    } else {
+        Visit::Continue
+    }
+}
+
+pub(crate) open spec fn next_stack(
+    p: &LegacyParts,
+    idx: usize,
+    stop: usize,
+    outer: u32,
+    keys: Set<u16>,
+    v: Set<usize>,
+    stack: Seq<usize>,
+) -> Seq<usize> {
+    if applicable(p, idx, stop, v) && idx <= 65535 && !projected_found(keys, idx, outer) {
+        decoded(p.nodes_meta@[idx as int], target_row(p, idx), stack)
+    } else {
+        stack
+    }
+}
+
+pub(crate) fn projection_visit(
+    p: &LegacyParts,
+    keys: &std::collections::BTreeSet<u16>,
+    idx: usize,
+    stop: usize,
+    outer: u32,
+    vis: &mut std::collections::BTreeSet<usize>,
+    stack: &mut Vec<usize>,
+) -> (out: Visit)
+    ensures
+        final(vis)@ == next_visited(p, idx, stop, old(vis)@),
+        out == projected_result(p, idx, stop, outer, keys@, old(vis)@),
+        final(stack)@ == next_stack(p, idx, stop, outer, keys@, old(vis)@, old(stack)@),
+{
+    if idx >= as_index(p.nodes_len) || idx == stop || !vis.insert(idx) {
+        return Visit::Continue;
+    }
+    let m = match p.nodes_meta.get(idx) {
+        Some(meta) => meta,
+        None => return Visit::Continue,
+    };
+    let raw_index = match u16::try_from(idx) {
+        Ok(raw_index) => raw_index,
+        Err(_) => return Visit::Overflow,
+    };
+    let candidate = u32::from(raw_index);
+    if candidate != outer && keys.contains(&raw_index) {
+        return Visit::Found(raw_index);
+    }
+    if let Some(t) = p.kind_targets.get(idx) {
+        projected_push(*m, t, stack);
+    } else {
+        projected_push(*m, &[], stack);
+    }
+    Visit::Continue
+}
+
+} // verus!
+mod fixtures;
+pub(crate) use fixtures::*;

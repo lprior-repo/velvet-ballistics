@@ -1,0 +1,54 @@
+use core::marker::PhantomData;
+use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor};
+
+pub(super) fn sequence<'de, D, T>(deserializer: D, limit: usize) -> Result<Box<[T]>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    deserializer.deserialize_seq(BoundedSequence::<T> {
+        limit,
+        item: PhantomData,
+    })
+}
+
+struct BoundedSequence<T> {
+    limit: usize,
+    item: PhantomData<T>,
+}
+
+impl<'de, T: Deserialize<'de>> Visitor<'de> for BoundedSequence<T> {
+    type Value = Box<[T]>;
+
+    fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str("a bounded historical sequence")
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+        if access.size_hint().is_some_and(|len| len > self.limit) {
+            return Err(A::Error::custom("historical sequence exceeds its bound"));
+        }
+        let bound = self
+            .limit
+            .checked_add(1)
+            .ok_or_else(|| A::Error::custom("sequence bound overflow"))?;
+        std::iter::from_fn(|| access.next_element::<T>().transpose())
+            .take(bound)
+            .try_fold(Vec::new(), |mut values, item| {
+                if values.len() == self.limit {
+                    return Err(A::Error::custom("historical sequence exceeds its bound"));
+                }
+                let value = item?;
+                values.try_reserve(1).map_err(A::Error::custom)?;
+                values.push(value);
+                Ok(values)
+            })
+            .map(Vec::into_boxed_slice)
+    }
+}
+
+pub(super) fn capabilities<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Box<[vb_core::Capability]>, D::Error> {
+    sequence(deserializer, super::MAX_RECORD_BYTES)
+}

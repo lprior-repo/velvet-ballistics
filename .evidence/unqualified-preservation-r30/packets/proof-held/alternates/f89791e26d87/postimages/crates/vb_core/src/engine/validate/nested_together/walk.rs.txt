@@ -1,0 +1,206 @@
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(result => ensures
+    result == expected_contains_walk(nodes@, together_set@, start_idx, stop_idx, outer),
+))]
+fn walk_contains_together_start(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<u16>,
+    start_idx: usize,
+    stop_idx: usize,
+    outer: StepIdx,
+) -> bool {
+    let mut visited: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+    let mut stack: Vec<usize> = vec![start_idx];
+    #[cfg(verus_keep_ghost)]
+    #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+    vstd::prelude::proof_decl! {
+        let ghost expected = expected_contains_walk(nodes@, together_set@, start_idx, stop_idx, outer);
+        let ghost mut remaining: int = 1 + walk_weight_from(nodes@, Set::empty(), 0) as int;
+    }
+    #[cfg(verus_keep_ghost)]
+    #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+    vstd::prelude::proof! {
+        reveal(expected_contains_walk);
+        assert(stack@ == seq![start_idx]);
+        assert(visited@ == Set::<usize>::empty());
+    }
+    while !stack.is_empty() {
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        invariant(verus_proof_expr!(
+            remaining >= 0
+            && expected == expected_contains_walk(nodes@, together_set@, start_idx, stop_idx, outer)
+            && walk_weight_from(nodes@, visited@, 0) as int + stack@.len() as int <= remaining
+            && expected == walk_reference(nodes@, together_set@, stack@, stop_idx, outer,
+                visited@, remaining, false).is_some()
+        ));
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        decreases(remaining);
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof_decl! {
+            let ghost before_stack = stack@;
+            let ghost before_seen = visited@;
+        }
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof! {
+            assert(remaining > 0);
+            assert(expected == walk_reference(nodes@, together_set@, before_stack,
+                stop_idx, outer, before_seen, remaining, false).is_some());
+        }
+        let Some(idx) = stack.pop() else {
+            return false;
+        };
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof! {
+            assert(stack@ == before_stack.drop_last());
+            assert(idx == before_stack.last());
+            assert(before_stack == before_stack.drop_last().push(idx));
+        }
+        let result = visit_together_node(
+            nodes,
+            together_set,
+            idx,
+            stop_idx,
+            outer,
+            &mut visited,
+            &mut stack,
+        );
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof! {
+            walk_step_drops_potential(nodes@, together_set@, before_stack.drop_last(),
+                idx, stop_idx, outer, before_seen);
+            assert(remaining > 0);
+            assert(visited@ == walk_next_seen(nodes@.len(), idx, stop_idx, before_seen));
+            assert(stack@ == walk_next_stack(nodes@, together_set@,
+                before_stack.drop_last(), idx, stop_idx, outer, before_seen));
+            reveal(walk_reference);
+        }
+        match result {
+            TogetherWalkVisit::Found(_) => return true,
+            TogetherWalkVisit::Continue | TogetherWalkVisit::Overflow => {
+                #[cfg(verus_keep_ghost)]
+                #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+                vstd::prelude::proof! {
+                    walk_reference_continue_step(nodes@, together_set@,
+                        before_stack.drop_last(), idx, stop_idx, outer, before_seen,
+                        remaining, false);
+                    assert(expected == walk_reference(nodes@, together_set@, stack@,
+                        stop_idx, outer, visited@, remaining - 1, false).is_some());
+                    remaining = remaining - 1;
+                }
+            }
+        }
+    }
+    false
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(result => ensures
+    result == expected_find_walk(nodes@, together_set@, start_idx, stop_idx, outer),
+))]
+fn find_inner_together_start(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<u16>,
+    start_idx: usize,
+    stop_idx: usize,
+    outer: StepIdx,
+) -> StepIdx {
+    let mut visited: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+    let mut stack: Vec<usize> = vec![start_idx];
+    #[cfg(verus_keep_ghost)]
+    #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+    vstd::prelude::proof_decl! {
+        let ghost expected = expected_find_walk(nodes@, together_set@, start_idx, stop_idx, outer);
+        let ghost mut remaining: int = 1 + walk_weight_from(nodes@, Set::empty(), 0) as int;
+    }
+    #[cfg(verus_keep_ghost)]
+    #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+    vstd::prelude::proof! {
+        reveal(expected_find_walk);
+        assert(stack@ == seq![start_idx]);
+        assert(visited@ == Set::<usize>::empty());
+    }
+    while !stack.is_empty() {
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        invariant(verus_proof_expr!(
+            remaining >= 0
+            && expected == expected_find_walk(nodes@, together_set@, start_idx, stop_idx, outer)
+            && walk_weight_from(nodes@, visited@, 0) as int + stack@.len() as int <= remaining
+            && expected == match walk_reference(nodes@, together_set@, stack@,
+                stop_idx, outer, visited@, remaining, true) {
+                Some(step) => step, None => outer,
+            }
+        ));
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        decreases(remaining);
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof_decl! {
+            let ghost before_stack = stack@;
+            let ghost before_seen = visited@;
+        }
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof! {
+            assert(remaining > 0);
+            assert(expected == match walk_reference(nodes@, together_set@, before_stack,
+                stop_idx, outer, before_seen, remaining, true) {
+                Some(step) => step, None => outer,
+            });
+        }
+        let Some(idx) = stack.pop() else {
+            return outer;
+        };
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof! {
+            assert(stack@ == before_stack.drop_last());
+            assert(idx == before_stack.last());
+            assert(before_stack == before_stack.drop_last().push(idx));
+        }
+        let result = visit_together_node(
+            nodes,
+            together_set,
+            idx,
+            stop_idx,
+            outer,
+            &mut visited,
+            &mut stack,
+        );
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        vstd::prelude::proof! {
+            walk_step_drops_potential(nodes@, together_set@, before_stack.drop_last(),
+                idx, stop_idx, outer, before_seen);
+            assert(remaining > 0);
+            assert(visited@ == walk_next_seen(nodes@.len(), idx, stop_idx, before_seen));
+            assert(stack@ == walk_next_stack(nodes@, together_set@,
+                before_stack.drop_last(), idx, stop_idx, outer, before_seen));
+            reveal(walk_reference);
+        }
+        match result {
+            TogetherWalkVisit::Found(step) => return step,
+            TogetherWalkVisit::Overflow => return outer,
+            TogetherWalkVisit::Continue => {
+                #[cfg(verus_keep_ghost)]
+                #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+                vstd::prelude::proof! {
+                    walk_reference_continue_step(nodes@, together_set@,
+                        before_stack.drop_last(), idx, stop_idx, outer, before_seen,
+                        remaining, true);
+                    assert(expected == match walk_reference(nodes@, together_set@, stack@,
+                        stop_idx, outer, visited@, remaining - 1, true) {
+                        Some(step) => step, None => outer,
+                    });
+                    remaining = remaining - 1;
+                }
+            }
+        }
+    }
+    outer
+}

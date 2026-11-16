@@ -1,0 +1,7 @@
+# Existing taint / owning-core compatibility
+
+Child vb-god2f.7.1 is a bounded compatibility investigation on exact current root af7f13aa5b5e0bc7390903183b1d81f97598ee4e. The closed standalone vb-god2f.7 claim and immutable source refs remain preserved. This work does not open a new proof campaign or import the old 73-file aggregate.
+
+A selected repair must make the registered actual five-variant taint target and the existing owning-core proof28 actual graph pass on the same source, preserving actual Taint/join executable bodies and annotations, source SlotCell/SlotValue/Taint nominal identity, native Serde bytes/layout/public APIs and current incoming formulas. No old-source rollback, shadow/native substitute types, assumptions/external bodies/trust additions, registry/gate/dependency/feature changes are allowed.
+
+The current owning graph fails E0432 because verification config excludes SlotCell. The tested native import also produces source/native nominal mismatch and missing source Taint Serde bounds. The bounded experiment will retain actual current type/join source and re-enable only the source metadata/items needed to diagnose the next compiler boundary, in an ignored own proof copy. It is unselected unless both required commands pass without relaxing constraints. If a compatible scoped repair is not found, preserve exact commands/inputs/errors and the unselected candidate, report the concrete blocker, and stop without broad rewriting or proof closure.

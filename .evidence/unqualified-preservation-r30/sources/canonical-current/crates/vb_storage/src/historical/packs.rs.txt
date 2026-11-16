@@ -1,0 +1,97 @@
+use crate::StoredActionRegistry;
+use crate::executor::{ExecutedConformance, ExecutorError};
+use crate::stored_contracts::wire::{
+    ColdActionContract, ColdIdempotency, ColdRetrySafety, ColdSideEffect,
+};
+use vb_core::action_pack::{ActionPack, ExecutorIdentity, IdempotencyClass, RecoveryClass};
+
+pub(super) fn validate(
+    contracts: &StoredActionRegistry,
+    packs: &[ActionPack],
+    checked: &ExecutedConformance,
+) -> Result<(), ExecutorError> {
+    validate_set(contracts, packs)?;
+    packs
+        .iter()
+        .try_for_each(|pack| validate_pack(contracts, pack, checked))
+}
+
+fn validate_set(
+    contracts: &StoredActionRegistry,
+    packs: &[ActionPack],
+) -> Result<(), ExecutorError> {
+    if packs.is_empty()
+        || packs.len() > 64
+        || !packs
+            .windows(2)
+            .all(|pair| matches!(pair, [left, right] if left.action < right.action))
+        || super::contracts::effectful_count(contracts) != packs.len()
+    {
+        return Err(ExecutorError::PackMismatch);
+    }
+    Ok(())
+}
+
+fn validate_pack(
+    contracts: &StoredActionRegistry,
+    pack: &ActionPack,
+    checked: &ExecutedConformance,
+) -> Result<(), ExecutorError> {
+    let contract = contracts
+        .0
+        .get(usize::from(pack.action.get()))
+        .ok_or(ExecutorError::PackMismatch)?;
+    validate_contract(contract)?;
+    let manifest = super::proof::digest(&postcard::to_allocvec(contract)?);
+    validate_identity(contract, pack, manifest, checked)?;
+    validate_axes(contract, pack)
+}
+
+fn validate_identity(
+    contract: &ColdActionContract,
+    pack: &ActionPack,
+    manifest: vb_core::WorkflowDigest,
+    checked: &ExecutedConformance,
+) -> Result<(), ExecutorError> {
+    if pack.action != contract.id
+        || pack.executor != ExecutorIdentity::FjallRegisterV1
+        || pack.executor_version != super::fingerprints::executor_version()
+        || pack.receipt_schema != super::fingerprints::receipt_schema()
+        || pack.manifest.digest() != manifest
+        || pack.duplicate_ticket_test != checked.digest()
+    {
+        return Err(ExecutorError::PackMismatch);
+    }
+    Ok(())
+}
+
+fn validate_axes(contract: &ColdActionContract, pack: &ActionPack) -> Result<(), ExecutorError> {
+    if pack.timeout.timeout_ms != contract.timeout_ms
+        || pack.idempotency != IdempotencyClass::KeyEnforcedByExecutor
+        || !matches!(
+            pack.recovery,
+            RecoveryClass::Blocked | RecoveryClass::ReconcileReceipt
+        )
+    {
+        return Err(ExecutorError::PackMismatch);
+    }
+    Ok(())
+}
+
+fn validate_contract(contract: &ColdActionContract) -> Result<(), ExecutorError> {
+    let capability = vb_core::Capability::new("velvet.register.write".into(), contract.id);
+    if contract.side_effect != ColdSideEffect::Writes
+        || contract.idempotency != ColdIdempotency::IdempotentExternal
+        || contract.retry_safety != ColdRetrySafety::KeyRequired
+        || contract.input_slot_count != 1
+        || contract.output_slot_count != 1
+        || contract.max_input_bytes < 11
+        || contract.max_output_bytes < 11
+        || contract.timeout_ms == 0
+        || contract.timeout_ms > 60_000
+        || contract.required_capabilities.as_ref() != [capability]
+    {
+        return Err(ExecutorError::PackMismatch);
+    }
+    Ok(())
+}
