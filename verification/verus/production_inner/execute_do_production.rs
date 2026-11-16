@@ -44,6 +44,7 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+#[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
 /// Mirrors the discriminated output set of
@@ -124,7 +125,7 @@ impl SpecActionOutcomeKind {
 /// `output_taint == Clean && input_taint != Clean` check. In production
 /// this evaluates `propagate_action_taint(idempotency, input_taint)`; for
 /// the determinism contract we treat the boolean as already computed.
-#[verifier::external]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub fn execute_do_pure_decision(
     _run_id: u64,
     _step: u32,
@@ -214,7 +215,7 @@ pub const fn spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) -> bool
 //   - execute_retry_check          (lines 109-120)
 //   - execute_error_handler        (lines 123-131)
 //   - resume_action_outcome        (lines 138-200)
-//   - compute_idempotency_key      (lines 206-208)
+//   - compute_idempotency_key      (lines 267-269)
 //   - resolve_contract             (lines 211-221)
 //
 // Each projection reduces the production body to the smallest set of scalars
@@ -233,7 +234,7 @@ pub const fn spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) -> bool
 /// fails because no real contract is provided. So the reachable output
 /// set is `{ErrTaintViolation, ErrCapabilityDenied}`. Both are already
 /// covered by `SpecOutcomeKind`, so we reuse that enum.
-#[verifier::external]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub fn execute_do_without_contract_pure_decision(input_taint_disc: u8) -> SpecOutcomeKind {
     if input_taint_disc != 0 {
         SpecOutcomeKind::ErrTaintViolation
@@ -248,7 +249,7 @@ pub fn execute_do_without_contract_pure_decision(input_taint_disc: u8) -> SpecOu
 /// The production body returns `body` iff `current_attempt < policy.max_attempts`,
 /// else `exhausted`. We project to scalars: `current_attempt`, `max_attempts`,
 /// `body`, `exhausted`. The decision is a pure comparison.
-#[verifier::external]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub const fn execute_retry_check_pure_decision(
     current_attempt: u16,
     max_attempts: u16,
@@ -268,7 +269,7 @@ pub const fn execute_retry_check_pure_decision(
 /// The production body returns `handler` iff
 /// `failure.retry_policy == RetryPolicy::Retryable || failure.code != ActionFailureCode::Unknown`,
 /// else `body`. Discriminants: Retryable=0, NonRetryable=1, Unknown=255.
-#[verifier::external]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub const fn execute_error_handler_pure_decision(
     failure_retry_policy_disc: u8,
     failure_code_disc: u8,
@@ -330,7 +331,7 @@ pub enum SpecResumeKind {
 /// The projection is total: every documented input maps to one of the
 /// five `SpecResumeKind` variants. The post-resume view collapses the
 /// retry-ticket reconstruction to a single AwaitingAction variant.
-#[verifier::external]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub const fn resume_action_outcome_pure_decision(
     outcome_disc: u8,
     attempt: u16,
@@ -366,24 +367,27 @@ pub const fn resume_action_outcome_pure_decision(
 }
 
 /// Pure decision projection of `compute_idempotency_key`
-/// at crates/vb_runtime/src/engine/action/mod.rs:206-208.
+/// at crates/vb_runtime/src/engine/action/mod.rs:267-269.
 ///
 /// The production body delegates to
 /// `vb_core::action::compute_action_idempotency_key` at
-/// crates/vb_core/src/action/ticket.rs:25-35, which uses a wrapping
-/// multiply-add hash (FNV-1a-inspired). Mirroring the same arithmetic
-/// keeps the spec deterministic and equivalent to the production result.
-#[verifier::external]
-pub fn compute_idempotency_key_pure(run: u64, seq: u64, action: u32) -> u128 {
+/// crates/vb_core/src/action/ticket.rs:78-95. The four scalar inputs
+/// preserve the run-attempt contribution and each wrapping multiply/add.
+/// This remains a TRUSTED projection; finite native parity is not a proof
+/// of equivalence for every input.
+#[cfg_attr(verus_keep_ghost, verifier::external)]
+pub fn compute_idempotency_key_pure(run: u64, run_attempt: u16, seq: u64, action: u16) -> u128 {
     let run_part = u128::from(run);
+    let attempt_part = u128::from(run_attempt);
     let seq_part = u128::from(seq);
     let action_part = u128::from(action);
     run_part
         .wrapping_mul(0x6c62272e07bb0143_u128)
-        .wrapping_add(seq_part)
+        .wrapping_add(attempt_part)
         .wrapping_mul(0x3b4f1a5b6c2d8e7f_u128)
-        .wrapping_add(action_part)
+        .wrapping_add(seq_part)
         .wrapping_mul(0x5bd1e9956c7b4d3a_u128)
+        .wrapping_add(action_part)
 }
 
 /// Pure decision projection of `resolve_contract`
@@ -394,7 +398,7 @@ pub fn compute_idempotency_key_pure(run: u64, seq: u64, action: u32) -> u128 {
 /// Otherwise it returns `Err(ActionError::UnknownAction)`.
 /// We project both conditions into a single boolean: `id_at_index_match`.
 /// Returns `true` iff the contract was resolved.
-#[verifier::external]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub const fn resolve_contract_pure_decision(id_at_index_match: bool) -> bool {
     id_at_index_match
 }

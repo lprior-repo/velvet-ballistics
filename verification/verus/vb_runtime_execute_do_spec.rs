@@ -332,16 +332,20 @@ pub open spec fn spec_resume_action_outcome_decision(
 /// Mirrors the production body at crates/vb_core/src/action/ticket.rs:78-95
 /// (`compute_action_idempotency_key`, FNV-1a-inspired wrapping multiply-add
 /// hash), reached from the runtime via `compute_idempotency_key` at
-/// crates/vb_runtime/src/engine/action/mod.rs:265-267.
-pub open spec fn spec_compute_idempotency_key_decision(run: u64, seq: u64, action: u32) -> int {
-    let run_part = run as int * 0x6c62272e07bb0143;
-    let seq_part = seq as int;
-    let action_part = action as int;
-    let step1 = run_part + seq_part;
-    let step2 = step1 * 0x3b4f1a5b6c2d8e7f;
-    let step3 = step2 + action_part;
-    let result = step3 * 0x5bd1e9956c7b4d3a;
-    result
+/// crates/vb_runtime/src/engine/action/mod.rs:269-271.
+pub open spec fn spec_compute_idempotency_key_decision(
+    run: u64,
+    run_attempt: u16,
+    seq: u64,
+    action: u16,
+) -> int {
+    let modulus = u128::MAX as int + 1;
+    let run_part = (run as int * 0x6c62272e07bb0143) % modulus;
+    let with_attempt = (run_part + run_attempt as int) % modulus;
+    let second_product = (with_attempt * 0x3b4f1a5b6c2d8e7f) % modulus;
+    let with_seq = (second_product + seq as int) % modulus;
+    let third_product = (with_seq * 0x5bd1e9956c7b4d3a) % modulus;
+    (third_product + action as int) % modulus
 }
 
 /// Spec-side mirror of `resolve_contract_pure_decision`.
@@ -465,16 +469,16 @@ pub assume_specification[ production::resume_action_outcome_pure_decision ](
 
 pub assume_specification[ production::compute_idempotency_key_pure ](
     run: u64,
+    run_attempt: u16,
     seq: u64,
-    action: u32,
+    action: u16,
 ) -> (key: u128)
     ensures
-// Equality with the spec-mirror arithmetic. The production body
-// delegates to `compute_action_idempotency_key` which is a
-// wrapping-multiply-add hash; the projection uses the same
-// arithmetic. Wrapping modulo 2^128 is implicit in u128 ops.
+// TRUSTED inherited bridge: Verus does not verify this projection body.
+// The model states each wrapping operation modulo 2^128; native parity
+// against the actual production function does not prove all-input equality.
 
-        key as int == spec_compute_idempotency_key_decision(run, seq, action),
+        key as int == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
 ;
 
 pub assume_specification[ production::resolve_contract_pure_decision ](
@@ -794,13 +798,18 @@ pub exec fn checked_prod_resume_action_outcome(
 /// `compute_idempotency_key_pure`. Mirrors the production body at
 /// crates/vb_core/src/action/ticket.rs:78-95, reached from the runtime
 /// via `compute_idempotency_key` at
-/// crates/vb_runtime/src/engine/action/mod.rs:265-267.
-pub exec fn checked_prod_compute_idempotency_key(run: u64, seq: u64, action: u32) -> (key: u128)
+/// crates/vb_runtime/src/engine/action/mod.rs:269-271.
+pub exec fn checked_prod_compute_idempotency_key(
+    run: u64,
+    run_attempt: u16,
+    seq: u64,
+    action: u16,
+) -> (key: u128)
     ensures
-        key as int == spec_compute_idempotency_key_decision(run, seq, action),
+        key as int == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
 {
-    let first = compute_idempotency_key_pure(run, seq, action);
-    assert(first as int == spec_compute_idempotency_key_decision(run, seq, action));
+    let first = compute_idempotency_key_pure(run, run_attempt, seq, action);
+    assert(first as int == spec_compute_idempotency_key_decision(run, run_attempt, seq, action));
     first
 }
 
@@ -1270,10 +1279,17 @@ pub proof fn proof_resolve_contract_matches_id(id_at_index_match: bool)
 /// Non-vacuous: `compute_idempotency_key` is deterministic — two
 /// invocations with identical inputs produce identical keys. The
 /// arithmetic is referentially transparent.
-pub proof fn proof_compute_idempotency_key_deterministic(run: u64, seq: u64, action: u32)
+pub proof fn proof_compute_idempotency_key_deterministic(
+    run: u64,
+    run_attempt: u16,
+    seq: u64,
+    action: u16,
+)
     ensures
-        spec_compute_idempotency_key_decision(run, seq, action)
-            == spec_compute_idempotency_key_decision(run, seq, action),
+        spec_compute_idempotency_key_decision(run, run_attempt, seq, action)
+            == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
+        0 <= spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
+        spec_compute_idempotency_key_decision(run, run_attempt, seq, action) <= u128::MAX as int,
 {
     reveal(spec_compute_idempotency_key_decision);
 }
