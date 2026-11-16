@@ -2,13 +2,13 @@
 //
 // Extern surface for vb_runtime_execute_do_spec Verus spec.
 // Models the production decision fn `vb_runtime::engine::action::execute_do`
-// at crates/vb_runtime/src/engine/action/mod.rs:20-74 as a pure decision fn so
+// at crates/vb_runtime/src/engine/action/mod.rs:22-112 as a pure decision fn so
 // Verus can reason about determinism and outcome-kind validity.
 //
 // Production bindings (BINDING LEDGER):
 //   - `execute_do` decision branches mirror
 //     `vb_runtime::engine::action::execute_do` at
-//     crates/vb_runtime/src/engine/action/mod.rs:20-74.
+//     crates/vb_runtime/src/engine/action/mod.rs:22-112.
 //   - The `Taint` discriminant (0=Clean, 1=DerivedFromSecret, 2=Secret,
 //     3=Random, 4=TimeDependent) mirrors `vb_core::value::Taint` at
 //     crates/vb_core/src/value/taint.rs:17-28.
@@ -27,11 +27,11 @@
 // of determinism and outcome-kind classification.
 //
 // ============================================================================
-// DRIFT POLICY: `crates/vb_runtime/src/engine/action/mod.rs:20-74`
+// DRIFT POLICY: `crates/vb_runtime/src/engine/action/mod.rs:22-112`
 // ============================================================================
 // Production source coverage:
 //   - `execute_do` decision branches  <- vb_runtime::engine::action::execute_do
-//                                          at crates/vb_runtime/src/engine/action/mod.rs:20-74
+//                                          at crates/vb_runtime/src/engine/action/mod.rs:22-112
 //   - `Taint` discriminant             <- vb_core::value::Taint
 //                                          at crates/vb_core/src/value/taint.rs:17-28
 //   - `Idempotency` discriminant       <- vb_core::action::contract::Idempotency
