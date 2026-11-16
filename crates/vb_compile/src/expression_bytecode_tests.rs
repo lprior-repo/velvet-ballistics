@@ -30,3 +30,6 @@ fn lower_with_accessors(source: &str) -> Result<LoweredWithAccessors, String> {
 include!("expression_bytecode_tests/basic_lowering.rs");
 include!("expression_bytecode_tests/operators_and_helpers.rs");
 include!("expression_bytecode_tests/precedence_and_step_refs.rs");
+
+#[path = "expression_bytecode_tests/unary_negation.rs"]
+mod unary_negation;

@@ -263,7 +263,6 @@ fn double_negation_in_helper() -> Result<(), String> {
     // exists(--5) => exists evaluated on (-(- 5))
     let (ops, constants, _max_stack) = lower("exists(--5)")?;
     // Const -1, Const -1, Const 5, Mul, Mul, Exists
-    adv_ensure(constants.len() == 3, "should have 3 constants")?;
     adv_ensure(
         constants == vec![ConstValue::I64(-1), ConstValue::I64(-1), ConstValue::I64(5)],
         "double negation constants must preserve order",
@@ -476,7 +475,7 @@ fn mixed_add_mul_left_assoc_same_precedence() -> Result<(), String> {
 // ── Edge-case: negation of helper result ────────────────────────────────
 
 #[test]
-fn negation_of_helper_result_produces_sub() -> Result<(), String> {
+fn negation_of_helper_result_produces_mul() -> Result<(), String> {
     // -length(1) => Const -1, Const 1, Length, Mul
     let (ops, constants, _max_stack) = lower("-length(1)")?;
     adv_ensure(

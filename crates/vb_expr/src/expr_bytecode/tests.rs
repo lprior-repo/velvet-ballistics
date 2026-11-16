@@ -3,6 +3,10 @@
 
 mod adversarial;
 
+#[cfg(test)]
+#[path = "unary_negation_tests.rs"]
+mod unary_negation_tests;
+
 #[allow(unused_imports, dead_code)]
 use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx, SlotValue};
 
