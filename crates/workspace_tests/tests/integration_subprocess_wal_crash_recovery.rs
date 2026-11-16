@@ -1,291 +1,249 @@
 #![forbid(unsafe_code)]
-//! Subprocess crash and WAL recovery scenario (vb-2h1z2).
-//!
-//! The audit found no true process-kill/WAL recovery test for strict Fjall
-//! commits after a hard crash. This module adds two complementary layers:
-//!
-//! 1. A **sibling-process** durability test: a child Rust helper opens a real
-//!    Fjall keyspace at a temp path, performs strict commits via
-//!    `vb_storage::FjallJournal::append_strict`, then exits without graceful
-//!    shutdown. The parent test process reopens the keyspace via
-//!    `ReadOnlyJournal::open_inspect_view` and verifies the WAL replays
-//!    every committed event end-to-end. The helper is compiled on demand
-//!    from `tests/bin/wal_crash_helper.rs`; if the helper source is
-//!    missing or fails to build, the sibling-process tests skip with a
-//!    recorded reason rather than fail.
-//!
-//! 2. An **in-process crash + fresh-handle replay** test that drops the
-//!    `FjallJournal` handle mid-write and then reopens with a fresh handle
-//!    to prove the strict-commit path is durable against fresh handles even
-//!    within the same process.
-//!
-//! Both layers together satisfy the bead requirement: a true WAL recovery
-//! scenario against strict Fjall commits after crash.
+//! Actual owned-process SIGKILL recovery and a separate clean-drop handle control.
 
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::time::{SystemTime, UNIX_EPOCH};
+#[path = "bin/wal_crash_helper.rs"]
+mod wal_crash_helper;
 
-use serde::{Deserialize, Serialize};
+use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Write};
+use std::os::fd::OwnedFd;
+use std::os::unix::net::UnixStream;
+use std::os::unix::process::ExitStatusExt;
+use std::path::Path;
+use std::process::{Child, Command, Stdio};
+use std::time::Duration;
+use vb_core::RunId;
+use vb_storage::{EventSeq, FjallJournal, JournalError, ReadOnlyJournal};
+use wal_crash_helper::{HelperOp, HelperResponse, RESPONSE_MARKER, expected_events};
 
-use vb_core::{RunId, WorkflowDigest};
-use vb_storage::EventSeq;
-use vb_storage::ReadOnlyJournal;
-use vb_storage::events::JournalEvent;
-use vb_storage::journal::FjallJournal;
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+const CHILD_ENV: &str = "VB_WAL_CRASH_CHILD";
+const CHILD_TEST: &str = "subprocess_wal_kill_then_reopen_recovers_all_events";
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum HelperOp {
-    OpenAndCommit { path: PathBuf, count: u32 },
-    ReopenAndRead { path: PathBuf },
+struct HelperChild {
+    child: Child,
+    channel: UnixStream,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum HelperResponse {
-    Committed { count: u32, last_seq: u64 },
-    Replayed { count: u32, last_seq: u64 },
-}
-
-/// Result of running the helper subprocess.
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum HelperOutcome {
-    Committed {
-        count: u32,
-        last_seq: u64,
-    },
-    Replayed {
-        count: u32,
-        last_seq: u64,
-    },
-    #[allow(dead_code)]
-    HelperMissing,
-    HelperFailed(String),
-}
-
-fn unique_temp_dir(label: &str) -> PathBuf {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
-    let dir = std::env::temp_dir().join(format!(
-        "vb_wal_crash_{}_{}_{}",
-        label,
-        std::process::id(),
-        nonce
-    ));
-    std::fs::create_dir_all(&dir).expect("create temp dir");
-    dir
-}
-
-/// Build the helper binary and return the path to it. Returns `None` if the
-/// helper source is missing or the build fails (test is skipped).
-fn build_helper() -> Option<PathBuf> {
-    let helper_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/bin/wal_crash_helper.rs");
-    if !helper_src.exists() {
-        return None;
+impl HelperChild {
+    fn start(op: &HelperOp) -> TestResult<Self> {
+        let (channel, child_channel) = UnixStream::pair()?;
+        channel.set_read_timeout(Some(Duration::from_secs(5)))?;
+        channel.set_write_timeout(Some(Duration::from_secs(5)))?;
+        let child = Command::new(std::env::current_exe()?)
+            .args(["--exact", CHILD_TEST, "--nocapture", "--test-threads=1"])
+            .env(CHILD_ENV, "1")
+            .stdin(Stdio::from(OwnedFd::from(child_channel.try_clone()?)))
+            .stdout(Stdio::from(OwnedFd::from(child_channel)))
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let mut helper = Self { child, channel };
+        let encoded = serde_json::to_vec(op)?;
+        helper.channel.write_all(&encoded)?;
+        helper.channel.write_all(b"\n")?;
+        Ok(helper)
     }
-    let target_dir = std::env::temp_dir().join("vb_wal_crash_target");
-    std::fs::create_dir_all(&target_dir).ok()?;
-    let helper_bin = target_dir.join("wal_crash_helper");
-    let status = Command::new("rustc")
-        .arg("--edition=2024")
-        .arg(helper_src)
-        .arg("-o")
-        .arg(&helper_bin)
-        .arg("--crate-type")
-        .arg("bin")
-        .env("CARGO_MANIFEST_DIR", env!("CARGO_MANIFEST_DIR"))
-        .env(
-            "VB_STORAGE_TARGET_DIR",
-            target_dir.join("deps").to_string_lossy().to_string(),
-        )
-        .status();
-    match status {
-        Ok(s) if s.success() => Some(helper_bin),
-        Ok(s) => {
-            eprintln!("wal_crash_helper build returned {}", s);
-            None
+
+    fn response(&mut self) -> TestResult<HelperResponse> {
+        let mut reader = BufReader::new(&mut self.channel);
+        for _ in 0..16 {
+            let mut line = String::new();
+            if reader.read_line(&mut line)? == 0 {
+                return Err(Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "child exited before WAL response",
+                )
+                .into());
+            }
+            if let Some((_, response)) = line.split_once(RESPONSE_MARKER) {
+                return Ok(serde_json::from_str(response.trim_end())?);
+            }
         }
-        Err(error) => {
-            eprintln!("wal_crash_helper build failed: {}", error);
-            None
+        Err(Error::new(ErrorKind::InvalidData, "missing WAL response marker").into())
+    }
+}
+
+impl Drop for HelperChild {
+    fn drop(&mut self) {
+        match self.child.try_wait() {
+            Ok(Some(_)) => return,
+            Ok(None) => {}
+            Err(error) => eprintln!("WAL child status cleanup failed: {error}"),
+        }
+        if let Err(error) = self.child.kill() {
+            eprintln!("WAL child kill cleanup failed: {error}");
+        }
+        if let Err(error) = self.child.wait() {
+            eprintln!("WAL child wait cleanup failed: {error}");
         }
     }
 }
 
-fn run_helper(bin: &Path, op: &HelperOp) -> HelperOutcome {
-    let encoded = serde_json::to_vec(op).expect("serialize op");
-    let mut child = match Command::new(bin)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-    {
-        Ok(child) => child,
-        Err(error) => return HelperOutcome::HelperFailed(format!("spawn: {error}")),
-    };
-    {
-        let stdin = child.stdin.as_mut().expect("stdin piped");
-        if let Err(error) = stdin.write_all(&encoded) {
-            return HelperOutcome::HelperFailed(format!("write stdin: {error}"));
-        }
-        if let Err(error) = stdin.write_all(b"\n") {
-            return HelperOutcome::HelperFailed(format!("newline: {error}"));
-        }
-    }
-    drop(child.stdin.take());
-    let output = match child.wait_with_output() {
-        Ok(output) => output,
-        Err(error) => return HelperOutcome::HelperFailed(format!("wait: {error}")),
-    };
-    if !output.status.success() {
-        return HelperOutcome::HelperFailed(format!(
-            "exit status: {} stderr: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    let mut buf = Vec::with_capacity(output.stdout.len());
-    let mut reader = output.stdout.as_slice();
-    if let Err(error) = reader.read_to_end(&mut buf) {
-        return HelperOutcome::HelperFailed(format!("read stdout: {error}"));
-    }
-    match serde_json::from_slice::<HelperResponse>(&buf) {
-        Ok(HelperResponse::Committed { count, last_seq }) => {
-            HelperOutcome::Committed { count, last_seq }
-        }
-        Ok(HelperResponse::Replayed { count, last_seq }) => {
-            HelperOutcome::Replayed { count, last_seq }
-        }
-        Err(error) => HelperOutcome::HelperFailed(format!("decode response: {error}")),
-    }
-}
-
-/// In-process crash + fresh-handle replay smoke test.
-///
-/// Opens a `FjallJournal`, writes a fixed number of strict commits, drops
-/// the handle (simulating a process crash mid-WAL), reopens with a fresh
-/// handle via `ReadOnlyJournal::open_inspect_view`, and verifies the WAL
-/// is replayable end-to-end.
-///
-/// This complements the sibling-process tests below by exercising the
-/// strict-commit durability contract without requiring a separately built
-/// helper binary.
-#[test]
-fn in_process_strict_commit_survives_fresh_handle_replay() {
-    let dir = unique_temp_dir("inproc_replay");
-    let commit_count: u64 = 16;
-
-    // Phase 1: open the journal, write strict commits, drop the handle.
-    {
-        let first_handle = FjallJournal::open(&dir, None).expect("open journal for commit phase");
-        let run = RunId::new(1);
-        for i in 0..commit_count {
-            let event = JournalEvent::RunAccepted {
-                run,
-                seq: EventSeq::new(i),
-                workflow: WorkflowDigest::from_bytes([0u8; 32]),
-            };
-            first_handle.append_strict(&event).expect("strict append");
-        }
-        // Intentionally drop without orderly shutdown to simulate crash.
-        drop(first_handle);
-    }
-
-    // Phase 2: reopen with a fresh inspect-view handle and replay.
-    let second_handle =
-        ReadOnlyJournal::open_inspect_view(&dir).expect("open inspect view for replay phase");
-    let run = RunId::new(1);
-    let replayed = second_handle.events_for_run(run).expect("events for run 1");
+fn assert_live_journal(path: &Path, child: &mut Child) -> TestResult {
     assert_eq!(
-        replayed.len() as u64,
-        commit_count,
-        "fresh handle must replay every strictly committed event"
+        child.try_wait()?,
+        None,
+        "commit child must still be running"
     );
-    let replayed_last = replayed.last().expect("non-empty replay").seq().get();
-    assert_eq!(
-        replayed_last,
-        commit_count - 1,
-        "replayed last seq must equal committed last seq"
-    );
-
-    let _ = std::fs::remove_dir_all(&dir);
+    match FjallJournal::open(path, None) {
+        Err(JournalError::ProcessLockHeld {
+            holder_pid,
+            path: lock_path,
+            ..
+        }) => {
+            assert_eq!(holder_pid, Some(child.id()));
+            assert_eq!(&*lock_path, path.join(".process.lock").as_path());
+        }
+        Err(JournalError::Fjall(fjall::Error::Locked)) => {}
+        Err(error) => return Err(format!("unexpected live-lock result: {error}").into()),
+        Ok(_) => return Err("commit child no longer holds the journal".into()),
+    }
+    let holder: u32 = std::fs::read_to_string(path.join(".process.lock"))?
+        .trim()
+        .parse()?;
+    assert_eq!(holder, child.id());
+    Ok(())
 }
 
-/// Sibling-process subprocess crash + WAL recovery test.
-///
-/// A fresh helper subprocess opens a Fjall keyspace at `dir`, performs
-/// strict commits, and exits without graceful shutdown (the helper does
-/// not run a clean flush — exiting at the end of `commit` simulates a
-/// SIGKILL). The parent test process then spawns a second, fresh helper
-/// subprocess that reopens the same keyspace and verifies the WAL replays
-/// every committed event.
-///
-/// Skipped if the helper source `tests/bin/wal_crash_helper.rs` is missing
-/// or fails to build.
 #[test]
-fn subprocess_wal_kill_then_reopen_recovers_all_events() {
-    let Some(helper) = build_helper() else {
-        eprintln!("wal_crash_helper missing or failed to build; skipping");
-        return;
-    };
-    let dir = unique_temp_dir("kill_reopen");
-    let commit_count: u32 = 8;
+fn in_process_strict_commit_survives_fresh_handle_replay() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let commit_count = 16u32;
+    let expected = expected_events(commit_count);
+    {
+        let journal = FjallJournal::open(dir.path(), None)?;
+        for event in &expected {
+            journal.append_strict(event)?;
+        }
+        // This is a clean drop, intentionally separate from the SIGKILL scenario.
+        drop(journal);
+    }
+    let journal = ReadOnlyJournal::open_inspect_view(dir.path())?;
+    let replayed = journal.events_for_run(RunId::new(1))?;
+    assert_eq!(u32::try_from(replayed.len())?, commit_count);
+    assert_eq!(
+        replayed.last().ok_or("nonempty replay")?.seq().get(),
+        u64::from(commit_count.checked_sub(1).ok_or("nonzero count")?)
+    );
+    assert_eq!(replayed, expected);
+    Ok(())
+}
 
-    let commit_outcome = run_helper(
-        &helper,
-        &HelperOp::OpenAndCommit {
-            path: dir.clone(),
+#[test]
+fn subprocess_wal_kill_then_reopen_recovers_all_events() -> TestResult {
+    if std::env::var_os(CHILD_ENV).is_some() {
+        return wal_crash_helper::run();
+    }
+    let dir = tempfile::tempdir()?;
+    let commit_count = 8u32;
+    let last_seq = u64::from(commit_count.checked_sub(1).ok_or("nonzero count")?);
+    let mut writer = HelperChild::start(&HelperOp::OpenAndCommit {
+        path: dir.path().to_owned(),
+        count: commit_count,
+    })?;
+    assert_eq!(
+        writer.response()?,
+        HelperResponse::Committed {
             count: commit_count,
-        },
+            last_seq
+        }
     );
-    let committed_count = match commit_outcome {
-        HelperOutcome::Committed { count, last_seq } => {
-            assert_eq!(count, commit_count, "commit count mismatch");
-            assert_eq!(
-                last_seq,
-                u64::from(commit_count.checked_sub(1).expect("non-zero")),
-                "last_seq must equal commit_count - 1"
-            );
-            count
-        }
-        HelperOutcome::HelperMissing => {
-            eprintln!("helper missing; skipping");
-            return;
-        }
-        other => panic!("commit phase failed: {other:?}"),
-    };
+    assert_live_journal(dir.path(), &mut writer.child)?;
+    let killed_pid = writer.child.id();
+    writer.child.kill()?;
+    let killed = writer.child.wait()?;
+    assert_eq!(
+        killed.signal(),
+        Some(9),
+        "owned writer must terminate by SIGKILL"
+    );
+    eprintln!(
+        "WAL owned child {killed_pid}: Strict commits={commit_count}, live journal lock verified, signal={:?}",
+        killed.signal()
+    );
 
-    let replay_outcome = run_helper(&helper, &HelperOp::ReopenAndRead { path: dir.clone() });
-    match replay_outcome {
-        HelperOutcome::Replayed { count, last_seq } => {
-            assert_eq!(
-                count, committed_count,
-                "replay must surface every strictly committed event"
-            );
-            assert_eq!(
-                last_seq,
-                u64::from(committed_count.checked_sub(1).expect("non-zero")),
-                "last_seq after replay must equal committed_count - 1"
-            );
+    let mut reader = HelperChild::start(&HelperOp::ReopenAndRead {
+        path: dir.path().to_owned(),
+    })?;
+    assert_ne!(reader.child.id(), killed_pid);
+    match reader.response()? {
+        HelperResponse::Replayed {
+            count,
+            last_seq: replayed_last,
+            event_bytes,
+        } => {
+            assert_eq!(count, commit_count);
+            assert_eq!(replayed_last, last_seq);
+            let events: Vec<vb_storage::JournalEvent> = postcard::from_bytes(&event_bytes)?;
+            assert_eq!(events, expected_events(commit_count));
         }
-        other => panic!("replay phase failed: {other:?}"),
+        response => return Err(format!("wrong replay response: {response:?}").into()),
     }
-
-    let _ = std::fs::remove_dir_all(&dir);
+    let status = reader.child.wait()?;
+    assert_eq!(
+        status.code(),
+        Some(0),
+        "fresh replay child must complete successfully"
+    );
+    eprintln!(
+        "WAL fresh child {}: exact records={commit_count}, last_seq={last_seq}, exit={:?}",
+        reader.child.id(),
+        status.code()
+    );
+    Ok(())
 }
 
-/// Pin `EventSeq` numbering so a regression in seq numerology surfaces
-/// before any subprocess round-trip is exercised.
 #[test]
-fn event_seq_numbering_is_zero_indexed_and_dense() {
-    let mut last: u64 = 0;
+fn subprocess_helper_setup_failure_is_not_a_successful_commit() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let invalid_db = dir.path().join("regular-file");
+    std::fs::write(&invalid_db, b"not a database directory")?;
+    let mut helper = HelperChild::start(&HelperOp::OpenAndCommit {
+        path: invalid_db,
+        count: 8,
+    })?;
+    let response = helper.response();
+    match response {
+        Err(error) => assert_eq!(
+            error.downcast_ref::<Error>().map(Error::kind),
+            Some(ErrorKind::UnexpectedEof)
+        ),
+        Ok(response) => {
+            return Err(format!("failed child acknowledged success: {response:?}").into());
+        }
+    }
+    let status = helper.child.wait()?;
+    assert_eq!(
+        status.code(),
+        Some(101),
+        "helper error must fail its registered child test"
+    );
+    let mut stderr = String::new();
+    helper
+        .child
+        .stderr
+        .take()
+        .ok_or("piped child stderr")?
+        .read_to_string(&mut stderr)?;
+    assert!(
+        stderr.contains("open journal:"),
+        "wrong child failure: {stderr}"
+    );
+    eprintln!(
+        "WAL setup failure: child exit={:?}, no committed acknowledgement",
+        status.code()
+    );
+    Ok(())
+}
+
+#[test]
+fn event_seq_numbering_is_zero_indexed_and_dense() -> TestResult {
+    let mut last = 0u64;
     let mut seq = EventSeq::new(0);
-    assert_eq!(seq.get(), 0, "EventSeq::new(0) must be zero-indexed");
+    assert_eq!(seq.get(), 0);
     for _ in 0..32u32 {
         assert_eq!(seq.get(), last, "seq must be dense and zero-indexed");
-        let next_val = last.checked_add(1).expect("non-overflow");
-        seq = EventSeq::new(next_val);
-        last = next_val;
+        last = last.checked_add(1).ok_or("sequence overflow")?;
+        seq = EventSeq::new(last);
     }
+    Ok(())
 }

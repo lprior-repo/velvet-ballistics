@@ -38,15 +38,12 @@ pub struct RefTables {
 impl RefTables {
     /// Builds reference tables from a [`WorkflowRefs`] document.
     pub fn build(workflow: &WorkflowRefs) -> Self {
-        let step_ids = workflow.step_ids.clone();
-        let step_ids_set = string_set(&workflow.step_ids);
-        Self {
-            inputs: string_set(&workflow.inputs),
-            vars: string_set(&workflow.vars),
-            secrets: string_set(&workflow.secrets),
-            step_ids,
-            step_ids_set,
-        }
+        Self::from_slices(
+            &workflow.inputs,
+            &workflow.vars,
+            &workflow.secrets,
+            &workflow.step_ids,
+        )
     }
 
     /// Builds reference tables from individual name slices.

@@ -1,0 +1,9 @@
+# Actual owned subprocess WAL crash repair
+
+Owner vb-2h1z2, reopened for its existing registered scenario on exact af7f13aa5b5e0bc7390903183b1d81f97598ee4e. Scope only integration_subprocess_wal_crash_recovery.rs and its existing tests/bin/wal_crash_helper.rs. No production/API/schema/dependency/target/gate/suppression/skip/timeout-raise change or new campaign.
+
+The registered subprocess scenario must not return success when child setup or execution fails. Reuse its Cargo-linked current test executable and existing helper source rather than an unlinked bare-rustc binary. The commit child acknowledges only after eight successful append_strict calls, retains the live journal, and waits. The parent must observe exact count/last sequence, actual live child and journal lock ownership, kill that owned child and observe SIGKILL (signal9). A distinct fresh child must reopen the same path and return every exact original event, preserving count and last-sequence assertions. Normal Drop/exit is not a crash. Retain the separate in-process fresh-handle control and dense EventSeq control with their original observables.
+
+A helper/setup failure must propagate a real error/nonzero child exit; add a bounded registered failure control and an executable negative injection demonstrating the original parent scenario fails instead of silently succeeding. Child errors and wait/cleanup failures must not be swallowed. No sleeps, forged committed acknowledgement, external process killing or leaked live child on error.
+
+Evidence: observed original helper compilation failure/false success, corrected registered target, actual owned signal9/lock/replay evidence, negative-control failure and restored source hashes, scoped formatting/test-integrity, source hashes and exact commands. Use only persistent own TMPDIR, two Cargo jobs and four test threads; root owns broad CI, separate independent CODE/TEST review, main landing and closure.
