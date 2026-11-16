@@ -1345,21 +1345,21 @@ The `ui` command and Makepad desktop application are removed from the current co
 ```toml
 [workspace]
 members = [
-  "crates/vb_core",
-  "crates/vb_http",
-  "crates/vb_yaml",
-  "crates/vb_validate",
-  "crates/vb_expr",
-  "crates/vb_compile",
-  "crates/vb_storage",
-  "crates/vb_runtime",
-  "crates/vb_ipc",
-  "crates/velvet_ballistics",
-  "crates/workspace_tests",
-  "fuzz",
+    "crates/vb_core",
+    "crates/vb_http",
+    "crates/vb_yaml",
+    "crates/vb_validate",
+    "crates/vb_expr",
+    "crates/vb_compile",
+    "crates/vb_storage",
+    "crates/vb_runtime",
+    "crates/vb_ipc",
+    "crates/velvet_ballistics",
+    "crates/workspace_tests",
+    "fuzz",
 ]
 resolver = "2"
-
+exclude = ["target/miri-tmp"]
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -1446,6 +1446,16 @@ inherits = "release"
 debug = true
 lto = "thin"
 codegen-units = 1
+
+[profile.fuzz]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = "off"
+opt-level = 2
+codegen-units = 1
+incremental = false
 ```
 
 Removed workspace members and dependencies (`vb_codegen`, `vb_ui_model`, `vb_ui_makepad`, Makepad, generated workflow dependencies, and maxperf-only profile policy) must not be treated as current workspace acceptance requirements.
