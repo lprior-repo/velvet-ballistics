@@ -268,7 +268,7 @@ pub open spec fn spec_execute_retry_check_decision(
 }
 
 /// Spec-side mirror of `execute_error_handler_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:179-187.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:182-190.
 /// Discriminants: RetryPolicy::Retryable=0, ActionFailureCode::Unknown=255.
 pub open spec fn spec_execute_error_handler_decision(
     failure_retry_policy_disc: u8,
@@ -297,7 +297,7 @@ pub open spec fn spec_resume_kind_valid(kind: SpecResumeKind) -> bool {
 }
 
 /// Spec-side mirror of `resume_action_outcome_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:197-236.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:197-235.
 pub open spec fn spec_resume_action_outcome_decision(
     outcome_disc: u8,
     attempt: u16,
@@ -332,7 +332,7 @@ pub open spec fn spec_resume_action_outcome_decision(
 /// Mirrors the production body at crates/vb_core/src/action/ticket.rs:78-95
 /// (`compute_action_idempotency_key`, FNV-1a-inspired wrapping multiply-add
 /// hash), reached from the runtime via `compute_idempotency_key` at
-/// crates/vb_runtime/src/engine/action/mod.rs:269-271.
+/// crates/vb_runtime/src/engine/action/mod.rs:267-269.
 pub open spec fn spec_compute_idempotency_key_decision(
     run: u64,
     run_attempt: u16,
@@ -349,7 +349,7 @@ pub open spec fn spec_compute_idempotency_key_decision(
 }
 
 /// Spec-side mirror of `resolve_contract_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:270-280.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:272-282.
 pub open spec fn spec_resolve_contract_decision(id_at_index_match: bool) -> bool {
     id_at_index_match
 }
@@ -709,7 +709,7 @@ pub exec fn checked_prod_execute_retry_check(
 
 /// Production-bound exec wrapper that exercises
 /// `execute_error_handler_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action/mod.rs:179-187.
+/// crates/vb_runtime/src/engine/action/mod.rs:182-190.
 pub exec fn checked_prod_execute_error_handler(
     failure_retry_policy_disc: u8,
     failure_code_disc: u8,
@@ -743,7 +743,7 @@ pub exec fn checked_prod_execute_error_handler(
 
 /// Production-bound exec wrapper that exercises
 /// `resume_action_outcome_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action/mod.rs:197-236.
+/// crates/vb_runtime/src/engine/action/mod.rs:197-235.
 pub exec fn checked_prod_resume_action_outcome(
     outcome_disc: u8,
     attempt: u16,
@@ -798,7 +798,7 @@ pub exec fn checked_prod_resume_action_outcome(
 /// `compute_idempotency_key_pure`. Mirrors the production body at
 /// crates/vb_core/src/action/ticket.rs:78-95, reached from the runtime
 /// via `compute_idempotency_key` at
-/// crates/vb_runtime/src/engine/action/mod.rs:269-271.
+/// crates/vb_runtime/src/engine/action/mod.rs:267-269.
 pub exec fn checked_prod_compute_idempotency_key(
     run: u64,
     run_attempt: u16,
@@ -815,7 +815,7 @@ pub exec fn checked_prod_compute_idempotency_key(
 
 /// Production-bound exec wrapper that exercises
 /// `resolve_contract_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action/mod.rs:270-280.
+/// crates/vb_runtime/src/engine/action/mod.rs:272-282.
 pub exec fn checked_prod_resolve_contract(id_at_index_match: bool) -> (resolved: bool)
     ensures
         resolved == spec_resolve_contract_decision(id_at_index_match),
