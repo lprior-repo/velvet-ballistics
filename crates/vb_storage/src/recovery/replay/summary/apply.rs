@@ -249,3 +249,6 @@ fn reject_resolved_summary_action(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod sequence_boundary_tests;
