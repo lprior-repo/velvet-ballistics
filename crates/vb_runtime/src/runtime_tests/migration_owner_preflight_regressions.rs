@@ -134,6 +134,12 @@ fn migration_source_terminal_marker_refuses_to_create_shadowed_target_owner() ->
     let run = RunId::new(28_001);
     // Synthetic terminal marker represents old home routing authority. Moving
     // only the new queued submission would leave that home marker behind.
+    runtime
+        .shards
+        .get_mut(source)
+        .ok_or("source shard")?
+        .checked_out_run_insert(run)
+        .map_err(|error| error.to_string())?;
     assert_eq!(
         runtime
             .shards
@@ -141,6 +147,13 @@ fn migration_source_terminal_marker_refuses_to_create_shadowed_target_owner() ->
             .ok_or("source shard")?
             .terminal_runs_insert(run),
         Ok(true)
+    );
+    assert!(
+        !runtime
+            .shards
+            .get(source)
+            .ok_or("source shard")?
+            .checked_out_run_contains(run)
     );
     assert_migration_owner_refusal(&mut runtime, source, target, cost)?;
     assert!(
