@@ -179,6 +179,13 @@ fn apply_summary_event_checked(
             }
             Ok(())
         }
+        JournalEvent::ActionAbandoned { ticket, .. } => {
+            if !tracker.is_resolved(ticket.action, ticket.step) {
+                tracker.mark_failed(ticket.action, ticket.step);
+            }
+            apply_summary_event(summary, event);
+            Ok(())
+        }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
             reject_resolved_summary_action(tracker, *action, *step)?;
             tracker.mark_completed(*action, *step);
@@ -252,3 +259,6 @@ fn reject_resolved_summary_action(
 
 #[cfg(test)]
 mod sequence_boundary_tests;
+
+#[cfg(test)]
+mod abandonment_tests;
