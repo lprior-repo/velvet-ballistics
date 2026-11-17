@@ -104,6 +104,11 @@ pub enum TrimStatus {
 #[non_exhaustive]
 pub enum TrimEligibility {
     /// Run can be trimmed up to the safe point.
+    ///
+    /// This status reflects snapshot availability and retention policy, not a
+    /// certification that ordinary runtime recovery can proceed without the
+    /// deleted prefix. The `safe_point` field names the snapshot cutoff used by
+    /// trimming; it is not additional admission or continuation authority.
     Eligible {
         /// The run identifier.
         run: RunId,
