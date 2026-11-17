@@ -494,16 +494,13 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     )
     .with_retry_checkpoint(checkpoint);
 
-    // The shard must reject this because the checkpoint's policy pin (forged to
-    // [44u8;32]) does not match the artifact's actual policy digest (derived
-    // from [43u8;32]).
-    let result = shard.handle_recover(command);
+    // Occupied-run rejection takes precedence over command validation and must
+    // leave the existing owner untouched, even when the command has a bad pin.
+    let result = shard.handle_recover(command.clone());
     assert_eq!(
         result,
-        Err(crate::RuntimeError::RecoveryCannotResume {
-            reason: "admission_policy_pin_mismatch".to_string()
-        }),
-        "shard must reject retry checkpoint with mismatched policy pin"
+        Err(crate::RuntimeError::RunAlreadyExists),
+        "occupied shard must reject duplicate recovery before authority validation"
     );
 
     // The failed probe must leave the shard's state, pending boundaries, and
@@ -524,6 +521,35 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         original_journal,
         "journal must be unchanged after rejected checkpoint probe"
     );
+
+    // Probe the same forged authority on an unoccupied shard so duplicate
+    // rejection cannot mask the original exact policy-pin validation oracle.
+    let pin_config = crate::shard::ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 64,
+        step_budget_per_tick: 4,
+        max_active_runs: 8,
+        max_open_gates: 1024,
+        policy: shard.policy,
+    };
+    let pin_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let mut pin_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+        pin_config,
+        pin_journal.clone(),
+        shard.artifact_store.clone(),
+    )?;
+    let pin_pending = pin_shard.pending_boundary_snapshot(0, 8);
+    let pin_journal_before = pin_journal.snapshot()?;
+    assert_eq!(
+        pin_shard.handle_recover(command),
+        Err(crate::RuntimeError::RecoveryCannotResume {
+            reason: "admission_policy_pin_mismatch".to_string()
+        }),
+        "fresh shard must reject retry checkpoint with mismatched policy pin"
+    );
+    assert_eq!(pin_shard.run_state_get(run_id), None);
+    assert_eq!(pin_shard.pending_boundary_snapshot(0, 8), pin_pending);
+    assert_eq!(pin_journal.snapshot()?, pin_journal_before);
 
     // Second probe: admission policy mismatch (Strict configured vs Relaxed
     // actual shard policy) with a valid pinned receipt. The pin check
