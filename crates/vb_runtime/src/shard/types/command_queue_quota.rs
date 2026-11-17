@@ -129,6 +129,43 @@ struct PendingIndexUpdate {
 }
 
 impl PendingQueueIndexes<'_> {
+    fn remove_command(&mut self, command: &ShardCommand) {
+        if let Some(run) = command.run_id() {
+            self.remove_pending(run);
+        }
+        if let Some(run) = pending_submit_run(command) {
+            self.remove_submission(run);
+        }
+    }
+
+    fn remove_pending(&mut self, run: RunId) {
+        match self.pending.get(&run).copied() {
+            Some(1) => {
+                let _removed = self.pending.swap_remove(&run);
+                let _removed = self.admitted.swap_remove(&run);
+            }
+            Some(count) => {
+                if let Some(next) = count.checked_sub(1) {
+                    let _previous = self.pending.insert(run, next);
+                }
+            }
+            None => {}
+        }
+    }
+
+    fn remove_submission(&mut self, run: RunId) {
+        match self.submissions.get(&run).copied() {
+            Some(1) => {
+                let _removed = self.submissions.swap_remove(&run);
+            }
+            Some(count) => {
+                if let Some(next) = count.checked_sub(1) {
+                    let _previous = self.submissions.insert(run, next);
+                }
+            }
+            None => {}
+        }
+    }
     fn plan(
         &self,
         run: Option<RunId>,

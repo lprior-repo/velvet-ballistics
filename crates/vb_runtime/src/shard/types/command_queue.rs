@@ -13,7 +13,7 @@ pub const fn is_valid_command_queue_capacity(capacity: usize) -> bool {
 
 /// Domain-named wrapper around `crossbeam_queue::ArrayQueue<ShardCommand>`.
 ///
-/// Provides a bounded, non-blocking command queue with domain-specific terminology
+/// Provides a bounded command queue with domain-specific terminology
 /// (`enqueue`, `pop`, `is_full`, `remaining_capacity`) and proper error taxonomy
 /// (`RuntimeError::QueueFull`). This wrapper establishes the `ShardCommand` queue
 /// as a first-class domain boundary rather than a raw field.
@@ -81,7 +81,8 @@ impl ShardCommandQueue {
     /// Enqueues a command. Returns `Ok(())` if the command was enqueued, or
     /// `Err(RuntimeError::QueueFull)` if the queue is at capacity.
     ///
-    /// This operation is non-blocking and never allocates on failure.
+    /// Index accounting is mutex-serialized; this operation may wait for a lock.
+    /// A full queue returns an error without waiting for a free slot.
     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
         self.enqueue_with_limit(cmd, None)
     }
@@ -115,7 +116,8 @@ impl ShardCommandQueue {
     /// Dequeues the frontmost command, if any.
     ///
     /// Returns `Some(cmd)` in FIFO order, or `None` if the queue is empty.
-    /// A dequeued command decrements its run's pending count.
+    /// A dequeued command decrements its run's pending count under the same
+    /// index locks used by enqueue. This operation may wait for those locks.
     pub fn pop(&self) -> Option<ShardCommand> {
         self.pop_queued().map(|queued| queued.command)
     }
@@ -126,38 +128,11 @@ impl ShardCommandQueue {
     }
 
     fn pop_unfenced_queued(&self) -> Option<QueuedShardCommand> {
+        // Match enqueue lock order before freeing a raw slot. Otherwise a
+        // refill can insert a new run while the removed run is still indexed.
+        let mut indexes = self.lock_indexes();
         let queued = self.inner.pop()?;
-        let cmd = &queued.command;
-        if let Some(run) = cmd.run_id() {
-            let mut pending = Self::lock_or_recover(&self.pending);
-            match pending.get(&run).copied() {
-                Some(1) => {
-                    let _removed = pending.swap_remove(&run);
-                    let mut admitted = Self::lock_or_recover(&self.admitted_depth);
-                    let _removed = admitted.swap_remove(&run);
-                }
-                Some(count) => {
-                    if let Some(next) = count.checked_sub(1) {
-                        let _previous = pending.insert(run, next);
-                    }
-                }
-                None => {}
-            }
-        }
-        if let Some(run) = pending_submit_run(cmd) {
-            let mut submissions = Self::lock_or_recover(&self.pending_submissions);
-            match submissions.get(&run).copied() {
-                Some(1) => {
-                    let _removed = submissions.swap_remove(&run);
-                }
-                Some(count) => {
-                    if let Some(next) = count.checked_sub(1) {
-                        let _previous = submissions.insert(run, next);
-                    }
-                }
-                None => {}
-            }
-        }
+        indexes.remove_command(&queued.command);
         Some(queued)
     }
 
