@@ -213,3 +213,6 @@ fn pending_submit_run(command: &ShardCommand) -> Option<RunId> {
 
 #[cfg(test)]
 include!("migration/pop_critical_section_tests.rs");
+
+#[cfg(test)]
+include!("migration/pop_submission_index_tests.rs");
