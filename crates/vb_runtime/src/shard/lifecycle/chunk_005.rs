@@ -235,6 +235,15 @@ impl Shard {
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);
+        self.complete_terminal_batch_after_commit(run, state, finished)
+    }
+
+    fn complete_terminal_batch_after_commit(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        finished: bool,
+    ) -> Result<(), DriveApplyFailure> {
         if finished {
             self.finish_run_after_journaled(run, state)
                 .map_err(DriveApplyFailure::AfterCommit)?;
