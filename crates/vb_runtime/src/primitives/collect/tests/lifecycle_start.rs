@@ -130,15 +130,7 @@ fn collect_start_returns_error_when_source_is_not_list() {
         Some(SlotIdx::new(1)),
         None,
     );
-    match result {
-        Err(EngineError::TypeMismatch { expected, found }) => {
-            assert_eq!(expected, "list");
-            assert_eq!(found, "boolean");
-        }
-        other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
-        }
-    }
+    assert_eq!(result, Err(EngineError::TypeMismatch { expected: "list", found: "boolean" }));
 }
 
 #[test]
@@ -171,12 +163,7 @@ fn collect_start_returns_error_when_limit_exceeded() {
         Some(SlotIdx::new(1)),
         None,
     );
-    match result {
-        Err(EngineError::CollectItemLimitExceeded) => {}
-        other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
-        }
-    }
+    assert_eq!(result, Err(EngineError::CollectItemLimitExceeded));
 }
 
 #[test]
@@ -227,14 +214,7 @@ fn collect_start_returns_error_when_page_size_zero() {
         Some(SlotIdx::new(1)),
         None,
     );
-    match result {
-        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
-            assert_eq!(reason, "collect page_size must be nonzero");
-        }
-        other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
-        }
-    }
+    assert_eq!(result, Err(EngineError::InvalidCompiledWorkflow { reason: "collect page_size must be nonzero" }));
 }
 
 #[test]
@@ -297,14 +277,7 @@ fn collect_finish_returns_error_when_output_missing() {
         Some(StepIdx::new(1)),
         StepIdx::ZERO,
     );
-    match result {
-        Err(EngineError::MissingOutputSlot { step }) => {
-            assert_eq!(step, StepIdx::ZERO);
-        }
-        other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
-        }
-    }
+    assert_eq!(result, Err(EngineError::MissingOutputSlot { step: StepIdx::ZERO }));
 }
 
 #[test]
@@ -323,14 +296,7 @@ fn collect_finish_returns_error_when_next_missing() {
         None,
         StepIdx::ZERO,
     );
-    match result {
-        Err(EngineError::MissingNextStep { step }) => {
-            assert_eq!(step, StepIdx::ZERO);
-        }
-        other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
-        }
-    }
+    assert_eq!(result, Err(EngineError::MissingNextStep { step: StepIdx::ZERO }));
 }
 
 #[test]
@@ -349,15 +315,7 @@ fn collect_page_returns_error_when_collector_not_list() {
         StepIdx::new(1),
         StepIdx::new(2),
     );
-    match result {
-        Err(EngineError::TypeMismatch { expected, found }) => {
-            assert_eq!(expected, "list");
-            assert_eq!(found, "number");
-        }
-        other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
-        }
-    }
+    assert_eq!(result, Err(EngineError::TypeMismatch { expected: "list", found: "number" }));
 }
 
 #[test]
@@ -549,15 +507,7 @@ fn collect_next_returns_error_when_not_list() {
         StepIdx::new(1),
         StepIdx::new(2),
     );
-    match result {
-        Err(EngineError::TypeMismatch { expected, found }) => {
-            assert_eq!(expected, "list");
-            assert_eq!(found, "boolean");
-        }
-        other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
-        }
-    }
+    assert_eq!(result, Err(EngineError::TypeMismatch { expected: "list", found: "boolean" }));
 }
 
 #[test]
