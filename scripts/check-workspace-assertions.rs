@@ -2,9 +2,10 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-// Authoritative master §34: exact 11 members
+// Authoritative master §34: exact 12 members
 const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_core",
+    "crates/vb_http",
     "crates/vb_yaml",
     "crates/vb_validate",
     "crates/vb_expr",
@@ -43,6 +44,7 @@ const FORBIDDEN_FEATURE_NAMES: &[&str] = &[
 // Product package: velvet-ballistics (binary + lib)
 const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_core", "vb_core"),
+    ("crates/vb_http", "vb_http"),
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_expr", "vb_expr"),
