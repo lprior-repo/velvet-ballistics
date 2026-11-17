@@ -91,7 +91,7 @@ mod recover_phases {
     impl Shard {
         pub(crate) fn handle_recover(
             &mut self,
-            mut command: RecoverRunCommand,
+            command: RecoverRunCommand,
         ) -> RuntimeResult<()> {
             // Reject existing live ownership before recovery can replace its cursor.
             // Terminal-only identity remains eligible for the existing recovery path.
@@ -101,6 +101,14 @@ mod recover_phases {
             {
                 return Err(RuntimeError::RunAlreadyExists);
             }
+            self.restore_and_resume_unowned_recovery(command)
+        }
+
+        // Called only after handle_recover rejects existing live ownership.
+        fn restore_and_resume_unowned_recovery(
+            &mut self,
+            mut command: RecoverRunCommand,
+        ) -> RuntimeResult<()> {
             let verified = VerifiedWorkflow::load(self, &command)?;
             let origin = verified.validate_authority(self, &command)?;
             verified.validate_secrets(self, &command)?;
