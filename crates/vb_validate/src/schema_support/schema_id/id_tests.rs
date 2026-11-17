@@ -153,19 +153,50 @@ fn reserved_ids_count() {
 #[test]
 fn reserved_ids_match_current_contract_and_precede_duplicates() {
     for reserved in [
-        "now", "random", "runtime", "null", "true", "false", "input", "inputs",
-        "vars", "secrets", "steps", "error", "attempt", "total", "result", "when",
-        "item", "do", "set", "choose", "for_each", "together", "collect", "reduce",
-        "repeat", "wait", "ask", "try_again", "on_error", "then", "finish",
+        "now",
+        "random",
+        "runtime",
+        "null",
+        "true",
+        "false",
+        "input",
+        "inputs",
+        "vars",
+        "secrets",
+        "steps",
+        "error",
+        "attempt",
+        "total",
+        "result",
+        "when",
+        "item",
+        "do",
+        "set",
+        "choose",
+        "for_each",
+        "together",
+        "collect",
+        "reduce",
+        "repeat",
+        "wait",
+        "ask",
+        "try_again",
+        "on_error",
+        "then",
+        "finish",
     ] {
         assert!(is_reserved_id(reserved), "{reserved}");
         assert_eq!(
             validate_single_id(reserved, &[]),
-            Err(ValidationError::ReservedId { id: reserved.to_owned() }),
+            Err(ValidationError::ReservedId {
+                id: reserved.to_owned()
+            }),
         );
         assert_eq!(
             validate_single_id(reserved, &[reserved]),
-            Err(ValidationError::ReservedId { id: reserved.to_owned() }),
+            Err(ValidationError::ReservedId {
+                id: reserved.to_owned()
+            }),
         );
     }
 }
