@@ -59,6 +59,10 @@ impl Shard {
     }
 
     fn apply_lifetime_expiry(&mut self, run: RunId, limit: u64) -> RuntimeResult<()> {
+        if !self.run_state_contains(run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        self.reserve_terminal_run_slot(run)?;
         let state = self.take_run_state(run)?;
         match self.fail_run_state(run, state)? {
             crate::shard::transitions::TransitionOutcome::Applied => {
