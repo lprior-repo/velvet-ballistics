@@ -156,7 +156,11 @@ fn validate_node_slots(
         CompiledNodeKind::TogetherConcurrentStart { .. }
         | CompiledNodeKind::FirstSuccessStart { .. }
         | CompiledNodeKind::ConcurrentGroupJoin { .. } => {}
-        CompiledNodeKind::ErrorHandler { .. } => {}
+        CompiledNodeKind::ErrorHandler { error_slot, .. } => {
+            if let Some(slot) = error_slot.slot() {
+                check_slot(slot, node_index, slot_count)?;
+            }
+        }
         CompiledNodeKind::Jump { .. } => {}
         _ => {
             return Err(ValidationError::NodeKindConstraintViolation {
