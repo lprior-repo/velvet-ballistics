@@ -41,6 +41,10 @@ struct RuntimeQuotaLedger {
 }
 
 impl SharedQuotaLedger {
+    pub(crate) fn shares_with(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+
     pub(crate) fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(RuntimeQuotaLedger {
