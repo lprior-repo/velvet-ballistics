@@ -93,6 +93,14 @@ mod recover_phases {
             &mut self,
             mut command: RecoverRunCommand,
         ) -> RuntimeResult<()> {
+            // Reject existing live ownership before recovery can replace its cursor.
+            // Terminal-only identity remains eligible for the existing recovery path.
+            if self.run_state_contains(command.run)
+                || self.checked_out_run_contains(command.run)
+                || self.runtime_state_get(command.run).is_some()
+            {
+                return Err(RuntimeError::RunAlreadyExists);
+            }
             let verified = VerifiedWorkflow::load(self, &command)?;
             let origin = verified.validate_authority(self, &command)?;
             verified.validate_secrets(self, &command)?;
