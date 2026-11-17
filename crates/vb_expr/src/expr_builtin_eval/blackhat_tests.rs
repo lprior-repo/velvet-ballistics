@@ -5,25 +5,20 @@ use crate::ExprError;
 use crate::eval::{eval_binary_op, eval_unary_op};
 use crate::lexer::{BinaryOp, UnaryOp};
 
-/// BH-BE-001: builtin_eval::eval_div_values maps i64::MIN / -1 to DivisionByZero.
-///
-/// SECURITY FINDING (HIGH): The `eval_div_values` function in this module
-/// maps ALL `None` results from `checked_div` to `DivisionByZero`, but
-/// `checked_div` returns `None` for both division by zero AND for the
-/// overflow case `i64::MIN / -1`. The correct error for `i64::MIN / -1`
-/// is `IntegerOverflow`, not `DivisionByZero`. This is a misdiagnosis that
-/// could cause incorrect control flow in callers that distinguish between
-/// the two error types.
-///
-/// Compare with `eval::eval_div_values` which correctly handles this by
-/// checking for zero explicitly before calling `checked_div`.
+/// BH-BE-001: The production API distinguishes zero division from overflow.
+/// The removed historical test-only checked_div copy was not a live caller.
 #[test]
-fn blackhat_be_001_div_values_misreports_min_div_neg_one() {
-    let result = eval_div_values(SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-    match result {
-        Err(ExprError::DivisionByZero) => {}
-        other => panic!("BH-BE-001: expected DivisionByZero, got {:?}", other),
-    };
+fn blackhat_be_001_public_division_error_boundaries() {
+    for (left, right, expected) in [
+        (i64::MIN, -1, ExprError::IntegerOverflow),
+        (i64::MIN, 0, ExprError::DivisionByZero),
+        (0, 0, ExprError::DivisionByZero),
+    ] {
+        assert_eq!(
+            eval_binary_op(BinaryOp::Div, SlotValue::I64(left), SlotValue::I64(right)),
+            Err(expected),
+        );
+    }
 }
 
 /// BH-BE-002: Public eval_binary_op correctly handles i64::MIN / -1.
