@@ -1,4 +1,4 @@
-use super::{ReplayPushLimitDecision, classify_replay_push_len};
+use super::{classify_replay_push_len, ReplayPushLimitDecision};
 use crate::journal::EventReplayLimit;
 
 #[test]
