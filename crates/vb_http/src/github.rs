@@ -17,12 +17,13 @@ pub(crate) fn decode_integer_body(
         IntegerField::Duplicate => Err(DecodeError::DuplicateWorkflowCount),
         IntegerField::InvalidType => Err(DecodeError::InvalidWorkflowCount),
         IntegerField::Integer { negative: true, .. }
-        | IntegerField::Integer { magnitude: None, .. } => {
-            Err(DecodeError::WorkflowCountOutOfRange)
-        }
-        IntegerField::Integer { negative: false, magnitude: Some(value) } => {
-            i64::try_from(value).map_err(|_| DecodeError::WorkflowCountOutOfRange)
-        }
+        | IntegerField::Integer {
+            magnitude: None, ..
+        } => Err(DecodeError::WorkflowCountOutOfRange),
+        IntegerField::Integer {
+            negative: false,
+            magnitude: Some(value),
+        } => i64::try_from(value).map_err(|_| DecodeError::WorkflowCountOutOfRange),
     }
 }
 
