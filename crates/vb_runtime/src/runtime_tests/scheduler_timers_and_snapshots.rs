@@ -603,3 +603,41 @@
         assert_eq!(workflow.as_ref().map(|_| ()), Ok(()));
         workflow.ok()
     }
+
+    // Temporary containment, not a replacement for full-transfer success tests.
+    #[test]
+    fn migration_nonempty_refusal_preserves_queues_and_validation_order() -> Result<(), String> {
+        let count = NonZeroUsize::new(2).ok_or("shard count")?;
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(count, runtime_config())
+            .map_err(|error| error.to_string())?;
+        let source_run = vb_core::RunId::new(81_020);
+        let target_run = vb_core::RunId::new(81_021);
+        runtime.shards[0].enqueue(crate::shard::ShardCommand::Inspect { run: source_run, correlation: 17 })
+            .map_err(|error| error.to_string())?;
+        runtime.shards[1].enqueue(crate::shard::ShardCommand::Inspect { run: target_run, correlation: 19 })
+            .map_err(|error| error.to_string())?;
+        let usage = runtime.shards[0].usage_snapshot();
+        let global = runtime.shards[0].global_cost_usage();
+        assert_eq!(runtime.tick_shard(9, ShardDirective::Migrate { target: 9 }),
+            Err(RuntimeError::ShardNotFound { shard: 9 }));
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Migrate { target: 0 }),
+            Err(RuntimeError::MigrateSelf));
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Migrate { target: 9 }),
+            Err(RuntimeError::ShardNotFound { shard: 9 }));
+        for _ in 0..2 {
+            assert_eq!(runtime.tick_shard(0, ShardDirective::Migrate { target: 1 }),
+                Err(RuntimeError::UnsupportedOperation {
+                    operation: "migrate_nonempty_command_queue",
+                }));
+            assert_eq!(runtime.shards[0].command_queue.len(), 1);
+            assert_eq!(runtime.shards[1].command_queue.len(), 1);
+            assert_eq!(runtime.shards[0].usage_snapshot(), usage);
+            assert_eq!(runtime.shards[0].global_cost_usage(), global);
+        }
+        assert!(matches!(runtime.shards[0].command_queue.pop(),
+            Some(crate::shard::ShardCommand::Inspect { run, correlation: 17 }) if run == source_run));
+        assert!(matches!(runtime.shards[1].command_queue.pop(),
+            Some(crate::shard::ShardCommand::Inspect { run, correlation: 19 }) if run == target_run));
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Migrate { target: 1 }), Ok(false));
+        Ok(())
+    }
