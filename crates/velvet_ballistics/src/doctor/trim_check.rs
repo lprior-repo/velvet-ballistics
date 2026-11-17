@@ -122,3 +122,7 @@ pub(crate) struct TrimCheckFailure {
     pub entry: serde_json::Value,
     pub text_line: String,
 }
+
+#[cfg(test)]
+#[path = "trim_check/serialization_tests.rs"]
+mod serialization_tests;
