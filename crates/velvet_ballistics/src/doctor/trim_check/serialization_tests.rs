@@ -12,7 +12,10 @@ fn empty_trim_run_projection_is_exactly_empty() {
         blocked_runs: 0,
         total_events_trimmable: 0,
     };
-    assert_eq!(build_trim_runs_json(&diagnostic), Vec::<serde_json::Value>::new());
+    assert_eq!(
+        build_trim_runs_json(&diagnostic),
+        Vec::<serde_json::Value>::new()
+    );
 }
 
 #[test]
@@ -21,7 +24,9 @@ fn trim_run_projection_preserves_exact_rows_fields_and_order() {
         runs: vec![
             TrimEligibility::Blocked {
                 run: RunId::new(73),
-                blocker: TrimBlocker::RetentionPolicy { retain_last_n_terminal: 10 },
+                blocker: TrimBlocker::RetentionPolicy {
+                    retain_last_n_terminal: 10,
+                },
             },
             TrimEligibility::Eligible {
                 run: RunId::new(71),

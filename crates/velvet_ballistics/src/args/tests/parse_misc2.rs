@@ -59,9 +59,13 @@ fn unknown_command_error_enumerates_valid_commands() -> Result<(), Box<dyn std::
 
     assert!(rendered.contains("expected one of"));
     assert!(rendered.contains("agent-context"));
-    assert_eq!(rendered, format!(
-        "unknown command: foobar (expected one of: {})", crate::args::VALID_COMMANDS
-    ));
+    assert_eq!(
+        rendered,
+        format!(
+            "unknown command: foobar (expected one of: {})",
+            crate::args::VALID_COMMANDS
+        )
+    );
     Ok(())
 }
 

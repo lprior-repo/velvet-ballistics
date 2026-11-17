@@ -288,7 +288,10 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
 
     assert_eq!(
         result,
-        Err(vb_runtime::RuntimeError::StaleAttempt { incoming: 1, current: 2 }),
+        Err(vb_runtime::RuntimeError::StaleAttempt {
+            incoming: 1,
+            current: 2
+        }),
         "stale completion must retain exact run-attempt diagnostic",
     );
 
@@ -321,7 +324,10 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
     // the durable journal next_seq is not the action ticket sequence.
     assert_eq!(
         runtime.tick_all(),
-        Err(vb_runtime::RuntimeError::StaleAttempt { incoming: 1, current: 2 }),
+        Err(vb_runtime::RuntimeError::StaleAttempt {
+            incoming: 1,
+            current: 2
+        }),
         "stale failure must retain exact run-attempt diagnostic",
     );
 
