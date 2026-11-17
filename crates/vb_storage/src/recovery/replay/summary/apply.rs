@@ -185,8 +185,14 @@ fn apply_summary_event_checked(
             apply_summary_event(summary, event);
             Ok(())
         }
-        JournalEvent::ActionFailedEvent { action, step, .. } => {
+        JournalEvent::ActionFailedEvent {
+            action,
+            step,
+            attempt,
+            ..
+        } => {
             reject_resolved_summary_action(tracker, *action, *step)?;
+            tracker.require_failed_attempt_matches_schedule(*action, *step, *attempt)?;
             tracker.mark_failed(*action, *step);
             apply_summary_event(summary, event);
             Ok(())
