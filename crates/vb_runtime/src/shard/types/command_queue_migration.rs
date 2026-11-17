@@ -33,7 +33,7 @@ impl QueueMigrationState {
 fn migration_index_buffer(capacity: usize) -> RuntimeResult<IndexMap<RunId, u32>> {
     let mut entries = IndexMap::new();
     entries
-        .try_reserve(capacity)
+        .try_reserve_exact(capacity)
         .map_err(|_| migration_invariant("migration_index_allocation"))?;
     Ok(entries)
 }
@@ -120,3 +120,6 @@ include!("migration/queue_commit.rs");
 include!("migration/queue_rollback.rs");
 
 include!("migration/queue_index_validation.rs");
+
+#[cfg(test)]
+include!("migration/index_capacity_tests.rs");
