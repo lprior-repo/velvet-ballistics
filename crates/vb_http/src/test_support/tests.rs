@@ -19,9 +19,8 @@ fn raw(endpoint: &PinnedGet, request: &[u8]) -> Result<Vec<u8>, FixtureError> {
 
 #[test]
 fn real_loopback_captures_request_and_reaps_before_return() -> Result<(), FixtureError> {
-    let (response, capture) = with_response(RESPONSE.to_vec(), false, |endpoint| {
-        raw(&endpoint, REQUEST)
-    })?;
+    let (response, capture) =
+        with_response(RESPONSE.to_vec(), false, |endpoint| raw(&endpoint, REQUEST))?;
     assert_eq!(response?, RESPONSE);
     assert_eq!(capture.accepted, 1);
     assert_eq!(capture.request.as_bytes(), REQUEST);
@@ -50,9 +49,8 @@ fn exact_request_and_response_byte_caps_are_inclusive() -> Result<(), FixtureErr
     let mut request = vec![b'a'; 8188];
     request.extend_from_slice(b"\r\n\r\n");
     let response = vec![b'x'; RESPONSE_BYTES];
-    let (observed, capture) = with_response(response.clone(), false, |endpoint| {
-        raw(&endpoint, &request)
-    })?;
+    let (observed, capture) =
+        with_response(response.clone(), false, |endpoint| raw(&endpoint, &request))?;
     assert_eq!(observed?, response);
     assert_eq!(capture.accepted, 1);
     assert_eq!(capture.request.as_bytes(), request.as_slice());
@@ -63,7 +61,9 @@ fn exact_request_and_response_byte_caps_are_inclusive() -> Result<(), FixtureErr
 fn incomplete_or_overlimit_requests_cannot_produce_capture() {
     let mut over = vec![b'a'; REQUEST_BYTES];
     over.extend_from_slice(b"\r\n\r\n");
-    let incomplete = with_response(RESPONSE.to_vec(), false, |endpoint| raw(&endpoint, b"GET /"));
+    let incomplete = with_response(RESPONSE.to_vec(), false, |endpoint| {
+        raw(&endpoint, b"GET /")
+    });
     assert!(matches!(incomplete, Err(FixtureError::IncompleteRequest)));
     let oversized = with_response(RESPONSE.to_vec(), false, |endpoint| raw(&endpoint, &over));
     assert!(matches!(oversized, Err(FixtureError::Bounds)));
@@ -109,8 +109,12 @@ fn isolated_pending_owner_keeps_handle_and_blocks_replacement() -> Result<(), Fi
     };
     owner.ensure_clear()?;
     owner.worker = Some(thread::Builder::new().spawn(move || {
-        wait.recv_timeout(IO_BUDGET).map_err(|_| FixtureError::Deadline)?;
-        Ok(Capture { accepted: 0, request: String::new() })
+        wait.recv_timeout(IO_BUDGET)
+            .map_err(|_| FixtureError::Deadline)?;
+        Ok(Capture {
+            accepted: 0,
+            request: String::new(),
+        })
     })?);
     let pending = owner.wait_reap(0);
     let retained = owner.worker.is_some();
