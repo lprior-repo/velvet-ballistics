@@ -110,16 +110,33 @@ mod recover_duplicate_guard_tests {
     }
 
     fn insert_live_state(shard: &mut Shard, run: RunId) -> TestResult {
-        use vb_core::{CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract, SlotIdx, WorkflowParts};
         use vb_core::workflow::node;
+        use vb_core::{
+            CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract, SlotIdx,
+            WorkflowParts,
+        };
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: "duplicate-recovery-guard".into(),
             digest: WorkflowDigest::from_bytes([0; 32]),
             semantic_source_identity: None,
             source_metadata: None,
             nodes: Box::new([
-                node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0) }, Some(SlotIdx::ZERO), Some(StepIdx::new(1))),
-                node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::ZERO }, None, None),
+                node(
+                    StepIdx::ZERO,
+                    CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                    Some(SlotIdx::ZERO),
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::ZERO,
+                    },
+                    None,
+                    None,
+                ),
             ]),
             expressions: Box::default(),
             accessors: Box::default(),
@@ -179,7 +196,10 @@ mod recover_duplicate_guard_tests {
                     shard.quota.reserve(tenant, 3)?;
                     shard.pending_quota_reservation = Some((
                         run,
-                        PendingQuotaReservation { tenant, cost_units: 3 },
+                        PendingQuotaReservation {
+                            tenant,
+                            cost_units: 3,
+                        },
                     ));
                 }
                 let result = shard.handle_recover(raw_command(run)?);
@@ -231,7 +251,10 @@ mod recover_duplicate_guard_tests {
         assert_eq!(
             shard.handle_recover(raw_command(run)?),
             Err(RuntimeError::Recovery {
-                error: format!("artifact not found during recovery: {:?}", WorkflowDigest::from_bytes([0; 32])),
+                error: format!(
+                    "artifact not found during recovery: {:?}",
+                    WorkflowDigest::from_bytes([0; 32])
+                ),
             })
         );
         assert!(shard.terminal_runs_contains(run));

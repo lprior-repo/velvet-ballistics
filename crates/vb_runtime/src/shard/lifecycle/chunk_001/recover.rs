@@ -89,10 +89,7 @@ mod recover_phases {
     }
 
     impl Shard {
-        pub(crate) fn handle_recover(
-            &mut self,
-            command: RecoverRunCommand,
-        ) -> RuntimeResult<()> {
+        pub(crate) fn handle_recover(&mut self, command: RecoverRunCommand) -> RuntimeResult<()> {
             // Reject existing live ownership before recovery can replace its cursor.
             // Terminal-only identity remains eligible for the existing recovery path.
             if self.run_state_contains(command.run)
