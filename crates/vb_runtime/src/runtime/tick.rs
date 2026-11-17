@@ -125,6 +125,17 @@ impl Runtime {
     /// Returns `Ok(true)` if the shard is alive (continuing), `Ok(false)` if the
     /// shard has shut down, or an error if the shard index is invalid or migration
     /// failed.
+    ///
+    /// A migration error does not always mean rollback completed. If staging or
+    /// restoration fails, affected queues can remain fenced with commands held
+    /// in memory. Further enqueue, Continue, Shutdown and migration attempts on
+    /// those queues refuse progress; there is no public reconciliation API.
+    /// Suspend only skips work and is not a recovery or health check.
+    ///
+    /// Preserve the first full error and the requested source/target indices.
+    /// A `RollbackFailed` error carries both causes, but a plain staging error
+    /// can also leave custody fenced. This retention is not durable recovery:
+    /// dropping or restarting the runtime is not a guaranteed replay mechanism.
     pub fn tick_shard(
         &mut self,
         shard_index: u32,
