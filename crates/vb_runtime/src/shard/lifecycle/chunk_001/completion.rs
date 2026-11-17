@@ -57,7 +57,7 @@ impl Shard {
         self.reject_unregistered_completion(ticket)?;
         self.validate_legacy_action_state(ticket)?;
         if self.append_legacy_action_event(run, ticket)? {
-            let _removed_ticket = self.pending_action_remove(run);
+            // Retain authority until the fallback terminal append commits.
             return self.fail_command_run_on_journal_budget(run);
         }
         self.finish_legacy_action_success(run, ticket)
