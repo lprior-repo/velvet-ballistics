@@ -118,7 +118,9 @@ impl Runtime {
     ///
     /// - `Continue`: Process one command from the queue normally.
     /// - `Suspend`: Skip command processing; preserve queue depth.
-    /// - `Migrate { target }`: Transfer all pending commands to the target shard.
+    /// - `Migrate { target }`: Temporarily rejects a nonempty source queue with
+    ///   `UnsupportedOperation`; empty-source migration keeps its existing result.
+    ///   Pending-command transfer requires reservation-preserving custody first.
     /// - `Shutdown`: Drain all remaining commands and shut down the shard.
     ///
     /// Returns `Ok(true)` if the shard is alive (continuing), `Ok(false)` if the
@@ -134,7 +136,10 @@ impl Runtime {
         tick_validated_shard(self, shard_index_usize, shard_index, directive)
     }
 
-    /// Migrates all commands from source shard to target shard.
+    /// Validates migration and temporarily refuses nonempty source queues.
+    ///
+    /// This containment does not transfer queued commands. Source and target
+    /// remain unchanged on refusal, including queued quota reservations.
     ///
     /// Returns `Ok(true)` if the source shard is still alive (has runs or pending commands),
     /// `Ok(false)` if the source shard is empty and can be shut down.
@@ -167,11 +172,14 @@ impl Runtime {
             .shards
             .get_mut(source_idx)
             .ok_or(RuntimeError::ShardNotFound { shard: source_id })?;
-        let mut commands = Vec::new();
-        while let Some(command) = shard.command_queue.pop() {
-            commands.push(command);
+        // Temporary containment: popping loses queued reservation custody,
+        // and a later target enqueue failure cannot restore drained commands.
+        if !shard.command_queue.is_empty() {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "migrate_nonempty_command_queue",
+            });
         }
-        Ok(commands)
+        Ok(Vec::new())
     }
 
     fn enqueue_migrated_commands(
