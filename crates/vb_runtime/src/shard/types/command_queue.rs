@@ -128,10 +128,18 @@ impl ShardCommandQueue {
     }
 
     fn pop_unfenced_queued(&self) -> Option<QueuedShardCommand> {
+        self.pop_unfenced_queued_observed(|| {})
+    }
+
+    fn pop_unfenced_queued_observed(
+        &self,
+        after_raw_pop: impl FnOnce(),
+    ) -> Option<QueuedShardCommand> {
         // Match enqueue lock order before freeing a raw slot. Otherwise a
         // refill can insert a new run while the removed run is still indexed.
         let mut indexes = self.lock_indexes();
         let queued = self.inner.pop()?;
+        after_raw_pop();
         indexes.remove_command(&queued.command);
         Some(queued)
     }
@@ -202,3 +210,6 @@ fn pending_submit_run(command: &ShardCommand) -> Option<RunId> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+include!("migration/pop_critical_section_tests.rs");
