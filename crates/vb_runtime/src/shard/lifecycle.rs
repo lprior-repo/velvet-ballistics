@@ -84,6 +84,7 @@ mod tests {
     include!("lifecycle_tests/timer_registration_refusal_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
     include!("lifecycle_tests/chunk_014.rs");
+    include!("lifecycle_tests/stale_run_attempt_tests.rs");
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");
