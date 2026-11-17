@@ -34,7 +34,11 @@ fn scheduled(ticket: ActionTicket, seq: EventSeq) -> JournalEvent {
 }
 
 fn abandoned(ticket: ActionTicket, seq: EventSeq) -> JournalEvent {
-    JournalEvent::ActionAbandoned { run: ticket.run, seq, ticket }
+    JournalEvent::ActionAbandoned {
+        run: ticket.run,
+        seq,
+        ticket,
+    }
 }
 
 #[test]
@@ -44,13 +48,25 @@ fn summary_and_frame_block_resolution_or_reschedule_after_abandonment() {
     for next in [
         scheduled(ticket, seq),
         JournalEvent::ActionScheduled {
-            run: ticket.run, seq, step: ticket.step, action: ticket.action, attempt: 1,
+            run: ticket.run,
+            seq,
+            step: ticket.step,
+            action: ticket.action,
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
-            run: ticket.run, seq, step: ticket.step, action: ticket.action, attempt: 1,
+            run: ticket.run,
+            seq,
+            step: ticket.step,
+            action: ticket.action,
+            attempt: 1,
         },
         JournalEvent::ActionFailedEvent {
-            run: ticket.run, seq, step: ticket.step, action: ticket.action, attempt: 99,
+            run: ticket.run,
+            seq,
+            step: ticket.step,
+            action: ticket.action,
+            attempt: 99,
         },
     ] {
         let events = [

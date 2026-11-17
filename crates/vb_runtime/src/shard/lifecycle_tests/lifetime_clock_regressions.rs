@@ -43,12 +43,20 @@ fn lifetime_terminal_preflight_preserves_missing_run_precedence() -> Result<(), 
 fn lifetime_terminal_capacity_refusal_preserves_live_state() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared)
-        .map_err(|error| error.to_string())?;
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared).map_err(|error| error.to_string())?;
     let run = RunId::new(79_032);
     let workflow = require_workflow("lifetime-terminal-preflight", suspended_workflow())?;
-    submit_run(&mut shard, run, workflow, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
-    let before = shard.run_state_get(run).ok_or("missing live state")?.clone();
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
+    let before = shard
+        .run_state_get(run)
+        .ok_or("missing live state")?
+        .clone();
     let pending = shard.pending_action_clone();
     let runtime = shard.runtime_state_get(run);
     let seq = shard.journal_seq_get(run);
@@ -56,7 +64,9 @@ fn lifetime_terminal_capacity_refusal_preserves_live_state() -> Result<(), Strin
     let usage = shard.usage_snapshot();
     let global = shard.global_cost_usage();
     let counters = shard.counters().snapshot();
-    let trace = shard.trace_ring().snapshot_for_run(run, shard.trace_ring().capacity());
+    let trace = shard
+        .trace_ring()
+        .snapshot_for_run(run, shard.trace_ring().capacity());
     let accepted = journal.snapshot().map_err(|error| error.to_string())?;
     shard.max_active_runs = 0;
     assert_eq!(
@@ -72,10 +82,15 @@ fn lifetime_terminal_capacity_refusal_preserves_live_state() -> Result<(), Strin
     assert_eq!(shard.global_cost_usage(), global);
     assert_eq!(shard.counters().snapshot(), counters);
     assert_eq!(
-        shard.trace_ring().snapshot_for_run(run, shard.trace_ring().capacity()),
+        shard
+            .trace_ring()
+            .snapshot_for_run(run, shard.trace_ring().capacity()),
         trace
     );
-    assert_eq!(journal.snapshot().map_err(|error| error.to_string())?, accepted);
+    assert_eq!(
+        journal.snapshot().map_err(|error| error.to_string())?,
+        accepted
+    );
     assert!(!shard.checked_out_run_contains(run));
     assert!(!shard.terminal_runs_contains(run));
     assert_eq!(shard.last_lifetime_expiry(), None);
