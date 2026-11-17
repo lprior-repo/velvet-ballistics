@@ -50,6 +50,7 @@ impl Shard {
 
     /// Processes only commands present on entry, retaining boundary authorities.
     pub(crate) fn quiesce_for_shutdown(&mut self) -> RuntimeResult<usize> {
+        self.command_queue.require_unfenced()?;
         let command_count = self.command_queue.len();
         let mut processed = 0usize;
         for _ in 0..command_count {
