@@ -82,6 +82,7 @@ impl Shard {
             .ok_or(RuntimeError::RunNotFound)?;
         // Keep missing-run precedence and reserve before terminal journal effects.
         self.reserve_terminal_run_slot(run)?;
+        self.reserve_checked_out_run_slot(run)?;
         let events = [
             action_failed_event(run, preflight),
             RuntimeJournalEvent::RunFailed { run, attempt },
