@@ -35,6 +35,17 @@ impl FjallJournal {
         decode_snapshot_seq_for_trim(key.as_ref(), run).map(Some)
     }
 
+    /// Removes events strictly before the latest snapshot sequence, subject to
+    /// the configured terminal-retention policy.
+    ///
+    /// # Recovery limitation
+    ///
+    /// This operation checks snapshot-key availability and retention policy; it
+    /// does not establish that the snapshot contains all authority and state
+    /// needed by ordinary runtime recovery. Prefix deletion can therefore make
+    /// full-prefix recovery unavailable. A nonempty full-prefix read requires
+    /// events beginning at sequence zero; snapshot-tail reading is a distinct
+    /// storage operation, not a replacement recovery proof.
     pub fn trim_events_for_run(
         &self,
         run: RunId,
@@ -115,6 +126,10 @@ impl FjallJournal {
     /// Non-destructive trim eligibility diagnostic.
     ///
     /// Scans all runs and reports eligibility WITHOUT deleting anything.
+    ///
+    /// Eligibility here reports the implemented snapshot and retention checks.
+    /// It does not certify that deleting the reported prefix preserves ordinary
+    /// runtime recovery; see [`Self::trim_events_for_run`].
     pub fn trim_eligibility_diagnostic(
         &self,
         policy: TrimPolicy,
