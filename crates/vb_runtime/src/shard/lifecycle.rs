@@ -71,6 +71,7 @@ mod tests {
     include!("lifecycle_tests/action_recovery_tests.rs");
     include!("lifecycle_tests/secret_recovery_tests.rs");
     include!("lifecycle_tests/lifetime_clock_regressions.rs");
+    include!("lifecycle_tests/cancel_kill_refusal_tests.rs");
     include!("lifecycle_tests/timer_due_regressions.rs");
     include!("lifecycle_tests/timer_retry_regressions.rs");
     include!("lifecycle_tests/timer_answer_regressions.rs");
