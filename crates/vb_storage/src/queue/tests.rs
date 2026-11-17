@@ -294,6 +294,24 @@ mod internal_tests {
     }
 
     #[test]
+    fn batch_builder_full_cap_preserves_the_accepted_event() {
+        let mut builder = BatchBuilder::with_capacity(1);
+        let accepted = make_event(RunId::new(221), 0);
+        let rejected = make_event(RunId::new(222), 1);
+        assert!(builder.push(accepted.clone()).is_ok());
+        assert_eq!(builder.as_slice(), std::slice::from_ref(&accepted));
+        let result = builder.push(rejected.clone());
+        assert!(matches!(result, Err(JournalError::QueueFull)));
+        assert_eq!(builder.cap(), 1);
+        assert_eq!(builder.len(), 1);
+        assert!(!builder.is_empty());
+        assert_eq!(builder.as_slice(), std::slice::from_ref(&accepted));
+        let retried = builder.push(rejected);
+        assert!(matches!(retried, Err(JournalError::QueueFull)));
+        assert_eq!(builder.as_slice(), std::slice::from_ref(&accepted));
+    }
+
+    #[test]
     fn batch_builder_starts_empty() {
         let builder = BatchBuilder::new();
         assert!(builder.is_empty());
