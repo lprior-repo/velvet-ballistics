@@ -78,6 +78,7 @@ impl Shard {
     }
 
     fn tick_inner(&mut self) -> RuntimeResult<bool> {
+        self.command_queue.require_unfenced()?;
         if self.control.shutting_down {
             return Ok(false);
         }

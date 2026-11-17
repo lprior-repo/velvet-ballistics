@@ -19,6 +19,7 @@ pub const fn is_valid_command_queue_capacity(capacity: usize) -> bool {
 /// as a first-class domain boundary rather than a raw field.
 pub struct ShardCommandQueue {
     inner: ArrayQueue<QueuedShardCommand>,
+    migration: QueueMigrationState,
     /// Stored capacity to satisfy POST-001 and INV-001 invariants.
     capacity: usize,
     /// Pending command count per run, keyed by the run derived from each
@@ -52,10 +53,11 @@ impl ShardCommandQueue {
         }
         Ok(Self {
             inner: ArrayQueue::new(capacity),
+            migration: QueueMigrationState::try_new(capacity)?,
             capacity,
-            pending: std::sync::Mutex::new(IndexMap::new()),
-            admitted_depth: std::sync::Mutex::new(IndexMap::new()),
-            pending_submissions: std::sync::Mutex::new(IndexMap::new()),
+            pending: std::sync::Mutex::new(migration_index_buffer(capacity)?),
+            admitted_depth: std::sync::Mutex::new(migration_index_buffer(capacity)?),
+            pending_submissions: std::sync::Mutex::new(migration_index_buffer(capacity)?),
         })
     }
 
@@ -63,14 +65,8 @@ impl ShardCommandQueue {
     ///
     /// This helper is private to the shard construction path; callers validate the
     /// configured capacity before reaching this allocation.
-    pub(crate) fn from_config(config: ShardConfig) -> Self {
-        Self {
-            inner: ArrayQueue::new(config.command_queue_capacity),
-            capacity: config.command_queue_capacity,
-            pending: std::sync::Mutex::new(IndexMap::new()),
-            admitted_depth: std::sync::Mutex::new(IndexMap::new()),
-            pending_submissions: std::sync::Mutex::new(IndexMap::new()),
-        }
+    pub(crate) fn from_config(config: ShardConfig) -> RuntimeResult<Self> {
+        Self::new(config.command_queue_capacity)
     }
 
     fn lock_or_recover<T>(
@@ -125,6 +121,11 @@ impl ShardCommandQueue {
     }
 
     pub(crate) fn pop_queued(&self) -> Option<QueuedShardCommand> {
+        self.require_unfenced().ok()?;
+        self.pop_unfenced_queued()
+    }
+
+    fn pop_unfenced_queued(&self) -> Option<QueuedShardCommand> {
         let queued = self.inner.pop()?;
         let cmd = &queued.command;
         if let Some(run) = cmd.run_id() {
@@ -163,13 +164,19 @@ impl ShardCommandQueue {
     /// Returns the number of commands currently in the queue.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.inner.len()
+        if self.migration.fenced {
+            self.migration
+                .original_len
+                .max(self.inner.len().saturating_add(self.migration.stage.len()))
+        } else {
+            self.inner.len()
+        }
     }
 
     /// Returns `true` if the queue contains no commands.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.len() == 0
     }
 
     /// Returns the capacity of this queue (set at construction).
@@ -181,13 +188,13 @@ impl ShardCommandQueue {
     /// Returns the number of remaining free slots in the queue.
     #[must_use]
     pub fn remaining_capacity(&self) -> usize {
-        self.capacity.saturating_sub(self.inner.len())
+        self.capacity.saturating_sub(self.len())
     }
 
     /// Returns `true` if the queue is at capacity.
     #[must_use]
     pub fn is_full(&self) -> bool {
-        self.inner.len() == self.capacity
+        self.len() == self.capacity
     }
 
     /// Returns the compile-time bounded capacity limit (65536).
