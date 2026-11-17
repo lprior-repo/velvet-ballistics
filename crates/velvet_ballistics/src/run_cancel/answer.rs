@@ -7,6 +7,9 @@ use std::path::Path;
 use vb_core::RunId;
 use vb_ipc::server::IpcResponse;
 
+const ANSWER_COMMAND: IpcCommand = IpcCommand::AnswerAsk;
+const ANSWER_CORRELATION: u64 = 0;
+
 pub(crate) fn cmd_answer(
     run_id: &str,
     selector: AnswerSelector,
@@ -86,19 +89,44 @@ fn send_answer(
         taint: None,
     };
     client
-        .send_command(IpcCommand::AnswerAsk, 0, &payload)
+        .send_command(ANSWER_COMMAND, ANSWER_CORRELATION, &payload)
         .map_err(|error| format!("error sending answer: {error}"))
 }
 
 fn receive_answer(client: &mut IpcClient, run_id: RunId, output: OutputFormat) -> ExitCode {
     match client.recv_response(vb_ipc::MaxPayloadBytes::DEFAULT) {
-        Ok((_header, response)) => answer_response(response, run_id, output),
+        Ok((header, response)) => answer_response_with_identity(
+            header.command,
+            header.correlation,
+            response,
+            run_id,
+            output,
+        ),
         Err(error) => answer_error(
             &format!("error receiving response: {error}"),
             output,
             CliExitCode::IpcError,
         ),
     }
+}
+
+fn answer_response_with_identity(
+    command: IpcCommand,
+    correlation: u64,
+    response: IpcResponse,
+    run_id: RunId,
+    output: OutputFormat,
+) -> ExitCode {
+    if matches!(&response, IpcResponse::AcceptedRun { .. })
+        && (command != ANSWER_COMMAND || correlation != ANSWER_CORRELATION)
+    {
+        return answer_error(
+            &format!("unexpected response: {response:?}"),
+            output,
+            CliExitCode::RuntimeFailed,
+        );
+    }
+    answer_response(response, run_id, output)
 }
 
 fn answer_response(response: IpcResponse, run_id: RunId, output: OutputFormat) -> ExitCode {
@@ -230,5 +258,46 @@ mod tests {
             answer_response(IpcResponse::Healthy, RunId::new(1), OutputFormat::Text),
             ExitCode::from(CliExitCode::RuntimeFailed),
         );
+    }
+
+    #[test]
+    fn accepted_answer_requires_matching_command_correlation_and_run() {
+        for (command, correlation, accepted, expected) in [
+            (IpcCommand::AnswerAsk, 0, 17, ExitCode::SUCCESS),
+            (IpcCommand::Health, 0, 17, ExitCode::from(CliExitCode::RuntimeFailed)),
+            (IpcCommand::AnswerAsk, 1, 17, ExitCode::from(CliExitCode::RuntimeFailed)),
+            (IpcCommand::AnswerAsk, u64::MAX, 17, ExitCode::from(CliExitCode::RuntimeFailed)),
+            (IpcCommand::AnswerAsk, 0, 18, ExitCode::from(CliExitCode::RuntimeFailed)),
+        ] {
+            assert_eq!(
+                answer_response_with_identity(
+                    command, correlation, IpcResponse::AcceptedRun { run_id: accepted },
+                    RunId::new(17), OutputFormat::Text,
+                ),
+                expected,
+            );
+        }
+    }
+
+    #[test]
+    fn nonaccepted_answer_responses_keep_error_mapping_with_unmatched_headers() {
+        for (response, expected) in [
+            (
+                IpcResponse::RuntimeError { message: String::from("runtime rejection") },
+                ExitCode::from(CliExitCode::RuntimeFailed),
+            ),
+            (
+                IpcResponse::PayloadError { diagnostic: 1, message: String::from("bad payload") },
+                ExitCode::from(CliExitCode::ValidationFailed),
+            ),
+            (IpcResponse::Healthy, ExitCode::from(CliExitCode::RuntimeFailed)),
+        ] {
+            assert_eq!(
+                answer_response_with_identity(
+                    IpcCommand::Health, u64::MAX, response, RunId::new(17), OutputFormat::Text,
+                ),
+                expected,
+            );
+        }
     }
 }
