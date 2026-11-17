@@ -40,14 +40,14 @@ fn check_migration_depth(
     pending: u32,
     depth: Option<u32>,
 ) -> RuntimeResult<()> {
-    if let Some(limit) = depth {
-        if pending > limit {
-            return Err(RuntimeError::PerRunQueueDepthExceeded {
-                run,
-                pending: target_pending,
-                limit,
-            });
-        }
+    if let Some(limit) = depth
+        && pending > limit
+    {
+        return Err(RuntimeError::PerRunQueueDepthExceeded {
+            run,
+            pending: target_pending,
+            limit,
+        });
     }
     Ok(())
 }

@@ -36,8 +36,8 @@ impl MigrationRollback {
         &mut self,
         source: &mut MigrationCustody<T>,
         target: &mut MigrationCustody<T>,
-        push_source: impl FnOnce(T) -> Result<(), T>,
-        push_target: impl FnOnce(T) -> Result<(), T>,
+        push_source: impl FnOnce(T) -> Option<T>,
+        push_target: impl FnOnce(T) -> Option<T>,
     ) -> TransferProgress {
         match self.phase {
             RollbackPhase::TargetPrefix => self.restore_target_prefix(target, push_target),
@@ -62,7 +62,7 @@ impl MigrationRollback {
     fn restore_target_prefix<T>(
         &mut self,
         target: &mut MigrationCustody<T>,
-        push_target: impl FnOnce(T) -> Result<(), T>,
+        push_target: impl FnOnce(T) -> Option<T>,
     ) -> TransferProgress {
         let Some(remaining) = self.target_original_remaining.checked_sub(1) else {
             self.phase = RollbackPhase::SourcePrefix;
@@ -97,7 +97,12 @@ mod tests {
         let mut restored_source = Vec::new();
         let mut restored_target = Vec::new();
         assert_eq!(
-            rollback.step(&mut source, &mut target, Err, Err),
+            rollback.step(
+                &mut source,
+                &mut target,
+                |entry| Some(entry),
+                |entry| Some(entry),
+            ),
             TransferProgress::Refused
         );
         assert_eq!(target.len(), 2);
@@ -107,11 +112,11 @@ mod tests {
                 &mut target,
                 |item| {
                     restored_source.push(item);
-                    Ok(())
+                    None
                 },
                 |item| {
                     restored_target.push(item);
-                    Ok(())
+                    None
                 },
             );
         }

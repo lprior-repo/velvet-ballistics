@@ -5,7 +5,7 @@ impl ShardCommandQueue {
             match source
                 .migration
                 .stage
-                .transfer_front(|entry| self.inner.push(entry))
+                .transfer_front(|entry| self.inner.push(entry).err())
             {
                 TransferProgress::Accepted => {}
                 _ => return Err(migration_invariant("migration_transfer_refused")),
@@ -20,7 +20,7 @@ impl ShardCommandQueue {
             || !source.migration.fully_staged
             || self.migration.planned_source_len != Some(source.migration.original_len)
             || self.inner.len() != self.migration.original_len
-            || source.inner.len() != 0
+            || !source.inner.is_empty()
             || source.migration.stage.len() != source.migration.original_len
         {
             return Err(migration_invariant("migration_commit_invariant"));

@@ -79,7 +79,7 @@ fn rollback_of_partial_transfer_restores_both_fifos_and_indices() -> TestResult 
         source
             .migration
             .stage
-            .transfer_front(|entry| target.inner.push(entry)),
+            .transfer_front(|entry| target.inner.push(entry).err()),
         TransferProgress::Accepted
     );
     target.rollback_migration_pair(&mut source)?;
