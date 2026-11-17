@@ -181,6 +181,9 @@ impl Shard {
         state: RunState,
         finished: bool,
     ) -> Result<(), DriveApplyFailure> {
+        // Reserve before transferring state into the terminal transition.
+        self.reserve_terminal_run_slot(run)
+            .map_err(DriveApplyFailure::BeforeCommit)?;
         let outcome = if finished {
             self.finish_run(run, state)
         } else {
