@@ -243,3 +243,95 @@ fn frame_seed_matching_failure_preserves_competing_pending_pairs() -> Result<(),
     );
     Ok(())
 }
+
+#[test]
+fn summary_rejects_failure_attempt_mismatching_full_schedule() -> Result<(), String> {
+    for (scheduled_attempt, failed_attempt) in [(1, 2), (2, 1), (1, 0), (1, u16::MAX)] {
+        let events = [
+            step_started(),
+            scheduled(scheduled_attempt, EventSeq::new(1)),
+            failed(failed_attempt, EventSeq::new(2)),
+        ];
+        let error = super::super::apply::summarize_recovery_events(&events)
+            .err()
+            .ok_or("summary accepted mismatched failure attempt")?;
+        assert_eq!(
+            error,
+            RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: String::from("action failure attempt does not match schedule ticket"),
+            }
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn summary_accepts_matching_failure_attempt() -> Result<(), String> {
+    for attempt in [1, 2] {
+        let events = [
+            step_started(),
+            scheduled(attempt, EventSeq::new(1)),
+            failed(attempt, EventSeq::new(2)),
+        ];
+        let hydration = super::super::apply::summarize_recovery_events(&events)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(hydration.summary().actions_scheduled, 1);
+        assert_eq!(hydration.summary().actions_resolved, 1);
+    }
+    Ok(())
+}
+
+#[test]
+fn summary_preserves_failure_without_full_schedule() -> Result<(), String> {
+    let legacy_schedule = JournalEvent::ActionScheduled {
+        run: RunId::new(41),
+        seq: EventSeq::new(1),
+        step: StepIdx::ZERO,
+        action: ActionId::new(7),
+        attempt: 1,
+    };
+    let cases = [
+        vec![step_started(), failed(2, EventSeq::new(1))],
+        vec![step_started(), legacy_schedule, failed(2, EventSeq::new(2))],
+    ];
+    for mut events in cases {
+        let hydration = super::super::apply::summarize_recovery_events(&events)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(hydration.summary().actions_resolved, 1);
+        let next_seq = u64::try_from(events.len()).map_err(|error| error.to_string())?;
+        events.push(scheduled(1, EventSeq::new(next_seq)));
+        let error = super::super::apply::summarize_recovery_events(&events)
+            .err()
+            .ok_or("summary accepted schedule after legacy failure")?;
+        assert_eq!(
+            error,
+            RecoveryError::NonIdempotentActionBlocked {
+                action: ActionId::new(7),
+                step: StepIdx::ZERO,
+            }
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn summary_resolved_pair_error_precedes_failure_attempt_mismatch() -> Result<(), String> {
+    let events = [
+        step_started(),
+        scheduled(1, EventSeq::new(1)),
+        failed(1, EventSeq::new(2)),
+        failed(2, EventSeq::new(3)),
+    ];
+    let error = super::super::apply::summarize_recovery_events(&events)
+        .err()
+        .ok_or("summary accepted second resolution")?;
+    assert_eq!(
+        error,
+        RecoveryError::NonIdempotentActionBlocked {
+            action: ActionId::new(7),
+            step: StepIdx::ZERO,
+        }
+    );
+    Ok(())
+}
