@@ -418,7 +418,11 @@ fn compile_rejects_completely_empty_source() {
 #[test]
 fn compile_rejects_whitespace_only_source() {
     let result = compile_workflow(b"   \n\n   \n");
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(CompileErrors(errors))
+            if matches!(errors.as_slice(), [CompileError::EmptySource])
+    ));
 }
 
 #[test]
