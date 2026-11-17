@@ -218,3 +218,5 @@ fn submission_run(command: &ShardCommand) -> Option<RunId> {
         _ => None,
     }
 }
+
+include!("queue_migration.rs");
