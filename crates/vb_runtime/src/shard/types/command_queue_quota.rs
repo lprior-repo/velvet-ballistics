@@ -6,6 +6,7 @@ impl ShardCommandQueue {
         quota_candidate: Option<PendingQuotaReservation>,
         quota_ledger: Option<&crate::quota::SharedQuotaLedger>,
     ) -> RuntimeResult<()> {
+        self.require_unfenced()?;
         let run = cmd.run_id();
         let submit_run = pending_submit_run(&cmd);
         let submit_depth = submit_depth(&cmd);
