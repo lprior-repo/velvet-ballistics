@@ -114,3 +114,99 @@ fn partially_staged_source_stays_fenced_instead_of_reordering() -> TestResult {
     assert_eq!(queue.pending_for(RunId::new(91)), 2);
     Ok(())
 }
+
+fn fenced_test_shard() -> Result<crate::shard::Shard, Box<dyn std::error::Error>> {
+    crate::shard::Shard::new(crate::shard::ShardConfig {
+        command_queue_capacity: 3,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        ..crate::shard::ShardConfig::default()
+    })
+    .map_err(Into::into)
+}
+
+fn assert_fenced_shard_refuses_progress(shard: &mut crate::shard::Shard) {
+    let error = RuntimeError::UnsupportedOperation {
+        operation: "migration_queue_fenced",
+    };
+    assert_eq!(shard.tick(), Err(error.clone()));
+    assert_eq!(shard.quiesce_for_shutdown(), Err(error.clone()));
+    assert_eq!(shard.drain_pending_and_shutdown(), Err(error));
+    assert!(!shard.is_shutting_down());
+    assert!(shard.command_queue.is_migration_fenced());
+}
+
+#[test]
+fn empty_fenced_destination_refuses_tick_and_shutdown_before_empty_success() -> TestResult {
+    let mut shard = fenced_test_shard()?;
+    let run = RunId::new(93);
+    let tenant = Some(vb_core::ids::TenantId::new(9));
+    shard.reserve_admission_quota(run, tenant, 7)?;
+    shard.command_queue.fence_migration()?;
+    for _ in 0..2 {
+        assert_fenced_shard_refuses_progress(&mut shard);
+        assert_eq!(shard.command_queue.len(), 0);
+        assert!(shard.command_queue.inner.is_empty());
+        assert_eq!(shard.command_queue.migration.stage.len(), 0);
+        assert_eq!(shard.global_cost_usage(), 7);
+        assert_eq!(shard.charged_quotas.get(&run), Some(&(tenant, 7)));
+        assert_eq!(shard.command_queue.pending_for(run), 0);
+    }
+    Ok(())
+}
+
+#[test]
+fn partially_staged_source_tick_and_shutdown_preserve_envelope_custody() -> TestResult {
+    let mut shard = fenced_test_shard()?;
+    let quota = PendingQuotaReservation {
+        tenant: Some(vb_core::ids::TenantId::new(9)),
+        cost_units: 7,
+    };
+    // Synthetic charged envelope: this deliberately isolates custody, not a
+    // valid submission or a reachable allocation failure. It must never execute.
+    shard.command_queue.enqueue_with_reservation(
+        inspect(91, 11),
+        Some(2),
+        Some(quota),
+        Some(&shard.quota),
+    )?;
+    shard.command_queue.enqueue(inspect(91, 22))?;
+    shard.command_queue.fence_migration()?;
+    let queue = &mut shard.command_queue;
+    assert_eq!(
+        queue.migration.stage.fill_one(|| queue.inner.pop()),
+        TransferProgress::Accepted
+    );
+    for _ in 0..2 {
+        assert_fenced_shard_refuses_progress(&mut shard);
+        assert_eq!(shard.global_cost_usage(), 7);
+        assert_eq!(shard.command_queue.len(), 2);
+        assert_eq!(shard.command_queue.pending_for(RunId::new(91)), 2);
+        assert_eq!(shard.command_queue.inner.len(), 1);
+        assert_eq!(shard.command_queue.migration.stage.len(), 1);
+        let staged = shard
+            .command_queue
+            .migration_entries()
+            .next()
+            .ok_or("missing staged envelope")?;
+        assert_eq!(staged.command, inspect(91, 11));
+        assert_eq!(staged.quota, Some(quota));
+        assert!(shard.command_queue.pop_queued().is_none());
+        assert_eq!(
+            shard.command_queue.restore_migration_source(),
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "migration_restore_without_complete_staging",
+            })
+        );
+    }
+    // Inspect the remaining raw envelope only after all accounting assertions.
+    // This is not a recovery/unfence operation and does not prove quota release.
+    let raw = shard
+        .command_queue
+        .inner
+        .pop()
+        .ok_or("missing raw envelope")?;
+    assert_eq!(raw.command, inspect(91, 22));
+    assert_eq!(raw.quota, None);
+    assert!(shard.command_queue.is_migration_fenced());
+    Ok(())
+}
