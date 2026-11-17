@@ -206,3 +206,30 @@ fn previous_run_attempt_registered_context_rejects_before_artifact_lookup() -> R
         |shard| shard.registered_action_context(old).map(|_| ()),
     )
 }
+
+#[test]
+fn canonical_zero_and_future_run_attempts_remain_invalid() -> Result<(), String> {
+    let (shard, _journal, _old, current) = stale_run_fixture()?;
+    assert_eq!(current.run_attempt, 2);
+    assert_eq!(shard.require_pending_action_ownership(current), Ok(()));
+
+    for run_attempt in [0, 3, u16::MAX] {
+        let incoming = rekey_run_ticket(current, run_attempt);
+        // A canonical key is not proof of valid run-attempt authority.
+        assert!(vb_core::action::action_ticket_has_valid_key(incoming));
+        assert_eq!(incoming.run_attempt, run_attempt);
+        assert_eq!(incoming.run, current.run);
+        assert_eq!(incoming.step, current.step);
+        assert_eq!(incoming.seq, current.seq);
+        assert_eq!(incoming.action, current.action);
+        assert_eq!(incoming.attempt, current.attempt);
+        assert_eq!(incoming.capacity, current.capacity);
+        assert_eq!(incoming.fencing_token, current.fencing_token);
+        assert_eq!(
+            shard.require_pending_action_ownership(incoming),
+            Err(RuntimeError::InvalidActionCompletion),
+        );
+    }
+    assert_eq!(shard.require_pending_action_ownership(current), Ok(()));
+    Ok(())
+}
