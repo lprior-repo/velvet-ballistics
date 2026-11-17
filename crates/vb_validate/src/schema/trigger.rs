@@ -51,6 +51,10 @@ fn validate_event_trigger(kind: &str, body: &FieldValue) -> ValidationResult<()>
                 trigger: kind.to_owned(),
             });
         }
+        // The allowlist above means every remaining field is the same key.
+        if entries.len() > 1 {
+            return Err(ValidationError::DuplicateKey);
+        }
     }
     validate_named_string_trigger(kind, body, "type")
 }
