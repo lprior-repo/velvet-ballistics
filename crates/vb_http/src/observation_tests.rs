@@ -64,14 +64,20 @@ fn captured_fields_own_empty_duplicate_and_comma_values() -> crate::Result<()> {
     assert_eq!(observation.header_count(), 5);
     assert_eq!(observation.headers().len(), 5);
     for _ in 0..2 {
-        let fields = observation.headers().map(|field| (field.name, field.value)).collect::<Vec<_>>();
+        let fields = observation
+            .headers()
+            .map(|field| (field.name, field.value))
+            .collect::<Vec<_>>();
         let expected_fields = expected
             .iter()
             .map(|(name, value)| (name.as_str(), value.as_str()))
             .collect::<Vec<_>>();
         assert_eq!(fields, expected_fields);
         assert!(observation.headers().all(|field| field.name == "x-case"));
-        let mut values = observation.headers().map(|field| field.value).collect::<Vec<_>>();
+        let mut values = observation
+            .headers()
+            .map(|field| field.value)
+            .collect::<Vec<_>>();
         values.sort_unstable();
         assert_eq!(values, ["", "a", "a", "a,b", "b"]);
     }
@@ -107,7 +113,10 @@ fn single_field_budget_includes_its_name_at_65536_bytes() -> crate::Result<()> {
         if accepted {
             let observation = result?;
             assert_eq!(observation.header_count(), 1);
-            assert_eq!(observation.headers().next().map(|field| field.value.len()), Some(length));
+            assert_eq!(
+                observation.headers().next().map(|field| field.value.len()),
+                Some(length)
+            );
         } else {
             assert!(matches!(result, Err(AttemptFailure::HeaderLimit)));
         }
@@ -125,7 +134,13 @@ fn aggregate_budget_includes_names_and_every_duplicate_value() -> crate::Result<
         if accepted {
             let observation = result?;
             assert_eq!(observation.header_count(), 2);
-            assert_eq!(observation.headers().map(|field| field.value.len()).sum::<usize>(), 65_534);
+            assert_eq!(
+                observation
+                    .headers()
+                    .map(|field| field.value.len())
+                    .sum::<usize>(),
+                65_534
+            );
         } else {
             assert!(matches!(result, Err(AttemptFailure::HeaderLimit)));
         }
@@ -134,12 +149,14 @@ fn aggregate_budget_includes_names_and_every_duplicate_value() -> crate::Result<
 }
 
 #[test]
-fn supported_whitespace_is_preserved_and_invalid_text_rejects_whole_capture()
--> crate::Result<()> {
+fn supported_whitespace_is_preserved_and_invalid_text_rejects_whole_capture() -> crate::Result<()> {
     let mut headers = HeaderMap::new();
     append(&mut headers, "x", b"\t a,b \t")?;
     let observation = observed(&headers)?;
-    assert_eq!(observation.headers().next().map(|field| field.value), Some("\t a,b \t"));
+    assert_eq!(
+        observation.headers().next().map(|field| field.value),
+        Some("\t a,b \t")
+    );
     append(&mut headers, "x", &[0x80])?;
     assert!(matches!(observed(&headers), Err(AttemptFailure::Transport)));
     Ok(())
