@@ -118,9 +118,8 @@ impl Runtime {
     ///
     /// - `Continue`: Process one command from the queue normally.
     /// - `Suspend`: Skip command processing; preserve queue depth.
-    /// - `Migrate { target }`: Temporarily rejects a nonempty source queue with
-    ///   `UnsupportedOperation`; empty-source migration keeps its existing result.
-    ///   Pending-command transfer requires reservation-preserving custody first.
+    /// - `Migrate { target }`: Transactionally transfers pending commands; commands
+    ///   tied to source-owned runs remain on the source and cause refusal.
     /// - `Shutdown`: Drain all remaining commands and shut down the shard.
     ///
     /// Returns `Ok(true)` if the shard is alive (continuing), `Ok(false)` if the
@@ -136,66 +135,39 @@ impl Runtime {
         tick_validated_shard(self, shard_index_usize, shard_index, directive)
     }
 
-    /// Validates migration and temporarily refuses nonempty source queues.
-    ///
-    /// This containment does not transfer queued commands. Source and target
-    /// remain unchanged on refusal, including queued quota reservations.
-    ///
-    /// Returns `Ok(true)` if the source shard is still alive (has runs or pending commands),
-    /// `Ok(false)` if the source shard is empty and can be shut down.
+    /// Atomically transfers pending command custody without moving live run state.
     fn migrate_shard(&mut self, source_idx: usize, target: u32) -> RuntimeResult<bool> {
-        let target_usize =
+        let target_idx =
             usize::try_from(target).map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
-        let source_u32 =
+        let source_id =
             u32::try_from(source_idx).map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
-        if target == source_u32 {
+        if target == source_id {
             return Err(RuntimeError::MigrateSelf);
         }
-        if self.shards.get(target_usize).is_none() {
+        if self.shards.get(target_idx).is_none() {
             return Err(RuntimeError::ShardNotFound { shard: target });
         }
-        let commands = self.drain_migration_commands(source_idx, source_u32)?;
-        self.enqueue_migrated_commands(target_usize, target, commands)?;
-        let shard = self
-            .shards
-            .get_mut(source_idx)
-            .ok_or(RuntimeError::ShardNotFound { shard: source_u32 })?;
-        Ok(shard.active_run_count() > 0 || !shard.command_queue.is_empty())
-    }
-
-    fn drain_migration_commands(
-        &mut self,
-        source_idx: usize,
-        source_id: u32,
-    ) -> RuntimeResult<Vec<ShardCommand>> {
-        let shard = self
-            .shards
-            .get_mut(source_idx)
+        let (source, target_shard) = self
+            .migration_shard_pair(source_idx, target_idx)
             .ok_or(RuntimeError::ShardNotFound { shard: source_id })?;
-        // Temporary containment: popping loses queued reservation custody,
-        // and a later target enqueue failure cannot restore drained commands.
-        if !shard.command_queue.is_empty() {
-            return Err(RuntimeError::UnsupportedOperation {
-                operation: "migrate_nonempty_command_queue",
-            });
-        }
-        Ok(Vec::new())
+        source.transfer_pending_commands_to(target_shard)?;
+        Ok(source.active_run_count() > 0 || !source.command_queue.is_empty())
     }
 
-    fn enqueue_migrated_commands(
+    fn migration_shard_pair(
         &mut self,
-        target_index: usize,
-        target_id: u32,
-        commands: Vec<ShardCommand>,
-    ) -> RuntimeResult<()> {
-        let target = self
-            .shards
-            .get_mut(target_index)
-            .ok_or(RuntimeError::ShardNotFound { shard: target_id })?;
-        for command in commands {
-            target.enqueue(command)?;
+        source: usize,
+        target: usize,
+    ) -> Option<(&mut Shard, &mut Shard)> {
+        if source == target {
+            return None;
         }
-        Ok(())
+        let (low, high) = self.shards.split_at_mut_checked(source.max(target))?;
+        if source < target {
+            low.get_mut(source).zip(high.first_mut())
+        } else {
+            high.first_mut().zip(low.get_mut(target))
+        }
     }
 }
 
