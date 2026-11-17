@@ -67,11 +67,11 @@ impl<T> MigrationCustody<T> {
         Ok(())
     }
 
-    // The callback must return every unaccepted value, e.g. ArrayQueue::push.
+    // The callback returns the unaccepted value, e.g. ArrayQueue::push(...).err().
     // No other stage insertion can occur while this exclusive borrow is held.
     pub(crate) fn transfer_front(
         &mut self,
-        accept: impl FnOnce(T) -> Result<(), T>,
+        accept: impl FnOnce(T) -> Option<T>,
     ) -> TransferProgress {
         if self.in_flight.is_none() {
             self.in_flight = self.entries.pop_front();
@@ -80,8 +80,8 @@ impl<T> MigrationCustody<T> {
             return TransferProgress::Empty;
         };
         match accept(entry) {
-            Ok(()) => TransferProgress::Accepted,
-            Err(entry) => {
+            None => TransferProgress::Accepted,
+            Some(entry) => {
                 self.in_flight = Some(entry);
                 TransferProgress::Refused
             }
@@ -145,10 +145,16 @@ mod tests {
         let mut stage = MigrationCustody::try_new(2, 2)?;
         assert!(stage.push_back(Item(11)).is_ok());
         assert!(stage.push_back(Item(22)).is_ok());
-        assert_eq!(stage.transfer_front(Err), TransferProgress::Refused);
+        assert_eq!(
+            stage.transfer_front(|entry| Some(entry)),
+            TransferProgress::Refused
+        );
         assert_eq!(stage.in_flight().map(|item| item.0), Some(11));
         assert_eq!(stage.len(), 2);
-        assert_eq!(stage.transfer_front(Err), TransferProgress::Refused);
+        assert_eq!(
+            stage.transfer_front(|entry| Some(entry)),
+            TransferProgress::Refused
+        );
         assert_eq!(
             stage.entries().map(|item| item.0).collect::<Vec<_>>(),
             vec![11, 22]
@@ -157,7 +163,7 @@ mod tests {
         assert_eq!(
             stage.transfer_front(|item| {
                 accepted = Some(item);
-                Ok(())
+                None
             }),
             TransferProgress::Accepted
         );

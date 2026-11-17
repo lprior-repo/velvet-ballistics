@@ -38,12 +38,12 @@ impl Shard {
         for queued in self.command_queue.migration_entries() {
             self.require_migration_source_unowned(&queued.command)?;
             let depth = target.preflight_migration_command(&queued.command)?;
-            if let Some(reservation) = queued.quota {
-                if target.pending_submission_quota(&queued.command)? != Some(reservation) {
-                    return Err(RuntimeError::UnsupportedOperation {
-                        operation: "migration_quota_reservation_mismatch",
-                    });
-                }
+            if let Some(reservation) = queued.quota
+                && target.pending_submission_quota(&queued.command)? != Some(reservation)
+            {
+                return Err(RuntimeError::UnsupportedOperation {
+                    operation: "migration_quota_reservation_mismatch",
+                });
             }
             if let Some(run) = queued.command.run_id() {
                 target.command_queue.restrict_migration_depth(run, depth)?;

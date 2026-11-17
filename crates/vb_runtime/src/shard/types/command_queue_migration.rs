@@ -90,7 +90,7 @@ impl ShardCommandQueue {
             match self
                 .migration
                 .stage
-                .transfer_front(|entry| self.inner.push(entry))
+                .transfer_front(|entry| self.inner.push(entry).err())
             {
                 TransferProgress::Accepted => {}
                 TransferProgress::Empty => break,

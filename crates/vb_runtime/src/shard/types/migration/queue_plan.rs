@@ -9,7 +9,7 @@ impl ShardCommandQueue {
             source.migration.original_len,
             self.capacity,
         )?;
-        if !source.migration.fenced || !source.migration.fully_staged || source.inner.len() != 0 {
+        if !source.migration.fenced || !source.migration.fully_staged || !source.inner.is_empty() {
             return Err(migration_invariant("migration_source_not_staged"));
         }
         self.validate_migration_indices()?;
