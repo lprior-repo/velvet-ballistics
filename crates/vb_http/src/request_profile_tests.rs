@@ -17,9 +17,15 @@ fn profile_serialization_has_a_literal_deterministic_wire_identity() -> crate::R
     let expected: &[u8] = b"\x1bapplication/vnd.github+json\x15velvet-ballistics/0.1\x01\x0a2026-03-10\x1cgithub-workflow-count-i64-v1";
     for _ in 0..4 {
         assert_eq!(postcard::to_allocvec(&GITHUB)?, expected);
-        assert_eq!(postcard::to_allocvec(&for_media(crate::JsonMediaType::GitHub))?, expected);
+        assert_eq!(
+            postcard::to_allocvec(&for_media(crate::JsonMediaType::GitHub))?,
+            expected
+        );
     }
-    assert_eq!(postcard::to_allocvec(&crate::JsonMediaType::GitHub)?.as_slice(), &[0]);
+    assert_eq!(
+        postcard::to_allocvec(&crate::JsonMediaType::GitHub)?.as_slice(),
+        &[0]
+    );
     Ok(())
 }
 
@@ -27,11 +33,26 @@ fn profile_serialization_has_a_literal_deterministic_wire_identity() -> crate::R
 fn every_wire_or_projection_dimension_separates_serialized_identity() -> crate::Result<()> {
     let profiles = [
         GITHUB,
-        RequestProfile { accept: "application/json", ..GITHUB },
-        RequestProfile { user_agent: "velvet-ballistics/0.2", ..GITHUB },
-        RequestProfile { api_version: None, ..GITHUB },
-        RequestProfile { api_version: Some("2026-03-11"), ..GITHUB },
-        RequestProfile { projection_schema: "github-workflow-count-i64-v2", ..GITHUB },
+        RequestProfile {
+            accept: "application/json",
+            ..GITHUB
+        },
+        RequestProfile {
+            user_agent: "velvet-ballistics/0.2",
+            ..GITHUB
+        },
+        RequestProfile {
+            api_version: None,
+            ..GITHUB
+        },
+        RequestProfile {
+            api_version: Some("2026-03-11"),
+            ..GITHUB
+        },
+        RequestProfile {
+            projection_schema: "github-workflow-count-i64-v2",
+            ..GITHUB
+        },
     ];
     for (left_index, left) in profiles.iter().enumerate() {
         for (right_index, right) in profiles.iter().enumerate() {
@@ -40,7 +61,10 @@ fn every_wire_or_projection_dimension_separates_serialized_identity() -> crate::
             if left_index == right_index {
                 assert_eq!(left_bytes, right_bytes);
             } else {
-                assert_ne!(left_bytes, right_bytes, "profile dimensions {left_index}/{right_index}");
+                assert_ne!(
+                    left_bytes, right_bytes,
+                    "profile dimensions {left_index}/{right_index}"
+                );
             }
         }
     }
