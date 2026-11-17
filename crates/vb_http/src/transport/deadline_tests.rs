@@ -17,7 +17,10 @@ fn withheld_response_times_out_in_both_observation_profiles() -> crate::Result<(
         })?;
         assert_eq!(result, Err(AttemptFailure::Timeout));
         assert_eq!(capture.accepted, 1);
-        assert_eq!(capture.request.lines().next(), Some("GET /observed HTTP/1.1"));
+        assert_eq!(
+            capture.request.lines().next(),
+            Some("GET /observed HTTP/1.1")
+        );
     }
     Ok(())
 }
@@ -32,7 +35,10 @@ impl Read for FailedRead {
 
 #[test]
 fn bounded_reader_distinguishes_timeout_kinds_from_other_io_failures() {
-    assert_eq!(body::read_body(io::Cursor::new(b"ok"), 2), Ok(b"ok".to_vec()));
+    assert_eq!(
+        body::read_body(io::Cursor::new(b"ok"), 2),
+        Ok(b"ok".to_vec())
+    );
     for (kind, expected) in [
         (io::ErrorKind::TimedOut, AttemptFailure::Timeout),
         (io::ErrorKind::WouldBlock, AttemptFailure::Timeout),
