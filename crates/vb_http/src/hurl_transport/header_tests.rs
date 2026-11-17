@@ -16,12 +16,18 @@ fn required_status_precedes_deferred_header_conversion_failure() -> crate::Resul
         if status == 201 {
             assert!(matches!(
                 result,
-                Err(HurlAttemptFailure::Evaluation(HurlEvalError::RequiredStatus {
-                    expected: 200, actual: 201,
-                })),
+                Err(HurlAttemptFailure::Evaluation(
+                    HurlEvalError::RequiredStatus {
+                        expected: 200,
+                        actual: 201,
+                    }
+                )),
             ));
         } else {
-            assert!(matches!(result, Err(HurlAttemptFailure::Attempt(AttemptFailure::Transport))));
+            assert!(matches!(
+                result,
+                Err(HurlAttemptFailure::Attempt(AttemptFailure::Transport))
+            ));
         }
         assert_eq!(capture.accepted, 1);
     }
@@ -50,14 +56,20 @@ fn header_bridge_keeps_scalar_comma_duplicate_and_empty_semantics() -> crate::Re
         if accepted {
             let observed = result?;
             assert_eq!(observed.response().body(), &[0xff, 0]);
-            let mut values = observed.headers().filter(|field| field.name == "x")
-                .map(|field| field.value).collect::<Vec<_>>();
+            let mut values = observed
+                .headers()
+                .filter(|field| field.name == "x")
+                .map(|field| field.value)
+                .collect::<Vec<_>>();
             values.sort_unstable();
             assert_eq!(values, expected_values);
         } else {
-            assert!(matches!(result, Err(HurlAttemptFailure::Evaluation(
-                HurlEvalError::AssertionFailed { index: 1 },
-            ))));
+            assert!(matches!(
+                result,
+                Err(HurlAttemptFailure::Evaluation(
+                    HurlEvalError::AssertionFailed { index: 1 },
+                ))
+            ));
         }
         assert_eq!(capture.accepted, 1);
     }
