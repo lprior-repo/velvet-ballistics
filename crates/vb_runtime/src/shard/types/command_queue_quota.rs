@@ -235,13 +235,13 @@ impl PendingQueueIndexes<'_> {
 
     fn update(&mut self, update: PendingIndexUpdate) {
         if let Some((run, count)) = update.pending {
-            let _previous = self.pending.insert(run, count);
+            replace_or_insert_live_queue_index(&mut self.pending, run, count);
         }
         if let Some((run, depth)) = update.admitted_depth {
-            let _previous = self.admitted.insert(run, depth);
+            replace_or_insert_live_queue_index(&mut self.admitted, run, depth);
         }
         if let Some((run, count)) = update.submission {
-            let _previous = self.submissions.insert(run, count);
+            replace_or_insert_live_queue_index(&mut self.submissions, run, count);
         }
     }
 }
@@ -275,3 +275,14 @@ fn reserve_queued_quota(
 
 #[cfg(test)]
 include!("migration/dequeue_count_tests.rs");
+
+fn replace_or_insert_live_queue_index(index: &mut IndexMap<RunId, u32>, run: RunId, value: u32) {
+    if let Some(recorded) = index.get_mut(&run) {
+        *recorded = value;
+    } else {
+        let _previous = index.insert(run, value);
+    }
+}
+
+#[cfg(test)]
+include!("migration/enqueue_index_tests.rs");
