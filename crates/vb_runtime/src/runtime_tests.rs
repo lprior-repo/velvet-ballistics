@@ -51,6 +51,7 @@ pub(crate) mod tests {
     include!("runtime_tests/migration_lifecycle_regressions.rs");
     include!("runtime_tests/migration_owner_preflight_regressions.rs");
     include!("runtime_tests/migration_pending_route_regressions.rs");
+    include!("runtime_tests/migration_route_priority_regressions.rs");
 
     include!("runtime_tests/counters_scheduler_and_queues.rs");
 
