@@ -79,3 +79,48 @@ fn event_key_restriction_preserves_other_public_trigger_contracts() {
     assert_eq!(validate_workflow_schema(&workflow_with_trigger("http", FieldValue::Empty)),
         Err(ValidationError::HttpTriggerOutOfCore));
 }
+
+#[test]
+fn public_event_trigger_rejects_duplicate_type_keys() {
+    for second in [
+        FieldValue::String("github.pull_request".into()),
+        FieldValue::String("github.push".into()),
+        FieldValue::String(String::new()),
+        FieldValue::Empty,
+    ] {
+        for invalid_first in [false, true] {
+            let first = FieldValue::String("github.pull_request".into());
+            let values = if invalid_first {
+                [second.clone(), first]
+            } else {
+                [first, second.clone()]
+            };
+            let body = FieldValue::Mapping(
+                values.into_iter().map(|value| ("type".into(), value)).collect(),
+            );
+            let doc = workflow_with_trigger("event", body);
+            assert_eq!(crate::schema::validate_trigger(&doc), Err(ValidationError::DuplicateKey));
+            assert_eq!(validate_workflow_schema(&doc), Err(ValidationError::DuplicateKey));
+        }
+    }
+}
+
+#[test]
+fn duplicate_event_diagnostic_preserves_unknown_field_precedence() {
+    for extra_first in [false, true] {
+        let mut entries = vec![
+            ("type".into(), FieldValue::String("github.pull_request".into())),
+            ("type".into(), FieldValue::String("github.push".into())),
+        ];
+        let extra = ("bogus".into(), FieldValue::Empty);
+        if extra_first {
+            entries.insert(0, extra);
+        } else {
+            entries.push(extra);
+        }
+        let doc = workflow_with_trigger("event", FieldValue::Mapping(entries));
+        let expected = Err(ValidationError::UnsupportedTrigger { trigger: "event".into() });
+        assert_eq!(crate::schema::validate_trigger(&doc), expected);
+        assert_eq!(validate_workflow_schema(&doc), expected);
+    }
+}
