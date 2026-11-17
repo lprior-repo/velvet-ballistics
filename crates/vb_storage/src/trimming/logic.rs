@@ -239,3 +239,7 @@ pub(crate) fn decode_event_seq_for_trim(
         _ => Err(TrimError::IncompleteTrim { deleted_count }),
     }
 }
+
+#[cfg(test)]
+#[path = "logic/key_guard_tests.rs"]
+mod key_guard_tests;
