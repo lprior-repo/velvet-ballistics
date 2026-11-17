@@ -26,8 +26,16 @@ fn cancel_kill_append_refusal_preserves_ticket_and_retained_identity() -> Result
             events: &[RuntimeJournalEvent],
             seq: vb_storage::EventSeq,
         ) -> crate::RuntimeResult<()> {
-            if events.iter().any(|event| matches!(event, RuntimeJournalEvent::RunCancelled { .. } | RuntimeJournalEvent::RunKilled { .. })) {
-                let mut attempted = self.attempted.lock()
+            if events.iter().any(|event| {
+                matches!(
+                    event,
+                    RuntimeJournalEvent::RunCancelled { .. }
+                        | RuntimeJournalEvent::RunKilled { .. }
+                )
+            }) {
+                let mut attempted = self
+                    .attempted
+                    .lock()
                     .map_err(|_| RuntimeError::JournalPoisoned)?;
                 *attempted = Some((events.to_vec(), seq));
                 return Err(RuntimeError::UnsupportedOperation {
@@ -49,15 +57,26 @@ fn cancel_kill_append_refusal_preserves_ticket_and_retained_identity() -> Result
         let shared: SharedRuntimeJournal = journal.clone();
         let mut config = small_config();
         config.max_active_runs = 1;
-        let mut shard = Shard::new_with_journal(config, shared)
-            .map_err(|error| error.to_string())?;
+        let mut shard =
+            Shard::new_with_journal(config, shared).map_err(|error| error.to_string())?;
         let retained = RunId::new(50_141);
         let run = RunId::new(50_142);
-        shard.checked_out_run_insert(retained).map_err(|error| error.to_string())?;
-        shard.terminal_runs_insert(retained).map_err(|error| error.to_string())?;
+        shard
+            .checked_out_run_insert(retained)
+            .map_err(|error| error.to_string())?;
+        shard
+            .terminal_runs_insert(retained)
+            .map_err(|error| error.to_string())?;
         let workflow = require_workflow("cancel-kill-refusal", suspended_workflow())?;
-        submit_run(&mut shard, run, workflow, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
-        let ticket = shard.pending_action_get(run).ok_or("missing issued pending ticket")?;
+        submit_run(
+            &mut shard,
+            run,
+            workflow,
+            &[(SlotIdx::ZERO, SlotValue::I64(0))],
+        );
+        let ticket = shard
+            .pending_action_get(run)
+            .ok_or("missing issued pending ticket")?;
         assert_eq!(shard.require_pending_action_ownership(ticket), Ok(()));
         let state = shard.run_state_get(run).ok_or("missing before state")?;
         let attempt = state.run_attempt.get();
@@ -78,10 +97,21 @@ fn cancel_kill_append_refusal_preserves_ticket_and_retained_identity() -> Result
         let usage = shard.usage_snapshot();
         let global = shard.global_cost_usage();
         let counters = shard.counters().snapshot();
-        let trace = shard.trace_ring().snapshot_for_run(run, shard.trace_ring().capacity());
+        let trace = shard
+            .trace_ring()
+            .snapshot_for_run(run, shard.trace_ring().capacity());
         let runtime = shard.runtime_state_get(run);
-        let accepted = journal.accepted.snapshot().map_err(|error| error.to_string())?;
-        assert!(journal.attempted.lock().map_err(|_| "attempt lock poisoned")?.is_none());
+        let accepted = journal
+            .accepted
+            .snapshot()
+            .map_err(|error| error.to_string())?;
+        assert!(
+            journal
+                .attempted
+                .lock()
+                .map_err(|_| "attempt lock poisoned")?
+                .is_none()
+        );
 
         assert_eq!(
             if kill {
@@ -94,10 +124,20 @@ fn cancel_kill_append_refusal_preserves_ticket_and_retained_identity() -> Result
             })
         );
         assert_eq!(
-            journal.attempted.lock().map_err(|_| "attempt lock poisoned")?.as_ref(),
+            journal
+                .attempted
+                .lock()
+                .map_err(|_| "attempt lock poisoned")?
+                .as_ref(),
             Some(&(expected_events, seq))
         );
-        assert_eq!(journal.accepted.snapshot().map_err(|error| error.to_string())?, accepted);
+        assert_eq!(
+            journal
+                .accepted
+                .snapshot()
+                .map_err(|error| error.to_string())?,
+            accepted
+        );
         assert_eq!(shard.run_state_get(run), Some(&before));
         assert_eq!(shard.pending_action_clone(), pending);
         assert_eq!(shard.require_pending_action_ownership(ticket), Ok(()));
@@ -107,7 +147,9 @@ fn cancel_kill_append_refusal_preserves_ticket_and_retained_identity() -> Result
         assert_eq!(shard.global_cost_usage(), global);
         assert_eq!(shard.counters().snapshot(), counters);
         assert_eq!(
-            shard.trace_ring().snapshot_for_run(run, shard.trace_ring().capacity()),
+            shard
+                .trace_ring()
+                .snapshot_for_run(run, shard.trace_ring().capacity()),
             trace
         );
         assert_eq!(shard.runtime_state_get(run), runtime);

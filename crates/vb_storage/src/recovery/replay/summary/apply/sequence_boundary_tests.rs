@@ -19,7 +19,11 @@ fn summary_rejects_sequence_sentinel_at_first_or_later_event() {
         let events = if tail {
             vec![
                 accepted(run, EventSeq::ZERO),
-                JournalEvent::RunFailedEvent { run, seq: EventSeq::MAX, attempt: 1 },
+                JournalEvent::RunFailedEvent {
+                    run,
+                    seq: EventSeq::MAX,
+                    attempt: 1,
+                },
             ]
         } else {
             vec![accepted(run, EventSeq::MAX)]
@@ -43,7 +47,11 @@ fn summary_accepts_highest_nonsentinel_sequence() -> Result<(), RecoveryError> {
     let seq = EventSeq::new(EventSeq::MAX.get() - 1);
     let hydration = summarize_recovery_events(&[
         accepted(run, EventSeq::ZERO),
-        JournalEvent::RunFailedEvent { run, seq, attempt: 1 },
+        JournalEvent::RunFailedEvent {
+            run,
+            seq,
+            attempt: 1,
+        },
     ])?;
     let summary = hydration.summary();
     assert_eq!(summary.run, run);

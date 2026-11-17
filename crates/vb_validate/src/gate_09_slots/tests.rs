@@ -255,12 +255,8 @@ fn checks_error_handler_owned_slots_in_both_gate_09_entry_points() {
             None,
             None,
         );
-        let body = vb_core::workflow::node(
-            StepIdx::new(1), CompiledNodeKind::Nop, None, None,
-        );
-        let target = vb_core::workflow::node(
-            StepIdx::new(2), CompiledNodeKind::Nop, None, None,
-        );
+        let body = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None);
+        let target = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::Nop, None, None);
         let parts = make_parts(vec![handler, body, target], slot_count);
         let expected = match error_slot {
             Some(slot) if slot >= slot_count => Err(ValidationError::SlotReferenceOutOfRange {
@@ -271,6 +267,9 @@ fn checks_error_handler_owned_slots_in_both_gate_09_entry_points() {
             _ => Ok(()),
         };
         assert_eq!(validate_gate_09_slot_references(&parts), expected);
-        assert_eq!(crate::gates::validate_gate_09_slot_references(&parts), expected);
+        assert_eq!(
+            crate::gates::validate_gate_09_slot_references(&parts),
+            expected
+        );
     }
 }
