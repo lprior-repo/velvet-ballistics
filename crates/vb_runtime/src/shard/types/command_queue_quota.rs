@@ -139,14 +139,14 @@ impl PendingQueueIndexes<'_> {
     }
 
     fn remove_pending(&mut self, run: RunId) {
-        match self.pending.get(&run).copied() {
+        match self.pending.get_mut(&run) {
             Some(1) => {
                 let _removed = self.pending.swap_remove(&run);
                 let _removed = self.admitted.swap_remove(&run);
             }
             Some(count) => {
                 if let Some(next) = count.checked_sub(1) {
-                    let _previous = self.pending.insert(run, next);
+                    *count = next;
                 }
             }
             None => {}
@@ -154,13 +154,13 @@ impl PendingQueueIndexes<'_> {
     }
 
     fn remove_submission(&mut self, run: RunId) {
-        match self.submissions.get(&run).copied() {
+        match self.submissions.get_mut(&run) {
             Some(1) => {
                 let _removed = self.submissions.swap_remove(&run);
             }
             Some(count) => {
                 if let Some(next) = count.checked_sub(1) {
-                    let _previous = self.submissions.insert(run, next);
+                    *count = next;
                 }
             }
             None => {}
@@ -272,3 +272,6 @@ fn reserve_queued_quota(
     }
     Ok(())
 }
+
+#[cfg(test)]
+include!("migration/dequeue_count_tests.rs");
