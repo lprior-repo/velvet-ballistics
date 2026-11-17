@@ -226,6 +226,9 @@ impl Shard {
         trace_events: Vec<TraceEvent>,
         finished: bool,
     ) -> Result<(), DriveApplyFailure> {
+        // Reserve without evicting terminal identity before committing this batch.
+        self.reserve_terminal_run_slot(run)
+            .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);
