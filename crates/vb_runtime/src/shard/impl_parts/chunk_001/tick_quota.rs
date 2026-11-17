@@ -28,7 +28,23 @@ impl Shard {
         pending: Option<(RunId, crate::shard::types::PendingQuotaReservation)>,
         error: RuntimeError,
     ) -> RuntimeResult<bool> {
-        let rollback = match pending {
+        let rollback = self.release_queued_quota_reservation(submit_run, pending);
+        match rollback {
+            Ok(()) => Err(error),
+            Err(rollback_error) => Err(RuntimeError::rollback_failed(
+                "queued_submission_quota",
+                error,
+                rollback_error,
+            )),
+        }
+    }
+
+    fn release_queued_quota_reservation(
+        &mut self,
+        submit_run: Option<RunId>,
+        pending: Option<(RunId, crate::shard::types::PendingQuotaReservation)>,
+    ) -> RuntimeResult<()> {
+        match pending {
             Some((_, reservation)) => self
                 .quota
                 .release(reservation.tenant, reservation.cost_units),
@@ -42,14 +58,6 @@ impl Shard {
                 }
                 _ => Ok(()),
             },
-        };
-        match rollback {
-            Ok(()) => Err(error),
-            Err(rollback_error) => Err(RuntimeError::rollback_failed(
-                "queued_submission_quota",
-                error,
-                rollback_error,
-            )),
         }
     }
 }
