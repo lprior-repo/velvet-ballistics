@@ -122,9 +122,12 @@ impl Runtime {
     ///   tied to source-owned runs remain on the source and cause refusal.
     /// - `Shutdown`: Drain all remaining commands and shut down the shard.
     ///
-    /// Returns `Ok(true)` if the shard is alive (continuing), `Ok(false)` if the
-    /// shard has shut down, or an error if the shard index is invalid or migration
-    /// failed.
+    /// The successful boolean depends on the directive: `Continue` reports
+    /// whether processing can continue, `Suspend` returns `true`, and `Shutdown`
+    /// returns `false`. `Migrate` reports whether the source retains active runs
+    /// or pending commands; `false` does not mean that source was shut down.
+    /// Neither a migration result nor `Suspend` certifies safe runtime disposal.
+    /// Errors include invalid shard indices and processing or migration failures.
     ///
     /// A migration error does not always mean rollback completed. If staging or
     /// restoration fails, affected queues can remain fenced with commands held
