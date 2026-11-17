@@ -4,7 +4,7 @@
 use crate::{RequestRejection, WorkflowCountAction};
 use std::num::NonZeroU64;
 use vb_core::action_pack::RequestDigest;
-use vb_core::capability_grant::{GrantId, GrantTimeMs, RevocationEpoch, MAX_REVOKED_IDS};
+use vb_core::capability_grant::{GrantId, GrantTimeMs, MAX_REVOKED_IDS, RevocationEpoch};
 use vb_core::manual_gate::ApproverId;
 use vb_core::{ActionId, WorkflowDigest};
 
@@ -56,7 +56,10 @@ impl ValidatedHttpDeclaration {
         if action.request_digest()? != declaration.request {
             return Err(DeclarationRejection::Request);
         }
-        Ok(Self { declaration, checked_at: policy.now })
+        Ok(Self {
+            declaration,
+            checked_at: policy.now,
+        })
     }
 
     pub const fn declaration(&self) -> &HttpDeclarationV1 {
@@ -68,12 +71,17 @@ impl ValidatedHttpDeclaration {
     }
 }
 
-fn check_identity(d: &HttpDeclarationV1, p: &HttpRequestPolicy) -> Result<(), DeclarationRejection> {
+fn check_identity(
+    d: &HttpDeclarationV1,
+    p: &HttpRequestPolicy,
+) -> Result<(), DeclarationRejection> {
     if d.version != 1 {
         return Err(DeclarationRejection::Version);
     }
-    if !d.issuer.is_valid() || !d.subject.is_valid()
-        || !p.expected_issuer.is_valid() || !p.expected_subject.is_valid()
+    if !d.issuer.is_valid()
+        || !d.subject.is_valid()
+        || !p.expected_issuer.is_valid()
+        || !p.expected_subject.is_valid()
     {
         return Err(DeclarationRejection::Identity);
     }
