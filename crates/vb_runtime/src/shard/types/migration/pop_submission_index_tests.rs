@@ -127,4 +127,94 @@ mod pop_submission_index_tests {
         assert_eq!(ledger.global_usage(), 0);
         Ok(())
     }
+
+    #[test]
+    fn last_submit_removal_keeps_control_depth_but_ends_reservation_suppression() -> TestResult {
+        let (command, quota) = submission()?;
+        let run = RunId::new(82_201);
+        let control = ShardCommand::Inspect {
+            run,
+            correlation: 99,
+        };
+        let queue = ShardCommandQueue::new(3)?;
+        let ledger = crate::quota::SharedQuotaLedger::new();
+        ledger.set_limits(quota.cost_units, quota.cost_units)?;
+        queue.enqueue_with_reservation(command.clone(), Some(3), Some(quota), Some(&ledger))?;
+        queue.enqueue(control.clone())?;
+        let first = queue.pop_queued().ok_or("missing first submission")?;
+        assert_eq!(first.command, command);
+        assert_eq!(first.quota, Some(quota));
+        assert_submission_count(&queue, run, None);
+        assert_eq!(queue.pending_for(run), 1);
+        assert_eq!(
+            ShardCommandQueue::lock_or_recover(&queue.admitted_depth)
+                .get(&run)
+                .copied(),
+            Some(3)
+        );
+        let charged = ledger.usage();
+        let twice = quota.cost_units.checked_mul(2).ok_or("quota overflow")?;
+        // A pending control command is NOT a pending submission. New Submit
+        // must attempt a fresh reservation and fail at the exact-C ceiling.
+        assert_eq!(
+            queue.enqueue_with_reservation(command.clone(), Some(3), Some(quota), Some(&ledger)),
+            Err(crate::RuntimeError::ResourceQuotaExceeded {
+                resource: "global_quota_cost_units",
+                requested: twice,
+                available: quota.cost_units,
+            })
+        );
+        assert_eq!(ledger.usage(), charged);
+        assert_submission_count(&queue, run, None);
+        assert_eq!(queue.pending_for(run), 1);
+        assert_eq!(queue.len(), 1);
+        assert_eq!(
+            ShardCommandQueue::lock_or_recover(&queue.admitted_depth)
+                .get(&run)
+                .copied(),
+            Some(3)
+        );
+        ledger.set_limits(twice, twice)?;
+        queue.enqueue_with_reservation(command.clone(), Some(3), Some(quota), Some(&ledger))?;
+        assert_eq!(ledger.global_usage(), twice);
+        assert_eq!(
+            ledger
+                .usage()
+                .tenants()
+                .tenant_cost_usage(vb_core::ids::TenantId::new(97)),
+            Ok(twice)
+        );
+        assert_submission_count(&queue, run, Some(1));
+        assert_eq!(queue.pending_for(run), 2);
+        let next = queue.pop_queued().ok_or("missing control")?;
+        assert_eq!(next.command, control);
+        assert_eq!(next.quota, None);
+        assert_submission_count(&queue, run, Some(1));
+        assert_eq!(queue.pending_for(run), 1);
+        let second = queue.pop_queued().ok_or("missing second submission")?;
+        assert_eq!(second.command, command);
+        assert_eq!(second.quota, Some(quota));
+        assert_submission_count(&queue, run, None);
+        assert_eq!(queue.pending_for(run), 0);
+        assert!(
+            ShardCommandQueue::lock_or_recover(&queue.admitted_depth)
+                .get(&run)
+                .is_none()
+        );
+        assert!(queue.is_empty());
+        assert_eq!(ledger.global_usage(), twice);
+        for envelope in [first, second] {
+            let custody = envelope.quota.ok_or("missing owned reservation")?;
+            ledger.release(custody.tenant, custody.cost_units)?;
+        }
+        assert_eq!(ledger.global_usage(), 0);
+        assert_eq!(
+            ledger
+                .usage()
+                .tenants()
+                .tenant_cost_usage(vb_core::ids::TenantId::new(97)),
+            Ok(0)
+        );
+        Ok(())
+    }
 }
