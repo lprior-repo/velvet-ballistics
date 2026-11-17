@@ -29,7 +29,10 @@ fn workflow_observation_sends_the_finite_wire_profile_once() -> crate::Result<()
     })?;
     assert_eq!(result?.get(), 42);
     assert_eq!(capture.accepted, 1);
-    assert_eq!(capture.request.lines().next(), Some("GET /observed HTTP/1.1"));
+    assert_eq!(
+        capture.request.lines().next(),
+        Some("GET /observed HTTP/1.1")
+    );
     for (name, expected) in [
         ("host", "fixture.invalid"),
         ("accept", "application/vnd.github+json"),
@@ -38,7 +41,11 @@ fn workflow_observation_sends_the_finite_wire_profile_once() -> crate::Result<()
         ("accept-encoding", "identity"),
         ("connection", "close"),
     ] {
-        assert_eq!(header_values(&capture.request, name), vec![expected], "{name}");
+        assert_eq!(
+            header_values(&capture.request, name),
+            vec![expected],
+            "{name}"
+        );
     }
     assert!(header_values(&capture.request, "authorization").is_empty());
     assert!(header_values(&capture.request, "cookie").is_empty());
@@ -57,11 +64,26 @@ fn request_digest_binds_each_finite_wire_and_projection_profile_field() -> crate
     let digest = action.request_digest()?;
     assert_eq!(digest, action.digest_with_profile(base)?);
     for changed in [
-        crate::request_profile::RequestProfile { accept: "application/json", ..base },
-        crate::request_profile::RequestProfile { user_agent: "profile-test/1", ..base },
-        crate::request_profile::RequestProfile { api_version: Some("2099-01-01"), ..base },
-        crate::request_profile::RequestProfile { api_version: None, ..base },
-        crate::request_profile::RequestProfile { projection_schema: "workflow-count-v2", ..base },
+        crate::request_profile::RequestProfile {
+            accept: "application/json",
+            ..base
+        },
+        crate::request_profile::RequestProfile {
+            user_agent: "profile-test/1",
+            ..base
+        },
+        crate::request_profile::RequestProfile {
+            api_version: Some("2099-01-01"),
+            ..base
+        },
+        crate::request_profile::RequestProfile {
+            api_version: None,
+            ..base
+        },
+        crate::request_profile::RequestProfile {
+            projection_schema: "workflow-count-v2",
+            ..base
+        },
     ] {
         assert_ne!(digest, action.digest_with_profile(changed)?);
     }

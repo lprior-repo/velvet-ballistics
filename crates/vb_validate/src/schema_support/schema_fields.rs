@@ -32,16 +32,7 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
     "try_again",
 ];
 const STEP_PRIMITIVES: &[&str] = &[
-    "set",
-    "do",
-    "choose",
-    "for_each",
-    "together",
-    "collect",
-    "reduce",
-    "repeat",
-    "wait",
-    "ask",
+    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
     "finish",
 ];
 

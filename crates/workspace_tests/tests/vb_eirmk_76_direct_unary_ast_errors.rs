@@ -3,9 +3,7 @@
 use vb_core::SlotValue;
 use vb_expr::eval::UnaryOp;
 use vb_expr::parser::{ExprAst, ExprLiteral};
-use vb_expr::{
-    ExprError, ExprResult, compile_expr_to_bytecode, eval_expr_program, eval_unary_op,
-};
+use vb_expr::{ExprError, ExprResult, compile_expr_to_bytecode, eval_expr_program, eval_unary_op};
 
 fn unary_pair(literal: ExprLiteral) -> [ExprAst; 2] {
     let single = ExprAst::Unary {

@@ -65,12 +65,16 @@ fn respond(stream: &mut TcpStream, response: &[u8], start: Instant) -> Result<()
             Ok(written) => written,
             // Bounded production rejection may close before consuming supplied bytes.
             // Capture records the request and accepted count, not delivery of the body.
-            Err(error) if matches!(
-                error.kind(),
-                std::io::ErrorKind::BrokenPipe
-                    | std::io::ErrorKind::ConnectionReset
-                    | std::io::ErrorKind::ConnectionAborted
-            ) => return Ok(()),
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::BrokenPipe
+                        | std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::ConnectionAborted
+                ) =>
+            {
+                return Ok(());
+            }
             Err(error) => return Err(error.into()),
         };
         pending = pending.get(written..).ok_or(FixtureError::Bounds)?;
@@ -96,7 +100,10 @@ pub(super) fn serve(
 ) -> Result<Capture, FixtureError> {
     let start = Instant::now();
     let Some(mut stream) = accept(&listener, &released, start)? else {
-        return Ok(Capture { accepted: 0, request: String::new() });
+        return Ok(Capture {
+            accepted: 0,
+            request: String::new(),
+        });
     };
     stream.set_nonblocking(false)?;
     let request = request(&mut stream, start)?;
@@ -109,9 +116,10 @@ pub(super) fn serve(
         drop(stream);
     }
     match listener.accept() {
-        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-            Ok(Capture { accepted: 1, request })
-        }
+        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => Ok(Capture {
+            accepted: 1,
+            request,
+        }),
         Ok((extra, _)) => {
             drop(extra);
             Err(FixtureError::ExtraConnection)

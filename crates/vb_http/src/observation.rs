@@ -57,8 +57,8 @@ impl ObservedResponseHeaders {
             .try_reserve_exact(headers.len())
             .map_err(|_| AttemptFailure::Resources)?;
         for (name, value) in headers.iter().take(MAX_OBSERVED_HEADERS) {
-            let text = std::str::from_utf8(value.as_bytes())
-                .map_err(|_| AttemptFailure::Transport)?;
+            let text =
+                std::str::from_utf8(value.as_bytes()).map_err(|_| AttemptFailure::Transport)?;
             fields.push((copy_field(name.as_str())?, copy_field(text)?));
         }
         Ok(Self { fields })
@@ -122,10 +122,13 @@ impl HttpObservationWithHeaders {
 
     /// Parsed map order, with one borrowed view per occurrence; no wire-order claim.
     pub fn headers(&self) -> impl ExactSizeIterator<Item = ObservedResponseHeader<'_>> + '_ {
-        self.headers.fields.iter().map(|(name, value)| ObservedResponseHeader {
-            name: name.as_str(),
-            value: value.as_str(),
-        })
+        self.headers
+            .fields
+            .iter()
+            .map(|(name, value)| ObservedResponseHeader {
+                name: name.as_str(),
+                value: value.as_str(),
+            })
     }
 }
 

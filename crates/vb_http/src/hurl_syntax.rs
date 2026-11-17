@@ -1,5 +1,5 @@
-use super::*;
 use super::headers::{HeaderTextPredicate, header_name_valid};
+use super::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Profile {
@@ -35,7 +35,10 @@ fn parse(source: &str, profile: Profile) -> Result<HurlPlan<'_>, HurlParseError>
     }
     for (index, raw) in source.split_inclusive('\n').enumerate() {
         if physical(raw).len() > MAX_LINE_BYTES {
-            return Err(error(index.saturating_add(1), HurlParseErrorKind::LineBound));
+            return Err(error(
+                index.saturating_add(1),
+                HurlParseErrorKind::LineBound,
+            ));
         }
     }
     let mut plan = HurlPlan {
@@ -58,9 +61,12 @@ fn parse(source: &str, profile: Profile) -> Result<HurlPlan<'_>, HurlParseError>
         match phase {
             0 => {
                 let (method, target) = word(line).ok_or_else(syntax)?;
-                if method != "GET" || target.len() > MAX_TARGET_BYTES || target.is_empty()
-                    || !target.bytes().all(|b| (b'!'..=b'~').contains(&b)
-                        && !matches!(b, b'#' | b'\\' | b'{' | b'}'))
+                if method != "GET"
+                    || target.len() > MAX_TARGET_BYTES
+                    || target.is_empty()
+                    || !target.bytes().all(|b| {
+                        (b'!'..=b'~').contains(&b) && !matches!(b, b'#' | b'\\' | b'{' | b'}')
+                    })
                 {
                     return Err(syntax());
                 }
@@ -69,7 +75,8 @@ fn parse(source: &str, profile: Profile) -> Result<HurlPlan<'_>, HurlParseError>
             }
             1 => {
                 let (version, status) = word(line).ok_or_else(syntax)?;
-                if version != "HTTP" || status.len() != 3
+                if version != "HTTP"
+                    || status.len() != 3
                     || !status.bytes().all(|b| b.is_ascii_digit())
                 {
                     return Err(syntax());
@@ -89,7 +96,9 @@ fn parse(source: &str, profile: Profile) -> Result<HurlPlan<'_>, HurlParseError>
             }
             _ => {
                 let assertion = assertion(line, profile).ok_or_else(syntax)?;
-                let slot = plan.assertions.get_mut(plan.count)
+                let slot = plan
+                    .assertions
+                    .get_mut(plan.count)
                     .ok_or_else(|| error(line_number, HurlParseErrorKind::AssertionBound))?;
                 *slot = Some(assertion);
                 plan.count = plan.count.checked_add(1).ok_or_else(syntax)?;
@@ -119,14 +128,19 @@ fn optional_not(value: &str) -> (bool, &str) {
 fn numeric(value: &str) -> Option<(bool, Comparison, i64)> {
     let (negated, value) = optional_not(value);
     let (operator, operand) = word(value)?;
-    Some((negated, Comparison::parse(operator)?, integer::parse(operand)?))
+    Some((
+        negated,
+        Comparison::parse(operator)?,
+        integer::parse(operand)?,
+    ))
 }
 fn quoted(value: &str) -> Option<(&str, &str)> {
     let value = value.strip_prefix('"')?;
     let end = value.find('"')?;
     let literal = value.get(..end)?;
-    if !literal.bytes().all(|b| (b' '..=b'~').contains(&b)
-        && !matches!(b, b'\\' | b'{' | b'}'))
+    if !literal
+        .bytes()
+        .all(|b| (b' '..=b'~').contains(&b) && !matches!(b, b'\\' | b'{' | b'}'))
     {
         return None;
     }
@@ -145,13 +159,20 @@ fn assertion(line: &str, profile: Profile) -> Option<Assertion<'_>> {
     let (query, value) = word(line)?;
     if query == "status" {
         let (negated, comparison, expected) = numeric(value)?;
-        return Some(Assertion { query: Query::Status { comparison, expected }, negated });
+        return Some(Assertion {
+            query: Query::Status {
+                comparison,
+                expected,
+            },
+            negated,
+        });
     }
     if query != "header" || profile == Profile::Status {
         return None;
     }
     let (name, tail) = quoted(value)?;
-    if name.len() > MAX_HEADER_NAME_BYTES || !header_name_valid(name)
+    if name.len() > MAX_HEADER_NAME_BYTES
+        || !header_name_valid(name)
         || !tail.starts_with([' ', '\t'])
     {
         return None;
@@ -161,8 +182,13 @@ fn assertion(line: &str, profile: Profile) -> Option<Assertion<'_>> {
         let (negated, comparison, expected) = numeric(rest)?;
         return Some(Assertion {
             query: Query::Header(HeaderAssertion {
-                name, predicate: HeaderPredicate::Count { comparison, expected },
-            }), negated,
+                name,
+                predicate: HeaderPredicate::Count {
+                    comparison,
+                    expected,
+                },
+            }),
+            negated,
         });
     }
     let (negated, predicate) = optional_not(predicate);
@@ -192,5 +218,8 @@ fn assertion(line: &str, profile: Profile) -> Option<Assertion<'_>> {
             }
         }
     };
-    Some(Assertion { query: Query::Header(HeaderAssertion { name, predicate }), negated })
+    Some(Assertion {
+        query: Query::Header(HeaderAssertion { name, predicate }),
+        negated,
+    })
 }

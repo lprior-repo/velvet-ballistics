@@ -53,9 +53,9 @@ fn evaluate_captured_predicates(
     plan: &HurlPlan<'_>,
     observed: &HttpObservationWithHeaders,
 ) -> Result<(), HurlPredicateAttemptFailure> {
-    let bound = HurlPredicateAttemptFailure::Evaluation(
-        HurlPredicateEvalError::Evaluation(HurlEvalError::HeaderBound),
-    );
+    let bound = HurlPredicateAttemptFailure::Evaluation(HurlPredicateEvalError::Evaluation(
+        HurlEvalError::HeaderBound,
+    ));
     let mut fields = [ResponseHeader {
         name: "",
         value: "",

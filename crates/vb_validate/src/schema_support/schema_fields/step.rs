@@ -78,17 +78,8 @@ fn validate_step_fields_rejects_missing_steps() {
 #[test]
 fn all_step_primitives_are_accepted() {
     for prim in [
-        "set",
-        "do",
-        "choose",
-        "for_each",
-        "together",
-        "collect",
-        "reduce",
-        "repeat",
-        "wait",
-        "ask",
-        "finish",
+        "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait",
+        "ask", "finish",
     ] {
         let step = make_step(vec![
             ("id", FieldValue::String("s1".to_owned())),

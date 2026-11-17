@@ -160,7 +160,10 @@ impl<'input, 'field> Parser<'input, 'field> {
         if self.depth >= self.limits.depth {
             return Err(DecodeError::DepthLimit);
         }
-        let slot = self.stack.get_mut(self.depth).ok_or(DecodeError::DepthLimit)?;
+        let slot = self
+            .stack
+            .get_mut(self.depth)
+            .ok_or(DecodeError::DepthLimit)?;
         *slot = state;
         self.depth = self.depth.checked_add(1).ok_or(DecodeError::DepthLimit)?;
         Ok(())
@@ -168,7 +171,11 @@ impl<'input, 'field> Parser<'input, 'field> {
 
     fn pop(&mut self) -> Result<State, DecodeError> {
         let index = self.depth.checked_sub(1).ok_or(DecodeError::InvalidJson)?;
-        let state = self.stack.get(index).copied().ok_or(DecodeError::InvalidJson)?;
+        let state = self
+            .stack
+            .get(index)
+            .copied()
+            .ok_or(DecodeError::InvalidJson)?;
         self.depth = index;
         Ok(state)
     }
@@ -179,7 +186,10 @@ impl<'input, 'field> Parser<'input, 'field> {
 
     pub(super) fn take_byte(&mut self) -> Result<u8, DecodeError> {
         let value = self.peek_byte().ok_or(DecodeError::InvalidJson)?;
-        self.position = self.position.checked_add(1).ok_or(DecodeError::InvalidJson)?;
+        self.position = self
+            .position
+            .checked_add(1)
+            .ok_or(DecodeError::InvalidJson)?;
         Ok(value)
     }
 

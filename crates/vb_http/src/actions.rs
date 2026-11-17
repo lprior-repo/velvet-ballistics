@@ -80,16 +80,20 @@ impl WorkflowCountAction {
         Ok([
             base == self.digest_with_profile(profile)?,
             base != self.digest_with_profile(crate::request_profile::RequestProfile {
-                accept: "application/json", ..profile
+                accept: "application/json",
+                ..profile
             })?,
             base != self.digest_with_profile(crate::request_profile::RequestProfile {
-                user_agent: "velvet-ballistics/local-conformance-probe", ..profile
+                user_agent: "velvet-ballistics/local-conformance-probe",
+                ..profile
             })?,
             base != self.digest_with_profile(crate::request_profile::RequestProfile {
-                api_version: Some("2099-01-01"), ..profile
+                api_version: Some("2099-01-01"),
+                ..profile
             })?,
             base != self.digest_with_profile(crate::request_profile::RequestProfile {
-                projection_schema: "github-workflow-count-i64-v2", ..profile
+                projection_schema: "github-workflow-count-i64-v2",
+                ..profile
             })?,
         ])
     }

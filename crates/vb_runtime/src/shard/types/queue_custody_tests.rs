@@ -1,12 +1,15 @@
 use super::{PendingQuotaReservation, ShardCommand, ShardCommandQueue, pending_quota};
-use crate::quota::SharedQuotaLedger;
 use crate::RuntimeError;
+use crate::quota::SharedQuotaLedger;
 use vb_core::ids::{RunId, TenantId};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn reservation() -> PendingQuotaReservation {
-    PendingQuotaReservation { tenant: Some(TenantId::new(97)), cost_units: 7 }
+    PendingQuotaReservation {
+        tenant: Some(TenantId::new(97)),
+        cost_units: 7,
+    }
 }
 
 // Synthetic reservation injection isolates queue custody, not submit admission.
@@ -20,8 +23,13 @@ fn dequeue_returns_custody_without_releasing_the_ledger() -> TestResult {
     let run = RunId::new(82_101);
     let reserved = reservation();
     queue.enqueue_with_reservation(
-        ShardCommand::Inspect { run, correlation: 41 },
-        Some(2), Some(reserved), Some(&ledger),
+        ShardCommand::Inspect {
+            run,
+            correlation: 41,
+        },
+        Some(2),
+        Some(reserved),
+        Some(&ledger),
     )?;
     let charged = ledger.usage();
     assert_eq!(ledger.global_usage(), 7);
@@ -51,14 +59,27 @@ fn full_queue_rolls_back_only_the_rejected_reservation() -> TestResult {
     let rejected = RunId::new(82_103);
     let reserved = reservation();
     queue.enqueue_with_reservation(
-        ShardCommand::Inspect { run: first, correlation: 43 },
-        None, Some(reserved), Some(&ledger),
+        ShardCommand::Inspect {
+            run: first,
+            correlation: 43,
+        },
+        None,
+        Some(reserved),
+        Some(&ledger),
     )?;
     let charged = ledger.usage();
-    assert_eq!(queue.enqueue_with_reservation(
-        ShardCommand::Inspect { run: rejected, correlation: 47 },
-        None, Some(reserved), Some(&ledger),
-    ), Err(RuntimeError::QueueFull));
+    assert_eq!(
+        queue.enqueue_with_reservation(
+            ShardCommand::Inspect {
+                run: rejected,
+                correlation: 47
+            },
+            None,
+            Some(reserved),
+            Some(&ledger),
+        ),
+        Err(RuntimeError::QueueFull)
+    );
     assert_eq!(ledger.usage(), charged);
     assert_eq!(ledger.global_usage(), 7);
     assert_eq!(queue.pending_for(first), 1);
@@ -92,18 +113,41 @@ fn zero_cost_reservation_retains_some_identity() -> TestResult {
     let ledger = SharedQuotaLedger::new();
     ledger.set_limits(0, 0)?;
     let run = RunId::new(82_105);
-    let zero = PendingQuotaReservation { tenant: Some(TenantId::new(97)), cost_units: 0 };
+    let zero = PendingQuotaReservation {
+        tenant: Some(TenantId::new(97)),
+        cost_units: 0,
+    };
     queue.enqueue_with_reservation(
-        ShardCommand::Inspect { run, correlation: 51 },
-        None, Some(zero), Some(&ledger),
+        ShardCommand::Inspect {
+            run,
+            correlation: 51,
+        },
+        None,
+        Some(zero),
+        Some(&ledger),
     )?;
-    queue.enqueue(ShardCommand::Inspect { run, correlation: 53 })?;
+    queue.enqueue(ShardCommand::Inspect {
+        run,
+        correlation: 53,
+    })?;
     let first = queue.pop_queued().ok_or("missing zero reservation")?;
     assert_eq!(first.quota, Some(zero));
-    assert!(matches!(first.command, ShardCommand::Inspect { correlation: 51, .. }));
+    assert!(matches!(
+        first.command,
+        ShardCommand::Inspect {
+            correlation: 51,
+            ..
+        }
+    ));
     let second = queue.pop_queued().ok_or("missing unreserved command")?;
     assert_eq!(second.quota, None);
-    assert!(matches!(second.command, ShardCommand::Inspect { correlation: 53, .. }));
+    assert!(matches!(
+        second.command,
+        ShardCommand::Inspect {
+            correlation: 53,
+            ..
+        }
+    ));
     assert_eq!(ledger.global_usage(), 0);
     assert_eq!(queue.pending_for(run), 0);
     Ok(())

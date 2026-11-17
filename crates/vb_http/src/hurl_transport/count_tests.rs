@@ -22,10 +22,17 @@ fn count_filters_preserve_duplicate_occurrences_and_exact_capture_bound() -> cra
         if count <= 64 {
             let observed = result?;
             assert_eq!(observed.header_count(), count);
-            assert!(observed.headers().all(|field| field.name == "x" && field.value == "a"));
+            assert!(
+                observed
+                    .headers()
+                    .all(|field| field.name == "x" && field.value == "a")
+            );
             assert_eq!(observed.response().body(), &[0xff, 0]);
         } else {
-            assert!(matches!(result, Err(HurlAttemptFailure::Attempt(AttemptFailure::HeaderLimit))));
+            assert!(matches!(
+                result,
+                Err(HurlAttemptFailure::Attempt(AttemptFailure::HeaderLimit))
+            ));
         }
         assert_eq!(capture.accepted, 1);
     }
@@ -47,16 +54,22 @@ fn count_type_errors_survive_not_and_retain_later_assertion_index() -> crate::Re
             let (legacy, capture) = with_response(wire.clone(), false, |endpoint| {
                 execute_hurl_with_headers(&plan, &endpoint, limits)
             })?;
-            assert!(matches!(legacy, Err(HurlAttemptFailure::Evaluation(
-                HurlEvalError::AssertionFailed { index: 2 },
-            ))));
+            assert!(matches!(
+                legacy,
+                Err(HurlAttemptFailure::Evaluation(
+                    HurlEvalError::AssertionFailed { index: 2 },
+                ))
+            ));
             assert_eq!(capture.accepted, 1);
             let (typed, capture) = with_response(wire, false, |endpoint| {
                 crate::execute_hurl_with_header_predicates(&plan, &endpoint, limits)
             })?;
-            assert!(matches!(typed, Err(crate::HurlPredicateAttemptFailure::Evaluation(
-                HurlPredicateEvalError::HeaderPredicateTypeMismatch { index: 2 },
-            ))));
+            assert!(matches!(
+                typed,
+                Err(crate::HurlPredicateAttemptFailure::Evaluation(
+                    HurlPredicateEvalError::HeaderPredicateTypeMismatch { index: 2 },
+                ))
+            ));
             assert_eq!(capture.accepted, 1);
         }
     }
@@ -74,9 +87,12 @@ fn count_type_errors_survive_not_and_retain_later_assertion_index() -> crate::Re
         if accepted {
             assert_eq!(result?.response().body(), &[0xff, 0]);
         } else {
-            assert!(matches!(result, Err(HurlAttemptFailure::Evaluation(
-                HurlEvalError::AssertionFailed { index: 2 },
-            ))));
+            assert!(matches!(
+                result,
+                Err(HurlAttemptFailure::Evaluation(
+                    HurlEvalError::AssertionFailed { index: 2 },
+                ))
+            ));
         }
         assert_eq!(capture.accepted, 1);
     }
