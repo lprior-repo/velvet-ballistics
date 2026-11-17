@@ -64,3 +64,7 @@ include!("types/tests.rs");
 include!("types/introspection_poison_regression_tests.rs");
 
 include!("types/format_snapshot_tests.rs");
+
+#[cfg(test)]
+#[path = "types/queue_custody_tests.rs"]
+mod queue_custody_tests;
