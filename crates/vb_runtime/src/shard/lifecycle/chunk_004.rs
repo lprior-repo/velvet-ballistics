@@ -56,40 +56,13 @@ impl Shard {
                 // fields fall through to the specific diagnostics below.
                 self.require_current_fencing_token(ticket)
             }
-            // Diagnose only an otherwise identical prior-run invocation.
-            // A valid key is a consistency check, not proof of past issuance.
-            Some(pending)
-                if ticket.run_attempt > 0
-                    && ticket.run_attempt < pending.run_attempt
-                    && self.run_state_get(ticket.run).is_some_and(|state| {
-                        state.run_attempt.get() == pending.run_attempt
-                    })
-                    && ticket.run == pending.run
-                    && ticket.step == pending.step
-                    && ticket.seq == pending.seq
-                    && ticket.action == pending.action
-                    && ticket.attempt > 0
-                    && ticket.capacity > 0
-                    && ticket.attempt <= ticket.capacity
-                    && ticket.attempt == pending.attempt
-                    && ticket.capacity == pending.capacity
-                    && vb_core::action::action_ticket_has_valid_key(ticket) =>
-            {
+            Some(pending) if self.stale_run_attempt(ticket, pending) => {
                 Err(RuntimeError::StaleAttempt {
                     incoming: ticket.run_attempt,
                     current: pending.run_attempt,
                 })
             }
-            Some(pending)
-                if ticket.attempt > 0
-                    && ticket.attempt < pending.attempt
-                    && ticket.run == pending.run
-                    && ticket.step == pending.step
-                    && ticket.action == pending.action
-                    && ticket.capacity == pending.capacity
-                    && vb_core::action::action_ticket_has_valid_key(ticket)
-                    && ticket.seq <= pending.seq =>
-            {
+            Some(pending) if self.stale_action_attempt(ticket, pending) => {
                 Err(RuntimeError::StaleAttempt {
                     incoming: ticket.attempt,
                     current: pending.attempt,
@@ -97,6 +70,39 @@ impl Shard {
             }
             Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
         }
+    }
+
+    /// A ticket from an earlier run attempt than the pending ticket for the
+    /// same invocation, diagnosed only when the pending ticket is the live
+    /// run state. A valid key is a consistency check, not proof of past
+    /// issuance.
+    fn stale_run_attempt(&self, ticket: ActionTicket, pending: ActionTicket) -> bool {
+        ticket.run_attempt > 0
+            && ticket.run_attempt < pending.run_attempt
+            && self
+                .run_state_get(ticket.run)
+                .is_some_and(|state| state.run_attempt.get() == pending.run_attempt)
+            && ticket.run == pending.run
+            && ticket.step == pending.step
+            && ticket.seq == pending.seq
+            && ticket.action == pending.action
+            && ticket.attempt > 0
+            && ticket.capacity > 0
+            && ticket.attempt <= ticket.capacity
+            && ticket.attempt == pending.attempt
+            && ticket.capacity == pending.capacity
+            && vb_core::action::action_ticket_has_valid_key(ticket)
+    }
+
+    fn stale_action_attempt(&self, ticket: ActionTicket, pending: ActionTicket) -> bool {
+        ticket.attempt > 0
+            && ticket.attempt < pending.attempt
+            && ticket.run == pending.run
+            && ticket.step == pending.step
+            && ticket.action == pending.action
+            && ticket.capacity == pending.capacity
+            && vb_core::action::action_ticket_has_valid_key(ticket)
+            && ticket.seq <= pending.seq
     }
 
     /// Rejects a completion whose fencing token was superseded by a later
