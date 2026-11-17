@@ -1,6 +1,6 @@
+use super::DecodeError;
 use super::limits::MAX_INPUT_BYTES;
 use super::parser::Parser;
-use super::DecodeError;
 
 impl Parser<'_, '_> {
     pub(super) fn string(&mut self) -> Result<bool, DecodeError> {
