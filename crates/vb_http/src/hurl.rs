@@ -1,16 +1,18 @@
 //! Pure, bounded Hurl subset. Bodies remain opaque; this module performs no I/O.
 
-#[path = "hurl_syntax.rs"]
-mod syntax;
-#[path = "hurl_integer.rs"]
-mod integer;
-#[path = "hurl_headers.rs"]
-mod headers;
 #[path = "hurl_evaluation.rs"]
 mod evaluation;
+#[path = "hurl_headers.rs"]
+mod headers;
+#[path = "hurl_integer.rs"]
+mod integer;
+#[path = "hurl_syntax.rs"]
+mod syntax;
 
-pub use evaluation::{evaluate_hurl, evaluate_hurl_with_headers, evaluate_hurl_with_header_predicates};
-pub use syntax::{parse_hurl, parse_hurl_with_headers, parse_hurl_with_header_predicates};
+pub use evaluation::{
+    evaluate_hurl, evaluate_hurl_with_header_predicates, evaluate_hurl_with_headers,
+};
+pub use syntax::{parse_hurl, parse_hurl_with_header_predicates, parse_hurl_with_headers};
 
 const MAX_SOURCE_BYTES: usize = 16384;
 const MAX_LINE_BYTES: usize = 4096;
@@ -103,7 +105,10 @@ struct Assertion<'a> {
 }
 #[derive(Debug, Clone, Copy)]
 enum Query<'a> {
-    Status { comparison: Comparison, expected: i64 },
+    Status {
+        comparison: Comparison,
+        expected: i64,
+    },
     Header(HeaderAssertion<'a>),
 }
 #[derive(Debug, Clone, Copy)]
@@ -163,11 +168,11 @@ impl Comparison {
 }
 
 #[cfg(test)]
-#[path = "hurl_tests.rs"]
-mod tests;
-#[cfg(test)]
 #[path = "hurl_regression_tests.rs"]
 mod regression_tests;
+#[cfg(test)]
+#[path = "hurl_tests.rs"]
+mod tests;
 
 impl std::fmt::Display for HurlEvalError {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
