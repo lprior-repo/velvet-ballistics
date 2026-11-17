@@ -32,7 +32,7 @@ impl Shard {
     }
 
     fn fail_completion_journal_budget(&mut self, run: RunId) -> RuntimeResult<()> {
-        let _removed_ticket = self.pending_action_remove(run);
+        // Terminal cleanup removes authority only after the fallback commits.
         self.fail_command_run_on_journal_budget(run)
     }
 
