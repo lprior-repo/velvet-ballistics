@@ -80,7 +80,7 @@ impl ShardCommandQueue {
                 .insert(run, counts.submissions);
         }
         if let Some(depth) = counts.retained_depth {
-            let _previous = self.migration.planned_depth.insert(run, depth);
+            replace_or_insert_planned_depth(&mut self.migration.planned_depth, run, depth);
         }
     }
 
@@ -116,7 +116,19 @@ impl ShardCommandQueue {
                 limit,
             });
         }
-        let _previous = self.migration.planned_depth.insert(run, limit);
+        replace_or_insert_planned_depth(&mut self.migration.planned_depth, run, limit);
         Ok(())
     }
 }
+
+// Avoid HashTable::entry reserving before it discovers an occupied key.
+fn replace_or_insert_planned_depth(depths: &mut IndexMap<RunId, u32>, run: RunId, depth: u32) {
+    if let Some(recorded) = depths.get_mut(&run) {
+        *recorded = depth;
+    } else {
+        let _previous = depths.insert(run, depth);
+    }
+}
+
+#[cfg(test)]
+include!("planned_depth_tests.rs");
