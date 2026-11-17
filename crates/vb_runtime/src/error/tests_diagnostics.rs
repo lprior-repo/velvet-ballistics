@@ -377,3 +377,12 @@ fn deduped_201f_variants_map_to_distinct_registered_codes() {
         Ok(DiagnosticCode::new(0x2029))
     );
 }
+
+#[test]
+fn stale_attempt_preserves_exact_diagnostic_and_runtime_codes() {
+    for (incoming, current) in [(1, 2), (7, 8), (u16::MAX - 1, u16::MAX)] {
+        let error = RuntimeError::StaleAttempt { incoming, current };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x200B));
+        assert_eq!(error.runtime_code(), Some("ACTION_FAILED"));
+    }
+}
