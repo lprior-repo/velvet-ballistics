@@ -1,9 +1,16 @@
 use crate::shard::types::{RunAggregate, RuntimeState, ShardControlState};
 
+struct ShardInputs {
+    quota: crate::quota::SharedQuotaLedger,
+    artifact_store: crate::admission::SharedAcceptedArtifactStore,
+    journal: SharedRuntimeJournal,
+}
+
 struct ShardServices {
     quota: crate::quota::SharedQuotaLedger,
     artifact_store: crate::admission::SharedAcceptedArtifactStore,
     journal: SharedRuntimeJournal,
+    queue: ShardCommandQueue,
 }
 
 impl Shard {
@@ -37,7 +44,7 @@ impl Shard {
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
         quota: crate::quota::SharedQuotaLedger,
     ) -> RuntimeResult<Self> {
-        let services = ShardServices {
+        let services = ShardInputs {
             quota,
             artifact_store,
             journal,
@@ -45,16 +52,23 @@ impl Shard {
         Self::try_with_services(config, services)
     }
 
-    fn try_with_services(config: ShardConfig, services: ShardServices) -> RuntimeResult<Self> {
+    fn try_with_services(config: ShardConfig, services: ShardInputs) -> RuntimeResult<Self> {
         validate_command_queue_capacity(config.command_queue_capacity)?;
         let aggregate = RunAggregate::try_with_timer_capacity(config.max_active_runs)?;
+        let queue = ShardCommandQueue::from_config(config)?;
+        let services = ShardServices {
+            quota: services.quota,
+            artifact_store: services.artifact_store,
+            journal: services.journal,
+            queue,
+        };
         Ok(Self::with_services(config, services, aggregate))
     }
 
     fn with_services(config: ShardConfig, ports: ShardServices, aggregate: RunAggregate) -> Self {
         Self {
             secret_availability: std::sync::Arc::from([]),
-            command_queue: ShardCommandQueue::from_config(config),
+            command_queue: ports.queue,
             runs: IndexMap::new(),
             run_aggregate: aggregate,
             journal_sequences: IndexMap::new(),
