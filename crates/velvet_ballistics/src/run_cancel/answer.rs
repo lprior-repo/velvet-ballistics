@@ -103,7 +103,9 @@ fn receive_answer(client: &mut IpcClient, run_id: RunId, output: OutputFormat) -
 
 fn answer_response(response: IpcResponse, run_id: RunId, output: OutputFormat) -> ExitCode {
     match response {
-        IpcResponse::AcceptedRun { .. } => answer_accepted(run_id, output),
+        IpcResponse::AcceptedRun {
+            run_id: accepted_run,
+        } if accepted_run == run_id.get() => answer_accepted(run_id, output),
         IpcResponse::RuntimeError { message } => answer_prefixed_error(
             "runtime error",
             &message,
@@ -159,4 +161,74 @@ fn answer_prefixed_error(
         return code.into();
     }
     answer_error(message, output, code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn matching_answer_run_identity_succeeds() {
+        for id in [0, 1, u64::MAX] {
+            assert_eq!(
+                answer_response(
+                    IpcResponse::AcceptedRun { run_id: id },
+                    RunId::new(id),
+                    OutputFormat::Text,
+                ),
+                ExitCode::SUCCESS,
+            );
+        }
+    }
+
+    #[test]
+    fn mismatched_answer_run_identity_is_runtime_failure() {
+        for (requested, accepted) in [(1, 2), (0, u64::MAX), (u64::MAX, 0)] {
+            assert_eq!(
+                answer_response(
+                    IpcResponse::AcceptedRun { run_id: accepted },
+                    RunId::new(requested),
+                    OutputFormat::Text,
+                ),
+                ExitCode::from(CliExitCode::RuntimeFailed),
+            );
+        }
+    }
+
+    #[test]
+    fn runtime_error_response_preserves_exit_status() {
+        assert_eq!(
+            answer_response(
+                IpcResponse::RuntimeError {
+                    message: String::from("runtime rejected answer"),
+                },
+                RunId::new(1),
+                OutputFormat::Text,
+            ),
+            ExitCode::from(CliExitCode::RuntimeFailed),
+        );
+    }
+
+    #[test]
+    fn payload_error_response_preserves_exit_status() {
+        assert_eq!(
+            answer_response(
+                IpcResponse::PayloadError {
+                    diagnostic: 1,
+                    message: String::from("invalid answer"),
+                },
+                RunId::new(1),
+                OutputFormat::Text,
+            ),
+            ExitCode::from(CliExitCode::ValidationFailed),
+        );
+    }
+
+    #[test]
+    fn unrelated_response_preserves_runtime_failure() {
+        assert_eq!(
+            answer_response(IpcResponse::Healthy, RunId::new(1), OutputFormat::Text),
+            ExitCode::from(CliExitCode::RuntimeFailed),
+        );
+    }
 }
