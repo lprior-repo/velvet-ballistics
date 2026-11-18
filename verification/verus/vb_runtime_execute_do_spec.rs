@@ -315,8 +315,8 @@ pub open spec fn spec_resume_action_outcome_decision(
     } else if outcome_disc == 1 {
         SpecResumeKind::AwaitingAction
     } else if outcome_disc == 2 {
-        if retry_policy_disc != 0
-            || (!side_effect_is_none && retry_safety_disc != 0 && retry_safety_disc != 1) {
+        if retry_policy_disc != 0 || (!side_effect_is_none && retry_safety_disc != 0
+            && retry_safety_disc != 1) {
             SpecResumeKind::ErrUnsupportedPrimitive
         } else if attempt >= capacity {
             SpecResumeKind::ErrRetryExhausted
@@ -338,7 +338,10 @@ pub open spec fn spec_resume_action_outcome_decision(
 // This mathematical projection models each wrapping operation explicitly.
 // The external production bridge remains trusted, not a body-equivalence proof.
 pub open spec fn spec_compute_idempotency_key_decision(
-    run: u64, run_attempt: u16, seq: u64, action: u16,
+    run: u64,
+    run_attempt: u16,
+    seq: u64,
+    action: u16,
 ) -> int {
     let modulus: int = (u128::MAX as int) + 1;
     let step1 = (run as int * 0x6c62272e07bb0143) % modulus;
@@ -799,7 +802,12 @@ pub exec fn checked_prod_resume_action_outcome(
 /// crates/vb_core/src/action/ticket.rs:78-96, reached from the runtime
 /// via `compute_idempotency_key` at
 /// crates/vb_runtime/src/engine/action/mod.rs:267-269.
-pub exec fn checked_prod_compute_idempotency_key(run: u64, run_attempt: u16, seq: u64, action: u16) -> (key: u128)
+pub exec fn checked_prod_compute_idempotency_key(
+    run: u64,
+    run_attempt: u16,
+    seq: u64,
+    action: u16,
+) -> (key: u128)
     ensures
         key as int == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
 {
@@ -1111,7 +1119,8 @@ pub proof fn proof_execute_error_handler_branch(
 /// Non-vacuous: `resume_action_outcome` Ready case maps to Continue.
 pub proof fn proof_resume_ready_is_continue()
     ensures
-        spec_resume_action_outcome_decision(0, 0, 0, 0, false, 2, false, false) == SpecResumeKind::Continue,
+        spec_resume_action_outcome_decision(0, 0, 0, 0, false, 2, false, false)
+            == SpecResumeKind::Continue,
 {
     reveal(spec_resume_action_outcome_decision);
 }
@@ -1138,7 +1147,8 @@ pub proof fn proof_resume_failed_retryable_with_capacity_is_awaiting(attempt: u1
 
 /// Non-vacuous: `resume_action_outcome` Failed-retryable-exhausted maps to ErrRetryExhausted.
 pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(attempt: u16, capacity: u16)
-    requires attempt >= capacity,
+    requires
+        attempt >= capacity,
     ensures
         spec_resume_action_outcome_decision(2, attempt, capacity, 0, true, 0, true, true)
             == SpecResumeKind::ErrRetryExhausted,
@@ -1148,7 +1158,8 @@ pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(attempt:
 
 /// With capacity remaining, either checked increment overflow is an invariant error.
 pub proof fn proof_resume_overflow_is_invariant_error(attempt: u16, capacity: u16)
-    requires attempt < capacity,
+    requires
+        attempt < capacity,
     ensures
         spec_resume_action_outcome_decision(2, attempt, capacity, 0, true, 0, true, false)
             == SpecResumeKind::ErrInternalInvariantViolation,
@@ -1160,7 +1171,9 @@ pub proof fn proof_resume_overflow_is_invariant_error(attempt: u16, capacity: u1
 
 /// Unsafe and future retry-safety discriminants refuse side-effecting retries first.
 pub proof fn proof_resume_unsafe_side_effects_refuse(retry_safety_disc: u8)
-    requires retry_safety_disc != 0, retry_safety_disc != 1,
+    requires
+        retry_safety_disc != 0,
+        retry_safety_disc != 1,
     ensures
         spec_resume_action_outcome_decision(2, 0, 1, 0, false, retry_safety_disc, false, false)
             == SpecResumeKind::ErrUnsupportedPrimitive,
@@ -1203,7 +1216,12 @@ pub proof fn proof_resolve_contract_matches_id(id_at_index_match: bool)
 /// Non-vacuous: `compute_idempotency_key` is deterministic — two
 /// invocations with identical inputs produce identical keys. The
 /// arithmetic is referentially transparent.
-pub proof fn proof_compute_idempotency_key_deterministic(run: u64, run_attempt: u16, seq: u64, action: u16)
+pub proof fn proof_compute_idempotency_key_deterministic(
+    run: u64,
+    run_attempt: u16,
+    seq: u64,
+    action: u16,
+)
     ensures
         spec_compute_idempotency_key_decision(run, run_attempt, seq, action)
             == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
@@ -1218,15 +1236,23 @@ pub proof fn proof_idempotency_projection_boundaries()
         spec_compute_idempotency_key_decision(0, 0, 0, 0) == 0,
         spec_compute_idempotency_key_decision(0, 0, 0, 65535) == 65535,
         spec_compute_idempotency_key_decision(0, 1, 0, 0) == 28275951934922302338996992951343872966,
-        spec_compute_idempotency_key_decision(18446744073709551615, 65535, 18446744073709551615, 65535)
-            == 269997330972226837284306421837379734573,
+        spec_compute_idempotency_key_decision(
+            18446744073709551615,
+            65535,
+            18446744073709551615,
+            65535,
+        ) == 269997330972226837284306421837379734573,
 {
     assert(spec_compute_idempotency_key_decision(0, 0, 0, 0) == 0) by (compute);
     assert(spec_compute_idempotency_key_decision(0, 0, 0, 65535) == 65535) by (compute);
     assert(spec_compute_idempotency_key_decision(0, 1, 0, 0)
         == 28275951934922302338996992951343872966) by (compute);
-    assert(spec_compute_idempotency_key_decision(18446744073709551615, 65535, 18446744073709551615, 65535)
-        == 269997330972226837284306421837379734573) by (compute);
+    assert(spec_compute_idempotency_key_decision(
+        18446744073709551615,
+        65535,
+        18446744073709551615,
+        65535,
+    ) == 269997330972226837284306421837379734573) by (compute);
 }
 
 fn main() {
