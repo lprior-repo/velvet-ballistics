@@ -221,11 +221,30 @@ fn admit_and_drive(shard: &mut Shard, run: RunId, state: RunState) -> RuntimeRes
         return Err(error);
     }
     if let Err(error) = shard.drive_run(run) {
-        if !shard.run_state_contains(run) {
-            shard.release_admission_quota(run)?;
-            shard.discard_journal_sequence(run);
-        }
+        release_unowned_submission_after_drive_failure(shard, run)?;
         return Err(error);
     }
     Ok(())
+}
+
+// Failed drive may leave checked-out or runtime ownership after a partial
+// terminal transition. Retain its accounting and cursor until cleanup resolves.
+fn release_unowned_submission_after_drive_failure(
+    shard: &mut Shard,
+    run: RunId,
+) -> RuntimeResult<()> {
+    if shard.run_state_contains(run)
+        || shard.checked_out_run_contains(run)
+        || shard.runtime_state_get(run).is_some()
+    {
+        return Ok(());
+    }
+    shard.release_admission_quota(run)?;
+    shard.discard_journal_sequence(run);
+    Ok(())
+}
+
+#[cfg(test)]
+mod drive_failure_accounting_tests {
+    include!("submit_phases_tests.rs");
 }

@@ -1,0 +1,187 @@
+#[derive(Clone, Copy)]
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_verify)]
+struct WalkQuery<'a> {
+    nodes: &'a [crate::workflow::CompiledNode],
+    keys: &'a std::collections::BTreeSet<u16>,
+    stop: usize,
+    outer: StepIdx,
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_verify)]
+struct WalkCursor<'a> {
+    query: WalkQuery<'a>,
+    visited: std::collections::BTreeSet<usize>,
+    stack: Vec<usize>,
+    #[cfg(verus_keep_ghost)]
+    remaining: Ghost<int>,
+}
+
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+impl<'a> WalkCursor<'a> {
+    spec fn valid(&self) -> bool {
+        self.remaining@ >= 0 && walk_weight_from(self.query.nodes@, self.visited@, 0) as int
+            + self.stack@.len() as int <= self.remaining@
+    }
+    spec fn answer(&self, stop_on_overflow: bool) -> Option<StepIdx> {
+        walk_reference(self.query.nodes@, self.query.keys@, self.stack@, self.query.stop,
+            self.query.outer, self.visited@, self.remaining@, stop_on_overflow)
+    }
+}
+spec fn initial_walk(query: WalkQuery, start: usize, stop_on_overflow: bool) -> Option<StepIdx> {
+    walk_reference(query.nodes@, query.keys@, seq![start], query.stop, query.outer,
+        Set::empty(), 1 + walk_weight_from(query.nodes@, Set::empty(), 0) as int, stop_on_overflow)
+}
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out => ensures
+    out.query == query, out.valid(),
+    out.answer(false) == initial_walk(query, start, false),
+    out.answer(true) == initial_walk(query, start, true),
+))]
+fn create_cursor(query: WalkQuery<'_>, start: usize) -> WalkCursor<'_> {
+    let cursor = WalkCursor {
+        query,
+        visited: std::collections::BTreeSet::new(),
+        stack: vec![start],
+        #[cfg(verus_keep_ghost)]
+        remaining: verus_exec_expr!(Ghost(1 + walk_weight_from(query.nodes@, Set::empty(), 0) as int)),
+    };
+    #[cfg(verus_keep_ghost)]
+    vstd::prelude::proof! {
+        assert(cursor.query == query);
+        assert(cursor.stack@ == seq![start]);
+        assert(cursor.visited@ == Set::<usize>::empty());
+        assert(cursor.remaining@ == 1 + walk_weight_from(query.nodes@, Set::empty(), 0) as int);
+        initialize_cursor_answers(&cursor, query, start);
+    }
+    cursor
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(event =>
+    requires old(cursor).valid(), old(cursor).stack@.len() > 0,
+    ensures final(cursor).valid(), final(cursor).query == old(cursor).query,
+        final(cursor).remaining@ == old(cursor).remaining@ - 1,
+        old(cursor).answer(false) == match event {
+            TogetherWalkVisit::Found(step) => Some(step),
+            _ => final(cursor).answer(false),
+        },
+        old(cursor).answer(true) == match event {
+            TogetherWalkVisit::Found(step) => Some(step),
+            TogetherWalkVisit::Overflow => Some(old(cursor).query.outer),
+            _ => final(cursor).answer(true),
+        },
+))]
+fn advance_cursor(cursor: &mut WalkCursor<'_>) -> TogetherWalkVisit {
+    #[cfg(verus_keep_ghost)]
+    vstd::prelude::proof_decl! {
+        let ghost before = (cursor.stack@, cursor.visited@, cursor.remaining@);
+    }
+    let Some(index) = cursor.stack.pop() else {
+        return TogetherWalkVisit::Continue;
+    };
+    let event = visit_cursor_node(cursor, index);
+    #[cfg(verus_keep_ghost)]
+    {
+        cursor.remaining = verus_exec_expr!(Ghost(cursor.remaining@ - 1));
+    }
+    #[cfg(verus_keep_ghost)]
+    vstd::prelude::proof! {
+        complete_cursor_step(cursor, before, index, event);
+    }
+    event
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(event => ensures
+    final(cursor).query == old(cursor).query, final(cursor).remaining@ == old(cursor).remaining@,
+    final(cursor).visited@ == walk_next_seen(old(cursor).query.nodes@.len(), index,
+        old(cursor).query.stop, old(cursor).visited@),
+    final(cursor).stack@ == walk_next_stack(old(cursor).query.nodes@, old(cursor).query.keys@,
+        old(cursor).stack@, index, old(cursor).query.stop, old(cursor).query.outer, old(cursor).visited@),
+    event == cursor_event(old(cursor).query,
+        (old(cursor).stack@.push(index), old(cursor).visited@, old(cursor).remaining@), index),
+))]
+fn visit_cursor_node(cursor: &mut WalkCursor<'_>, index: usize) -> TogetherWalkVisit {
+    visit_together_node(
+        cursor.query.nodes,
+        cursor.query.keys,
+        index,
+        cursor.query.stop,
+        cursor.query.outer,
+        &mut cursor.visited,
+        &mut cursor.stack,
+    )
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out => ensures out == initial_walk(query, start, stop_on_overflow)))]
+fn run_walk(query: WalkQuery<'_>, start: usize, stop_on_overflow: bool) -> Option<StepIdx> {
+    let mut cursor = create_cursor(query, start);
+    while !cursor.stack.is_empty() {
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        invariant(verus_proof_expr!(
+            cursor.valid()
+                && cursor.query == query
+                && cursor.answer(stop_on_overflow) == initial_walk(query, start, stop_on_overflow)
+        ));
+        #[cfg(verus_keep_ghost)]
+        decreases(verus_proof_expr!(cursor.remaining@));
+        match advance_cursor(&mut cursor) {
+            TogetherWalkVisit::Found(step) => return Some(step),
+            TogetherWalkVisit::Overflow if stop_on_overflow => return Some(query.outer),
+            _ => {}
+        }
+    }
+    None
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out => ensures
+    out == expected_contains_walk(nodes@, together_set@, start_idx, stop_idx, outer),
+))]
+fn walk_contains_together_start(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<u16>,
+    start_idx: usize,
+    stop_idx: usize,
+    outer: StepIdx,
+) -> bool {
+    run_walk(
+        WalkQuery {
+            nodes,
+            keys: together_set,
+            stop: stop_idx,
+            outer,
+        },
+        start_idx,
+        false,
+    )
+    .is_some()
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(out => ensures
+    out == expected_find_walk(nodes@, together_set@, start_idx, stop_idx, outer),
+))]
+fn find_inner_together_start(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<u16>,
+    start_idx: usize,
+    stop_idx: usize,
+    outer: StepIdx,
+) -> StepIdx {
+    match run_walk(
+        WalkQuery {
+            nodes,
+            keys: together_set,
+            stop: stop_idx,
+            outer,
+        },
+        start_idx,
+        true,
+    ) {
+        Some(step) => step,
+        None => outer,
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+include!("cursor_proof.rs");

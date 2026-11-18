@@ -26,7 +26,7 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
     match kind.as_str() {
         "manual" | "webhook" => validate_empty_trigger(kind, body),
         "schedule" => validate_named_string_trigger(kind, body, "cron"),
-        "event" => validate_named_string_trigger(kind, body, "type"),
+        "event" => validate_event_trigger(kind, body),
         "http" => Err(ValidationError::HttpTriggerOutOfCore),
         other => Err(ValidationError::UnsupportedTrigger {
             trigger: other.to_owned(),
@@ -42,6 +42,21 @@ fn validate_empty_trigger(kind: &str, body: &FieldValue) -> ValidationResult<()>
             trigger: kind.to_owned(),
         }),
     }
+}
+
+fn validate_event_trigger(kind: &str, body: &FieldValue) -> ValidationResult<()> {
+    if let FieldValue::Mapping(entries) = body {
+        if entries.iter().any(|(field, _)| field != "type") {
+            return Err(ValidationError::UnsupportedTrigger {
+                trigger: kind.to_owned(),
+            });
+        }
+        // The allowlist above means every remaining field is the same key.
+        if entries.len() > 1 {
+            return Err(ValidationError::DuplicateKey);
+        }
+    }
+    validate_named_string_trigger(kind, body, "type")
 }
 
 fn validate_named_string_trigger(

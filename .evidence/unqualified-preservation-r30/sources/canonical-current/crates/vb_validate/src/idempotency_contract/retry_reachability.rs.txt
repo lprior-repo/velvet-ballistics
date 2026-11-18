@@ -1,0 +1,111 @@
+use super::{IdempotencyContractError as E, IdempotencyContractResult};
+use vb_core::{
+    StepIdx,
+    workflow::{CompiledNodeKind as K, WorkflowParts},
+};
+
+#[path = "retry_reachability/targets.rs"]
+mod targets;
+
+struct Walk {
+    visited: Vec<bool>,
+    queue: Vec<usize>,
+}
+
+// Core slot-flow successors are private and reject concurrent families; its lane
+// walker deliberately skips nested bodies. This walk needs every retried action.
+pub(super) fn mark(parts: &WorkflowParts) -> IdempotencyContractResult<Vec<bool>> {
+    let count = parts.nodes.len();
+    if count > usize::from(u16::MAX) {
+        return Err(E::RetryGraphCapacity);
+    }
+    let mut result = mask(count)?;
+    let mut walk = Walk::new(count)?;
+    parts
+        .nodes
+        .iter()
+        .enumerate()
+        .try_for_each(|(owner, node)| {
+            if let K::RetryCheck { body, .. } = node.kind {
+                walk.mark(parts, owner, body, &mut result)?;
+            }
+            Ok(())
+        })?;
+    Ok(result)
+}
+
+impl Walk {
+    fn new(count: usize) -> IdempotencyContractResult<Self> {
+        let mut queue = Vec::new();
+        queue
+            .try_reserve_exact(count)
+            .map_err(|_| E::RetryGraphCapacity)?;
+        Ok(Self {
+            visited: mask(count)?,
+            queue,
+        })
+    }
+
+    fn mark(
+        &mut self,
+        parts: &WorkflowParts,
+        owner: usize,
+        body: StepIdx,
+        result: &mut [bool],
+    ) -> IdempotencyContractResult<()> {
+        self.visited.fill(false);
+        self.queue.clear();
+        enqueue(body, &mut self.visited, &mut self.queue)?;
+        drain(parts, owner, &mut self.visited, &mut self.queue)?;
+        result
+            .iter_mut()
+            .zip(&self.visited)
+            .for_each(|(all, seen)| *all |= *seen);
+        Ok(())
+    }
+}
+
+fn mask(count: usize) -> IdempotencyContractResult<Vec<bool>> {
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| E::RetryGraphCapacity)?;
+    values.resize(count, false);
+    Ok(values)
+}
+
+fn drain(
+    parts: &WorkflowParts,
+    owner: usize,
+    visited: &mut [bool],
+    queue: &mut Vec<usize>,
+) -> IdempotencyContractResult<()> {
+    (0..parts.nodes.len()).try_for_each(|cursor| {
+        let Some(index) = queue.get(cursor).copied() else {
+            return Ok(());
+        };
+        let node = parts
+            .nodes
+            .get(index)
+            .ok_or(E::RetryGraphInvalid { node_index: index })?;
+        targets::visit(node, index == owner, |target| {
+            enqueue(target, visited, queue)
+        })
+    })
+}
+
+fn enqueue(
+    target: StepIdx,
+    visited: &mut [bool],
+    queue: &mut Vec<usize>,
+) -> IdempotencyContractResult<()> {
+    let index = usize::from(target.get());
+    let seen = visited
+        .get_mut(index)
+        .ok_or(E::RetryGraphInvalid { node_index: index })?;
+    if !*seen {
+        *seen = true;
+        queue.push(index);
+    }
+    Ok(())
+}

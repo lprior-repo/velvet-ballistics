@@ -6,6 +6,7 @@ impl ShardCommandQueue {
         quota_candidate: Option<PendingQuotaReservation>,
         quota_ledger: Option<&crate::quota::SharedQuotaLedger>,
     ) -> RuntimeResult<()> {
+        self.require_unfenced()?;
         let run = cmd.run_id();
         let submit_run = pending_submit_run(&cmd);
         let submit_depth = submit_depth(&cmd);
@@ -128,6 +129,43 @@ struct PendingIndexUpdate {
 }
 
 impl PendingQueueIndexes<'_> {
+    fn remove_command(&mut self, command: &ShardCommand) {
+        if let Some(run) = command.run_id() {
+            self.remove_pending(run);
+        }
+        if let Some(run) = pending_submit_run(command) {
+            self.remove_submission(run);
+        }
+    }
+
+    fn remove_pending(&mut self, run: RunId) {
+        match self.pending.get_mut(&run) {
+            Some(1) => {
+                let _removed = self.pending.swap_remove(&run);
+                let _removed = self.admitted.swap_remove(&run);
+            }
+            Some(count) => {
+                if let Some(next) = count.checked_sub(1) {
+                    *count = next;
+                }
+            }
+            None => {}
+        }
+    }
+
+    fn remove_submission(&mut self, run: RunId) {
+        match self.submissions.get_mut(&run) {
+            Some(1) => {
+                let _removed = self.submissions.swap_remove(&run);
+            }
+            Some(count) => {
+                if let Some(next) = count.checked_sub(1) {
+                    *count = next;
+                }
+            }
+            None => {}
+        }
+    }
     fn plan(
         &self,
         run: Option<RunId>,
@@ -197,13 +235,13 @@ impl PendingQueueIndexes<'_> {
 
     fn update(&mut self, update: PendingIndexUpdate) {
         if let Some((run, count)) = update.pending {
-            let _previous = self.pending.insert(run, count);
+            replace_or_insert_live_queue_index(&mut self.pending, run, count);
         }
         if let Some((run, depth)) = update.admitted_depth {
-            let _previous = self.admitted.insert(run, depth);
+            replace_or_insert_live_queue_index(&mut self.admitted, run, depth);
         }
         if let Some((run, count)) = update.submission {
-            let _previous = self.submissions.insert(run, count);
+            replace_or_insert_live_queue_index(&mut self.submissions, run, count);
         }
     }
 }
@@ -234,3 +272,17 @@ fn reserve_queued_quota(
     }
     Ok(())
 }
+
+#[cfg(test)]
+include!("migration/dequeue_count_tests.rs");
+
+fn replace_or_insert_live_queue_index(index: &mut IndexMap<RunId, u32>, run: RunId, value: u32) {
+    if let Some(recorded) = index.get_mut(&run) {
+        *recorded = value;
+    } else {
+        let _previous = index.insert(run, value);
+    }
+}
+
+#[cfg(test)]
+include!("migration/enqueue_index_tests.rs");

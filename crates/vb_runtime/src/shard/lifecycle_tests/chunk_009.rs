@@ -592,3 +592,136 @@ fn terminal_retention_evicts_oldest_terminal_identity_at_capacity() -> Result<()
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
 }
+
+// Bounded in-memory coverage for terminal reservation and batch refusal.
+// These tests do not simulate allocation failure or execute recovery/Store paths.
+#[test]
+fn terminal_slot_preparation_preserves_full_retention_set() -> Result<(), String> {
+    let mut config = small_config();
+    config.max_active_runs = 1;
+    let mut shard = Shard::new(config).map_err(|error| error.to_string())?;
+    let old = RunId::new(9_101);
+    let candidate = RunId::new(9_102);
+    shard.checked_out_run_insert(old).map_err(|error| error.to_string())?;
+    shard.terminal_runs_insert(old).map_err(|error| error.to_string())?;
+    for _ in 0..2 {
+        assert_eq!(shard.reserve_terminal_run_slot(candidate), Ok(()));
+        assert!(shard.terminal_runs_contains(old));
+        assert!(!shard.terminal_runs_contains(candidate));
+        assert_eq!(shard.active_run_count(), 0);
+    }
+    // Only actual insertion may evict the retained identity.
+    shard.checked_out_run_insert(candidate).map_err(|error| error.to_string())?;
+    shard.terminal_runs_insert(candidate).map_err(|error| error.to_string())?;
+    assert!(!shard.terminal_runs_contains(old));
+    assert!(shard.terminal_runs_contains(candidate));
+    Ok(())
+}
+
+#[cfg(not(kani))]
+#[test]
+fn terminal_batch_refusal_preserves_retention_and_restores_owned_state() -> Result<(), String> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct RejectTerminalBatch {
+        calls: AtomicUsize,
+    }
+    impl crate::journal::RuntimeJournal for RejectTerminalBatch {
+        fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "unexpected_single_terminal_append",
+            })
+        }
+        fn append_sequenced_batch(
+            &self,
+            _events: &[RuntimeJournalEvent],
+            _start_seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "test_terminal_batch_refusal",
+            })
+        }
+        fn probe(&self) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+    }
+
+    for finished in [false, true] {
+        let journal = std::sync::Arc::new(RejectTerminalBatch {
+            calls: AtomicUsize::new(0),
+        });
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut config = small_config();
+        config.max_active_runs = 1;
+        let mut shard = Shard::new_with_journal(config, shared)
+            .map_err(|error| error.to_string())?;
+        let old = RunId::new(9_103);
+        let run = RunId::new(9_104);
+        shard.checked_out_run_insert(old).map_err(|error| error.to_string())?;
+        shard.terminal_runs_insert(old).map_err(|error| error.to_string())?;
+        let workflow = require_workflow("terminal-batch-refusal", finished_workflow())?;
+        let state = crate::shard::helpers::make_run_state(workflow, run)
+            .ok_or("run state fixture must build")?;
+        shard.admit_run_state(run, state, super::super::RuntimeState::Initial)
+            .map_err(|error| error.to_string())?;
+        shard.charge_admission_quota(run, None, 7)
+            .map_err(|error| error.to_string())?;
+        shard.seed_journal_sequence(run, vb_storage::EventSeq::new(100))
+            .map_err(|error| error.to_string())?;
+        let state = shard.take_run_state(run).map_err(|error| error.to_string())?;
+        let rollback = state.clone();
+        let quota = shard.charged_quotas.clone();
+        let counters = shard.counters().snapshot();
+        let trace = shard.trace_ring().snapshot_for_run(run, shard.trace_ring().capacity());
+        let event = if finished {
+            RuntimeJournalEvent::RunFinished {
+                run,
+                result: SlotIdx::ZERO,
+                attempt: 1,
+            }
+        } else {
+            RuntimeJournalEvent::RunFailed { run, attempt: 1 }
+        };
+        // Direct commit seam: no engine drive or allocation-refusal claim.
+        let failure = shard.commit_terminal_events(run, state, vec![event], Vec::new(), finished);
+        let error = match failure {
+            Err(super::DriveApplyFailure::BeforeCommit(error)) => error,
+            Ok(()) => return Err("expected BeforeCommit refusal, got success".into()),
+            Err(super::DriveApplyFailure::AfterCommit(error)) => {
+                return Err(format!("expected BeforeCommit refusal, got AfterCommit: {error:?}"));
+            }
+        };
+        let expected = RuntimeError::UnsupportedOperation {
+            operation: "test_terminal_batch_refusal",
+        };
+        assert_eq!(error, expected);
+        assert_eq!(journal.calls.load(Ordering::Relaxed), 1);
+        assert!(shard.terminal_runs_contains(old));
+        assert!(!shard.terminal_runs_contains(run));
+        assert!(shard.checked_out_run_contains(run));
+        assert_eq!(shard.run_state_get(run), None);
+        assert_eq!(
+            shard.restore_run_state_after_drive_failure(run, rollback.clone(), error),
+            Err(expected)
+        );
+        assert_eq!(shard.run_state_get(run), Some(&rollback));
+        assert!(!shard.checked_out_run_contains(run));
+        assert_eq!(
+            shard.runtime_state_get(run),
+            Some(super::super::RuntimeState::Resumable)
+        );
+        assert_eq!(shard.charged_quotas, quota);
+        assert_eq!(shard.global_cost_usage(), 7);
+        assert_eq!(shard.journal_seq_get(run), Some(vb_storage::EventSeq::new(100)));
+        assert_eq!(shard.counters().snapshot(), counters);
+        assert_eq!(
+            shard.trace_ring().snapshot_for_run(run, shard.trace_ring().capacity()),
+            trace
+        );
+        assert!(shard.terminal_runs_contains(old));
+        assert!(!shard.terminal_runs_contains(run));
+        assert_eq!(shard.active_run_count(), 1);
+    }
+    Ok(())
+}

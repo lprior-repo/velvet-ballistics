@@ -179,14 +179,27 @@ fn apply_summary_event_checked(
             }
             Ok(())
         }
+        JournalEvent::ActionAbandoned { ticket, .. } => {
+            if !tracker.is_resolved(ticket.action, ticket.step) {
+                tracker.mark_failed(ticket.action, ticket.step);
+            }
+            apply_summary_event(summary, event);
+            Ok(())
+        }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
             reject_resolved_summary_action(tracker, *action, *step)?;
             tracker.mark_completed(*action, *step);
             apply_summary_event(summary, event);
             Ok(())
         }
-        JournalEvent::ActionFailedEvent { action, step, .. } => {
+        JournalEvent::ActionFailedEvent {
+            action,
+            step,
+            attempt,
+            ..
+        } => {
             reject_resolved_summary_action(tracker, *action, *step)?;
+            tracker.require_failed_attempt_matches_schedule(*action, *step, *attempt)?;
             tracker.mark_failed(*action, *step);
             apply_summary_event(summary, event);
             Ok(())
@@ -243,3 +256,9 @@ fn reject_resolved_summary_action(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod sequence_boundary_tests;
+
+#[cfg(test)]
+mod abandonment_tests;

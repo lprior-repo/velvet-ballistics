@@ -1,0 +1,167 @@
+use vb_core::action::{ActionName, RetryRequirement, retry_requirement, verify_idempotency};
+use vb_core::{
+    ActionContract, ActionId, Idempotency, IdempotencyViolation, RetrySafety, RunFrame, RunId,
+    SideEffect, SlotIdx, SlotValue, StepIdx, Taint,
+};
+
+#[derive(Clone, Copy, Debug)]
+enum Expected {
+    Invalid,
+    Unconditional,
+    StableKey,
+    Forbidden,
+}
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+fn contract(
+    idempotency: Idempotency,
+    side_effect: SideEffect,
+    retry_safety: RetrySafety,
+) -> Result<ActionContract, Box<dyn std::error::Error>> {
+    Ok(ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::new("canonical.policy")?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 128,
+        max_output_bytes: 256,
+        timeout_ms: 5000,
+        idempotency,
+        side_effect,
+        retry_safety,
+        required_capabilities: Box::new([]),
+    })
+}
+
+fn frame() -> Result<RunFrame, Box<dyn std::error::Error>> {
+    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 6)?;
+    for (slot, taint) in [
+        (0, Taint::Clean),
+        (1, Taint::Secret),
+        (2, Taint::DerivedFromSecret),
+        (3, Taint::Random),
+        (4, Taint::TimeDependent),
+    ] {
+        frame.write_slot_with_taint(SlotIdx::new(slot), SlotValue::I64(1), taint)?;
+    }
+    Ok(frame)
+}
+
+fn check_case(contract: &ActionContract, expected: Expected, frame: &RunFrame) {
+    let invalid = IdempotencyViolation::InvalidClassification {
+        idempotency: contract.idempotency,
+        side_effect: contract.side_effect,
+        retry_safety: contract.retry_safety,
+    };
+    let forbidden = IdempotencyViolation::RetryForbidden {
+        side_effect: contract.side_effect,
+        retry_safety: contract.retry_safety,
+    };
+    let expected_policy = match expected {
+        Expected::Invalid => Err(invalid.clone()),
+        Expected::Unconditional => Ok(RetryRequirement::Unconditional),
+        Expected::StableKey => Ok(RetryRequirement::StableKey),
+        Expected::Forbidden => Ok(RetryRequirement::Forbidden),
+    };
+    assert_eq!(retry_requirement(contract), expected_policy, "{contract:?}");
+    let before = frame.checkpoint_v1();
+    for (slots, ingredient) in [
+        (
+            Vec::new(),
+            Err(IdempotencyViolation::MissingKey(contract.side_effect)),
+        ),
+        (vec![SlotIdx::new(0)], Ok(())),
+        (
+            vec![SlotIdx::new(1)],
+            Err(IdempotencyViolation::SecretInKey(1)),
+        ),
+        (
+            vec![SlotIdx::new(2)],
+            Err(IdempotencyViolation::SecretInKey(2)),
+        ),
+        (
+            vec![SlotIdx::new(3)],
+            Err(IdempotencyViolation::RandomInKey(3)),
+        ),
+        (
+            vec![SlotIdx::new(4)],
+            Err(IdempotencyViolation::TimeInKey(4)),
+        ),
+        (
+            vec![SlotIdx::new(5)],
+            Err(IdempotencyViolation::UnavailableKeySlot(5)),
+        ),
+        (
+            vec![SlotIdx::new(u16::MAX)],
+            Err(IdempotencyViolation::UnavailableKeySlot(65535)),
+        ),
+    ] {
+        let outcome = match expected {
+            Expected::Invalid => Err(invalid.clone()),
+            Expected::Forbidden => Err(forbidden.clone()),
+            Expected::Unconditional => Ok(()),
+            Expected::StableKey => ingredient,
+        };
+        assert_eq!(
+            verify_idempotency(contract, &slots, frame),
+            outcome,
+            "{contract:?}, key slots={slots:?}"
+        );
+        assert_eq!(frame.checkpoint_v1(), before);
+    }
+}
+
+#[test]
+fn exhaustive_master_mapping_has_exact_policy_and_key_outcomes_for_all_84_tuples() -> TestResult {
+    use Expected::{Forbidden as F, Invalid as X, StableKey as K, Unconditional as U};
+    use Idempotency::{AtLeastOnceExternal as A, DeterministicPure as D, IdempotentExternal as E};
+    use SideEffect::{
+        ExternalRead as R, ExternalWrite as W, LocalRead as Lr, LocalWrite as Lw, Process as P,
+        Pure, UnsafeShell as S,
+    };
+    // Columns: Idempotent, RequiresIdempotencyKey, NotRetrySafe, Unknown.
+    let oracle = [
+        (D, Pure, [U, X, X, X]),
+        (D, Lr, [X, X, X, X]),
+        (D, Lw, [X, X, X, X]),
+        (D, R, [X, X, X, X]),
+        (D, W, [X, X, X, X]),
+        (D, P, [X, X, X, X]),
+        (D, S, [X, X, X, X]),
+        (E, Pure, [X, X, X, X]),
+        (E, Lr, [X, X, X, X]),
+        (E, Lw, [X, X, X, X]),
+        (E, R, [U, K, X, X]),
+        (E, W, [K, K, X, X]),
+        (E, P, [X, X, X, X]),
+        (E, S, [X, X, X, X]),
+        (A, Pure, [X, X, X, X]),
+        (A, Lr, [X, X, X, X]),
+        (A, Lw, [X, X, X, X]),
+        (A, R, [X, X, X, X]),
+        (A, W, [X, K, F, X]),
+        (A, P, [X, X, X, X]),
+        (A, S, [X, X, X, X]),
+    ];
+    let safety = [
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
+        RetrySafety::Unknown,
+    ];
+    let frame = frame()?;
+    let mut count = 0;
+    for (idempotency, side_effect, outcomes) in oracle {
+        for (retry_safety, expected) in safety.into_iter().zip(outcomes) {
+            check_case(
+                &contract(idempotency, side_effect, retry_safety)?,
+                expected,
+                &frame,
+            );
+            count += 1;
+        }
+    }
+    assert_eq!(count, 84);
+    Ok(())
+}

@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "bd",
+    "--actor",
+    "Lewis",
+    "update",
+    "vb-eirmk.60",
+    "--append-notes",
+    "Frozen bounded CLI/IPC compatibility candidate 04641a289c52ed28cdfea70a3a9d85befa3edb6e on c05fd5253aa0a997e91b8cfb9e105d83078325a5, six CLI caller/test paths. Native velvet-ballistics+vb_ipc1868/1868 pass0skip; exact source Clippy/format/diffcheck0. Baseline2compileerrors and full diagnostic7failures retained under vb-taxonomy60-cli-ipc-r29/.evidence/cli-ipc-canonical-r29. Parent requested immediate freeze for one draft PR; no independent CODE/TEST/fullCI/formal/overall.60 closure claim. No IPC source edits; no source expansion."
+  ],
+  "exit": 0,
+  "stdout": "✓ Updated issue: vb-eirmk.60 — Qualify phase:38 Idempotency verification gate\n",
+  "stderr": ""
+}

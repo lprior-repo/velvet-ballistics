@@ -1,0 +1,7 @@
+include!("projected_equivalence/discriminants.rs");
+include!("projected_equivalence/targets.rs");
+include!("projected_equivalence/construction.rs");
+include!("projected_equivalence/visits.rs");
+include!("projected_equivalence/walk_correspondence.rs");
+include!("projected_equivalence/traversal.rs");
+include!("projected_equivalence/outer.rs");

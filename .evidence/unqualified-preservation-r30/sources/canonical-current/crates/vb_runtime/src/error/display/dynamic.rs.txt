@@ -1,0 +1,221 @@
+use super::RuntimeError;
+use std::fmt::{self, Formatter};
+
+pub(super) fn write_runtime_error_dynamic(
+    error: &RuntimeError,
+    f: &mut Formatter<'_>,
+) -> fmt::Result {
+    if let RuntimeError::ActionIdempotencyViolation { action, source } = error {
+        return write!(f, "action {action:?}: {source}");
+    }
+    let result = write_dynamic_capacity(error, f)
+        .or_else(|| write_dynamic_operation(error, f))
+        .or_else(|| write_dynamic_persistence(error, f))
+        .or_else(|| write_dynamic_action_attempt(error, f))
+        .or_else(|| write_dynamic_action_output(error, f))
+        .or_else(|| write_dynamic_journal(error, f))
+        .or_else(|| write_dynamic_gate_state(error, f))
+        .or_else(|| write_dynamic_gate_relation(error, f))
+        .or_else(|| write_dynamic_other(error, f));
+    match result {
+        Some(result) => result,
+        None => Ok(()),
+    }
+}
+
+fn write_dynamic_capacity(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::ActiveRunCapacityExceeded { capacity } => {
+            Some(write!(f, "active run capacity exceeded: {capacity}"))
+        }
+        RuntimeError::OpenGateCapacityExceeded { capacity } => {
+            Some(write!(f, "open gate capacity exceeded: {capacity}"))
+        }
+        RuntimeError::JournalFull { capacity } => {
+            Some(write!(f, "runtime journal capacity exhausted: {capacity}"))
+        }
+        RuntimeError::CommandQueueCapacityExceeded { capacity, max } => Some(write!(
+            f,
+            "command queue capacity {capacity} exceeds maximum {max}"
+        )),
+        RuntimeError::PerRunQueueDepthExceeded {
+            run,
+            pending,
+            limit,
+        } => Some(write!(
+            f,
+            "per-run queue depth exceeded for run {run:?}: {pending} pending, limit {limit}"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_operation(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::UnsupportedOperation { operation } => {
+            Some(write!(f, "unsupported runtime operation: {operation}"))
+        }
+        RuntimeError::RecoveryCannotResume { reason } => {
+            Some(write!(f, "recovery cannot resume: {reason}"))
+        }
+        RuntimeError::ShardNotFound { shard } => Some(write!(f, "shard {shard} not found")),
+        RuntimeError::NotResumable { run, current_state } => Some(write!(
+            f,
+            "run {run:?} cannot resume from state {current_state:?}"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_persistence(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::Core { source } => Some(write!(f, "runtime core error: {source}")),
+        RuntimeError::StorageJournalAppend { source } => {
+            Some(write!(f, "storage journal append failed: {source}"))
+        }
+        RuntimeError::RollbackFailed {
+            operation,
+            primary,
+            rollback,
+        } => Some(write!(
+            f,
+            "rollback failed during {operation}: primary={primary}; rollback={rollback}"
+        )),
+        RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
+            Some(write!(f, "admission header persistence failed: {source}"))
+        }
+        RuntimeError::AdmissionArtifactStale { digest } => Some(write!(
+            f,
+            "admission rejected: artifact certificate is stale: {digest:?}"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_action_attempt(
+    error: &RuntimeError,
+    f: &mut Formatter<'_>,
+) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::StaleAttempt { incoming, current } => Some(write!(
+            f,
+            "stale action attempt: incoming {incoming}, current {current}"
+        )),
+        RuntimeError::AttemptBeyondMax { attempt, max } => Some(write!(
+            f,
+            "action attempt {attempt} exceeds max attempts {max}"
+        )),
+        RuntimeError::IpcPayloadSizeExceeded { size, max } => {
+            Some(write!(f, "IPC payload size {size} exceeds maximum {max}"))
+        }
+        _ => None,
+    }
+}
+
+fn write_dynamic_action_output(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::ActionOutputLengthMismatch { declared, actual } => Some(write!(
+            f,
+            "action output declared encoded length {declared} does not match actual {actual}"
+        )),
+        RuntimeError::ActionOutputTooLarge { size, max } => {
+            Some(write!(f, "action output size {size} exceeds maximum {max}"))
+        }
+        RuntimeError::ActionOutputBlobTooLarge { size, max } => Some(write!(
+            f,
+            "action output blob size {size} exceeds maximum {max}"
+        )),
+        RuntimeError::ActionTaintDowngrade { required, supplied } => Some(write!(
+            f,
+            "action output taint {supplied:?} is below required {required:?}"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_journal(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::UnsupportedRuntimeJournalEventMapping { event_kind } => Some(write!(
+            f,
+            "unsupported runtime journal event mapping: {event_kind}"
+        )),
+        RuntimeError::RuntimeJournalTimestampOutOfRange {
+            event_kind,
+            timestamp,
+        } => Some(write!(
+            f,
+            "runtime journal timestamp out of range for {event_kind}: {timestamp}"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_gate_state(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::GateAlreadyOpen { gate } => {
+            Some(write!(f, "manual gate {gate:?} is already open"))
+        }
+        RuntimeError::GateNotOpen { gate } => Some(write!(f, "manual gate {gate:?} is not open")),
+        RuntimeError::GateEvaluationFailed { source } => {
+            Some(write!(f, "manual gate evaluation failed: {source}"))
+        }
+        RuntimeError::GateRunNotSuspendable { run, state } => Some(write!(
+            f,
+            "run {run:?} cannot be suspended by a manual gate while {state:?}"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_gate_relation(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::GateWrongDelegate {
+            gate,
+            expected,
+            actual,
+        } => Some(write!(
+            f,
+            "manual gate {gate:?} was delegated to {:?}, not {:?}",
+            expected.value(),
+            actual.value()
+        )),
+        RuntimeError::GateRunMismatch {
+            gate,
+            expected,
+            actual,
+        } => Some(write!(
+            f,
+            "manual gate {gate:?} belongs to run {expected:?}, not run {actual:?}"
+        )),
+        RuntimeError::GateOpenBlocksResume { run, gate } => Some(write!(
+            f,
+            "run {run:?} cannot resume while manual gate {gate:?} is open"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_other(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::EngineDriveFailed { run, source } => {
+            Some(write!(f, "engine drive failed for run {run:?}: {source}"))
+        }
+        RuntimeError::CompatGateBlocked { run, source } => Some(write!(
+            f,
+            "compatibility gate blocked run {run:?} from starting live effects: {source}"
+        )),
+        RuntimeError::RetryBlockedOnUndrainedJournal { run } => Some(write!(
+            f,
+            "retry blocked for run {run:?}: journal events not yet durable"
+        )),
+        RuntimeError::RuntimeInputSlotKindMismatch {
+            slot,
+            expected,
+            actual,
+        } => Some(write!(
+            f,
+            "runtime input slot {slot:?} kind mismatch: expected {expected:?}, got {actual:?}"
+        )),
+        _ => None,
+    }
+}

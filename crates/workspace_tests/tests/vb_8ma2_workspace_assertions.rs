@@ -7,6 +7,7 @@ use std::process::{Command, Output};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const EXTRA_MEMBER_MANIFESTS: &[(&str, &str)] = &[
+    ("crates/vb_http", "vb_http"),
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_yaml", "vb_yaml"),
@@ -53,6 +54,7 @@ fn write_manifest(root: &Path, extra_member: Option<&str>) -> Result<(), std::io
     let content = format!(
         "[workspace]\nmembers = [\n\
          \"crates/vb_core\",\n\
+         \"crates/vb_http\",\n\
          \"crates/vb_yaml\",\n\
          \"crates/vb_validate\",\n\
          \"crates/vb_expr\",\n\
@@ -139,6 +141,7 @@ fn workspace_with_dependency_line(
     copy_assertion_scripts(dir.path())?;
     write_manifest(dir.path(), None)?;
     write_boundary_crates_with_dependency(dir.path(), Some(dependency_line))?;
+    write_extra_member_manifests(dir.path())?;
     Ok(dir)
 }
 

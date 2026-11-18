@@ -1,0 +1,32 @@
+{
+  "archives": [
+    {
+      "path": ".evidence/remote-review-r26/taint-compat-unselected-evidence-v1.tar.gz",
+      "sha256": "1aea329b5191bfbbdc6d5d4763982abf1924b3726de92c499a43dd87afd6ac63",
+      "member_count": 782,
+      "graph_regular_files": 667,
+      "relative_safe_members": true
+    },
+    {
+      "path": ".evidence/remote-review-r26/wal-false-green-evidence-v1.tar.gz",
+      "sha256": "d14d5d719fe47177010cfec860a26f94c84a21d210e80e7a2ef6d0b6983b2f44",
+      "member_count": 8,
+      "graph_regular_files": 0,
+      "relative_safe_members": true
+    }
+  ],
+  "patch_check": {
+    "argv": [
+      "git",
+      "apply",
+      "--check",
+      "--directory=.evidence/remote-review-validation-r26",
+      ".evidence/remote-review-r26/candidate-a.patch"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "preserved_production": "No production or helper source edits; only archive/patch/contract/evidence packaging",
+  "main_push": false
+}

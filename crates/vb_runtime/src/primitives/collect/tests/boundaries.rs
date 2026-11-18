@@ -432,11 +432,13 @@ fn collect_start_without_time_limit_stores_none() {
         None,
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    // When all items fit in one page and limit is reached, state may not be stored
-    let state = states.entries.values().next();
-    if let Some(state) = state {
-        assert_eq!(state.time_limit_ms, None);
-    }
+    // A nonempty first page retains state even when all items fit.
+    assert_eq!(
+        states
+            .capture_state(run.run_id(), collector)
+            .map(|state| state.time_limit_ms),
+        Some(None),
+    );
 }
 
 #[test]

@@ -254,6 +254,18 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
         "new ticket run_attempt must be 2 after retry"
     );
 
+    // Bind the narrow shared-ownership classification to the real issued tickets.
+    assert_eq!(old_ticket.run, new_ticket.run);
+    assert_eq!(old_ticket.step, new_ticket.step);
+    assert_eq!(old_ticket.action, new_ticket.action);
+    assert_eq!(old_ticket.seq, new_ticket.seq);
+    assert_eq!(old_ticket.attempt, 1);
+    assert_eq!(new_ticket.attempt, 1);
+    assert_eq!(old_ticket.capacity, new_ticket.capacity);
+    assert!(old_ticket.capacity >= old_ticket.attempt);
+    assert!(vb_core::action::action_ticket_has_valid_key(old_ticket));
+    assert!(vb_core::action::action_ticket_has_valid_key(new_ticket));
+
     // Idempotency keys must differ between attempts.
     assert_ne!(
         old_ticket.idempotency_key, new_ticket.idempotency_key,
@@ -272,25 +284,14 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
     let result =
         runtime.complete_action_with_output(old_ticket, action_output(SlotValue::I64(42))?);
 
-    match result {
-        Ok(()) => {
-            return Err("DEFECT: old completion was accepted".to_string());
-        }
-        Err(e) => {
-            // Must be a StaleAttempt rejection with exact values.
-            let err_str = format!("{e:?}");
-            if !err_str.contains("incoming") || !err_str.contains("current") {
-                return Err(format!(
-                    "DEFECT: rejection error lacks expected/found values: {e:?}"
-                ));
-            }
-            if !err_str.contains("1") || !err_str.contains("2") {
-                return Err(format!(
-                    "DEFECT: rejection error does not carry run_attempt values 1 and 2: {e:?}"
-                ));
-            }
-        }
-    }
+    assert_eq!(
+        result,
+        Err(vb_runtime::RuntimeError::StaleAttempt {
+            incoming: 1,
+            current: 2
+        }),
+        "stale completion must retain exact run-attempt diagnostic",
+    );
 
     // Runtime must be unchanged after stale rejection.
     let counters_after = runtime.counters_snapshot();
@@ -315,28 +316,18 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
     // awaiting completion with the NEW ticket, the old failure should not
     // be accepted. Verify by checking that the run is still pending after tick.
     //
-    // Unlike complete_action_with_output (which preflights the ticket and
-    // returns StaleAttempt synchronously), fail_action only enqueues. The
-    // shard rejects the stale failure while processing the command and
-    // surfaces `InvalidActionCompletion` from `require_pending_action_ownership`
-    // (the run-attempt mismatch does not match the per-action stale arm, so it
-    // falls through to the invalid-completion rejection).
-    let tick_result = runtime.tick_all();
-    match tick_result {
-        Ok(_) => {
-            return Err(
-                "DEFECT: stale failure tick was accepted (expected InvalidActionCompletion)"
-                    .to_string(),
-            );
-        }
-        Err(e) => {
-            if !format!("{e:?}").contains("InvalidActionCompletion") {
-                return Err(format!(
-                    "DEFECT: stale failure rejection must be InvalidActionCompletion: {e:?}"
-                ));
-            }
-        }
-    }
+    // The shared ownership gate rejects this otherwise-identical prior-run
+    // invocation with exact run-attempt values before failure effects.
+    // Both tickets retain the same executed-counter sequence and action attempt;
+    // the durable journal next_seq is not the action ticket sequence.
+    assert_eq!(
+        runtime.tick_all(),
+        Err(vb_runtime::RuntimeError::StaleAttempt {
+            incoming: 1,
+            current: 2
+        }),
+        "stale failure must retain exact run-attempt diagnostic",
+    );
 
     // Run must still be pending (not completed, not failed).
     let counters_final = runtime.counters_snapshot();

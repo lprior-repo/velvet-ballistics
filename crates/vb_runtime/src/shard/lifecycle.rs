@@ -71,6 +71,9 @@ mod tests {
     include!("lifecycle_tests/action_recovery_tests.rs");
     include!("lifecycle_tests/secret_recovery_tests.rs");
     include!("lifecycle_tests/lifetime_clock_regressions.rs");
+    include!("lifecycle_tests/legacy_completion_budget_ticket_tests.rs");
+    include!("lifecycle_tests/completion_budget_ticket_tests.rs");
+    include!("lifecycle_tests/cancel_kill_refusal_tests.rs");
     include!("lifecycle_tests/timer_due_regressions.rs");
     include!("lifecycle_tests/timer_retry_regressions.rs");
     include!("lifecycle_tests/timer_answer_regressions.rs");
@@ -84,6 +87,7 @@ mod tests {
     include!("lifecycle_tests/timer_registration_refusal_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
     include!("lifecycle_tests/chunk_014.rs");
+    include!("lifecycle_tests/stale_run_attempt_tests.rs");
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");

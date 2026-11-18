@@ -63,10 +63,10 @@
 //   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
 //   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:17-55
 // Production `crates/vb_core/src/budget/aggregate.rs:17-55`
-//   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget/aggregate_validate.rs:12-23
+//   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget/aggregate_validate.rs:12-22
 //   - `AggregateResourceBudget::from_whole_workflow_budget`
-//                                            <- crates/vb_core/src/budget/aggregate_validate.rs:25-59
-// Production `crates/vb_core/src/budget/aggregate_validate.rs:25-59`
+//                                            <- crates/vb_core/src/budget/aggregate_validate.rs:24-58
+// Production `crates/vb_core/src/budget/aggregate_validate.rs:24-58`
 //   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:59-100
 // Production `crates/vb_core/src/budget/aggregate.rs:59-100`
 //   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:104-138
@@ -81,8 +81,8 @@
 // Production `crates/vb_core/src/budget/usage.rs:11-140`
 //   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget/usage.rs:145-236
 // Production `crates/vb_core/src/budget/usage.rs:145-236`
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:126-260
-// Production `crates/vb_core/src/budget/aggregate_validate.rs:126-260`
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:125-259
+// Production `crates/vb_core/src/budget/aggregate_validate.rs:125-259`
 //   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:24-59
 //   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
 // Production `crates/vb_core/src/budget.rs:61-79`
@@ -599,7 +599,7 @@ pub fn boundedness_policy_validate(
 }
 
 /// Production wrapper for `validate_aggregate_budget` at
-/// `crates/vb_core/src/budget/aggregate_validate.rs:109-243`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/aggregate_validate.rs:125-259`. Body skipped by Verus.
 #[verifier::external]
 pub fn validate_aggregate_budget(
     budget: &AggregateResourceBudget,

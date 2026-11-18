@@ -17,23 +17,7 @@ pub fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     Ok(())
 }
 
-pub fn is_valid_id(id: &str) -> bool {
-    if id.is_empty() || id.len() > 64 {
-        return false;
-    }
-    let Some(&byte) = id.as_bytes().first() else {
-        return false;
-    };
-    if !byte.is_ascii_lowercase() {
-        return false;
-    }
-    for byte in id.as_bytes() {
-        if !byte.is_ascii_lowercase() && !byte.is_ascii_digit() && *byte != b'_' {
-            return false;
-        }
-    }
-    true
-}
+pub(crate) use crate::schema::is_valid_id;
 
 pub fn is_reserved_id(id: &str) -> bool {
     RESERVED_IDS.contains(&id)
@@ -61,9 +45,9 @@ const RESERVED_IDS: &[&str] = &[
     "set",
     "choose",
     "for_each",
-    "parallel",
+    "together",
     "collect",
-    "aggregate",
+    "reduce",
     "repeat",
     "wait",
     "ask",

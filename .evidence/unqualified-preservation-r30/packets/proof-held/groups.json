@@ -1,0 +1,114 @@
+[
+  {
+    "id": "proof28-aggregate",
+    "files": 73,
+    "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "patch_sha256": "87caead66576367dc593650dab2525888d690ae40f3db7b141d91fa8fd017289",
+    "status": "UNQUALIFIED CURRENT COMPOSITION",
+    "verifier_result_scope": {
+      "independentFullNativeCore": "4034/4034 passed, 0 skipped; original manifests/devdeps/lock, pinned nightly, all-features, -Dwarnings, 2 Cargo jobs, 4 test threads",
+      "independentNativeParity": "5192 public outputs identical to freshly built original; 2 public boundary and 7 actual private cursor checks pass",
+      "directPrivateKernel": "73 verified, 0 errors; actual Found-to-None body negative 72/1",
+      "owningV4": "197 verified, 0 errors independently CODE and TEST; --no-cheating, one verifier thread, actual owning source, no extern vb_core adapter",
+      "v4Negatives": "Native endpoint None and executable concurrent discriminant 35-to-12 each reject unchanged postconditions, 196/1",
+      "canonicalLegacy": "323 verified, 0 errors; 17 unrelated existing assumed specifications retained in companion target, absent from owning scope",
+      "originalRegression": "Original concurrent/loop failures changed from 2 mismatches to 0 across unchanged four native fixtures and mapper; two incorrect legacy rejection literals corrected; exact native pair assertions retained",
+      "independentProjectionLiterals": "25 exact pair/None assertions pass, same stdout digest",
+      "nativeErasure": "Entire 4933438-byte compiler-expanded baseline reproduced after removing exactly one added blank line; no executable difference",
+      "nativeSourceChecks": "Strict Clippy, Cargo fmt, verusfmt, native metadata all exit 0; source-length scans 1543 production files with 0 over limit plus exact compile-split check exit 0",
+      "sourceBounds": "7 semantic proof modules <=225 physical lines; all72 helper functions <=25 logical lines, unchanged checker",
+      "postCommentCitationGate": "56 unit tests, 47 CLI tests, 1098 citation checks, 0 failures, exit 0",
+      "productionBinding": "0 vacuum, 34 inherited weak bindings; static hygiene only, no registry closure",
+      "compatibility": {
+        "frozenShippedTaint": {
+          "sha256": "c9a8d701a313dcedb2886ef30c635bb7138ab86c12341d73d8a3572803e57080",
+          "result": "199 verified, 0 errors, exit 0",
+          "command": {
+            "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/shipped-compat.command.json",
+            "sha256": "958d8fb04adab6c9739b9c9a2b731c1e3fed2551a720cf33c1112d90c442db1d"
+          },
+          "stdout": {
+            "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/shipped-compat.stdout",
+            "sha256": "6e3086f646f593813d3bffe82f7f26c4904b959aaa2cbd5088fd295a351a2e68"
+          }
+        },
+        "currentR18Taint": {
+          "sha256": "df46b7d0a5f54a123208a5627426c718e3fdaf6c83ece380fbc6bb6a847af965",
+          "result": "exit1 before proof: E0432 missing SlotCell in frame.rs42/value.rs12; cfg(not(verus_keep_ghost)) removes it",
+          "command": {
+            "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/current-compat.command.json",
+            "sha256": "69fea5b12a628819e73d5874e8d295f858d9523923a79d174aab580b6248b603"
+          },
+          "stdout": {
+            "path": "/home/lewis/src/isoloated/vb-engine-proof28-r24/.evidence/proof28-r24/current-compat.stdout",
+            "sha256": "0bece74f87b0af7fe9af021b47ca2c67aa585581d042d4fbbe2f3c5def42981f"
+          }
+        }
+      }
+    },
+    "blockers": [
+      "Current r18 taint revision df46 cfg-gates SlotCell out of ghost builds. Central-owned .7 is closed for its standalone target, but owning-core composition now fails E0432. The aggregate deliberately does not edit/revert this taint source. Reconcile this integration blocker before claiming V4 on current main.",
+      "Actual public WorkflowError/RuntimeError error graphs contain CoreError -> chrono DateTime<Utc>. Pinned Verus translates unsupported unused enum payloads too. No new trust/opaque type/body assumption, dependency, compiler feature or public representation change was authorized. Public .28 and actual recovery .6 return proofs remain OPEN.",
+      "No protected registry/gate edits were made. Direct owning proof registry wiring, post-integration joined moon ci and central publication remain unverified.",
+      "The first independent CODE adapter wrote compiled output into author out/v4-marking. Source/logs were unaffected; that compiled artifact is explicitly excluded. Corrected CODE replay used its own output and passed197/0. No compiled-library publication claim."
+    ],
+    "archive": "proof28",
+    "apply": false
+  },
+  {
+    "id": "formal3c",
+    "base": "cbaf0c038c21fce34ae8ffac58984662c48f0ac2",
+    "candidate": "3c17340dbcd30e7e3673ac455dac7c01ea77d6e4",
+    "files": 31,
+    "proof_source_files": 3,
+    "status": "BLOCKED",
+    "verifier_result_scope": "Recorded PO-VERUS-017 projection21/0 --no-cheating; nativecomparison168cases; production-binding gate VACUUM rejection. Manual actual-Rust relation not independently qualified; runtimeprojection unchanged/incomplete. Not canonical/fullregistry/CI closure.",
+    "apply": false
+  },
+  {
+    "id": "native14-prior-alternative",
+    "files": 14,
+    "status": "Historicalprivatekernelqualifiedonly; superseded by aggregate for selection; preserve without reapply",
+    "apply": false
+  },
+  {
+    "id": "f89791e26d87a5f339b8877545227659a620fc34",
+    "candidate": "f89791e26d87a5f339b8877545227659a620fc34",
+    "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "files": 13,
+    "status": "Knownfrozenauthoredprivatekernel/scans alternative; no requalification",
+    "apply": false
+  },
+  {
+    "id": "483e93a82dc3a4544f04eef6fd571d123cf593bc",
+    "candidate": "483e93a82dc3a4544f04eef6fd571d123cf593bc",
+    "base": "f89791e26d87a5f339b8877545227659a620fc34",
+    "files": 3,
+    "status": "Knownfrozenauthoredprivatekernel/scans alternative; no requalification",
+    "apply": false
+  },
+  {
+    "id": "package",
+    "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "files": 31,
+    "source_manifest": "package-frozen.json",
+    "status": "Knownfrozen181/shipped183/V4 source alternative; only authorchangedpostimages vs declaredbase retained; inactive",
+    "apply": false
+  },
+  {
+    "id": "shipped-taint-package",
+    "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "files": 32,
+    "source_manifest": "shipped-taint-package-frozen.json",
+    "status": "Knownfrozen181/shipped183/V4 source alternative; only authorchangedpostimages vs declaredbase retained; inactive",
+    "apply": false
+  },
+  {
+    "id": "v4-package",
+    "base": "f366003714753937573e04650bf63cc4e5beb8ea",
+    "files": 38,
+    "source_manifest": "v4-frozen.json",
+    "status": "Knownfrozen181/shipped183/V4 source alternative; only authorchangedpostimages vs declaredbase retained; inactive",
+    "apply": false
+  }
+]

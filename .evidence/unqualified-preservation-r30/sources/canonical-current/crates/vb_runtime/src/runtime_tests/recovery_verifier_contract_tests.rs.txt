@@ -1,0 +1,267 @@
+// Recovery verifier contract tests: strict runtime rejects journaled artifact
+// at the detailed verifier boundary, producing exact JournalError text in the
+// RuntimeError::Recovery payload. Also validates positive control and genuine
+// Packed artifact with present executor catalog.
+//
+// File is include!d into runtime::tests, which provides its own imports.
+// This module is wrapped in a private child module to avoid import conflicts
+// and to inherit parent imports via use super::*.
+
+mod recovery_verifier_contract_tests {
+    use super::*;
+    use crate::admission::StorageArtifactStore;
+    use crate::admission::{verify_stored_artifact, verify_stored_artifact_detailed};
+    use crate::journal::StorageRuntimeJournal;
+    use crate::runtime::RecoveryArtifactWorkflow;
+    use vb_core::CompiledWorkflow;
+    use vb_storage::admission::{AcceptedArtifact, submit_artifact_with_contracts};
+
+    /// Build a minimal honest-digest journaled artifact using the accessible
+    /// finished_workflow() parent fixture.
+    fn build_honest_journaled_artifact(
+        journal: &Arc<vb_storage::FjallJournal>,
+    ) -> Result<AcceptedArtifact, Box<dyn std::error::Error>> {
+        // Use accessible parent fixture
+        let workflow = finished_workflow().ok_or("failed to build finished workflow fixture")?;
+        // Compute honest digest
+        let mut parts = workflow.to_parts();
+        parts.digest = vb_core::WorkflowDigest::from_bytes([0; 32]);
+        let canonical = postcard::to_allocvec(&parts).map_err(|e| format!("serialize: {}", e))?;
+        parts.digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&canonical).into());
+        let honest = vb_core::CompiledWorkflow::try_from_parts(parts)
+            .map_err(|e| format!("recompile: {}", e))?;
+
+        Ok(
+            submit_artifact_with_contracts(journal, &honest, RuntimePolicy::Journaled, &[])
+                .map_err(|e| format!("submit: {}", e))?,
+        )
+    }
+
+    fn retained_strict_artifact()
+    -> Result<(AcceptedArtifact, CompiledWorkflow), Box<dyn std::error::Error>> {
+        let bytes =
+            include_bytes!("../../tests/fixtures/taxonomy60/writes-key-required/artifact.postcard");
+        let verified = vb_storage::verify_retained_artifact(bytes, RuntimePolicy::Strict)?;
+        assert_eq!(verified.original_bytes(), bytes);
+        Ok((verified.artifact().clone(), verified.workflow().clone()))
+    }
+
+    /// Strict runtime rejects Journaled artifact at the detailed verifier
+    /// boundary. Policy mismatch produces exact JournalError::ArtifactMalformed
+    /// text in the RuntimeError::Recovery payload, not the coarse wrapper.
+    #[test]
+    fn strict_runtime_rejects_journaled_artifact_at_detailed_verifier()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let tmp = tempfile::tempdir()?;
+        let journal = Arc::new(vb_storage::FjallJournal::open(
+            tmp.path(),
+            Some(vb_storage::FjallConfig::default()),
+        )?);
+
+        let artifact = build_honest_journaled_artifact(&journal)?;
+
+        // Verify journal has the artifact before runtime load
+        let pre_stored = journal
+            .compiled_ir(artifact.digest)?
+            .ok_or("artifact not found in journal before runtime load")?;
+        assert_eq!(pre_stored.digest, artifact.digest);
+
+        // Verify unused RunId has empty prefix (no events) using events_for_run_full
+        let unused_run = RunId::new(999999);
+        let pre_events = journal.events_for_run_full(unused_run)?;
+        assert!(
+            pre_events.is_empty(),
+            "unused RunId should have no events before load"
+        );
+
+        let runtime = Runtime::new(
+            NonZeroUsize::MIN,
+            ShardConfig {
+                command_queue_capacity: 16,
+                trace_capacity: 16,
+                step_budget_per_tick: 4,
+                max_active_runs: 4,
+                max_open_gates: 1024,
+                policy: RuntimePolicy::Strict,
+            },
+            StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
+        )
+        .expect("valid test configuration");
+
+        // Capture pre-state
+        let pre_counters = runtime.counters_snapshot();
+        let pre_pending = runtime.pending_boundary_snapshot(8);
+
+        let result =
+            runtime.load_recovery_artifact_and_workflow(Arc::clone(&journal), artifact.digest);
+
+        assert!(matches!(
+            result,
+            Err(RuntimeError::Recovery { error })
+                if error == vb_storage::JournalError::ArtifactMalformed.to_string()
+        ));
+
+        // Verify no mutation
+        let post_counters = runtime.counters_snapshot();
+        let post_pending = runtime.pending_boundary_snapshot(8);
+        assert_eq!(pre_counters.runs_submitted, post_counters.runs_submitted);
+        assert_eq!(pre_counters.runs_completed, post_counters.runs_completed);
+        assert_eq!(pre_counters.runs_failed, post_counters.runs_failed);
+        assert_eq!(pre_counters.steps_executed, post_counters.steps_executed);
+        assert_eq!(pre_pending, post_pending);
+
+        // Verify journal state unchanged: artifact still there, unused RunId still empty
+        let post_stored = journal
+            .compiled_ir(artifact.digest)?
+            .ok_or("artifact missing from journal after failed load")?;
+        // CompiledIrRecord derives PartialEq: compare full record (digest + ir bytes)
+        assert_eq!(
+            pre_stored, post_stored,
+            "journal compiled_ir record must be unchanged by failed load"
+        );
+        let post_events = journal.events_for_run_full(unused_run)?;
+        assert_eq!(
+            pre_events, post_events,
+            "unused RunId event list must be unchanged by failed load"
+        );
+        // Verify no live run installation
+        assert!(matches!(
+            runtime.inspect_run_state(unused_run),
+            Err(crate::RuntimeError::RunNotFound)
+        ));
+        Ok(())
+    }
+
+    /// Positive control: matching Journaled policies load successfully.
+    /// No RuntimeError::Recovery produced when artifact and runtime policies agree.
+    #[test]
+    fn journaled_runtime_loads_journaled_artifact_at_detailed_verifier()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let tmp = tempfile::tempdir()?;
+        let journal = Arc::new(vb_storage::FjallJournal::open(
+            tmp.path(),
+            Some(vb_storage::FjallConfig::default()),
+        )?);
+
+        let artifact = build_honest_journaled_artifact(&journal)?;
+
+        // Verify journal has the artifact before runtime load
+        let pre_stored = journal
+            .compiled_ir(artifact.digest)?
+            .ok_or("artifact not found in journal before runtime load")?;
+        assert_eq!(pre_stored.digest, artifact.digest);
+
+        // Verify unused RunId has empty prefix (no events) using events_for_run_full
+        let unused_run = RunId::new(999998);
+        let pre_events = journal.events_for_run_full(unused_run)?;
+        assert!(
+            pre_events.is_empty(),
+            "unused RunId should have no events before load"
+        );
+
+        // Derive expected full workflow independently via admission verifier
+        let expected_workflow = vb_storage::admission::verify_accepted_artifact(&artifact)?;
+
+        let runtime = Runtime::new(
+            NonZeroUsize::MIN,
+            ShardConfig {
+                command_queue_capacity: 16,
+                trace_capacity: 16,
+                step_budget_per_tick: 4,
+                max_active_runs: 4,
+                max_open_gates: 1024,
+                policy: RuntimePolicy::Journaled,
+            },
+            StorageRuntimeJournal::shared_journaled(Arc::clone(&journal)),
+        )
+        .expect("valid test configuration");
+
+        // Capture pre-state
+        let pre_counters = runtime.counters_snapshot();
+        let pre_pending = runtime.pending_boundary_snapshot(8);
+
+        let result =
+            runtime.load_recovery_artifact_and_workflow(Arc::clone(&journal), artifact.digest);
+        let RecoveryArtifactWorkflow {
+            artifact: loaded_artifact,
+            workflow: loaded_workflow,
+        } = result?;
+        // Compare full loaded artifact against original artifact
+        assert_eq!(
+            loaded_artifact, artifact,
+            "loaded artifact must match submitted artifact"
+        );
+        // Compare loaded workflow against independently verified expected workflow
+        assert_eq!(
+            loaded_workflow, expected_workflow,
+            "loaded workflow must match independently verified expected workflow"
+        );
+        // Verify journal state unchanged by load
+        let post_counters = runtime.counters_snapshot();
+        let post_pending = runtime.pending_boundary_snapshot(8);
+        assert_eq!(pre_counters.runs_submitted, post_counters.runs_submitted);
+        assert_eq!(pre_counters.runs_completed, post_counters.runs_completed);
+        assert_eq!(pre_counters.runs_failed, post_counters.runs_failed);
+        assert_eq!(pre_counters.steps_executed, post_counters.steps_executed);
+        assert_eq!(pre_pending, post_pending);
+
+        // Verify journal state unchanged: artifact still there, unused RunId still empty
+        let post_stored = journal
+            .compiled_ir(artifact.digest)?
+            .ok_or("artifact missing from journal after successful load")?;
+        // CompiledIrRecord derives PartialEq: compare full record (digest + ir bytes)
+        assert_eq!(
+            pre_stored, post_stored,
+            "journal compiled_ir record must be unchanged by load"
+        );
+        let post_events = journal.events_for_run_full(unused_run)?;
+        assert_eq!(
+            pre_events, post_events,
+            "unused RunId event list must be unchanged by load"
+        );
+        // Verify no live run installation
+        assert!(matches!(
+            runtime.inspect_run_state(unused_run),
+            Err(crate::RuntimeError::RunNotFound)
+        ));
+        Ok(())
+    }
+
+    /// Original Packed identity remains checkable while canonical activation refuses LocalWrite.
+    #[test]
+    fn present_catalog_retained_packed_identity_passes_but_canonical_activation_refuses()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let tmp = tempfile::tempdir()?;
+        let journal = Arc::new(vb_storage::FjallJournal::open(
+            tmp.path(),
+            Some(vb_storage::FjallConfig::default()),
+        )?);
+        let catalog = vb_storage::executor::ExecutorCatalog::run_registered_conformance()?;
+        let (artifact, original_workflow) = retained_strict_artifact()?;
+        let store =
+            StorageArtifactStore::with_catalog(Arc::clone(&journal), Some(Arc::new(catalog)));
+        let before = journal.compiled_ir(artifact.digest)?;
+        assert!(before.is_none());
+        let public = verify_stored_artifact(&store, &artifact, Some(RuntimePolicy::Strict));
+        let detailed =
+            verify_stored_artifact_detailed(&store, &artifact, Some(RuntimePolicy::Strict));
+        assert_eq!(
+            public,
+            Err(crate::admission::ArtifactEnvelopeError::ArtifactEvidenceInvalid)
+        );
+        let error = detailed
+            .err()
+            .ok_or("canonical activation unexpectedly succeeded")?;
+        let source = std::error::Error::source(&error).ok_or("missing typed contract refusal")?;
+        assert!(
+            matches!(source.downcast_ref::<vb_storage::StoredContractError>(),
+            Some(vb_storage::StoredContractError::ForbiddenAttestedClassification {
+                action, side_effect: vb_core::SideEffect::LocalWrite,
+            }) if *action == ActionId::new(0))
+        );
+        assert_eq!(original_workflow.digest(), artifact.source_digest);
+        assert_eq!(journal.compiled_ir(artifact.digest)?, before);
+        assert!(journal.events_for_run_full(RunId::new(999999))?.is_empty());
+        Ok(())
+    }
+}

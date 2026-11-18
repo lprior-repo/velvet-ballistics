@@ -1,0 +1,196 @@
+//! Original action records are byte identities, independent of canonical declarations.
+
+mod bounded;
+mod error;
+mod view;
+pub(crate) mod wire;
+
+pub use error::StoredContractError;
+pub use view::StoredActionContract;
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use vb_core::{ActionContract, Idempotency, RetrySafety, SideEffect, WorkflowDigest};
+use wire::{ColdActionContract, ColdIdempotency, ColdRetrySafety, ColdSideEffect};
+
+const MAX_ACTIONS: usize = 65_536;
+const MAX_RECORD_BYTES: usize = 16_777_216;
+
+/// Opaque ordered historical registry. Decoding it creates data, never execution authority.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct StoredActionRegistry(pub(crate) Box<[ColdActionContract]>);
+
+impl Serialize for StoredActionRegistry {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for StoredActionRegistry {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        bounded::sequence(deserializer, MAX_ACTIONS).map(Self)
+    }
+}
+
+impl StoredActionRegistry {
+    /// Decode one complete bounded registry, preserving original field/variant order.
+    pub fn decode_exact(bytes: &[u8]) -> Result<Self, StoredContractError> {
+        if bytes.len() > MAX_RECORD_BYTES {
+            return Err(StoredContractError::BoundExceeded);
+        }
+        let (value, rest) = postcard::take_from_bytes::<Self>(bytes)?;
+        if !rest.is_empty() {
+            return Err(StoredContractError::TrailingBytes);
+        }
+        if postcard::to_allocvec(&value)? != bytes {
+            return Err(StoredContractError::NoncanonicalEncoding);
+        }
+        Ok(value)
+    }
+
+    /// Convert only the currently proven lossless canonical inverse into cold data.
+    pub fn try_from_canonical(contracts: &[ActionContract]) -> Result<Self, StoredContractError> {
+        if contracts.len() > MAX_ACTIONS {
+            return Err(StoredContractError::BoundExceeded);
+        }
+        let mut stored = Vec::new();
+        stored
+            .try_reserve_exact(contracts.len())
+            .map_err(|_| StoredContractError::Allocation)?;
+        contracts.iter().try_for_each(|contract| {
+            stored.push(cold_supported(contract)?);
+            Ok::<(), StoredContractError>(())
+        })?;
+        let registry = Self(stored.into_boxed_slice());
+        registry.check_size()?;
+        Ok(registry)
+    }
+
+    /// Number of original declarations, without sorting or normalization.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether this original registry is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Inspect the original declaration at its stored position.
+    pub fn get(&self, index: usize) -> Option<StoredActionContract<'_>> {
+        self.0.get(index).map(StoredActionContract)
+    }
+
+    /// Inspect every original declaration in byte-significant order.
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = StoredActionContract<'_>> {
+        self.0.iter().map(StoredActionContract)
+    }
+
+    /// Return the exact original ordered registry encoding.
+    pub fn wire_bytes(&self) -> Result<Vec<u8>, StoredContractError> {
+        self.check_size()?;
+        Ok(postcard::to_allocvec(self)?)
+    }
+
+    /// Hash original ordered registry bytes, without canonical projection.
+    pub fn ordered_digest(&self) -> Result<WorkflowDigest, StoredContractError> {
+        Ok(WorkflowDigest::from_bytes(
+            blake3::hash(&self.wire_bytes()?).into(),
+        ))
+    }
+
+    /// Project compatible declarations as data; callers still require verified artifact authority.
+    pub fn try_canonical(&self) -> Result<Box<[ActionContract]>, StoredContractError> {
+        let mut projected = Vec::new();
+        projected
+            .try_reserve_exact(self.len())
+            .map_err(|_| StoredContractError::Allocation)?;
+        self.iter().try_for_each(|contract| {
+            projected.push(contract.try_canonical()?);
+            Ok::<(), StoredContractError>(())
+        })?;
+        Ok(projected.into_boxed_slice())
+    }
+
+    pub(crate) fn try_current_canonical(
+        &self,
+    ) -> Result<Box<[ActionContract]>, StoredContractError> {
+        let mut projected = Vec::new();
+        projected
+            .try_reserve_exact(self.len())
+            .map_err(|_| StoredContractError::Allocation)?;
+        self.iter().try_for_each(|contract| {
+            projected.push(contract.try_current_canonical()?);
+            Ok::<(), StoredContractError>(())
+        })?;
+        Ok(projected.into_boxed_slice())
+    }
+
+    fn check_size(&self) -> Result<(), StoredContractError> {
+        let size = postcard::serialize_with_flavor(self, postcard::ser_flavors::Size::default())?;
+        if size > MAX_RECORD_BYTES {
+            return Err(StoredContractError::BoundExceeded);
+        }
+        Ok(())
+    }
+}
+
+pub(crate) fn deserialize_ir<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<u8>, D::Error> {
+    bounded::sequence(deserializer, MAX_RECORD_BYTES).map(Vec::from)
+}
+
+pub(crate) fn deserialize_capabilities<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Box<[vb_core::Capability]>, D::Error> {
+    bounded::capabilities(deserializer)
+}
+
+fn cold_supported(contract: &ActionContract) -> Result<ColdActionContract, StoredContractError> {
+    vb_core::retry_requirement(contract).map_err(|source| {
+        StoredContractError::InvalidCanonicalClassification {
+            action: contract.id,
+            source,
+        }
+    })?;
+    let (idempotency, retry_safety) = supported_axes(contract)?;
+    Ok(ColdActionContract {
+        id: contract.id,
+        name: contract.name.clone(),
+        input_slot_count: contract.input_slot_count,
+        output_slot_count: contract.output_slot_count,
+        max_input_bytes: contract.max_input_bytes,
+        max_output_bytes: contract.max_output_bytes,
+        timeout_ms: contract.timeout_ms,
+        idempotency,
+        side_effect: ColdSideEffect::None,
+        retry_safety,
+        required_capabilities: contract.required_capabilities.clone(),
+    })
+}
+
+fn supported_axes(
+    contract: &ActionContract,
+) -> Result<(ColdIdempotency, ColdRetrySafety), StoredContractError> {
+    use Idempotency::{DeterministicPure, IdempotentExternal};
+    use RetrySafety::{Idempotent, RequiresIdempotencyKey};
+    match (
+        contract.side_effect,
+        contract.idempotency,
+        contract.retry_safety,
+    ) {
+        (SideEffect::Pure, DeterministicPure, Idempotent) => {
+            Ok((ColdIdempotency::DeterministicPure, ColdRetrySafety::Safe))
+        }
+        (SideEffect::ExternalRead, IdempotentExternal, Idempotent) => {
+            Ok((ColdIdempotency::IdempotentExternal, ColdRetrySafety::Safe))
+        }
+        (SideEffect::ExternalRead, IdempotentExternal, RequiresIdempotencyKey) => Ok((
+            ColdIdempotency::IdempotentExternal,
+            ColdRetrySafety::KeyRequired,
+        )),
+        _ => Err(StoredContractError::UnsupportedCanonicalRepresentation {
+            action: contract.id,
+        }),
+    }
+}

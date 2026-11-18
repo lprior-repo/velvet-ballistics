@@ -1,0 +1,34 @@
+Workspace: /home/lewis/src/isoloated/vb-taxonomy60-formal-native-r27
+Base: cbaf0c038c21fce34ae8ffac58984662c48f0ac2
+
+Registered target: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" timeout 2m verus --crate-type=lib verification/verus/idempotency_decision.rs
+Result: exit0; verification results:: 21 verified, 0 errors
+
+Additional target: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" timeout 2m verus --no-cheating --crate-type=lib verification/verus/idempotency_decision.rs
+Result: exit0; verification results:: 21 verified, 0 errors
+
+Native build: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" CARGO_BUILD_JOBS=2 bash -c 'source scripts/verus-native-bindings.sh; verus_native_build "$PWD" "$PWD/.evidence/formal-native-r27/native"'
+Result: exit0; NATIVE_BINDING_BUILD_OK toolchain=1.95.0-x86_64-unknown-linux-gnu
+
+Native parity compilation: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" CARGO_BUILD_JOBS=2 bash -c 'set -euo pipefail; source scripts/verus-native-bindings.sh; verus_native_build "$PWD" "$PWD/.evidence/formal-native-r27/native"; set -- target/verus-native-build/debug/deps/libvb_validate-*.rlib; test "$#" -eq 1; sha256sum "$1" > .evidence/formal-native-r27/native/validate-artifact.sha256; verus --compile "${VERUS_NATIVE_ARGS[@]}" --extern "vb_validate=$PWD/$1" .evidence/formal-native-r27/native-parity.rs -o .evidence/formal-native-r27/native-parity'
+Result: exit0; actual native linkage plus 21 verified, 0 errors
+
+Native parity execution: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" timeout 30s .evidence/formal-native-r27/native-parity
+Result: exit0; NATIVE_PROJECTION_PARITY cases=168 metadata_profiles=2 class_counts=[4, 8, 2, 154] exact_error_fields=true storage_path=true validator_path=true
+
+Binding gate: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" bash scripts/check-verus-production-binding.sh
+Result: exit1; STRONG=0 WEAK=33 VACUUM=1; idempotency_decision.rs rejected because recognized patterns require assume_specification
+
+Drift gate: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" CARGO_BUILD_JOBS=2 bash scripts/check-production-inner-drift.sh
+Result: exit0; 34 mirrors,33 externs,0 findings
+
+Formatting: env TMPDIR="$PWD/.evidence/formal-native-r27/tmp" verusfmt --check verification/verus/idempotency_decision.rs verification/verus/extern_idempotency_decision.rs verification/verus/production_inner/idempotency_decision_production.rs
+Result: exit0
+
+Diff: git diff --check
+Result: exit0
+
+Trust scan scope: all three changed proof files, the complete project source closure of the target
+Result: no project assume/admit/external/axiom/cfg_attr/verus_only marker hits; vstd/toolchain and manual production projection remain trusted
+
+Full registry verifier and joined moon ci were not run after the mandatory binding rejection.

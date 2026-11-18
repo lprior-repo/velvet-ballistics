@@ -1,0 +1,74 @@
+use vb_core::{ActionId, RuntimePolicy, SideEffect};
+use vb_runtime::run_checkpoint::{RunCheckpointV1Error as E, decode_checkpoint_payload};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+const NONE_CHECKPOINT: &[u8] = include_bytes!("fixtures/taxonomy60/none-safe/checkpoint.postcard");
+const NONE_ARTIFACT: &[u8] = include_bytes!("fixtures/taxonomy60/none-safe/artifact.postcard");
+const WRITE_CHECKPOINT: &[u8] =
+    include_bytes!("fixtures/taxonomy60/writes-key-required/checkpoint.postcard");
+const WRITE_ARTIFACT: &[u8] =
+    include_bytes!("fixtures/taxonomy60/writes-key-required/artifact.postcard");
+
+fn check(bytes: &[u8], artifact_bytes: &[u8], expected: Option<E>) -> TestResult {
+    let checkpoint = decode_checkpoint_payload(bytes)?;
+    assert_eq!(postcard::to_allocvec(&checkpoint)?, bytes);
+    let verified = vb_storage::verify_retained_artifact(artifact_bytes, RuntimePolicy::Strict)?;
+    assert_eq!(verified.original_bytes(), artifact_bytes);
+    checkpoint.validate_against(verified.workflow(), verified.digest(), verified.contracts())?;
+    let restored = checkpoint.restore(verified.workflow().clone(), verified.artifact());
+    assert_eq!(restored.as_ref().err(), expected.as_ref());
+    if let Ok((state, _, _, _)) = restored {
+        assert_eq!(state.action_contracts.len(), 1);
+        let pure = state
+            .action_contracts
+            .first()
+            .ok_or("missing restored declaration")?;
+        assert_eq!(pure.idempotency, vb_core::Idempotency::DeterministicPure);
+        assert_eq!(pure.side_effect, SideEffect::Pure);
+        assert_eq!(pure.retry_safety, vb_core::RetrySafety::Idempotent);
+    }
+    Ok(())
+}
+
+#[test]
+fn authentic_pure_checkpoint_bytes_remain_exact_and_restore_consistent_canonical_data() -> TestResult
+{
+    check(NONE_CHECKPOINT, NONE_ARTIFACT, None)
+}
+
+#[test]
+fn authentic_local_write_checkpoint_bytes_remain_exact_but_live_restoration_is_forbidden()
+-> TestResult {
+    check(
+        WRITE_CHECKPOINT,
+        WRITE_ARTIFACT,
+        Some(E::ForbiddenAttestedClassification {
+            action: ActionId::new(0),
+            side_effect: SideEffect::LocalWrite,
+        }),
+    )
+}
+
+#[test]
+fn checkpoint_decoder_rejects_suffixes_truncation_and_unsupported_version_before_restore() {
+    for raw in [NONE_CHECKPOINT, WRITE_CHECKPOINT] {
+        let mut suffixed = raw.to_vec();
+        suffixed.push(0);
+        assert_eq!(decode_checkpoint_payload(&suffixed), Err(E::DecodeError));
+        for count in [0, 1, 2, raw.len().saturating_sub(1)] {
+            let truncated = raw.get(..count).map_or(&[][..], |prefix| prefix);
+            assert!(decode_checkpoint_payload(truncated).is_err());
+        }
+        for version in [0, 1, 2, 4] {
+            let mut bytes = raw.to_vec();
+            if let Some(first) = bytes.first_mut() {
+                *first = version;
+            }
+            assert_eq!(
+                decode_checkpoint_payload(&bytes),
+                Err(E::UnsupportedVersion)
+            );
+        }
+    }
+}

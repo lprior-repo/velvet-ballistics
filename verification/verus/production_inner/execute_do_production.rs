@@ -2,13 +2,13 @@
 //
 // Extern surface for vb_runtime_execute_do_spec Verus spec.
 // Models the production decision fn `vb_runtime::engine::action::execute_do`
-// at crates/vb_runtime/src/engine/action/mod.rs:20-74 as a pure decision fn so
+// at crates/vb_runtime/src/engine/action/mod.rs:22-112 as a pure decision fn so
 // Verus can reason about determinism and outcome-kind validity.
 //
 // Production bindings (BINDING LEDGER):
 //   - `execute_do` decision branches mirror
 //     `vb_runtime::engine::action::execute_do` at
-//     crates/vb_runtime/src/engine/action/mod.rs:20-74.
+//     crates/vb_runtime/src/engine/action/mod.rs:22-112.
 //   - The `Taint` discriminant (0=Clean, 1=DerivedFromSecret, 2=Secret,
 //     3=Random, 4=TimeDependent) mirrors `vb_core::value::Taint` at
 //     crates/vb_core/src/value/taint.rs:17-28.
@@ -27,11 +27,11 @@
 // of determinism and outcome-kind classification.
 //
 // ============================================================================
-// DRIFT POLICY: `crates/vb_runtime/src/engine/action/mod.rs:20-74`
+// DRIFT POLICY: `crates/vb_runtime/src/engine/action/mod.rs:22-112`
 // ============================================================================
 // Production source coverage:
 //   - `execute_do` decision branches  <- vb_runtime::engine::action::execute_do
-//                                          at crates/vb_runtime/src/engine/action/mod.rs:20-74
+//                                          at crates/vb_runtime/src/engine/action/mod.rs:22-112
 //   - `Taint` discriminant             <- vb_core::value::Taint
 //                                          at crates/vb_core/src/value/taint.rs:17-28
 //   - `Idempotency` discriminant       <- vb_core::action::contract::Idempotency
@@ -211,12 +211,12 @@ pub const fn spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) -> bool
 // Pure decision projections for the remaining 6 production exec wrappers in
 // crates/vb_runtime/src/engine/action/mod.rs:
 //
-//   - execute_do_without_contract  (lines 76-106)
-//   - execute_retry_check          (lines 109-120)
-//   - execute_error_handler        (lines 123-131)
-//   - resume_action_outcome        (lines 138-200)
+//   - execute_do_without_contract  (lines 135-165)
+//   - execute_retry_check          (lines 168-179)
+//   - execute_error_handler        (lines 182-190)
+//   - resume_action_outcome        (lines 197-235)
 //   - compute_idempotency_key      (lines 267-269)
-//   - resolve_contract             (lines 211-221)
+//   - resolve_contract             (lines 272-282)
 //
 // Each projection reduces the production body to the smallest set of scalars
 // that drive the decision branches. The body is the trusted base; the spec
@@ -226,7 +226,7 @@ pub const fn spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) -> bool
 
 /// Mirrors the discriminated output set of
 /// `vb_runtime::engine::action::execute_do_without_contract`
-/// at crates/vb_runtime/src/engine/action/mod.rs:76-106.
+/// at crates/vb_runtime/src/engine/action/mod.rs:135-165.
 ///
 /// The production body unconditionally fails: a non-Clean input taint
 /// short-circuits to `RuntimeEngineError::TaintViolation`, and the
@@ -244,7 +244,7 @@ pub fn execute_do_without_contract_pure_decision(input_taint_disc: u8) -> SpecOu
 }
 
 /// Mirrors `vb_runtime::engine::action::execute_retry_check`
-/// at crates/vb_runtime/src/engine/action/mod.rs:109-120.
+/// at crates/vb_runtime/src/engine/action/mod.rs:168-179.
 ///
 /// The production body returns `body` iff `current_attempt < policy.max_attempts`,
 /// else `exhausted`. We project to scalars: `current_attempt`, `max_attempts`,
@@ -264,7 +264,7 @@ pub const fn execute_retry_check_pure_decision(
 }
 
 /// Mirrors `vb_runtime::engine::action::execute_error_handler`
-/// at crates/vb_runtime/src/engine/action/mod.rs:123-131.
+/// at crates/vb_runtime/src/engine/action/mod.rs:182-190.
 ///
 /// The production body returns `handler` iff
 /// `failure.retry_policy == RetryPolicy::Retryable || failure.code != ActionFailureCode::Unknown`,
@@ -285,7 +285,7 @@ pub const fn execute_error_handler_pure_decision(
 
 /// Mirrors the discriminated output set of
 /// `vb_runtime::engine::action::resume_action_outcome`
-/// at crates/vb_runtime/src/engine/action/mod.rs:197-236.
+/// at crates/vb_runtime/src/engine/action/mod.rs:197-235.
 ///
 /// The production body matches on `ActionOutcome` and produces one of:
 ///
@@ -391,7 +391,7 @@ pub fn compute_idempotency_key_pure(run: u64, run_attempt: u16, seq: u64, action
 }
 
 /// Pure decision projection of `resolve_contract`
-/// at crates/vb_runtime/src/engine/action/mod.rs:211-221.
+/// at crates/vb_runtime/src/engine/action/mod.rs:272-282.
 ///
 /// The production body returns `Ok(&ActionContract)` iff
 /// `action_index < contracts.len()` AND `contracts[action_index].id == action`.

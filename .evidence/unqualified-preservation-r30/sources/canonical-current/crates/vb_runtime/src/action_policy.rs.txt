@@ -1,0 +1,26 @@
+use vb_core::{
+    ActionContract, IdempotencyViolation, RetryRequirement, SideEffect, retry_requirement,
+};
+
+pub(crate) fn execution(
+    contract: &ActionContract,
+) -> Result<RetryRequirement, IdempotencyViolation> {
+    let requirement = retry_requirement(contract)?;
+    if requirement == RetryRequirement::StableKey {
+        return Err(IdempotencyViolation::MissingKey(contract.side_effect));
+    }
+    Ok(requirement)
+}
+
+pub(crate) fn retry(contract: &ActionContract) -> Result<(), IdempotencyViolation> {
+    match execution(contract)? {
+        RetryRequirement::Forbidden => Err(IdempotencyViolation::RetryForbidden {
+            side_effect: contract.side_effect,
+            retry_safety: contract.retry_safety,
+        }),
+        _ if contract.side_effect == SideEffect::ExternalRead => {
+            Err(IdempotencyViolation::MissingKey(contract.side_effect))
+        }
+        _ => Ok(()),
+    }
+}

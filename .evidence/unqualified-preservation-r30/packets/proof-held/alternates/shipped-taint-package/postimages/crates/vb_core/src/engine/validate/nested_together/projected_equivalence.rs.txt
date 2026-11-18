@@ -1,0 +1,438 @@
+vstd::prelude::verus! {
+
+use crate::nested_legacy::nested_projection::{decoded,projected_found,next_visited,next_stack,legacy_reference,projected_summary};
+
+use crate::nested_legacy::nested_projection::{project_keys,legacy_weight,projected_pair,projected_first_pair,legacy_walk,branches_from,outer_from,outer_result,one_branch,Visit,target_row};
+spec fn projected_result(p:&LegacyParts,idx:usize,stop:usize,outer:u32,keys:Set<u16>,v:Set<usize>)->TogetherWalkVisit {
+ match crate::nested_legacy::nested_projection::projected_result(p,idx,stop,outer,keys,v) {
+  Visit::Continue=>TogetherWalkVisit::Continue, Visit::Overflow=>TogetherWalkVisit::Overflow,
+  Visit::Found(raw)=>TogetherWalkVisit::Found(StepIdx::from_raw_spec(raw)),
+ }
+}
+use crate::nested_legacy::SpecNodeMeta as Meta;
+use crate::workflow::{CompiledNode as Node, CompiledNodeKind as K, NodeContinuation as Next};
+
+// Exactly the fields consumed by the nested decision. Unobserved target rows are supplied by their owner.
+spec fn raw_targets(n:&Node, unobserved: Seq<u32>) -> Seq<u32> {
+    match &n.kind {
+        K::ForEachConcurrentStart {body, join, ..} => seq![body.raw_spec() as u32, join.raw_spec() as u32],
+        K::ForEachStart {body, done, ..} | K::CollectStart {body, done, ..} | K::RepeatStart {body, done, ..} | K::ReduceStart {body, done, ..} => seq![body.raw_spec() as u32, done.raw_spec() as u32],
+        K::TogetherStart {branches,join,..} | K::TogetherConcurrentStart {branches,join,..} | K::FirstSuccessStart {branches,join,..} =>
+            branches@.map_values(|b:StepIdx| b.raw_spec() as u32).push(join.raw_spec() as u32),
+        _ => unobserved,
+    }
+}
+
+fn native_targets(n:&Node, fallback:Vec<u32>) -> (out:Vec<u32>)
+    ensures out@ == raw_targets(n,fallback@)
+{
+    let mut v=Vec::new();
+    match &n.kind {
+        K::ForEachConcurrentStart {body, join:done,..} |
+        K::ForEachStart {body, done, ..} | K::CollectStart {body, done, ..} | K::RepeatStart {body, done, ..} | K::ReduceStart {body, done, ..} => {
+            v.push(u32::from(body.get())); v.push(u32::from(done.get())); v
+        }
+        K::TogetherStart {branches,join,..} | K::TogetherConcurrentStart {branches,join,..} | K::FirstSuccessStart {branches,join,..} => {
+            let mut i=0usize;
+            while i<branches.len()
+                invariant i<=branches@.len(), v@ == branches@.map_values(|b:StepIdx| b.raw_spec() as u32).take(i as int)
+                decreases branches@.len()-i
+            {
+                if let Some(b)=branches.get(i) {v.push(u32::from(b.get()));}
+                assert(v@ =~= branches@.map_values(|b:StepIdx| b.raw_spec() as u32).take(i as int+1));
+                if let Some(next) = i.checked_add(1) {
+                    i = next;
+                } else {
+                    assert(false);
+                }
+            }
+            assert(branches@.map_values(|b:StepIdx| b.raw_spec() as u32).take(i as int) =~= branches@.map_values(|b:StepIdx| b.raw_spec() as u32));
+            v.push(u32::from(join.get())); v
+        }
+        _ => fallback,
+    }
+}
+spec fn native_disc(kind:&K)->u32 { match kind {
+K::Nop => 0u32,
+K::SetConst { .. } => 1u32,
+K::Copy { .. } => 2u32,
+K::EvalExpr { .. } => 3u32,
+K::BuildObject { .. } => 4u32,
+K::BuildList { .. } => 5u32,
+K::Do { .. } => 6u32,
+K::Choose { .. } => 7u32,
+K::ChooseSlot { .. } => 8u32,
+K::ForEachStart { .. } => 9u32,
+K::ForEachNext { .. } => 10u32,
+K::ForEachJoin { .. } => 11u32,
+K::TogetherStart { .. } => 12u32,
+K::TogetherBranch { .. } => 13u32,
+K::TogetherJoin { .. } => 14u32,
+K::CollectStart { .. } => 15u32,
+K::CollectPage { .. } => 16u32,
+K::CollectNext { .. } => 17u32,
+K::CollectFinish { .. } => 18u32,
+K::ReduceStart { .. } => 19u32,
+K::ReduceNext { .. } => 20u32,
+K::ReduceFinish { .. } => 21u32,
+K::RepeatStart { .. } => 22u32,
+K::RepeatAttempt { .. } => 23u32,
+K::RepeatCheck { .. } => 24u32,
+K::RepeatFinish { .. } => 25u32,
+K::WaitUntil { .. } => 26u32,
+K::WaitEvent { .. } => 27u32,
+K::Ask { .. } => 28u32,
+K::AskResume { .. } => 29u32,
+K::RetryCheck { .. } => 30u32,
+K::ErrorHandler { .. } => 31u32,
+K::Jump { .. } => 32u32,
+K::Finish { .. } => 33u32,
+K::ForEachConcurrentStart { .. } => 34u32,
+K::TogetherConcurrentStart { .. } => 35u32,
+K::FirstSuccessStart { .. } => 36u32,
+K::ConcurrentLaneEnd { .. } => 37u32,
+K::ConcurrentGroupJoin { .. } => 38u32,
+} }
+fn disc(kind:&K)->(out:u32) ensures out == native_disc(kind) { match kind {
+K::Nop => 0u32,
+K::SetConst { .. } => 1u32,
+K::Copy { .. } => 2u32,
+K::EvalExpr { .. } => 3u32,
+K::BuildObject { .. } => 4u32,
+K::BuildList { .. } => 5u32,
+K::Do { .. } => 6u32,
+K::Choose { .. } => 7u32,
+K::ChooseSlot { .. } => 8u32,
+K::ForEachStart { .. } => 9u32,
+K::ForEachNext { .. } => 10u32,
+K::ForEachJoin { .. } => 11u32,
+K::TogetherStart { .. } => 12u32,
+K::TogetherBranch { .. } => 13u32,
+K::TogetherJoin { .. } => 14u32,
+K::CollectStart { .. } => 15u32,
+K::CollectPage { .. } => 16u32,
+K::CollectNext { .. } => 17u32,
+K::CollectFinish { .. } => 18u32,
+K::ReduceStart { .. } => 19u32,
+K::ReduceNext { .. } => 20u32,
+K::ReduceFinish { .. } => 21u32,
+K::RepeatStart { .. } => 22u32,
+K::RepeatAttempt { .. } => 23u32,
+K::RepeatCheck { .. } => 24u32,
+K::RepeatFinish { .. } => 25u32,
+K::WaitUntil { .. } => 26u32,
+K::WaitEvent { .. } => 27u32,
+K::Ask { .. } => 28u32,
+K::AskResume { .. } => 29u32,
+K::RetryCheck { .. } => 30u32,
+K::ErrorHandler { .. } => 31u32,
+K::Jump { .. } => 32u32,
+K::Finish { .. } => 33u32,
+K::ForEachConcurrentStart { .. } => 34u32,
+K::TogetherConcurrentStart { .. } => 35u32,
+K::FirstSuccessStart { .. } => 36u32,
+K::ConcurrentLaneEnd { .. } => 37u32,
+K::ConcurrentGroupJoin { .. } => 38u32,
+} }
+
+
+spec fn projected_outer(d:u32,t:Seq<u32>) -> Option<(Seq<u32>,u32)> {
+    if (d==12 || d==35) && t.len()>0 {Some((t.drop_last(),t.last()))} else {None}
+}
+spec fn actual_outer(n:&Node) -> Option<(Seq<u32>,u32)> {
+    match &n.kind { K::TogetherStart {branches,join,..} | K::TogetherConcurrentStart {branches,join,..} =>
+        Some((branches@.map_values(|b:StepIdx| b.raw_spec() as u32),join.raw_spec() as u32)), _=>None }
+}
+
+fn project_nested_row(n:&Node, mut row:Meta, fallback:Vec<u32>) -> (r:(Meta,Vec<u32>))
+    ensures
+        r.0.id as int == n.id.raw_spec() as int,
+        r.0.kind_disc == native_disc(&n.kind),
+        r.1@ == raw_targets(n,fallback@),
+        (r.0.kind_disc==12 || r.0.kind_disc==35) == (matches!(&n.kind,K::TogetherStart{..}|K::TogetherConcurrentStart{..})),
+        projected_outer(r.0.kind_disc,r.1@) == actual_outer(n),
+        forall|prefix:Seq<usize>| decoded(r.0,r.1@,prefix) == successor_stack(n,prefix)
+{
+    row.id=u32::from(n.id.get());
+    row.kind_disc=disc(&n.kind);
+    match n.routing.next { Next::End => {row.has_next=0; row.next_step=u32::MAX;}, Next::Step(s)=>{row.has_next=1; row.next_step=u32::from(s.get());} }
+    let t=native_targets(n,fallback);
+    match &n.kind {
+        K::TogetherStart{branches,join,..}|K::TogetherConcurrentStart{branches,join,..}|K::FirstSuccessStart{branches,join,..} => {
+            assert(t@.drop_last() =~= branches@.map_values(|b:StepIdx| b.raw_spec() as u32));
+            assert(t@.drop_last().map_values(|b:u32| b as usize) =~= branches@.map_values(|b:StepIdx| b.raw_spec() as usize));
+        }
+        _=>{}
+    }
+    assert forall|prefix:Seq<usize>| decoded(row,t@,prefix) == successor_stack(n,prefix) by {
+        assert(decoded(row,t@,prefix) =~= successor_stack(n,prefix));
+    }
+    (row,t)
+}
+use crate::nested_legacy::SpecWorkflowParts as LegacyParts;
+use crate::workflow::WorkflowParts as NativeParts;
+
+spec fn observed(n:&Node, m:Meta, t:Seq<u32>) -> bool {
+    m.id as int == n.id.raw_spec() as int
+    && m.kind_disc == native_disc(&n.kind)
+    && t == raw_targets(n, Seq::empty())
+    && (m.kind_disc==12 || m.kind_disc==35) == matches!(&n.kind,K::TogetherStart{..}|K::TogetherConcurrentStart{..})
+    && projected_outer(m.kind_disc,t) == actual_outer(n)
+    && (forall|prefix:Seq<usize>| #[trigger] decoded(m,t,prefix) == successor_stack(n,prefix))
+}
+
+fn project_nested_table(p:&NativeParts, mut target:LegacyParts, template:Meta) -> (out:LegacyParts)
+    ensures
+        out.nodes_len as int == if p.nodes@.len() <= u32::MAX as int {p.nodes@.len() as int} else {u32::MAX as int},
+        out.nodes_meta@.len() == p.nodes@.len(), out.kind_targets@.len() == p.nodes@.len(),
+        forall|i:int| 0<=i<p.nodes@.len() ==> #[trigger] observed(&p.nodes@[i],out.nodes_meta@[i],out.kind_targets@[i]@)
+{
+    let mut rows:Vec<Meta>=Vec::new();
+    let mut targets:Vec<Vec<u32>>=Vec::new();
+    let mut i=0usize;
+    while i<p.nodes.len()
+        invariant i<=p.nodes@.len(), rows@.len()==i, targets@.len()==i,
+            forall|j:int| 0<=j<i ==> #[trigger] observed(&p.nodes@[j],rows@[j],targets@[j]@)
+        decreases p.nodes@.len()-i
+    {
+        if let Some(n)=p.nodes.get(i) {
+            let (row,t)=project_nested_row(n,template,Vec::new());
+            assert(observed(n,row,t@));
+            rows.push(row); targets.push(t);
+        }
+        if let Some(next) = i.checked_add(1) {
+            i = next;
+        } else {
+            assert(false);
+        }
+    }
+    target.nodes_meta=rows;target.kind_targets=targets;
+    target.nodes_len=match u32::try_from(p.nodes.len()) {Ok(k)=>k,Err(_)=>u32::MAX};
+    target
+}
+spec fn native_result(q:&NativeParts,idx:usize,stop:usize,outer:StepIdx,keys:Set<u16>,v:Set<usize>) -> TogetherWalkVisit {
+    if !can_visit(q.nodes@.len(),idx,stop,v) {TogetherWalkVisit::Continue}
+    else if idx>65535 {TogetherWalkVisit::Overflow}
+    else if is_nested_start(keys,idx,outer) {TogetherWalkVisit::Found(StepIdx::from_raw_spec(idx as u16))}
+    else {TogetherWalkVisit::Continue}
+}
+
+spec fn native_next_visited(q:&NativeParts,idx:usize,stop:usize,v:Set<usize>)->Set<usize>{
+    if idx>=q.nodes@.len() || idx==stop {v} else {v.insert(idx)}
+}
+spec fn native_next_stack(q:&NativeParts,idx:usize,stop:usize,outer:StepIdx,keys:Set<u16>,v:Set<usize>,stack:Seq<usize>)->Seq<usize>{
+    if can_visit(q.nodes@.len(),idx,stop,v) && idx<=65535 && !is_nested_start(keys,idx,outer) {
+        successor_stack(&q.nodes@[idx as int],stack)
+    } else {stack}
+}
+
+spec fn stored_image(p:&NativeParts, out:&LegacyParts)->bool {
+    &&& out.nodes_len as int == if p.nodes@.len() <= u32::MAX as int {p.nodes@.len() as int} else {u32::MAX as int}
+    &&& out.nodes_meta@.len()==p.nodes@.len()
+    &&& out.kind_targets@.len()==p.nodes@.len()
+    &&& forall|j:int| 0<=j<p.nodes@.len() ==> #[trigger] observed(&p.nodes@[j],out.nodes_meta@[j],out.kind_targets@[j]@)
+}
+
+// Captures the only width obstruction to full equality for arbitrary private usize visits.
+spec fn unrepresentable_visit(q:&NativeParts,idx:usize,stop:usize,v:Set<usize>)->bool {
+    q.nodes@.len()>u32::MAX && idx>=u32::MAX && idx<q.nodes@.len() && idx!=stop && !v.contains(idx)
+}
+
+proof fn simulation(q:&NativeParts,l:&LegacyParts,idx:usize,stop:usize,outer:StepIdx,keys:Set<u16>,v:Set<usize>,stack:Seq<usize>)
+    requires stored_image(q,l),
+    ensures
+        next_stack(l,idx,stop,outer.raw_spec() as u32,keys,v,stack) ==native_next_stack(q,idx,stop,outer,keys,v,stack),
+        !unrepresentable_visit(q,idx,stop,v) ==> projected_result(l,idx,stop,outer.raw_spec() as u32,keys,v)==native_result(q,idx,stop,outer,keys,v),
+        !unrepresentable_visit(q,idx,stop,v) ==> next_visited(l,idx,stop,v) == native_next_visited(q,idx,stop,v),
+        unrepresentable_visit(q,idx,stop,v) ==> projected_result(l,idx,stop,outer.raw_spec() as u32,keys,v)==TogetherWalkVisit::Continue &&
+            native_result(q,idx,stop,outer,keys,v)==TogetherWalkVisit::Overflow &&
+            next_visited(l,idx,stop,v)==v && native_next_visited(q,idx,stop,v)==v.insert(idx),
+{
+    if idx<q.nodes@.len() {
+        assert(observed(&q.nodes@[idx as int],l.nodes_meta@[idx as int],l.kind_targets@[idx as int]@));
+        assert(decoded(l.nodes_meta@[idx as int],l.kind_targets@[idx as int]@,stack)==successor_stack(&q.nodes@[idx as int],stack));
+    }
+    if v.contains(idx) {assert(v.insert(idx) =~= v);}
+}
+
+fn constructed_simulation(q:&NativeParts,base:LegacyParts,template:Meta,idx:usize,stop:usize,outer:StepIdx,keys:&std::collections::BTreeSet<u16>,v:&std::collections::BTreeSet<usize>,stack:&Vec<usize>)->(out:LegacyParts)
+    ensures stored_image(q,&out),
+       next_stack(&out,idx,stop,outer.raw_spec() as u32,keys@,v@,stack@) == native_next_stack(q,idx,stop,outer,keys@,v@,stack@),
+       (!unrepresentable_visit(q,idx,stop,v@)) ==>
+         (projected_result(&out,idx,stop,outer.raw_spec() as u32,keys@,v@)==native_result(q,idx,stop,outer,keys@,v@) &&
+          next_visited(&out,idx,stop,v@)==native_next_visited(q,idx,stop,v@)),
+       idx<=65535 ==> !unrepresentable_visit(q,idx,stop,v@),
+{
+    let out=project_nested_table(q,base,template);
+    proof {simulation(q,&out,idx,stop,outer,keys@,v@,stack@);}
+    out
+}
+
+fn native_step_check(q:&NativeParts,keys:&std::collections::BTreeSet<u16>,idx:usize,stop:usize,outer:StepIdx,v:&mut std::collections::BTreeSet<usize>,stack:&mut Vec<usize>)->(out:TogetherWalkVisit)
+    ensures out==native_result(q,idx,stop,outer,keys@,old(v)@),
+        final(v)@==native_next_visited(q,idx,stop,old(v)@),
+        final(stack)@==native_next_stack(q,idx,stop,outer,keys@,old(v)@,old(stack)@),
+{
+    visit_together_node(&q.nodes,keys,idx,stop,outer,v,stack)
+}
+spec fn native_summary(q:&NativeParts,n:nat)->(Set<u16>,nat)
+    decreases n
+{
+    if n==0 || n>q.nodes@.len(){(Set::empty(),0nat)} else {
+        let prev=native_summary(q,(n-1) as nat);
+        let node=&q.nodes@[n-1];
+        if matches!(&node.kind,K::TogetherStart{..}|K::TogetherConcurrentStart{..}) {
+            (prev.0.insert(node.id.raw_spec()),prev.1+1)
+        } else {prev}
+    }
+}
+proof fn summary_simulation(q:&NativeParts,p:&LegacyParts,n:nat)
+    requires stored_image(q,p),n<=q.nodes@.len(),
+    ensures projected_summary(p,n)==native_summary(q,n)
+    decreases n
+{
+    if n>0 {
+        summary_simulation(q,p,(n-1) as nat);
+        assert(observed(&q.nodes@[n-1],p.nodes_meta@[n-1],p.kind_targets@[n-1]@));
+    }
+}
+
+spec fn raw_result(s:Option<StepIdx>)->Option<u32>{ match s {Some(x)=>Some(x.raw_spec() as u32),None=>None} }
+spec fn narrow(s:Seq<usize>)->bool {forall|i:int| 0<=i<s.len() ==> #[trigger] s[i]<=65535}
+
+proof fn native_successors_narrow(n:&Node,prefix:Seq<usize>)
+    requires narrow(prefix),
+    ensures narrow(successor_stack(n,prefix))
+{
+    let entries=match &n.kind{
+        K::ForEachConcurrentStart{body,..}|K::ForEachStart{body,..}|K::ReduceStart{body,..}|K::CollectStart{body,..}|K::RepeatStart{body,..}=>prefix.push(body.raw_spec() as usize),
+        K::TogetherStart{branches,..}|K::TogetherConcurrentStart{branches,..}|K::FirstSuccessStart{branches,..}=>{
+            let b=branches@.map_values(|s:StepIdx|s.raw_spec() as usize);
+            assert forall|i:int| 0<=i<b.len() implies #[trigger] b[i]<=65535 by { assert(b[i]==branches@[i].raw_spec() as usize); }
+            assert(narrow(prefix+b));
+            prefix+b
+        },
+        _=>prefix,
+    };
+    assert(narrow(entries));
+    match n.routing.next { Next::End=>{},Next::Step(x)=>{assert(narrow(entries.push(x.raw_spec() as usize)));}}
+}
+
+// Arbitrary legacy fuel need not cover the native walk to establish each bounded semantics equal.
+proof fn walks_agree(q:&NativeParts,p:&LegacyParts,keys:Set<u16>,s:Seq<usize>,stop:usize,outer:StepIdx,v:Set<usize>,fuel:int,halt:bool)
+    requires stored_image(q,p), q.nodes@.len()<=u32::MAX || narrow(s),
+    ensures legacy_reference(p,keys,s,stop,outer.raw_spec() as u32,v,fuel,halt)
+        == raw_result(walk_reference(q.nodes@,keys,s,stop,outer,v,fuel,halt)),
+    decreases fuel
+{
+    if fuel>0 && s.len()>0 {
+        let idx=s.last();let tail=s.drop_last();
+        simulation(q,p,idx,stop,outer,keys,v,tail);
+        if q.nodes@.len()>u32::MAX {assert(s[s.len()-1]<=65535);assert(narrow(tail));}
+        let marked=native_next_visited(q,idx,stop,v);
+        let next=native_next_stack(q,idx,stop,outer,keys,v,tail);
+        if q.nodes@.len()>u32::MAX && can_visit(q.nodes@.len(),idx,stop,v) && idx<=65535 && !is_nested_start(keys,idx,outer){
+            native_successors_narrow(&q.nodes@[idx as int],tail);
+        }
+        if idx<q.nodes@.len() && idx!=stop && v.contains(idx){assert(v.insert(idx) =~= v);}
+        match crate::nested_legacy::nested_projection::projected_result(p,idx,stop,outer.raw_spec() as u32,keys,v) { Visit::Found(raw)=>{StepIdx::raw_roundtrip(raw);},_=>{} }
+        reveal(legacy_reference); reveal(walk_reference);
+        match native_result(q,idx,stop,outer,keys,v){
+           TogetherWalkVisit::Found(_)=>{},
+           TogetherWalkVisit::Overflow if halt=>{},
+           _=>walks_agree(q,p,keys,next,stop,outer,marked,fuel-1,halt)
+        }
+    }
+}
+proof fn weight_image(q:&NativeParts,p:&LegacyParts,v:Set<usize>,i:int)
+    requires stored_image(q,p),0<=i<=q.nodes@.len(),
+    ensures legacy_weight(p,v,i)==walk_weight_from(q.nodes@,v,i),
+    decreases q.nodes@.len()-i
+{
+    if i<q.nodes@.len(){
+        assert(observed(&q.nodes@[i],p.nodes_meta@[i],p.kind_targets@[i]@));
+        assert(decoded(p.nodes_meta@[i],p.kind_targets@[i]@,Seq::empty())==successor_stack(&q.nodes@[i],Seq::empty()));
+        weight_image(q,p,v,i+1);
+    }
+}
+
+fn constructive_walk(q:&NativeParts,p:LegacyParts,m:Meta,start:StepIdx,stop:StepIdx,outer:StepIdx,halt:bool)->(out:Option<u32>)
+  ensures out==raw_result(walk_reference(q.nodes@,native_summary(q,q.nodes@.len()).0,seq![start.raw_spec() as usize],
+      stop.raw_spec() as usize,outer,Set::empty(),1+walk_weight_from(q.nodes@,Set::empty(),0) as int,halt))
+{
+   let l=project_nested_table(q,p,m);
+   let (keys,_count)=project_keys(&l);
+   let i=start.as_usize();let j=stop.as_usize();
+   proof {
+       summary_simulation(q,&l,q.nodes@.len());
+       weight_image(q,&l,Set::empty(),0);
+       assert(narrow(seq![i]));
+       walks_agree(q,&l,keys@,seq![i],j,outer,Set::empty(),1+legacy_weight(&l,Set::empty(),0) as int,halt);
+   }
+   legacy_walk(&l,&keys,i,j,u32::from(outer.get()),halt)
+}
+}
+vstd::prelude::verus! {
+spec fn pair_value(x:Option<(StepIdx,StepIdx)>) -> Option<(u32,u32)> {
+    match x {Some((a,b))=>Some((a.raw_spec() as u32,b.raw_spec() as u32)),None=>None}
+}
+spec fn with_outer(o:StepIdx,x:Option<StepIdx>)->Option<(u32,u32)> {
+    match x {Some(i)=>Some((o.raw_spec() as u32,i.raw_spec() as u32)),None=>None}
+}
+proof fn stored_starts(q:&NativeParts,n:nat)
+ requires n<=q.nodes@.len(),
+ ensures native_summary(q,n).0==start_ids_before(q.nodes@,n).to_set(),native_summary(q,n).1==start_ids_before(q.nodes@,n).len(),
+ decreases n
+{
+ if n>0 {
+   stored_starts(q,(n-1) as nat);
+   let node=q.nodes@[n-1];let prev=start_ids_before(q.nodes@,(n-1) as nat);
+   if together_start(&node){prev.lemma_push_to_set_commute(node.id.raw_spec());}
+ }
+}
+proof fn one_branch_agrees(q:&NativeParts,p:&LegacyParts,k:Set<u16>,e:StepIdx,j:StepIdx,o:StepIdx)
+ requires stored_image(q,p),
+ ensures one_branch(p,k,e.raw_spec() as u32,j.raw_spec() as u32,o.raw_spec() as u32)==with_outer(o,branch_result(q.nodes@,k,e,j,o))
+{
+ let s=seq![e.raw_spec() as usize];let stop=j.raw_spec() as usize;let v=Set::<usize>::empty();
+ assert(narrow(s));weight_image(q,p,v,0);let fuel=1+legacy_weight(p,v,0) as int;
+ walks_agree(q,p,k,s,stop,o,v,fuel,false);
+ walks_agree(q,p,k,s,stop,o,v,fuel,true);
+}
+proof fn branch_suffix_agrees(q:&NativeParts,p:&LegacyParts,k:Set<u16>,entries:Seq<StepIdx>,join:StepIdx,outer:StepIdx,i:nat)
+ requires stored_image(q,p),i<=entries.len(),
+ ensures branches_from(p,k,entries.map_values(|x:StepIdx|x.raw_spec() as u32).push(join.raw_spec() as u32),outer.raw_spec() as u32,i as int)
+     ==with_outer(outer,first_branch_from(q.nodes@,k,entries,join,outer,i)),
+ decreases entries.len()-i
+{
+ if i<entries.len(){one_branch_agrees(q,p,k,entries[i as int],join,outer); branch_suffix_agrees(q,p,k,entries,join,outer,i+1);}
+}
+proof fn outer_suffix_agrees(q:&NativeParts,p:&LegacyParts,k:Set<u16>,i:nat)
+ requires stored_image(q,p),i<=q.nodes@.len(),
+ ensures outer_from(p,k,i as int)==pair_value(first_outer_from(q.nodes@,k,i)),
+ decreases q.nodes@.len()-i
+{
+ if i<q.nodes@.len() {
+    let n=&q.nodes@[i as int];let m=p.nodes_meta@[i as int];let t=p.kind_targets@[i as int]@;
+    assert(observed(n,m,t));outer_suffix_agrees(q,p,k,i+1);
+    match &n.kind {
+      K::TogetherStart{branches,join,..}|K::TogetherConcurrentStart{branches,join,..}=>{
+        branch_suffix_agrees(q,p,k,branches@,*join,n.id,0);
+      }
+      _=>{}
+    }
+    assert(outer_result(p,k,i as int)==with_outer(n.id,node_result(q.nodes@,k,n)));
+ }
+}
+fn actual_first_pair_agreement(q:&NativeParts,template:LegacyParts,m:Meta)->(out:(Option<(StepIdx,StepIdx)>,Option<(u32,u32)>))
+ ensures pair_value(out.0)==out.1
+{
+ let p=project_nested_table(q,template,m);
+ proof {
+   crate::nested_legacy::nested_projection::unfold_pair(&p);
+   stored_starts(q,q.nodes@.len());summary_simulation(q,&p,q.nodes@.len());
+   outer_suffix_agrees(q,&p,native_summary(q,q.nodes@.len()).0,0);
+ }
+ (first_nested_together(&q.nodes),projected_first_pair(&p))
+}
+}

@@ -1,0 +1,217 @@
+use vb_core::action::{ActionFailure, ActionFailureCode, ActionName, ActionOutcome, RetryPolicy};
+use vb_core::{
+    ActionContract, ActionId, ActionTicket, CapabilitySet, Idempotency as I,
+    IdempotencyViolation as V, RetrySafety as R, RunFrame, RunId, SeqNo, SideEffect as S, SlotIdx,
+    SlotValue, StepIdx, Taint,
+};
+use vb_runtime::engine::types::{
+    RetryPolicy as DispatchPolicy, RuntimeEngineError as E, RuntimeSignal,
+};
+use vb_runtime::engine::{execute_do, resume_action_outcome};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+fn contract(idempotency: I, side_effect: S, retry_safety: R) -> ActionContract {
+    ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::from_static_infallible("canonical.action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 64,
+        max_output_bytes: 128,
+        timeout_ms: 1000,
+        idempotency,
+        side_effect,
+        retry_safety,
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn ticket() -> ActionTicket {
+    ActionTicket {
+        run: RunId::new(10),
+        step: StepIdx::ZERO,
+        seq: SeqNo::new(7),
+        action: ActionId::new(0),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 123,
+        capacity: 3,
+        fencing_token: 19,
+    }
+}
+
+fn failure() -> ActionOutcome {
+    ActionOutcome::Failed(ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: RetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    })
+}
+
+// Literal contract oracle, independent of both runtime and core policy helpers.
+fn execution_error(value: &ActionContract) -> Option<E> {
+    match (value.idempotency, value.side_effect, value.retry_safety) {
+        (I::DeterministicPure, S::Pure, R::Idempotent)
+        | (I::IdempotentExternal, S::ExternalRead, R::Idempotent)
+        | (I::AtLeastOnceExternal, S::ExternalWrite, R::NotRetrySafe) => None,
+        (I::IdempotentExternal, S::ExternalRead, R::RequiresIdempotencyKey)
+        | (I::IdempotentExternal, S::ExternalWrite, R::Idempotent | R::RequiresIdempotencyKey)
+        | (I::AtLeastOnceExternal, S::ExternalWrite, R::RequiresIdempotencyKey) => {
+            Some(E::Idempotency(V::MissingKey(value.side_effect)))
+        }
+        (idempotency, side_effect, retry_safety) => {
+            Some(E::Idempotency(V::InvalidClassification {
+                idempotency,
+                side_effect,
+                retry_safety,
+            }))
+        }
+    }
+}
+
+#[test]
+fn all_84_declarations_have_exact_public_dispatch_and_resume_outcomes() -> TestResult {
+    let mut frame = RunFrame::new(RunId::new(10), StepIdx::ZERO, 1, 1)?;
+    frame.write_slot(SlotIdx::ZERO, SlotValue::I64(5))?;
+    for idempotency in [
+        I::DeterministicPure,
+        I::IdempotentExternal,
+        I::AtLeastOnceExternal,
+    ] {
+        for effect in [
+            S::Pure,
+            S::LocalRead,
+            S::LocalWrite,
+            S::ExternalRead,
+            S::ExternalWrite,
+            S::Process,
+            S::UnsafeShell,
+        ] {
+            for safety in [
+                R::Idempotent,
+                R::RequiresIdempotencyKey,
+                R::NotRetrySafe,
+                R::Unknown,
+            ] {
+                let value = contract(idempotency, effect, safety);
+                let expected = execution_error(&value);
+                let dispatch = execute_do(
+                    &frame,
+                    StepIdx::ZERO,
+                    value.id,
+                    SlotIdx::ZERO,
+                    SeqNo::new(7),
+                    &value,
+                    std::slice::from_ref(&value),
+                    &CapabilitySet::empty(),
+                    DispatchPolicy::NEVER,
+                    1,
+                );
+                assert_eq!(dispatch.as_ref().err(), expected.as_ref(), "{value:?}");
+                if expected.is_none() {
+                    assert!(
+                        matches!(dispatch, Ok(RuntimeSignal::AwaitingAction(issued)) if issued.action == value.id)
+                    );
+                }
+                let suspended =
+                    resume_action_outcome(&ticket(), ActionOutcome::Suspended(ticket()), &value);
+                assert_eq!(
+                    suspended,
+                    expected
+                        .clone()
+                        .map_or(Ok(RuntimeSignal::AwaitingAction(ticket())), Err)
+                );
+                let failed = resume_action_outcome(&ticket(), failure(), &value);
+                let retry_error = expected.or_else(|| match effect {
+                    S::ExternalRead => Some(E::Idempotency(V::MissingKey(S::ExternalRead))),
+                    S::ExternalWrite => Some(E::Core(
+                        vb_core::engine::EngineError::UnsupportedPrimitive {
+                            primitive: "action_failed_non_retryable".into(),
+                        },
+                    )),
+                    _ => None,
+                });
+                assert_eq!(failed.as_ref().err(), retry_error.as_ref(), "{value:?}");
+                if retry_error.is_none() {
+                    assert!(
+                        matches!(failed, Ok(RuntimeSignal::AwaitingAction(next)) if next.attempt == 2 && next.seq == SeqNo::new(8))
+                    );
+                }
+            }
+        }
+    }
+    assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(5));
+    Ok(())
+}
+
+#[test]
+fn missing_operation_key_precedes_capacity_and_sequence_overflow() {
+    let mut original = ticket();
+    original.seq = SeqNo::new(u64::MAX);
+    original.attempt = original.capacity;
+    for (idempotency, effect, safety) in [
+        (I::IdempotentExternal, S::ExternalRead, R::Idempotent),
+        (
+            I::IdempotentExternal,
+            S::ExternalRead,
+            R::RequiresIdempotencyKey,
+        ),
+        (I::IdempotentExternal, S::ExternalWrite, R::Idempotent),
+        (
+            I::AtLeastOnceExternal,
+            S::ExternalWrite,
+            R::RequiresIdempotencyKey,
+        ),
+    ] {
+        assert_eq!(
+            resume_action_outcome(&original, failure(), &contract(idempotency, effect, safety)),
+            Err(E::Idempotency(V::MissingKey(effect)))
+        );
+    }
+}
+
+#[test]
+fn sparse_referenced_subset_preserves_nonzero_action_id_and_unused_valid_provider() -> TestResult {
+    let mut used = contract(I::IdempotentExternal, S::ExternalRead, R::Idempotent);
+    used.id = ActionId::new(1);
+    let mut unused = contract(I::DeterministicPure, S::Pure, R::Idempotent);
+    unused.name = ActionName::from_static_infallible("unused.action");
+    let parts = vb_core::WorkflowParts {
+        name: "nonzero.action".into(),
+        digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
+        semantic_source_identity: None,
+        source_metadata: None,
+        nodes: Box::new([vb_core::workflow::node(
+            StepIdx::ZERO,
+            vb_core::CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::ZERO,
+            },
+            None,
+            None,
+        )]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::new([]),
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        input_slots: Box::new([vb_core::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
+    };
+    let workflow = vb_core::CompiledWorkflow::try_from_parts(parts)?;
+    let contracts = [unused, used];
+    vb_runtime::shard::contract_validation::validate_contract_ids(&contracts)?;
+    vb_runtime::shard::contract_validation::validate_workflow_action_binding(
+        &workflow, &contracts,
+    )?;
+    Ok(())
+}

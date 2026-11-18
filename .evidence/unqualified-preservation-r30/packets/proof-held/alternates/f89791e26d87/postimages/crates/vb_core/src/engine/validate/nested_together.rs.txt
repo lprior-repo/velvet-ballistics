@@ -1,0 +1,169 @@
+use crate::ids::StepIdx;
+use crate::workflow::{CompiledNodeKind, WorkflowError, WorkflowParts};
+
+/// Rejects `TogetherStart` nodes that are reachable from the body of
+/// another `TogetherStart` node.
+///
+/// `compute_max_parallel_in_flight` (in `vb_runtime::engine::drive`)
+/// returns a per-node maximum branch count rather than the true peak
+/// parallel-in-flight, so a nested `TogetherStart` produces a
+/// `ParallelLimitExceeded` at runtime even when no real concurrency
+/// limit has been violated. Surfacing the structural error at compile
+/// time (RE-001, option (b)) gives operators a typed, deterministic
+/// rejection with a precise location instead of a misleading runtime
+/// signal.
+pub fn validate_no_nested_together(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    match first_nested_together(&parts.nodes) {
+        Some((outer, inner)) => Err(WorkflowError::NestedTogether { outer, inner }),
+        None => Ok(()),
+    }
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(result => ensures result == first_pair(nodes@)))]
+fn first_nested_together(nodes: &[crate::workflow::CompiledNode]) -> Option<(StepIdx, StepIdx)> {
+    let (keys, has_two_starts) = collect_together_starts(nodes);
+    if !has_two_starts {
+        return None;
+    }
+    let mut index = 0usize;
+    while index < nodes.len() {
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        invariant(verus_proof_expr!(
+            index <= nodes@.len() && first_pair(nodes@) == first_outer_from(nodes@, keys@, index as nat)
+        ));
+        #[cfg(verus_keep_ghost)]
+        decreases(verus_proof_expr!(nodes@.len() - index));
+        if let Some(node) = nodes.get(index) {
+            if let Some(inner) = find_nested_together_in_node(nodes, &keys, node) {
+                return Some((node.id, inner));
+            }
+        }
+        let Some(next) = index.checked_add(1) else {
+            #[cfg(verus_keep_ghost)]
+            vstd::prelude::proof! { assert(false); }
+            return None;
+        };
+        index = next;
+    }
+    None
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(result => ensures
+    result.0@ == start_ids_before(nodes@,nodes@.len()).to_set(),
+    result.1 == (start_ids_before(nodes@,nodes@.len()).len() >= 2),
+))]
+fn collect_together_starts(
+    nodes: &[crate::workflow::CompiledNode],
+) -> (std::collections::BTreeSet<u16>, bool) {
+    let mut keys = std::collections::BTreeSet::new();
+    let mut has_two = false;
+    let mut index = 0usize;
+    while index < nodes.len() {
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        invariant(verus_proof_expr!(
+            index <= nodes@.len() && keys@ == start_ids_before(nodes@,index as nat).to_set()
+            && has_two == (start_ids_before(nodes@,index as nat).len() >= 2)
+        ));
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        decreases(verus_proof_expr!(nodes@.len() - index));
+        if let Some(node) = nodes.get(index) {
+            if matches!(
+                &node.kind,
+                CompiledNodeKind::TogetherStart { .. }
+                    | CompiledNodeKind::TogetherConcurrentStart { .. }
+            ) {
+                #[cfg(verus_keep_ghost)]
+                vstd::prelude::proof! {
+                    let prior = start_ids_before(nodes@,index as nat);
+                    if prior.len() > 0 {
+                        assert(prior.to_set().contains(prior[0]));
+                    } else {
+                        assert(prior =~= Seq::<u16>::empty());
+                    }
+                    prior.lemma_push_to_set_commute(node.id.raw_spec());
+                }
+                has_two = !keys.is_empty();
+                keys.insert(node.id.get());
+            }
+        }
+        let Some(next) = index.checked_add(1) else {
+            #[cfg(verus_keep_ghost)]
+            vstd::prelude::proof! { assert(false); }
+            return (keys, has_two);
+        };
+        index = next;
+    }
+    (keys, has_two)
+}
+
+#[cfg_attr(verus_keep_ghost, vstd::prelude::verus_spec(result => ensures result == node_result(nodes@, together_set@, node)))]
+fn find_nested_together_in_node(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<u16>,
+    node: &crate::workflow::CompiledNode,
+) -> Option<StepIdx> {
+    let (branches, join) = match &node.kind {
+        CompiledNodeKind::TogetherStart { branches, join }
+        | CompiledNodeKind::TogetherConcurrentStart { branches, join } => (branches, *join),
+        _ => return None,
+    };
+    let mut index = 0usize;
+    while index < branches.len() {
+        #[cfg(verus_keep_ghost)]
+        #[cfg_attr(verus_keep_ghost, cfg(verus_keep_ghost_body))]
+        invariant(verus_proof_expr!(
+            index <= branches@.len() && node_result(nodes@, together_set@, node)
+            == first_branch_from(nodes@, together_set@, branches@, join, node.id, index as nat)
+        ));
+        #[cfg(verus_keep_ghost)]
+        decreases(verus_proof_expr!(branches@.len() - index));
+        if let Some(entry) = branches.get(index) {
+            if let Some(inner) =
+                find_nested_together_in_branch(nodes, together_set, entry, join, node.id)
+            {
+                return Some(inner);
+            }
+        }
+        let Some(next) = index.checked_add(1) else {
+            #[cfg(verus_keep_ghost)]
+            vstd::prelude::proof! { assert(false); }
+            return None;
+        };
+        index = next;
+    }
+    None
+}
+
+#[cfg_attr(verus_keep_ghost,vstd::prelude::verus_spec(result => ensures result == branch_result(nodes@,together_set@,*branch_entry,join,outer)))]
+fn find_nested_together_in_branch(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<u16>,
+    branch_entry: &StepIdx,
+    join: StepIdx,
+    outer: StepIdx,
+) -> Option<StepIdx> {
+    let entry_idx = branch_entry.as_usize();
+    if entry_idx >= nodes.len() || join.as_usize() >= nodes.len() {
+        return None;
+    }
+    if walk_contains_together_start(nodes, together_set, entry_idx, join.as_usize(), outer) {
+        return Some(find_inner_together_start(
+            nodes,
+            together_set,
+            entry_idx,
+            join.as_usize(),
+            outer,
+        ));
+    }
+    None
+}
+
+include!("nested_together/successors.rs");
+include!("nested_together/walk.rs");
+#[cfg(verus_keep_ghost)]
+include!("nested_together/scan_spec.rs");
+#[cfg(verus_keep_ghost)]
+include!("nested_together/walk_spec.rs");

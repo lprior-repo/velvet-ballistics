@@ -1,0 +1,4 @@
+/// Expected identity of the retained writer used by the unchanged scratch conformance suite.
+pub(super) fn version() -> vb_core::action_pack::ExecutorVersionDigest {
+    crate::historical::fingerprints::executor_version()
+}

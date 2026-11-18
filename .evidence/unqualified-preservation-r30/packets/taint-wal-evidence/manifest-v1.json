@@ -1,0 +1,164 @@
+{
+  "status": "DRAFT_PR_UNQUALIFIED_ONLY",
+  "workspace": "/home/lewis/src/isoloated/vb-final-ipc-review-r23",
+  "base": "af7f13aa5b5e0bc7390903183b1d81f97598ee4e",
+  "wal": {
+    "base": "af7f13aa5b5e0bc7390903183b1d81f97598ee4e",
+    "tip": "29c4dfbb0e30eca72e78d1005f88b9164f2adf89",
+    "bookmark": "codex/vb-2h1z2-unimplemented-wal-r26",
+    "status": "STOPPED_BEFORE_IMPLEMENTATION_FOR_SINGLE_DRAFT_PR",
+    "bead": "vb-2h1z2",
+    "source_changes": [],
+    "sources": [
+      {
+        "path": "crates/workspace_tests/tests/integration_subprocess_wal_crash_recovery.rs",
+        "sha256": "6ce8e7cea5d2c9c918e278e49e3956ff4a037b114233f29d276fd86b2ed7fbb1",
+        "base_sha256": "6ce8e7cea5d2c9c918e278e49e3956ff4a037b114233f29d276fd86b2ed7fbb1",
+        "changed": false
+      },
+      {
+        "path": "crates/workspace_tests/tests/bin/wal_crash_helper.rs",
+        "sha256": "1003c7f23031b52360d91c368059ba4202230e91b0e8b434e3acb32481d0015e",
+        "base_sha256": "1003c7f23031b52360d91c368059ba4202230e91b0e8b434e3acb32481d0015e",
+        "changed": false
+      }
+    ],
+    "contract": {
+      "path": ".beads/vb-2h1z2/wal-repair-contract.md",
+      "sha256": "f896451f84622b429dc9e1e43c60e6987dabea3f8773476e0258224b1415b46b"
+    },
+    "reproducer": {
+      "command": {
+        "name": "baseline-false-green",
+        "cwd": "/home/lewis/src/isoloated/vb-final-ipc-review-r23",
+        "argv": [
+          "flock",
+          "--shared",
+          "target/moon-locks/source-mutation.lock",
+          "env",
+          "TMPDIR=/home/lewis/src/isoloated/vb-final-ipc-review-r23/target/tmp",
+          "RUSTC_WRAPPER=",
+          "RUSTFLAGS=-Dwarnings",
+          "CARGO_BUILD_JOBS=2",
+          "timeout",
+          "10m",
+          "rustup",
+          "run",
+          "nightly-2026-04-28",
+          "cargo",
+          "nextest",
+          "run",
+          "--cargo-quiet",
+          "-p",
+          "velvet-ballistics-workspace-tests",
+          "--all-features",
+          "--test",
+          "integration_subprocess_wal_crash_recovery",
+          "--test-threads",
+          "4",
+          "--success-output",
+          "immediate",
+          "-E",
+          "test(subprocess_wal_kill_then_reopen_recovers_all_events)"
+        ],
+        "started": "2026-11-15T20:36:20.358Z"
+      },
+      "result": {
+        "name": "baseline-false-green",
+        "cwd": "/home/lewis/src/isoloated/vb-final-ipc-review-r23",
+        "argv": [
+          "flock",
+          "--shared",
+          "target/moon-locks/source-mutation.lock",
+          "env",
+          "TMPDIR=/home/lewis/src/isoloated/vb-final-ipc-review-r23/target/tmp",
+          "RUSTC_WRAPPER=",
+          "RUSTFLAGS=-Dwarnings",
+          "CARGO_BUILD_JOBS=2",
+          "timeout",
+          "10m",
+          "rustup",
+          "run",
+          "nightly-2026-04-28",
+          "cargo",
+          "nextest",
+          "run",
+          "--cargo-quiet",
+          "-p",
+          "velvet-ballistics-workspace-tests",
+          "--all-features",
+          "--test",
+          "integration_subprocess_wal_crash_recovery",
+          "--test-threads",
+          "4",
+          "--success-output",
+          "immediate",
+          "-E",
+          "test(subprocess_wal_kill_then_reopen_recovers_all_events)"
+        ],
+        "started": "2026-11-15T20:36:20.358Z",
+        "finished": "2026-11-15T20:36:30.255Z",
+        "exit_code": 0,
+        "signal": null,
+        "error": null
+      },
+      "stdout_path": ".evidence/wal-crash-r26/baseline-false-green.log",
+      "stdout_sha256": "767ddfdd08c592b99c742c321289851f050e963d7064802ed535d74c84407658",
+      "observed_errors": 8,
+      "observed": [
+        "    error: aborting due to 8 previous errors",
+        "    wal_crash_helper build returned exit status: 1",
+        "    wal_crash_helper missing or failed to build; skipping",
+        "     Summary [   0.041s] 1 test run: 1 passed, 2 skipped"
+      ]
+    },
+    "selected_approach": "DESIGN ONLY: reuse Cargo-built current_exe/exact existing test and included existing helper module; acknowledge actual8Strictcommits with journal held, verify live lock owner, parent-ownedSIGKILL, second fresh child exact replay; preserve original3 cases and add hard failure control. No implementation or kill/reopen/negative-control result exists.",
+    "root_stop": "Human requests all unqualified code in ONE draft PR; parent owns PR. No source/main push or competing PR, no cleanup, no new implementation."
+  },
+  "taint": {
+    "contract_tip": "2a2dca41c26e2fb2f33bcfb188dcff5267f402a0",
+    "candidate_path": ".evidence/taint-core-compat-r26/taint-candidate-a.rs",
+    "candidate_sha256": "41c328f5e01cd7523b45bab22dd4201cfb90dce04e3d7772c32a79fabe4f07d8",
+    "candidate_selected": false,
+    "input_count": 667,
+    "receipt_path": ".evidence/taint-core-compat-r26/receipt-v1.json",
+    "receipt_sha256": "7df8a90fd9a49c487ef1714e607bc1b4dfe2755b7bf94e9e0fba44076dd2c8bf"
+  },
+  "files": [
+    {
+      "path": ".evidence/remote-review-r26/README.md",
+      "sha256": "4c946e6bb73a71de5f0ff6c96443ef232bd0e48415538c3856245e5a4453073e",
+      "bytes": 2072
+    },
+    {
+      "path": ".evidence/remote-review-r26/candidate-a.patch",
+      "sha256": "270ce6c6748a5fc399408ea9eeeda5b2b71b5548672550565d762cf1bb1e26d0",
+      "bytes": 1231
+    },
+    {
+      "path": ".evidence/remote-review-r26/candidate-a.raw.patch",
+      "sha256": "bfd661896c3a33356f5348598c733e2ec99aca03b468a8913b3f2fd8167f0d6e",
+      "bytes": 1299
+    },
+    {
+      "path": ".evidence/remote-review-r26/taint-compat-contract.patch",
+      "sha256": "ae35567511263134e7e6de6c9b3339d9ac6a9956ff2f7cf82189db4cf5a01f97",
+      "bytes": 1684
+    },
+    {
+      "path": ".evidence/remote-review-r26/taint-compat-unselected-evidence-v1.tar.gz",
+      "sha256": "1aea329b5191bfbbdc6d5d4763982abf1924b3726de92c499a43dd87afd6ac63",
+      "bytes": 1110259
+    },
+    {
+      "path": ".evidence/remote-review-r26/wal-false-green-evidence-v1.tar.gz",
+      "sha256": "d14d5d719fe47177010cfec860a26f94c84a21d210e80e7a2ef6d0b6983b2f44",
+      "bytes": 6834
+    },
+    {
+      "path": ".evidence/remote-review-r26/wal-unimplemented-contract.patch",
+      "sha256": "2ff691a313636bc2c42c311366fda106bb28f406f45f40d46a1784aae98eb5f3",
+      "bytes": 2162
+    }
+  ]
+}

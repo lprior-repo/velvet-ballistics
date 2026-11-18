@@ -64,3 +64,20 @@ include!("types/tests.rs");
 include!("types/introspection_poison_regression_tests.rs");
 
 include!("types/format_snapshot_tests.rs");
+
+#[cfg(test)]
+#[path = "types/queue_custody_tests.rs"]
+mod queue_custody_tests;
+
+#[path = "types/migration/custody_stage.rs"]
+mod custody_stage;
+include!("types/command_queue_migration.rs");
+
+#[path = "types/migration/index_plan.rs"]
+mod index_plan;
+#[path = "types/migration/rollback_state.rs"]
+mod rollback_state;
+
+#[cfg(test)]
+#[path = "types/migration/queue_migration_tests.rs"]
+mod queue_migration_tests;

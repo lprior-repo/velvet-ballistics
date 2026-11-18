@@ -488,16 +488,32 @@ fn adversarial_decode_frame_rejects_oversized_payload_bytes() {
 }
 
 #[test]
-fn adversarial_encode_payload_exceeding_bound_rejected() {
+fn adversarial_encode_health_at_exact_bound_succeeds() -> Result<(), IpcError> {
     let payload = IpcPayload::Health;
     let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
 
-    let result = encode_payload(&payload, tiny_max);
+    let encoded = encode_payload(&payload, tiny_max)?;
+    assert_eq!(encoded.bytes().len(), tiny_max.get());
+    assert_eq!(decode_payload(&encoded), Ok(payload));
+    Ok(())
+}
 
-    assert!(
-        matches!(result, Ok(_) | Err(IpcError::PayloadTooLarge { .. })),
-        "expected success or PayloadTooLarge for tiny health frame"
+#[test]
+fn adversarial_encode_payload_exceeding_bound_rejected() -> Result<(), IpcError> {
+    let payload = IpcPayload::CancelRun {
+        run_id: RunId::new(1),
+    };
+    let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+    let raw = postcard::to_allocvec(&payload).map_err(|_| IpcError::PayloadEncodeFailed)?;
+    assert!(raw.len() > tiny_max.get());
+    assert_eq!(
+        encode_payload(&payload, tiny_max),
+        Err(IpcError::PayloadTooLarge {
+            actual: raw.len(),
+            limit: tiny_max.get(),
+        })
     );
+    Ok(())
 }
 
 #[test]

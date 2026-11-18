@@ -1,0 +1,14 @@
+{
+  "status": "LOSSLESS_ARCHIVE_VERIFIED_UNQUALIFIED_DO_NOT_ACTIVATE",
+  "archive": "/home/lewis/src/isoloated/vb-master-miri-r25/.evidence/miri-r25/held-source-preservation-r25/held-source-r25.tar.gz",
+  "archive_sha256": "578384a19e33c69a20fb982152d26c394e06daff8ef5868932a375cf9b64db3e",
+  "manifest_sha256": "f40091c77ce775dd0d65229176b57d4f8eb7fc900093385d4c4f4d0c543fb9ff",
+  "payloads_verified": 5,
+  "bundled_checksums_verified": 7,
+  "regular_archive_files": 8,
+  "original_sources_unchanged": true,
+  "activation_allowed": false,
+  "main_changed": false,
+  "remote_publish_by_unit": false,
+  "verified_utc": "2026-11-15 20:43:17 UTC"
+}

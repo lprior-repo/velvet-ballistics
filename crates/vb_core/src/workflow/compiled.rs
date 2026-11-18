@@ -158,6 +158,12 @@ impl CompiledWorkflow {
         u16::try_from(self.nodes.len()).map_or(u16::MAX, |value| value)
     }
 
+    /// Immutable node sequence for crate-internal analysis without cloning parts.
+    #[must_use]
+    pub(crate) fn nodes(&self) -> &[CompiledNode] {
+        &self.nodes
+    }
+
     /// Returns a checked node reference.
     #[must_use]
     pub fn node(&self, step: StepIdx) -> Option<&CompiledNode> {
@@ -271,3 +277,7 @@ pub(crate) fn resolved_error_slot(nodes: &[CompiledNode], node: &CompiledNode) -
         }).and_then(|wrapper| wrapper.routing.error.error_slot())
     })
 }
+
+#[cfg(all(test, not(kani)))]
+#[path = "borrowed_budget_tests.rs"]
+mod borrowed_budget_tests;

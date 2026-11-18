@@ -68,7 +68,9 @@ const RESERVED_IDS: &[&str] = &[
     "set",
     "choose",
     "for_each",
+    "together",
     "collect",
+    "reduce",
     "repeat",
     "wait",
     "ask",
@@ -246,7 +248,7 @@ fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     Ok(())
 }
 
-fn is_valid_id(id: &str) -> bool {
+pub(crate) fn is_valid_id(id: &str) -> bool {
     if id.is_empty() || id.len() > 64 {
         return false;
     }

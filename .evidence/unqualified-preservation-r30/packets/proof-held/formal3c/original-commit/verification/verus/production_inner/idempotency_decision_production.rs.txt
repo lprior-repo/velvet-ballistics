@@ -1,0 +1,254 @@
+// SPDX-License-Identifier: MIT
+// WEAK production projection for PO-VERUS-017, not a wire/ABI representation.
+// DRIFT POLICY: `crates/vb_core/src/action/contract.rs:10-53`
+// Production `crates/vb_core/src/action/retry_requirement.rs:5-45`
+// Production `crates/vb_storage/src/admission.rs:200-202`
+// Production `crates/vb_validate/src/idempotency_contract.rs:152-167`
+//
+// ActionContract projects exactly the four fields read by these decisions.
+// Name, arity, byte limits, timeout and capabilities are not represented here.
+// IdempotencyViolation projects the sole error emitted by retry_requirement.
+// Const qualification, serde/error derives and non_exhaustive attributes are
+// omitted for Verus; these types cannot encode stored contracts or grant authority.
+// The core and validator invalid_classification helpers retain separate modules.
+// The validator's Result::map/map_err chain is desugared to its exact two arms.
+// Native differential evidence and exact source/callsite hashes complement the
+// identifier/range drift gate. That gate alone does not prove source equivalence.
+#![forbid(unsafe_code)]
+
+use vstd::prelude::*;
+
+verus! {
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SideEffect {
+    Pure,
+    LocalRead,
+    LocalWrite,
+    ExternalRead,
+    ExternalWrite,
+    Process,
+    UnsafeShell,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RetrySafety {
+    Idempotent,
+    RequiresIdempotencyKey,
+    NotRetrySafe,
+    Unknown,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Idempotency {
+    DeterministicPure,
+    IdempotentExternal,
+    AtLeastOnceExternal,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct ActionId(pub u16);
+
+#[derive(Clone, Copy)]
+pub struct ActionContract {
+    pub id: ActionId,
+    pub side_effect: SideEffect,
+    pub retry_safety: RetrySafety,
+    pub idempotency: Idempotency,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RetryRequirement {
+    Unconditional,
+    StableKey,
+    Forbidden,
+}
+
+#[derive(Clone, Copy)]
+pub enum IdempotencyViolation {
+    InvalidClassification {
+        idempotency: Idempotency,
+        side_effect: SideEffect,
+        retry_safety: RetrySafety,
+    },
+}
+
+#[derive(Clone, Copy)]
+pub enum IdempotencyContractViolation {
+    InvalidContract {
+        action: ActionId,
+        side_effect: SideEffect,
+        idempotency: Idempotency,
+        retry_safety: RetrySafety,
+    },
+}
+
+/// Mathematical declaration class: unconditional, stable key, forbidden, invalid.
+pub open spec fn declaration_class(i: Idempotency, e: SideEffect, r: RetrySafety) -> int {
+    if (i == Idempotency::DeterministicPure && e == SideEffect::Pure && r
+        == RetrySafety::Idempotent) || (i == Idempotency::IdempotentExternal && e
+        == SideEffect::ExternalRead && r == RetrySafety::Idempotent) {
+        0
+    } else if (i == Idempotency::IdempotentExternal && e == SideEffect::ExternalRead && r
+        == RetrySafety::RequiresIdempotencyKey) || (i == Idempotency::IdempotentExternal && e
+        == SideEffect::ExternalWrite && (r == RetrySafety::Idempotent || r
+        == RetrySafety::RequiresIdempotencyKey)) || (i == Idempotency::AtLeastOnceExternal && e
+        == SideEffect::ExternalWrite && r == RetrySafety::RequiresIdempotencyKey) {
+        1
+    } else if i == Idempotency::AtLeastOnceExternal && e == SideEffect::ExternalWrite && r
+        == RetrySafety::NotRetrySafe {
+        2
+    } else {
+        3
+    }
+}
+
+pub open spec fn result_matches(
+    c: &ActionContract,
+    result: Result<RetryRequirement, IdempotencyViolation>,
+) -> bool {
+    match result {
+        Ok(RetryRequirement::Unconditional) => declaration_class(
+            c.idempotency,
+            c.side_effect,
+            c.retry_safety,
+        ) == 0,
+        Ok(RetryRequirement::StableKey) => declaration_class(
+            c.idempotency,
+            c.side_effect,
+            c.retry_safety,
+        ) == 1,
+        Ok(RetryRequirement::Forbidden) => declaration_class(
+            c.idempotency,
+            c.side_effect,
+            c.retry_safety,
+        ) == 2,
+        Err(
+            IdempotencyViolation::InvalidClassification { idempotency, side_effect, retry_safety },
+        ) => {
+            declaration_class(c.idempotency, c.side_effect, c.retry_safety) == 3 && idempotency
+                == c.idempotency && side_effect == c.side_effect && retry_safety == c.retry_safety
+        },
+    }
+}
+
+pub mod core_decision {
+    use super::*;
+
+    pub fn retry_requirement(contract: &ActionContract) -> (result: Result<
+        RetryRequirement,
+        IdempotencyViolation,
+    >)
+        ensures
+            result_matches(contract, result),
+    {
+        use Idempotency::{AtLeastOnceExternal, DeterministicPure, IdempotentExternal};
+        use RetrySafety::{Idempotent, NotRetrySafe, RequiresIdempotencyKey};
+        use SideEffect::{ExternalRead, ExternalWrite, Pure};
+        match (contract.idempotency, contract.side_effect, contract.retry_safety) {
+            (DeterministicPure, Pure, Idempotent)
+            | (IdempotentExternal, ExternalRead, Idempotent) => {
+                Ok(RetryRequirement::Unconditional)
+            },
+            (IdempotentExternal, ExternalRead, RequiresIdempotencyKey)
+            | (IdempotentExternal, ExternalWrite, Idempotent | RequiresIdempotencyKey)
+            | (AtLeastOnceExternal, ExternalWrite, RequiresIdempotencyKey) => {
+                Ok(RetryRequirement::StableKey)
+            },
+            (AtLeastOnceExternal, ExternalWrite, NotRetrySafe) => Ok(RetryRequirement::Forbidden),
+            _ => Err(invalid_classification(contract)),
+        }
+    }
+
+    fn invalid_classification(contract: &ActionContract) -> (result: IdempotencyViolation)
+        ensures
+            match result {
+                IdempotencyViolation::InvalidClassification {
+                    idempotency,
+                    side_effect,
+                    retry_safety,
+                } => {
+                    idempotency == contract.idempotency && side_effect == contract.side_effect
+                        && retry_safety == contract.retry_safety
+                },
+            },
+    {
+        IdempotencyViolation::InvalidClassification {
+            idempotency: contract.idempotency,
+            side_effect: contract.side_effect,
+            retry_safety: contract.retry_safety,
+        }
+    }
+
+}
+
+pub use core_decision::retry_requirement;
+
+pub fn is_contract_idempotency_accepted(contract: &ActionContract) -> (result: bool)
+    ensures
+        result == (declaration_class(
+            contract.idempotency,
+            contract.side_effect,
+            contract.retry_safety,
+        ) != 3),
+{
+    retry_requirement(contract).is_ok()
+}
+
+pub open spec fn validator_result_matches(
+    c: &ActionContract,
+    result: Result<(), IdempotencyContractViolation>,
+) -> bool {
+    match result {
+        Ok(()) => declaration_class(c.idempotency, c.side_effect, c.retry_safety) != 3,
+        Err(
+            IdempotencyContractViolation::InvalidContract {
+                action,
+                side_effect,
+                idempotency,
+                retry_safety,
+            },
+        ) => {
+            declaration_class(c.idempotency, c.side_effect, c.retry_safety) == 3 && action == c.id
+                && side_effect == c.side_effect && idempotency == c.idempotency && retry_safety
+                == c.retry_safety
+        },
+    }
+}
+
+pub fn is_statically_idempotent_contract(contract: &ActionContract) -> (result: Result<
+    (),
+    IdempotencyContractViolation,
+>)
+    ensures
+        validator_result_matches(contract, result),
+{
+    match retry_requirement(contract) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(invalid_classification(contract)),
+    }
+}
+
+fn invalid_classification(contract: &ActionContract) -> (result: IdempotencyContractViolation)
+    ensures
+        match result {
+            IdempotencyContractViolation::InvalidContract {
+                action,
+                side_effect,
+                idempotency,
+                retry_safety,
+            } => {
+                action == contract.id && side_effect == contract.side_effect && idempotency
+                    == contract.idempotency && retry_safety == contract.retry_safety
+            },
+        },
+{
+    IdempotencyContractViolation::InvalidContract {
+        action: contract.id,
+        side_effect: contract.side_effect,
+        idempotency: contract.idempotency,
+        retry_safety: contract.retry_safety,
+    }
+}
+
+} // verus!

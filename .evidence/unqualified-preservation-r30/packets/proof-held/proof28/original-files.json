@@ -1,0 +1,367 @@
+[
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together.rs",
+    "before": "cde9cd4ab6ed7fe81ce6b3c6e0e028ed3e8bee0173d64ce0b7776dfb62b50681",
+    "after": "0f3927307e67487fe6b799c8cd3692ccfd2e3b9a910d7330767c559dd525b696"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/cursor_proof.rs",
+    "before": null,
+    "after": "603367937c3d6151db5c1930233b212c5d8a54fb7195fa0627f8ac23f79d3634"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence.rs",
+    "before": null,
+    "after": "cd425438bfede7df9b56b15d27b11f27744f6ef67d2a2cd1ac853f4b25bdbd54"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence/construction.rs",
+    "before": null,
+    "after": "c489d8e19ae4f251b00efaccbd3a87e6c51d11e4fa0ff5e5a92d6eba23053736"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence/discriminants.rs",
+    "before": null,
+    "after": "dd1335ecdeb96ccd1af70372b118d295a5ec2bb1ed8b653f18fbf369e56bc423"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence/outer.rs",
+    "before": null,
+    "after": "640c51f76ef12ec0375b5715ca1e43d812169f5257682324a597b52be5ea0b9c"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence/targets.rs",
+    "before": null,
+    "after": "7d3984d81de5b74ac60344fbcb5e3ab70a7804f5cceb78e0e085268505decc20"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence/traversal.rs",
+    "before": null,
+    "after": "dd7f2712d37e4be91055a8db0389a662bd4389c890dc975f70df2323a94d20be"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence/visits.rs",
+    "before": null,
+    "after": "574ddff12c386133b59c475c35efe0582a746157e33812e447ebe82eb312df66"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/projected_equivalence/walk_correspondence.rs",
+    "before": null,
+    "after": "cec320d520c725c1e20d421f4ad856068ea353de1c449589c92872a836c280a1"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/scan_spec.rs",
+    "before": null,
+    "after": "d999771726d7ec07bf999ff319178c41eebf7651264a40ec046af2bfb4aa93b4"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/successors.rs",
+    "before": null,
+    "after": "e5d54b4cd60290d33f366f6922a997e5ef4d00d3870729ba8b72490a38b0461b"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/walk.rs",
+    "before": null,
+    "after": "5e742f393352eb47b17b2db4e74b797694c4c3441279bbc5b36d200430769c7f"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/walk_spec.rs",
+    "before": null,
+    "after": "c9d8701e780b3c40cd8f480f8316c8a442e218cfacce83502be2b0ac130b55ff"
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/nested_together/walk_weight.rs",
+    "before": null,
+    "after": "001a0b7eb517912c45fa56610afc62a556685a8bd805606b30ce3ad45ec0ac13"
+  },
+  {
+    "file": "crates/vb_core/src/ids/mod.rs",
+    "before": "3fdd387575421f09c24039ebc8e0b4b5140defc7b30ef8ba5022438687806525",
+    "after": "af74ee73a2612ce0a0b9980a3492342f56408819d4fafd03565be4790bef5846"
+  },
+  {
+    "file": "crates/vb_core/src/ids/parts/chunk_001_custom_types.rs",
+    "before": "1ceba8f58f9b8d51deb5408df25cea3ed5c1766570bc4045af17593046ef656d",
+    "after": "43d098a618307508901433702434968a6a017c1415e8178663a101b04fa91793"
+  },
+  {
+    "file": "crates/vb_core/src/input_schema.rs",
+    "before": "d29e28bd4e47df8f587d451eb54106caad9c8540e4140a8b64b14556c1039468",
+    "after": "3bdbaf006a3629e35d8dfc9e5b94522d05417ded68d2eec14caf1e1244cb11d4"
+  },
+  {
+    "file": "crates/vb_core/src/lib.rs",
+    "before": "8e2907bdd4a9bb92607007f39181f6eff20fd13a8b55b90587391b7b3e29bf53",
+    "after": "1a7dbd7da65929893c8ec9502101327be7804d78104bcc8b511c853cefa22ee4"
+  },
+  {
+    "file": "crates/vb_core/src/value/finite.rs",
+    "before": "5b3849d1613bbd7d17dedc2abe90a98a9d411fb3e372df667351473167f53ddc",
+    "after": "38595eb17f3e188fa2e98b25c7e1196891bb16423a91bb099c9936055b90c92a"
+  },
+  {
+    "file": "crates/vb_core/src/value/slot.rs",
+    "before": "c0b38e16d6726f1922d9790e9700cfa523c3d7f49e7375b58a34a3a1aa55b204",
+    "after": "ea88b1814be1d77c102d32d3845bf528621ee81e4df838ba5cfb5eda9882f463"
+  },
+  {
+    "file": "crates/vb_core/src/verification/kani/ids_kani_shard_index_bounds.rs",
+    "before": "6cdb277b6fe350be90b9134971e9784454853e20f5f74c87857b5389435220ec",
+    "after": "b876a1297bdb19cc8121a1ee241690d62943fa6dbf0c2d84b36f88c500835fb9"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/constraints.rs",
+    "before": "74bc763fb60386e7c7c2e7a0984e274f5841691dcd5a5fb5b5ebce8a94db3319",
+    "after": "7dc4b9704a392e220b655eb2f37d09fde1cd5b4908e495d86d66f2bcaeee15a6"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/expr_program.rs",
+    "before": "8babebed6f0540d125595b615bb669883f06c2d79921c0ee51f267388268c88f",
+    "after": "add58d10e08713d4725cb6df6225d64990e2172d45c8f563fb63b7d9f3ecaf8a"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/input_constraint.rs",
+    "before": "181446b4f172d6583d25feee169e14bfa31013e5b279227ffddb3eb8940088c2",
+    "after": "c487caece84f4f1c73ed084e06e9071e6f421883356a0d68ecc36327c266be78"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/input_slot.rs",
+    "before": "69880d9322ab31b652e9a5d750e96960125bf91066057bf8c1c51a2c6400910c",
+    "after": "7293483134db56f861bf558b0a7583e03659f05d769fe7c5dc7d9e8583e23831"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/node.rs",
+    "before": "70ed41f0ae982aeca9778fe041743e476f0573aff337793983fb6e5a77b30641",
+    "after": "252f4204a783bd5df1f718443d977667d766811bd741323503016b7593aa0586"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/node_kind.rs",
+    "before": "480d810c1f9ae73312578f001c58c37389763a1cb2f78130657f5812e9c0622f",
+    "after": "2a405cbfe25392cb740393a639984d75b8c734ab25226ed5b6cd479677c70657"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/parts.rs",
+    "before": "52ddd3f40e4e45f2f553a88696dba4c34dcb2a6b551be71b4932912ab2acfbf3",
+    "after": "50bb26333bb393813e2cdbf563912b85212adcdb5aeeb616a5ba5024afdd1a96"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/resource_contract.rs",
+    "before": "652757f31cc37baccf21b6dc4e9d2500f03c283f8e3441c49514d8a7df2d45d5",
+    "after": "16a9cf6d0d16730d379c7378809ccc2165290ec140afd2650088a7a4c41cae84"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/retry_policy.rs",
+    "before": "3d2d60a723cf74f5d8070450e8e6572174cd42e4926e5d97b78c3351f4d7dfda",
+    "after": "c058c3dfc5d7f6bd0820c3223f4b44b24b32427f2968977a4eac4e8e03e7aee8"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/route_enums.rs",
+    "before": "da34d230d4ac0b43d9f190048d2ee9b7b417348a73a8244205c33131b93f8d9d",
+    "after": "81974c7fa3e32ba780a61758a1cc46166a008a720f70e3b2fe10fc2c069ac0ad"
+  },
+  {
+    "file": "crates/vb_core/src/workflow/source_metadata.rs",
+    "before": "a3ad5e628e7e1685fce8de062cce86cff2d1abb3dc02eb0e2080941339ebc215",
+    "after": "d2ac6bb225c1b73d38b1dfd58eda9f8078b9f09f91319b7e6a67e8995237a853"
+  },
+  {
+    "file": "verification/verus/accepted_cli_digest_binding.rs",
+    "before": "716950c8754879e965bba29cfa2ea684cfe5abe94d487f9a226e29f03c45e4fa",
+    "after": "519c02ac6f2988807403a5c701b64fae8e47905bb7fa1fed330ca08d6d46c9b8"
+  },
+  {
+    "file": "verification/verus/admission_artifact_model.rs",
+    "before": "0f5170da43a0b03477ad369413bdf3c7f8ce07c2444b3b74a37cfad6aaeb6373",
+    "after": "8c09d98a066b7183ca20510a67b83d80f72c9f3560bd221664135af9a3e59394"
+  },
+  {
+    "file": "verification/verus/budget_monotonic.rs",
+    "before": "8733adece3c5f6d532ae3911e972dc3ffcf5d2a051993bcf41bc979d23f06bea",
+    "after": "ac1f552dc6c8cffbe6b253e217fbcb905d4b3277e84cf4376b4d566684f76c15"
+  },
+  {
+    "file": "verification/verus/collect_ir_structure.rs",
+    "before": "690386d3dc943cae02b045df37a876dfd39bd1bcae766478237ecc13f05c885e",
+    "after": "badb9c9c061358ff60c698585aa00dfbcdf164d32d8732cc5191e1d728b79004"
+  },
+  {
+    "file": "verification/verus/collect_lowering.rs",
+    "before": "7573653c4b4e515b2fc316ff205b86f0c1ce5ac4b6b4bcf7053bdbb67e91ca45",
+    "after": "7f75af83ebc655a539ea3ad4e3e45dd4489b57caead75d7accb40898dbb4e565"
+  },
+  {
+    "file": "verification/verus/extern_budget_bounded.rs",
+    "before": "f98ded53549d94cbcf7b5ba31413874f818b13a03da9961a914b0bf4e15642c3",
+    "after": "c922e5c1c2670a25330bee4f9652f44ea529adecf02c981c3ff775d2877da319"
+  },
+  {
+    "file": "verification/verus/extern_budget_computation.rs",
+    "before": "0b23e9d3e37e1eb721a2d514babda96607a7c420e30ff038c77452b49e5bc58a",
+    "after": "e75f5a18d9612808de8e49a39f4a1c69d9c0b584c8894a0214ba232b1df87881"
+  },
+  {
+    "file": "verification/verus/extern_budget_monotonic.rs",
+    "before": "8ce4f9347cb56d6851aa4a7d4017b4d524cdeef64132e45a23033241737c7c46",
+    "after": "09399e7559b5c6bd86fa67a3e24336e748f97d6c5439d4b038752b8ce001195c"
+  },
+  {
+    "file": "verification/verus/extern_collect_ir_structure.rs",
+    "before": "ae4ac903051b60a8b7781fd08275ccc3a3be517aecb28fb48c11480158ca17d4",
+    "after": "b3ad353a0cb3209ad2da0534fff8352397f1350144f9df277c8baef4bd7669ea"
+  },
+  {
+    "file": "verification/verus/extern_collect_lowering.rs",
+    "before": "f6574b0dd4b81d0e34d269ba6f0da03aebf64bc96186d12fff84f752e43953fa",
+    "after": "8c744c068a09444802e6d142b43ffe441e0b9e79a9a1bbacba9a245e6409f907"
+  },
+  {
+    "file": "verification/verus/extern_error_parity.rs",
+    "before": "d4a986adc2ba0dc9cefc2a0065bb7696c17e6421223a0d8c75d58addf473a83a",
+    "after": "b27f4f48bc3b310f87f0b8bf20df1a80d2009d54a00d42f3e357972b85db379f"
+  },
+  {
+    "file": "verification/verus/extern_recovery_verification.rs",
+    "before": "612f374f5c0eb14ab444ba6be8363c15b034af47b046df0f0dbea3c8fef5d7c9",
+    "after": "07487927cac88822256f064a6ee2b2b4c6fa810121a05dcb1e0f547b89627911"
+  },
+  {
+    "file": "verification/verus/extern_run_frame_invariant.rs",
+    "before": "9fe5ac9c24b2876224c9c6875c2ab6ff5f1334af5817f770cb6f7191469bf94b",
+    "after": "7b0477a98e7552fbd4cb5e7b65605e6f61c51f50cfc669356515e193247b81cd"
+  },
+  {
+    "file": "verification/verus/extern_step_offset.rs",
+    "before": "c4611276ff151bd094406fa19738a2b4b9cc612a5c3d76aa06744b7b08224159",
+    "after": "46b4f6a44c425abc3db74abbab563da3ed81b5a0943da78db2643ba43086a41d"
+  },
+  {
+    "file": "verification/verus/extern_try_from_parts.rs",
+    "before": "829f89c75c8be459f723cd6a84e0dcc0170e86971bf1ee405a91f42cc6bc1619",
+    "after": "51f94d91c0d4c9046809ed6e9b3f0e5bbc59dd61b1f30798b95f880eded4ed00"
+  },
+  {
+    "file": "verification/verus/extern_value_store_invariant.rs",
+    "before": "909ddf9bda38cfe6e61cc72060cd14685a9c0d9246ef787357109380fc013a3f",
+    "after": "b0444ea35f2e054a037b71c7c9af3425ef94170ee76bbcb9178b1410d243f643"
+  },
+  {
+    "file": "verification/verus/idempotency_decision.rs",
+    "before": "2913a2127ac110bbb1f6a219972fe83352b8ca5972313170225ba32028765655",
+    "after": "14785a1d9681d0fd411c0adf3418a41b5f18125257b57c3f38a1dbe1b18ab12b"
+  },
+  {
+    "file": "verification/verus/idempotency_replay_tracker.rs",
+    "before": "ff5900e713a5308a15eb283fef1c4da28e7565664d8fc999c6b2947a51608c7d",
+    "after": "5d3b72221ff3c40d1c3c484d24c7b132f266b8a60b9cc8c2577cabe0a5c4bd63"
+  },
+  {
+    "file": "verification/verus/nested_projection/fixtures.rs",
+    "before": null,
+    "after": "3393b1af1586e01d57ce21178b0414a71d2ac0383757610846169efd74fa9272"
+  },
+  {
+    "file": "verification/verus/nested_projection/mod.rs",
+    "before": null,
+    "after": "dd5bbe96b2bb5bea4773e829d2789de8b0e477fe7159f6ff9d1c82d376dfe52c"
+  },
+  {
+    "file": "verification/verus/nested_projection/scan.rs",
+    "before": null,
+    "after": "6d0926c9121fa9ff84cc8f92f991f5548733b357f40157dbb57b343fbaa99f50"
+  },
+  {
+    "file": "verification/verus/nested_projection/walk.rs",
+    "before": null,
+    "after": "303794a9d01920759d3653980ec6b9ee04d7377ddfba302aacbfb0d00986013f"
+  },
+  {
+    "file": "verification/verus/production_inner/_exit_code_production.rs",
+    "before": "e00576f8d130755d9965ece63251fdda0464adaad0d67517db07c9b125beaacd",
+    "after": "fd4ab2e2f49d567d9a00e3264dec5eeb15e9694bdbc83773059441c0f2a34ec4"
+  },
+  {
+    "file": "verification/verus/production_inner/accepted_cli_digest_binding_production.rs",
+    "before": "6545f317aa1cef4ebd5dfca84209f74526243704d3196cfddb182c6498e5cdb0",
+    "after": "b2c03ca7ea59aad47f42187b7a888e0158fc24b7c7edbc53827f118c9ece94a3"
+  },
+  {
+    "file": "verification/verus/production_inner/admission_artifact_production.rs",
+    "before": "d8768cd1376e067178e6dcd53b386088b425c8c0a99f21a54a3aad57e6e42154",
+    "after": "fd445869c83a027c05c472f1c40dc4ed636694ff71c5818d283b538607b0358a"
+  },
+  {
+    "file": "verification/verus/production_inner/budget_bounded_production.rs",
+    "before": "c98c8c613bf4e9cc2d849b2910ee77d78b98b14f3ed5bdfe27bf341b4e65240e",
+    "after": "51d6db78405e2b8707b683417a13be49f08a5633477c8567ae888964a1fc8564"
+  },
+  {
+    "file": "verification/verus/production_inner/budget_computation_production.rs",
+    "before": "422a80bb86cc12c131e05e1cdbebb0ab75c6f7b397b3841d60c7a8362bcc34f9",
+    "after": "fd7ab30f57eec107394f2f673a9b35e785955fdb5b1a6bcb24866ee98215960b"
+  },
+  {
+    "file": "verification/verus/production_inner/budget_monotonic_production.rs",
+    "before": "ef758ab4bcb079e432f1651b1243d71c98e2d24d5c772edf521022de7523f814",
+    "after": "28306f05522cca4a916074ce1694a1e571a1b8a143f9793d157899043226c5c2"
+  },
+  {
+    "file": "verification/verus/production_inner/emit_single_body_set_production.rs",
+    "before": "088f566a8a5fd9de6668e751793762d22701613ec8b52e7fabccaa2008aa338e",
+    "after": "0c5d2abaf4e63df680315f854e44c48ef1f5525ecfdc7ab66ade83984e5263b7"
+  },
+  {
+    "file": "verification/verus/production_inner/error_parity_production.rs",
+    "before": "94df85e6c8f684813b50af94b52f7c04a1c23cc6e02d86734f4dd33f4015b344",
+    "after": "4beabecd65ad3e5555f533c873b437bf0f76a51f5da7b0032205737138c81393"
+  },
+  {
+    "file": "verification/verus/production_inner/lower_canonical_collect_production.rs",
+    "before": "66f950aea6d6cd2f28b2b93101ae6b273339d48bf9b16eb720e8f0fa4b52bd02",
+    "after": "0bdabd1e8f44d6a4c11bc3e6a82daacebd6fd8afa4d00c8a44a5dd930a394728"
+  },
+  {
+    "file": "verification/verus/production_inner/recovery_types_production.rs",
+    "before": "0e0bddd41c83089307d16eab5606222327fd9a5ef98ea80201b2518733bbf6ee",
+    "after": "ea6f5d8708a558f807709b43d3d44291ea2e7f66b2da0d1d161d80bfb5d0b688"
+  },
+  {
+    "file": "verification/verus/production_inner/run_frame_invariant_production.rs",
+    "before": "b67700927991abb5d996b3d1957320cbed585e666ef54502835d7f67d22cd625",
+    "after": "44f5be1a906ce3daa2843db693cb22cab2f7300b0ce41646c3b838050b06322a"
+  },
+  {
+    "file": "verification/verus/production_inner/step_offset_production.rs",
+    "before": "ccc01cf659828b1b2c93c07da559d3817f7958569483dda10f3acca85276cfd5",
+    "after": "66730a117325966f26870e1db847beba0e0fdcf94408e31f592b6fc8d3fe4e07"
+  },
+  {
+    "file": "verification/verus/production_inner/step_state_machine_production.rs",
+    "before": "8ea9fcdcd7dfb524218ad576ccedec14b8cce7a3e5101dcf4b959c20ea3d0470",
+    "after": "384151f79b17c77b224d4173c77408eebf531e7a8c7592e5645ecb1bac409970"
+  },
+  {
+    "file": "verification/verus/production_inner/try_from_parts_production.rs",
+    "before": "ec1f48ab9830b6414a18a2887e2485076a082a5e7e0bd9f494a4eed119e0d6f2",
+    "after": "80eab240026e53f83bbac8f615a9eb4255eb7b2eb06cd95b789aea2498a43b31"
+  },
+  {
+    "file": "verification/verus/production_inner/try_from_parts_production_ids.rs",
+    "before": "04e9418bf411eb372480b47d112fa9d40d4f08ad29489644d53fc3656bd4ef82",
+    "after": "3743e1d0f8d47fe733d8f3bc110b5dace34efd9a64133ed6618e7a540f9ed22c"
+  },
+  {
+    "file": "verification/verus/production_inner/v1_primitive_lowering_production.rs",
+    "before": "1aa01d0ce9b4ff1610018350e900f2e6940322650f5898e416c87fbf311f0a0f",
+    "after": "28bdbcce47ff576dc56cfe617b8c4798590f79771b3657e1500090f6d56d685d"
+  },
+  {
+    "file": "verification/verus/step_offset.rs",
+    "before": "2230b90aab549c40b93ae9a00741c9b018a693f9d8f341db5eaab4c6f69d7742",
+    "after": "49ece30f1e0a0a40b83849f185354562f04e142eec2ac4c72f5020cffa914fb7"
+  },
+  {
+    "file": "verification/verus/try_from_parts.rs",
+    "before": "05d4352a74c03f6ac47dc8eeaa964e5bf7684830d9d29768477eee9daef7ba94",
+    "after": "25eec0d0ee7b49499f2e53955a636874e13ff3b96af57eceffe2bfc0a4109b17"
+  }
+]

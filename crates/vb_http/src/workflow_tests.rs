@@ -88,7 +88,12 @@ fn workflow_count_digest_binds_destination_and_each_resource_limit() -> crate::R
     }
     assert_ne!(
         original,
-        digest(&repository, SocketAddr::from(([1, 1, 1, 2], 443)), http, decode)?,
+        digest(
+            &repository,
+            SocketAddr::from(([1, 1, 1, 2], 443)),
+            http,
+            decode
+        )?,
         "pinned peer"
     );
     for (field, changed) in [
@@ -105,7 +110,11 @@ fn workflow_count_digest_binds_destination_and_each_resource_limit() -> crate::R
             HttpLimits::new(1024, 2048, Duration::from_secs(2))?,
         ),
     ] {
-        assert_ne!(original, digest(&repository, peer, changed, decode)?, "{field}");
+        assert_ne!(
+            original,
+            digest(&repository, peer, changed, decode)?,
+            "{field}"
+        );
     }
     for (field, changed) in [
         ("JSON body bytes", DecodeLimits::new(1025, 8, 128, 128)?),
@@ -113,7 +122,11 @@ fn workflow_count_digest_binds_destination_and_each_resource_limit() -> crate::R
         ("JSON nodes", DecodeLimits::new(1024, 8, 129, 128)?),
         ("JSON string bytes", DecodeLimits::new(1024, 8, 128, 129)?),
     ] {
-        assert_ne!(original, digest(&repository, peer, http, changed)?, "{field}");
+        assert_ne!(
+            original,
+            digest(&repository, peer, http, changed)?,
+            "{field}"
+        );
     }
     Ok(())
 }

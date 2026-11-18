@@ -218,3 +218,7 @@ fn push_replay_event(
     replay.push(event);
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "replay/push_limit_tests.rs"]
+mod push_limit_tests;

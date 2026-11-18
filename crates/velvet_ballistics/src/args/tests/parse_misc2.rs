@@ -45,16 +45,28 @@ fn parse_no_command_returns_error() {
 #[test]
 fn parse_unknown_command_returns_error() {
     let parsed = parse_args(&args(&["velvet-ballistics", "foobar"]));
-    assert!(matches!(parsed, Err(ParseError::UnknownCommand(_))));
+    assert!(matches!(parsed, Err(ParseError::UnknownCommand(ref command)) if command == "foobar"));
 }
 
 #[test]
-fn unknown_command_error_enumerates_valid_commands() {
-    let err = ParseError::UnknownCommand(String::from("foobar"));
+fn unknown_command_error_enumerates_valid_commands() -> Result<(), Box<dyn std::error::Error>> {
+    let err = match parse_args(&args(&["velvet-ballistics", "foobar"])) {
+        Err(error) => error,
+        Ok(_) => return Err("unknown command unexpectedly parsed".into()),
+    };
+    assert_eq!(err, ParseError::UnknownCommand(String::from("foobar")));
     let rendered = err.to_string();
 
     assert!(rendered.contains("expected one of"));
     assert!(rendered.contains("agent-context"));
+    assert_eq!(
+        rendered,
+        format!(
+            "unknown command: foobar (expected one of: {})",
+            crate::args::VALID_COMMANDS
+        )
+    );
+    Ok(())
 }
 
 #[test]

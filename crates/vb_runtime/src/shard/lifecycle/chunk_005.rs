@@ -156,6 +156,9 @@ impl Shard {
         state: RunState,
         finished: bool,
     ) -> Result<(), DriveApplyFailure> {
+        // Reserve before transferring state into the terminal transition.
+        self.reserve_terminal_run_slot(run)
+            .map_err(DriveApplyFailure::BeforeCommit)?;
         let outcome = if finished {
             self.finish_run(run, state)
         } else {
@@ -201,9 +204,21 @@ impl Shard {
         trace_events: Vec<TraceEvent>,
         finished: bool,
     ) -> Result<(), DriveApplyFailure> {
+        // Reserve without evicting terminal identity before committing this batch.
+        self.reserve_terminal_run_slot(run)
+            .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);
+        self.complete_terminal_batch_after_commit(run, state, finished)
+    }
+
+    fn complete_terminal_batch_after_commit(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        finished: bool,
+    ) -> Result<(), DriveApplyFailure> {
         if finished {
             self.finish_run_after_journaled(run, state)
                 .map_err(DriveApplyFailure::AfterCommit)?;

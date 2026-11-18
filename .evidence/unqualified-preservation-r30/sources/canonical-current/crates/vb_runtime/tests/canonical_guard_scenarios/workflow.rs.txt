@@ -1,0 +1,76 @@
+use super::{ActionContract, ActionId, TestResult};
+use vb_core::action::{ActionName, ActionOutputReady, Idempotency, RetrySafety, SideEffect};
+use vb_core::workflow::{
+    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
+    ResourceContract, WorkflowParts, node,
+};
+use vb_core::{SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+
+pub(super) fn workflow() -> TestResult<CompiledWorkflow> {
+    let mut parts = WorkflowParts {
+        semantic_source_identity: None,
+        source_metadata: None,
+        name: "catalogless.completion.guard".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        nodes: Box::from([
+            node(
+                StepIdx::ZERO,
+                CompiledNodeKind::Do {
+                    action: ActionId::new(0),
+                    input: SlotIdx::ZERO,
+                },
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+                None,
+                None,
+            ),
+        ]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::new([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
+    };
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+    Ok(CompiledWorkflow::try_from_parts(parts)?)
+}
+
+pub(super) fn contract() -> TestResult<ActionContract> {
+    Ok(ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::new("catalogless.pure")?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 64,
+        max_output_bytes: 128,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    })
+}
+
+pub(super) fn output() -> TestResult<ActionOutputReady> {
+    let value = SlotValue::I64(42);
+    Ok(ActionOutputReady {
+        output_slot: SlotIdx::new(1),
+        value,
+        taint: Taint::Clean,
+        encoded_len: u32::try_from(postcard::to_allocvec(&value)?.len())?,
+    })
+}

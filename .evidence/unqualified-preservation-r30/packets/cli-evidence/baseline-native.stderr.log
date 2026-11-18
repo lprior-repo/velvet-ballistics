@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> crates/velvet_ballistics/src/replay/event_to_json/continuation_tests/support.rs:77:27
+   |
+77 |         action_contracts: receipt.artifact.action_contracts.clone(),
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<[ActionContract]>`, found `StoredActionRegistry`
+   |
+   = note: expected struct `Box<[ActionContract]>`
+              found struct `StoredActionRegistry`
+
+error[E0308]: mismatched types
+   --> crates/velvet_ballistics/src/semantic_diff_baseline.rs:31:32
+    |
+ 31 |         action_contracts: Some(accepted.0.action_contracts),
+    |                           ---- ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<[ActionContract]>`, found `StoredActionRegistry`
+    |                           |
+    |                           arguments to this enum variant are incorrect
+    |
+    = note: expected struct `Box<[ActionContract]>`
+               found struct `StoredActionRegistry`
+help: the type constructed contains `StoredActionRegistry` due to the type of the argument passed
+   --> crates/velvet_ballistics/src/semantic_diff_baseline.rs:31:27
+    |
+ 31 |         action_contracts: Some(accepted.0.action_contracts),
+    |                           ^^^^^---------------------------^
+    |                                |
+    |                                this argument influences the type of `Some`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:608:5
+    |
+608 |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^^^
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `velvet-ballistics` (bin "velvet-ballistics" test) due to 2 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package velvet-ballistics --package vb_ipc --all-features --quiet` exited with code 101

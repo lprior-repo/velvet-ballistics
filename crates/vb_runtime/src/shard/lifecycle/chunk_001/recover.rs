@@ -89,7 +89,20 @@ mod recover_phases {
     }
 
     impl Shard {
-        pub(crate) fn handle_recover(
+        pub(crate) fn handle_recover(&mut self, command: RecoverRunCommand) -> RuntimeResult<()> {
+            // Reject existing live ownership before recovery can replace its cursor.
+            // Terminal-only identity remains eligible for the existing recovery path.
+            if self.run_state_contains(command.run)
+                || self.checked_out_run_contains(command.run)
+                || self.runtime_state_get(command.run).is_some()
+            {
+                return Err(RuntimeError::RunAlreadyExists);
+            }
+            self.restore_and_resume_unowned_recovery(command)
+        }
+
+        // Called only after handle_recover rejects existing live ownership.
+        fn restore_and_resume_unowned_recovery(
             &mut self,
             mut command: RecoverRunCommand,
         ) -> RuntimeResult<()> {

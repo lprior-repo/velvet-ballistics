@@ -144,7 +144,12 @@ fn validate_node_slots(
         CompiledNodeKind::RetryCheck { policy_slot, .. } => {
             check_slot(*policy_slot, node_index, slot_count)?;
         }
-        CompiledNodeKind::ErrorHandler { .. } | CompiledNodeKind::Jump { .. } => {}
+        CompiledNodeKind::ErrorHandler { error_slot, .. } => {
+            if let Some(slot) = error_slot.slot() {
+                check_slot(slot, node_index, slot_count)?;
+            }
+        }
+        CompiledNodeKind::Jump { .. } => {}
         _ => {
             return Err(ValidationError::NodeKindConstraintViolation {
                 node_index,

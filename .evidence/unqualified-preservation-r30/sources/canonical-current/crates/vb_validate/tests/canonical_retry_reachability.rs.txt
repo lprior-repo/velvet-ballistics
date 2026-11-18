@@ -1,0 +1,195 @@
+use vb_core::action::ActionName;
+use vb_core::{
+    ActionContract, ActionId, Idempotency, RetrySafety, SideEffect, SlotIdx, StepIdx,
+    WorkflowDigest,
+    workflow::{
+        CompiledNode, CompiledNodeKind as K, CompiledRetryPolicy, ErrorRouting, ResourceContract,
+        WorkflowParts, node,
+    },
+};
+use vb_validate::idempotency_contract::{
+    IdempotencyContractError as E, IdempotencyContractErrors, IdempotencyContractViolation as V,
+    validate_workflow_idempotency_contracts as validate,
+};
+
+#[path = "canonical_retry_reachability/mod.rs"]
+mod families;
+#[path = "canonical_retry_reachability/positive_edges.rs"]
+mod positive_edges;
+
+fn step(raw: u16) -> StepIdx {
+    StepIdx::new(raw)
+}
+fn slot() -> SlotIdx {
+    SlotIdx::ZERO
+}
+fn finish(index: u16) -> CompiledNode {
+    node(step(index), K::Finish { result: slot() }, None, None)
+}
+fn action(index: u16) -> CompiledNode {
+    node(
+        step(index),
+        K::Do {
+            action: ActionId::new(0),
+            input: slot(),
+        },
+        None,
+        None,
+    )
+}
+fn retry(index: u16, body: u16, exhausted: u16) -> CompiledNode {
+    node(
+        step(index),
+        K::RetryCheck {
+            policy_slot: slot(),
+            body: step(body),
+            exhausted: step(exhausted),
+        },
+        None,
+        None,
+    )
+}
+fn contract() -> ActionContract {
+    ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::from_static_infallible("forbidden.retry"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 64,
+        max_output_bytes: 64,
+        timeout_ms: 1000,
+        idempotency: Idempotency::AtLeastOnceExternal,
+        side_effect: SideEffect::ExternalWrite,
+        retry_safety: RetrySafety::NotRetrySafe,
+        required_capabilities: Box::new([]),
+    }
+}
+fn parts(nodes: Vec<CompiledNode>) -> WorkflowParts {
+    WorkflowParts {
+        semantic_source_identity: None,
+        source_metadata: None,
+        input_slots: Box::new([]),
+        name: "retry.graph".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: step(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
+fn refused() -> Result<(), E> {
+    Err(E::IdempotencyViolations(IdempotencyContractErrors(
+        Box::new([V::SideEffectingRetryUnsafe {
+            action: ActionId::new(0),
+            side_effect: SideEffect::ExternalWrite,
+            idempotency: Idempotency::AtLeastOnceExternal,
+            retry_safety: RetrySafety::NotRetrySafe,
+        }]),
+    )))
+}
+fn check_kind(kind: K, reaches_action: bool) {
+    check_kind_with_next(kind, step(2), reaches_action);
+}
+fn check_kind_with_next(kind: K, next: StepIdx, reaches_action: bool) {
+    let middle = node(step(1), kind, None, Some(next));
+    let value = parts(vec![
+        retry(0, 1, 4),
+        middle,
+        action(2),
+        finish(3),
+        finish(4),
+    ]);
+    assert_eq!(
+        validate(&value, &[contract()]),
+        if reaches_action { refused() } else { Ok(()) }
+    );
+}
+
+#[test]
+fn direct_action_retry_metadata_distinguishes_nonretry_and_repeated_execution() {
+    for (attempts, expected) in [(None, Ok(())), (Some(1), Ok(())), (Some(2), refused())] {
+        let mut invocation = action(0);
+        invocation.retry = attempts.map(|max_attempts| CompiledRetryPolicy {
+            max_attempts,
+            delay_ms: 0,
+        });
+        assert_eq!(validate(&parts(vec![invocation]), &[contract()]), expected);
+    }
+}
+
+#[test]
+fn outer_retry_includes_nested_exhaustion_but_its_own_exhausted_edge_is_excluded() {
+    let nested = parts(vec![
+        retry(0, 1, 4),
+        retry(1, 3, 2),
+        action(2),
+        finish(3),
+        finish(4),
+    ]);
+    assert_eq!(validate(&nested, &[contract()]), refused());
+    let own_only = parts(vec![
+        retry(0, 3, 2),
+        retry(1, 3, 2),
+        action(2),
+        finish(3),
+        finish(4),
+    ]);
+    assert_eq!(validate(&own_only, &[contract()]), Ok(()));
+}
+
+#[test]
+fn owner_loopback_terminates_without_importing_owner_exhaustion() {
+    let body = node(step(1), K::Jump { target: step(0) }, None, Some(step(2)));
+    let value = parts(vec![retry(0, 1, 2), body, action(2)]);
+    assert_eq!(validate(&value, &[contract()]), Ok(()));
+}
+
+#[test]
+fn explicit_body_error_route_is_repeated_with_its_owner() {
+    let mut body = node(
+        step(1),
+        K::WaitUntil {
+            deadline_slot: slot(),
+        },
+        None,
+        Some(step(3)),
+    );
+    body.routing.error = ErrorRouting::Handler {
+        handler: step(2),
+        error_slot: None,
+    };
+    let value = parts(vec![retry(0, 1, 4), body, action(2), finish(3), finish(4)]);
+    assert_eq!(validate(&value, &[contract()]), refused());
+}
+
+#[test]
+fn graph_target_and_node_domain_errors_fail_closed() {
+    let value = parts(vec![
+        retry(0, 1, 4),
+        node(
+            step(1),
+            K::Jump {
+                target: step(u16::MAX),
+            },
+            None,
+            None,
+        ),
+        action(2),
+        finish(3),
+        finish(4),
+    ]);
+    assert_eq!(
+        validate(&value, &[contract()]),
+        Err(E::RetryGraphInvalid { node_index: 65535 })
+    );
+    let oversized = parts(vec![
+        node(step(0), K::Nop, None, None);
+        usize::from(u16::MAX) + 1
+    ]);
+    assert_eq!(validate(&oversized, &[]), Err(E::RetryGraphCapacity));
+}

@@ -80,6 +80,10 @@ digest_type!(
     "Digest of an exact action-pack declaration."
 );
 digest_type!(InputDigest, "Digest of canonical executor input bytes.");
+digest_type!(
+    RequestDigest,
+    "Digest of a canonical cold-adapter request declaration."
+);
 digest_type!(ReceiptDigest, "Digest of a complete durable receipt.");
 digest_type!(
     ConformanceReportDigest,

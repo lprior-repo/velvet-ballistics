@@ -1,0 +1,8 @@
+# Retained checkpoint fixtures
+
+These immutable bytes were copied without opening or modifying a database from the actual runtime failure/retry issuer at source b0e249de044d1a8ec2a34aec5f2e7115d11cbd5f, retained fixture evidence 0b77dc1c4e6ad86a4f349dc8bbaa08b5c8c41e5e. Original files are retry-retained-v1/{none-safe,writes-key-required}/{artifact.postcard,checkpoint-payload.postcard}; checkpoint-payload.postcard is named checkpoint.postcard here. These records predate canonical taxonomy and do not grant canonical execution authority.
+
+- none-safe/artifact.postcard: aa85ec11a86b83aa2e600d6f6996d1481ad96860e687ba693965de2df477d793
+- none-safe/checkpoint.postcard: dcffd84901d19fc5df01c2765e9328fb69081e7cabd0d4bde9ac92672ede946c
+- writes-key-required/artifact.postcard: d03e90f9ea37a0456790b625f1a496382d70a02b340f0237417811ca0bc2869c
+- writes-key-required/checkpoint.postcard: 24d042d3070e5c0152700a101ede16b72e38524212e1c6c7dd4bc369d856ae3a

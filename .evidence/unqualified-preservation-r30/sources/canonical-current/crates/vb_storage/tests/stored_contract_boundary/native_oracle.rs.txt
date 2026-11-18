@@ -1,0 +1,157 @@
+use super::helpers::*;
+use vb_core::RuntimePolicy;
+use vb_storage::{
+    ArtifactVerifierFamily, HistoricalArtifactError, JournalError, StoredActionRegistry,
+    StoredContractError, verify_retained_artifact,
+};
+
+#[test]
+fn all45_actual_old_writer_tuples_keep_exact_bytes_abis_registry_order_and_native_verdicts()
+-> TestResult {
+    let cases = observations()?;
+    assert_eq!(cases.len(), 45);
+    let pure = cases
+        .iter()
+        .find(|case| case.0 == "i0-e0-r0")
+        .ok_or("pure oracle")?;
+    let journaled_template = pure.6.as_ref().ok_or("journaled native envelope")?;
+    let strict_template = pure.7.as_ref().ok_or("strict native envelope")?;
+    let packed_template = cases
+        .iter()
+        .find_map(|case| case.8.as_ref())
+        .ok_or("packed native envelope")?;
+    cases.iter().try_for_each(|case| -> TestResult {
+        let registry = StoredActionRegistry::decode_exact(&case.2)?;
+        assert_eq!(registry.wire_bytes()?, case.2);
+        assert_eq!(registry.ordered_digest()?, hash(&case.2));
+        let contract = registry.get(0).ok_or("stored record")?;
+        assert_eq!(contract.wire_bytes()?, case.1);
+        assert_eq!(contract.abi_digest()?, hash(&case.1));
+        if case.0 == "i0-e0-r0" {
+            assert_eq!(
+                StoredActionRegistry::try_from_canonical(&registry.try_canonical()?)?
+                    .wire_bytes()?,
+                case.2
+            );
+        } else {
+            assert!(matches!(
+                registry.try_canonical(),
+                Err(StoredContractError::UnsupportedHistoricalClassification { .. })
+            ));
+        }
+        compare_unpacked(
+            case,
+            journaled_template,
+            RuntimePolicy::Journaled,
+            &case.3,
+            case.6.as_deref(),
+        )?;
+        compare_unpacked(
+            case,
+            strict_template,
+            RuntimePolicy::Strict,
+            &case.4,
+            case.7.as_deref(),
+        )?;
+        let packed = if let Some(original) = &case.8 {
+            original.clone()
+        } else {
+            let mut value = decode(packed_template)?;
+            replace_registry(&mut value, &case.2, RuntimePolicy::Strict)?;
+            postcard::to_allocvec(&value)?
+        };
+        let checked = verify_retained_artifact(&packed, RuntimePolicy::Strict);
+        if case.5 == "ok" {
+            let checked = checked?;
+            assert_eq!(
+                checked.verifier_family(),
+                ArtifactVerifierFamily::HistoricalMain
+            );
+            assert!(matches!(
+                checked.try_canonical(),
+                Err(StoredContractError::ForbiddenAttestedClassification {
+                    side_effect: vb_core::SideEffect::LocalWrite,
+                    ..
+                })
+            ));
+        } else {
+            assert_eq!(case.5, "PackMismatch");
+            assert!(matches!(
+                checked,
+                Err(HistoricalArtifactError::Executor(
+                    vb_storage::executor::ExecutorError::PackMismatch
+                ))
+            ));
+        }
+        Ok(())
+    })?;
+    let ordered = StoredActionRegistry::decode_exact(&bytes("registry45.postcard")?)?;
+    assert_eq!(ordered.len(), 45);
+    assert_eq!(ordered.wire_bytes()?, bytes("registry45.postcard")?);
+    assert_eq!(
+        ordered.ordered_digest()?,
+        hash(&bytes("registry45.postcard")?)
+    );
+    ordered
+        .iter()
+        .zip(&cases)
+        .try_for_each(|(record, case)| -> TestResult {
+            assert_eq!(record.wire_bytes()?, case.1, "stored order: {}", case.0);
+            assert_eq!(
+                record.abi_digest()?,
+                hash(&case.1),
+                "stored order: {}",
+                case.0
+            );
+            Ok(())
+        })?;
+    Ok(())
+}
+
+fn compare_unpacked(
+    case: &Observation,
+    template: &[u8],
+    policy: RuntimePolicy,
+    expected: &str,
+    original: Option<&[u8]>,
+) -> TestResult {
+    let raw = if let Some(bytes) = original {
+        bytes.to_vec()
+    } else {
+        let mut value = decode(template)?;
+        replace_registry(&mut value, &case.2, policy)?;
+        postcard::to_allocvec(&value)?
+    };
+    let actual = verify_retained_artifact(&raw, policy);
+    match expected {
+        "ok" => {
+            let checked = actual?;
+            assert_eq!(checked.original_bytes(), raw);
+            assert_eq!(
+                checked.verifier_family(),
+                ArtifactVerifierFamily::HistoricalMain
+            );
+            assert_eq!(checked.contracts().wire_bytes()?, case.2);
+        }
+        "ArtifactMalformed" => assert!(
+            matches!(
+                actual,
+                Err(HistoricalArtifactError::Artifact(
+                    JournalError::ArtifactMalformed
+                ))
+            ),
+            "{}: {actual:?}",
+            case.0
+        ),
+        "MissingRequiredProofFlag { flag: \"executor_conformance\" }" => assert!(matches!(
+            actual,
+            Err(HistoricalArtifactError::Artifact(
+                JournalError::MissingRequiredProofFlag {
+                    flag: "executor_conformance"
+                }
+            ))
+        )),
+        other => return Err(format!("unrecognized independent native verdict: {other}").into()),
+    }
+    Ok(())
+}

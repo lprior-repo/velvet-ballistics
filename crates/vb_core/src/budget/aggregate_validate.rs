@@ -10,9 +10,8 @@ use crate::workflow::{CompiledWorkflow, ResourceContract, WorkflowError};
 
 impl AggregateResourceBudget {
     pub fn from_workflow(workflow: &CompiledWorkflow) -> Result<Self, AggregateBudgetError> {
-        let parts = workflow.to_parts();
         let budget = WholeWorkflowBudget::compute(
-            &parts.nodes,
+            workflow.nodes(),
             workflow.entry(),
             &workflow.resource_contract(),
         )

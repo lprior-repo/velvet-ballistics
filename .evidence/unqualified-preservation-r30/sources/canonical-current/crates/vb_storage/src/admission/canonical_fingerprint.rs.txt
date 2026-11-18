@@ -1,0 +1,34 @@
+use vb_core::WorkflowDigest;
+
+const CURRENT_SOURCES: &[&[u8]] = &[
+    include_bytes!("../admission.rs").as_slice(),
+    include_bytes!("canonical_verification.rs").as_slice(),
+    include_bytes!("canonical_fingerprint.rs").as_slice(),
+    include_bytes!("../stored_contracts/mod.rs").as_slice(),
+    include_bytes!("../stored_contracts/wire.rs").as_slice(),
+    include_bytes!("../stored_contracts/view.rs").as_slice(),
+    include_bytes!("../stored_contracts/bounded.rs").as_slice(),
+    include_bytes!("../historical/verification.rs").as_slice(),
+    include_bytes!("../historical/mod.rs").as_slice(),
+    include_bytes!("../historical/workflow.rs").as_slice(),
+    include_bytes!("../historical/proof.rs").as_slice(),
+    include_bytes!("../executor/historical_register.rs").as_slice(),
+    include_bytes!("../../../vb_core/src/action/contract.rs").as_slice(),
+    include_bytes!("../../../vb_core/src/action/retry_requirement.rs").as_slice(),
+    include_bytes!("../../../vb_core/src/action/validation.rs").as_slice(),
+    include_bytes!("../../../vb_validate/src/idempotency_contract.rs").as_slice(),
+    include_bytes!("../../../vb_validate/src/idempotency_contract/retry_reachability.rs")
+        .as_slice(),
+    include_bytes!("../../../vb_validate/src/idempotency_contract/retry_reachability/targets.rs")
+        .as_slice(),
+];
+
+pub(super) fn digest() -> WorkflowDigest {
+    let historical = crate::historical::fingerprints::verifier();
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(&historical.as_bytes());
+    CURRENT_SOURCES.iter().for_each(|source| {
+        hasher.update(source);
+    });
+    WorkflowDigest::from_bytes(hasher.finalize().into())
+}

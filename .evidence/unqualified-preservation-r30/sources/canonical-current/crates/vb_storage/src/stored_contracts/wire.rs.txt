@@ -1,0 +1,42 @@
+use serde::{Deserialize, Serialize};
+use vb_core::action::ActionName;
+use vb_core::{ActionId, Capability};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(crate) enum ColdIdempotency {
+    DeterministicPure,
+    IdempotentExternal,
+    AtLeastOnceExternal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(crate) enum ColdSideEffect {
+    None,
+    Writes,
+    Sends,
+    Creates,
+    Destroys,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(crate) enum ColdRetrySafety {
+    Safe,
+    KeyRequired,
+    Unsafe,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(crate) struct ColdActionContract {
+    pub(crate) id: ActionId,
+    pub(crate) name: ActionName,
+    pub(crate) input_slot_count: u16,
+    pub(crate) output_slot_count: u16,
+    pub(crate) max_input_bytes: u32,
+    pub(crate) max_output_bytes: u32,
+    pub(crate) timeout_ms: u64,
+    pub(crate) idempotency: ColdIdempotency,
+    pub(crate) side_effect: ColdSideEffect,
+    pub(crate) retry_safety: ColdRetrySafety,
+    #[serde(deserialize_with = "super::bounded::capabilities")]
+    pub(crate) required_capabilities: Box<[Capability]>,
+}

@@ -1,0 +1,105 @@
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+
+spec fn walk_seen(visited: Set<usize>, at: int) -> bool {
+    exists|raw: usize| raw as int == at && visited.contains(raw)
+}
+
+proof fn walk_seen_insert(visited: Set<usize>, index: usize, at: int)
+    ensures
+        walk_seen(visited.insert(index), at) == (walk_seen(visited, at) || at == index as int),
+{
+    if walk_seen(visited.insert(index), at) {
+        let raw = choose|raw: usize| raw as int == at && visited.insert(index).contains(raw);
+        if raw != index {
+            assert(visited.contains(raw));
+            assert(walk_seen(visited, at));
+        }
+    }
+    if walk_seen(visited, at) {
+        let raw = choose|raw: usize| raw as int == at && visited.contains(raw);
+        assert(visited.insert(index).contains(raw));
+        assert(walk_seen(visited.insert(index), at));
+    }
+    if at == index as int {
+        assert(visited.insert(index).contains(index));
+        assert(walk_seen(visited.insert(index), at));
+    }
+}
+
+spec fn walk_weight_from(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    visited: Set<usize>,
+    at: int,
+) -> nat
+    decreases nodes.len() - at,
+{
+    if at < 0 || at >= nodes.len() {
+        0
+    } else {
+        (if walk_seen(visited, at) {
+            0nat
+        } else {
+            successor_stack(&nodes[at], Seq::empty()).len()
+        }) + walk_weight_from(nodes, visited, at + 1)
+    }
+}
+
+proof fn walk_weight_insert(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    visited: Set<usize>,
+    index: usize,
+    at: int,
+)
+    requires
+        0 <= at <= nodes.len(),
+        index < nodes.len(),
+        !visited.contains(index),
+    ensures
+        walk_weight_from(nodes, visited, at) == walk_weight_from(nodes, visited.insert(index), at)
+            + if at <= index {
+            successor_stack(&nodes[index as int], Seq::empty()).len()
+        } else {
+            0nat
+        },
+    decreases nodes.len() - at,
+{
+    if at < nodes.len() {
+        walk_seen_insert(visited, index, at);
+        walk_weight_insert(nodes, visited, index, at + 1);
+        if at == index as int {
+            assert(!walk_seen(visited, at));
+        }
+    }
+}
+
+proof fn walk_weight_monotone(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    prior: Set<usize>,
+    later: Set<usize>,
+    at: int,
+)
+    requires
+        prior.subset_of(later),
+    ensures
+        walk_weight_from(nodes, later, at) <= walk_weight_from(nodes, prior, at),
+    decreases nodes.len() - at,
+{
+    if 0 <= at < nodes.len() {
+        walk_weight_monotone(nodes, prior, later, at + 1);
+        if walk_seen(prior, at) {
+            let raw = choose|raw: usize| raw as int == at && prior.contains(raw);
+            assert(later.contains(raw));
+            assert(walk_seen(later, at));
+        }
+    }
+}
+
+proof fn successor_append(node: &crate::workflow::CompiledNode, prefix: Seq<usize>)
+    ensures
+        successor_stack(node, prefix) == prefix + successor_stack(node, Seq::empty()),
+{
+    assert(successor_stack(node, prefix) =~= prefix + successor_stack(node, Seq::empty()));
+}
+
+} // verus!

@@ -33,7 +33,7 @@
 //   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:17-55
 //   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:104-138
 //   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:214-283
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:125-259
 //   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:24-59
 //   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
 //   - `count_total_steps`                    <- crates/vb_core/src/budget/loop_body.rs:11-17

@@ -1,0 +1,159 @@
+#[cfg(verus_keep_ghost)]
+include!("walk_weight.rs");
+#[cfg(verus_keep_ghost)]
+vstd::prelude::verus! {
+
+spec fn walk_next_seen(len: nat, index: usize, stop: usize, visited: Set<usize>) -> Set<usize> {
+    if index >= len || index == stop { visited } else { visited.insert(index) }
+}
+
+spec fn walk_next_stack(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    keys: Set<u16>,
+    popped: Seq<usize>,
+    index: usize,
+    stop: usize,
+    outer: StepIdx,
+    visited: Set<usize>,
+) -> Seq<usize> {
+    if can_visit(nodes.len(), index, stop, visited)
+        && index <= 65535 && !is_nested_start(keys, index, outer) {
+        successor_stack(&nodes[index as int], popped)
+    } else { popped }
+}
+
+proof fn walk_step_drops_potential(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    keys: Set<u16>,
+    popped: Seq<usize>,
+    index: usize,
+    stop: usize,
+    outer: StepIdx,
+    visited: Set<usize>,
+)
+    ensures
+        walk_weight_from(nodes, walk_next_seen(nodes.len(), index, stop, visited), 0)
+            + walk_next_stack(nodes, keys, popped, index, stop, outer, visited).len()
+            <= walk_weight_from(nodes, visited, 0) + popped.len(),
+{
+    if can_visit(nodes.len(), index, stop, visited) {
+        walk_weight_insert(nodes, visited, index, 0);
+        if index <= 65535 && !is_nested_start(keys, index, outer) {
+            successor_append(&nodes[index as int], popped);
+        }
+    } else if index < nodes.len() && index != stop {
+        assert(visited.contains(index));
+        assert(visited.insert(index) == visited);
+    }
+}
+
+spec fn walk_reference(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    keys: Set<u16>,
+    stack: Seq<usize>,
+    stop: usize,
+    outer: StepIdx,
+    visited: Set<usize>,
+    fuel: int,
+    stop_on_overflow: bool,
+) -> Option<StepIdx>
+    decreases fuel,
+{
+    if fuel <= 0 || stack.len() == 0 {
+        None
+    } else {
+        let index = stack.last();
+        let popped = stack.drop_last();
+        if !can_visit(nodes.len(), index, stop, visited) {
+            walk_reference(nodes, keys, popped, stop, outer, visited, fuel - 1, stop_on_overflow)
+        } else {
+            let marked = visited.insert(index);
+            if index > 65535 {
+                if stop_on_overflow {
+                    Some(outer)
+                } else {
+                    walk_reference(nodes, keys, popped, stop, outer, marked, fuel - 1, stop_on_overflow)
+                }
+            } else if is_nested_start(keys, index, outer) {
+                Some(StepIdx::from_raw_spec(index as u16))
+            } else {
+                walk_reference(nodes, keys, successor_stack(&nodes[index as int], popped),
+                    stop, outer, marked, fuel - 1, stop_on_overflow)
+            }
+        }
+    }
+}
+
+spec fn expected_contains_walk(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    keys: Set<u16>,
+    start: usize,
+    stop: usize,
+    outer: StepIdx,
+) -> bool {
+    walk_reference(nodes, keys, seq![start], stop, outer, Set::empty(),
+        1 + walk_weight_from(nodes, Set::empty(), 0) as int, false).is_some()
+}
+
+proof fn walk_reference_continue_step(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    keys: Set<u16>,
+    popped: Seq<usize>,
+    index: usize,
+    stop: usize,
+    outer: StepIdx,
+    visited: Set<usize>,
+    fuel: int,
+    stop_on_overflow: bool,
+)
+    requires
+        fuel > 0,
+        !(can_visit(nodes.len(), index, stop, visited)
+            && index <= 65535 && is_nested_start(keys, index, outer)),
+        !(stop_on_overflow && can_visit(nodes.len(), index, stop, visited)
+            && index > 65535),
+    ensures
+        walk_reference(nodes, keys, popped.push(index), stop, outer, visited,
+            fuel, stop_on_overflow)
+            == walk_reference(nodes, keys, walk_next_stack(nodes, keys, popped,
+                index, stop, outer, visited), stop, outer,
+                walk_next_seen(nodes.len(), index, stop, visited), fuel - 1, stop_on_overflow),
+{
+    reveal(walk_reference);
+    assert(popped.push(index).last() == index);
+    assert(popped.push(index).drop_last() == popped);
+    if !can_visit(nodes.len(), index, stop, visited) {
+        if index < nodes.len() && index != stop {
+            assert(visited.contains(index));
+            assert(visited.insert(index) == visited);
+        }
+        assert(walk_next_seen(nodes.len(), index, stop, visited) == visited);
+        assert(walk_next_stack(nodes, keys, popped, index, stop, outer, visited) == popped);
+        assert(walk_reference(nodes, keys, popped.push(index), stop, outer, visited,
+            fuel, stop_on_overflow)
+            == walk_reference(nodes, keys, popped, stop, outer, visited, fuel - 1, stop_on_overflow));
+    } else if index > 65535 {
+        assert(!stop_on_overflow);
+        assert(walk_next_stack(nodes, keys, popped, index, stop, outer, visited) == popped);
+    } else {
+        assert(!is_nested_start(keys, index, outer));
+        assert(walk_next_stack(nodes, keys, popped, index, stop, outer, visited)
+            == successor_stack(&nodes[index as int], popped));
+    }
+}
+
+spec fn expected_find_walk(
+    nodes: Seq<crate::workflow::CompiledNode>,
+    keys: Set<u16>,
+    start: usize,
+    stop: usize,
+    outer: StepIdx,
+) -> StepIdx {
+    match walk_reference(nodes, keys, seq![start], stop, outer, Set::empty(),
+        1 + walk_weight_from(nodes, Set::empty(), 0) as int, true) {
+        Some(step) => step,
+        None => outer,
+    }
+}
+
+}

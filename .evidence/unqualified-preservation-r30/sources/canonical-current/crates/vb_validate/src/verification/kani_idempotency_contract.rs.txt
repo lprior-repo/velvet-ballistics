@@ -1,0 +1,141 @@
+//! Kani declaration obligations KANI-DECISION-001 through KANI-DECISION-005.
+
+#![forbid(unsafe_code)]
+
+use vb_core::{ActionContract, Idempotency as I, RetrySafety as R, SideEffect as S};
+
+use crate::idempotency_contract::{
+    IdempotencyContractViolation, is_statically_idempotent_contract as static_check,
+};
+
+// Independent exhaustive declaration oracle, including legal nonretry execution.
+fn legal(contract: &ActionContract) -> bool {
+    matches!(
+        (
+            contract.idempotency,
+            contract.side_effect,
+            contract.retry_safety
+        ),
+        (I::DeterministicPure, S::Pure, R::Idempotent)
+            | (I::IdempotentExternal, S::ExternalRead, R::Idempotent)
+            | (
+                I::IdempotentExternal,
+                S::ExternalRead,
+                R::RequiresIdempotencyKey
+            )
+            | (I::IdempotentExternal, S::ExternalWrite, R::Idempotent)
+            | (
+                I::IdempotentExternal,
+                S::ExternalWrite,
+                R::RequiresIdempotencyKey
+            )
+            | (
+                I::AtLeastOnceExternal,
+                S::ExternalWrite,
+                R::RequiresIdempotencyKey
+            )
+            | (I::AtLeastOnceExternal, S::ExternalWrite, R::NotRetrySafe)
+    )
+}
+
+fn check(contract: &ActionContract, accepted: bool) {
+    let expected = if accepted {
+        Ok(())
+    } else {
+        Err(IdempotencyContractViolation::InvalidContract {
+            action: contract.id,
+            side_effect: contract.side_effect,
+            idempotency: contract.idempotency,
+            retry_safety: contract.retry_safety,
+        })
+    };
+    kani::assert(
+        static_check(contract) == expected,
+        "exact declaration outcome",
+    );
+}
+
+/// All 84 classifications and arbitrary nonclassification fields are checked.
+#[kani::proof]
+#[kani::unwind(8)]
+fn kani_decision_001_all_combinations() {
+    let contract: ActionContract = kani::any();
+    check(&contract, legal(&contract));
+    kani::assert(
+        static_check(&contract) == static_check(&contract),
+        "determinism",
+    );
+    kani::cover!(
+        contract.side_effect == S::UnsafeShell,
+        "shell classification reached"
+    );
+    kani::cover!(
+        contract.retry_safety == R::Unknown,
+        "unknown classification reached"
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(8)]
+fn decision_table_ok_branch() {
+    let contract: ActionContract = kani::any();
+    kani::assume(legal(&contract));
+    check(&contract, true);
+    kani::cover!(contract.side_effect == S::Pure, "legal pure declaration");
+    kani::cover!(
+        contract.side_effect == S::ExternalRead,
+        "legal read declaration"
+    );
+    kani::cover!(
+        contract.retry_safety == R::NotRetrySafe,
+        "legal nonretry declaration"
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(40)]
+fn decision_table_unsafe_rejected() {
+    let contract: ActionContract = kani::any();
+    kani::assume(matches!(
+        contract.retry_safety,
+        R::NotRetrySafe | R::Unknown
+    ));
+    let nonretry = contract.idempotency == I::AtLeastOnceExternal
+        && contract.side_effect == S::ExternalWrite
+        && contract.retry_safety == R::NotRetrySafe;
+    check(&contract, nonretry);
+    kani::cover!(nonretry, "nonretry declaration remains legal");
+    kani::cover!(
+        contract.retry_safety == R::Unknown,
+        "unknown declaration rejected"
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(40)]
+fn decision_table_at_least_once_rejected() {
+    let contract: ActionContract = kani::any();
+    kani::assume(contract.idempotency == I::AtLeastOnceExternal);
+    let accepted = contract.side_effect == S::ExternalWrite
+        && matches!(
+            contract.retry_safety,
+            R::RequiresIdempotencyKey | R::NotRetrySafe
+        );
+    check(&contract, accepted);
+    kani::cover!(accepted, "keyed or nonretry write accepted");
+    kani::cover!(!accepted, "other at-least-once declaration rejected");
+}
+
+#[kani::proof]
+#[kani::unwind(55)]
+fn decision_table_deterministic_rejected() {
+    let contract: ActionContract = kani::any();
+    kani::assume(contract.idempotency == I::DeterministicPure);
+    let accepted = contract.side_effect == S::Pure && contract.retry_safety == R::Idempotent;
+    check(&contract, accepted);
+    kani::cover!(accepted, "consistent pure declaration accepted");
+    kani::cover!(
+        contract.side_effect == S::LocalWrite,
+        "local write declaration rejected"
+    );
+}

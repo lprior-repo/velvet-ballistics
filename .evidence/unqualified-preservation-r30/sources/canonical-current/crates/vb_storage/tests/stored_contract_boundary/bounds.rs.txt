@@ -1,0 +1,239 @@
+use super::helpers::*;
+use proptest::prelude::*;
+use vb_core::RuntimePolicy;
+use vb_storage::{
+    HistoricalArtifactError, JournalError, StoredActionRegistry, StoredContractError,
+    verify_retained_artifact,
+};
+
+proptest! {
+    #![proptest_config(proptest::test_runner::Config {
+        cases: 1024,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(0x60_27),
+        ..proptest::test_runner::Config::default()
+    })]
+
+    #[test]
+    fn native_registry_fragments_and_arbitrary_suffixes_keep_exact_framing_errors(
+        cut in 0_usize..44,
+        suffix in proptest::collection::vec(any::<u8>(), 1..=256),
+    ) {
+        let native = include_bytes!("../fixtures/historical-main/layout-sentinel.registry");
+        prop_assert_eq!(native.len(), 44);
+        let fragment = native.get(..cut).ok_or_else(|| TestCaseError::fail("native fragment range"))?;
+        prop_assert!(matches!(StoredActionRegistry::decode_exact(fragment), Err(StoredContractError::Codec(postcard::Error::DeserializeUnexpectedEnd))), "cut {cut}");
+        let mut extended = native.to_vec();
+        extended.extend_from_slice(&suffix);
+        prop_assert!(matches!(StoredActionRegistry::decode_exact(&extended), Err(StoredContractError::TrailingBytes)), "suffix length {}", suffix.len());
+    }
+}
+
+fn complete_registry(count: usize) -> TestResult<Vec<u8>> {
+    // Repeated metadata isolates this count bound from later dense-registry validation.
+    let record = bytes("layout-sentinel.contract")?;
+    let mut raw = postcard::to_allocvec(&count)?;
+    raw.try_reserve_exact(
+        count
+            .checked_mul(record.len())
+            .ok_or("registry size overflow")?,
+    )?;
+    std::iter::repeat_n(record.as_slice(), count).for_each(|record| raw.extend_from_slice(record));
+    Ok(raw)
+}
+
+#[test]
+fn complete_original_records_accept_the_count_limit_and_refuse_one_more() -> TestResult {
+    let maximum = complete_registry(65_536)?;
+    let accepted = StoredActionRegistry::decode_exact(&maximum)?;
+    assert_eq!(accepted.len(), 65_536);
+    assert_eq!(accepted.wire_bytes()?, maximum);
+    assert_eq!(
+        accepted
+            .get(65_535)
+            .ok_or("last bounded record")?
+            .output_slot_count(),
+        3
+    );
+    let over = complete_registry(65_537)?;
+    assert!(matches!(
+        StoredActionRegistry::decode_exact(&over),
+        Err(StoredContractError::Codec(postcard::Error::SerdeDeCustom))
+    ));
+    Ok(())
+}
+
+#[test]
+fn record_byte_limit_distinguishes_complete_framing_at_limit_from_one_extra_byte() -> TestResult {
+    let mut at_limit = vec![0; 16_777_216];
+    assert!(matches!(
+        StoredActionRegistry::decode_exact(&at_limit),
+        Err(StoredContractError::TrailingBytes)
+    ));
+    let mut artifact_at_limit = bytes("none-safe.artifact")?;
+    assert!(artifact_at_limit.len() < 16_777_216);
+    artifact_at_limit.resize(16_777_216, 0);
+    assert!(matches!(
+        verify_retained_artifact(&artifact_at_limit, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::Contract(
+            StoredContractError::TrailingBytes
+        ))
+    ));
+    at_limit.push(0);
+    artifact_at_limit.push(0);
+    assert!(matches!(
+        StoredActionRegistry::decode_exact(&at_limit),
+        Err(StoredContractError::BoundExceeded)
+    ));
+    assert!(matches!(
+        verify_retained_artifact(&artifact_at_limit, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::Contract(
+            StoredContractError::BoundExceeded
+        ))
+    ));
+    Ok(())
+}
+
+#[test]
+fn rehashed_artifact_versions_preserve_existing_compatibility_algebra() -> TestResult {
+    [
+        vb_storage::compat::SchemaVersion::new(0, 0, 0),
+        vb_storage::compat::SchemaVersion::new(1, 0, 0),
+        vb_storage::compat::SchemaVersion::new(2, 0, 0),
+        vb_storage::compat::SchemaVersion::new(2, 0, 1),
+        vb_storage::compat::SchemaVersion::new(2, 2, 0),
+        vb_storage::compat::SchemaVersion::new(3, 0, 0),
+    ]
+    .into_iter()
+    .try_for_each(|version| -> TestResult {
+        let mut value = artifact("none-safe.artifact")?;
+        value.artifact_version = version;
+        rebind(&mut value)?;
+        let raw = postcard::to_allocvec(&value)?;
+        let result = verify_retained_artifact(&raw, RuntimePolicy::Strict);
+        if version.major == 2 {
+            let verified = result?;
+            assert_eq!(verified.original_bytes(), raw);
+            assert_eq!(verified.artifact(), &value);
+            assert_eq!(
+                verified.verifier_family(),
+                vb_storage::ArtifactVerifierFamily::HistoricalMain
+            );
+        } else {
+            assert!(
+                matches!(result, Err(HistoricalArtifactError::Artifact(
+                JournalError::ArtifactVersionIncompatible { held, required, class }
+            )) if held == version && required == vb_storage::compat::CURRENT_IR_VERSION
+                && class == vb_storage::compat::CompatibilityClass::Rejected),
+                "{version}"
+            );
+        }
+        Ok(())
+    })
+}
+
+#[test]
+fn compatible_artifact_versions_still_require_exact_identity_source_and_proof() -> TestResult {
+    let mut original = artifact("none-safe.artifact")?;
+    original.artifact_version = vb_storage::compat::SchemaVersion::new(2, 2, 0);
+    rebind(&mut original)?;
+    verify_retained_artifact(&postcard::to_allocvec(&original)?, RuntimePolicy::Strict)?;
+    let mut checksum = original.clone();
+    checksum.accepted_at_seq = vb_storage::EventSeq::new(99);
+    assert!(matches!(
+        verify_retained_artifact(&postcard::to_allocvec(&checksum)?, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::Artifact(
+            JournalError::ArtifactChecksumMismatch
+        ))
+    ));
+    let mut source = original.clone();
+    let vb_core::artifact::ArtifactEvidence::Verified(base) = &mut source.verification.evidence
+    else {
+        return Err("verified fixture required".into());
+    };
+    base.verifier_digest = vb_core::WorkflowDigest::from_bytes([0; 32]);
+    rebind(&mut source)?;
+    assert!(matches!(
+        verify_retained_artifact(&postcard::to_allocvec(&source)?, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::UnknownVerifierFamily { .. })
+    ));
+    let mut proof = original;
+    proof.verification.bounded_claimed = false;
+    rebind(&mut proof)?;
+    assert!(matches!(
+        verify_retained_artifact(&postcard::to_allocvec(&proof)?, RuntimePolicy::Strict),
+        Err(HistoricalArtifactError::Artifact(
+            JournalError::ArtifactMalformed
+        ))
+    ));
+    Ok(())
+}
+
+#[test]
+fn exact_truncation_and_noncanonical_framing_have_distinct_codec_outcomes() -> TestResult {
+    let registry = bytes("layout-sentinel.registry")?;
+    let registry_end = registry.len().checked_sub(1).ok_or("registry byte")?;
+    assert!(matches!(
+        StoredActionRegistry::decode_exact(registry.get(..registry_end).ok_or("registry range")?),
+        Err(StoredContractError::Codec(
+            postcard::Error::DeserializeUnexpectedEnd
+        ))
+    ));
+    let artifact = bytes("none-safe.artifact")?;
+    let artifact_end = artifact.len().checked_sub(1).ok_or("artifact byte")?;
+    assert!(matches!(
+        verify_retained_artifact(
+            artifact.get(..artifact_end).ok_or("artifact range")?,
+            RuntimePolicy::Strict
+        ),
+        Err(HistoricalArtifactError::Contract(
+            StoredContractError::Codec(postcard::Error::DeserializeUnexpectedEnd)
+        ))
+    ));
+    assert!(matches!(
+        StoredActionRegistry::decode_exact(&[0x80, 0]),
+        Err(StoredContractError::NoncanonicalEncoding)
+    ));
+    Ok(())
+}
+
+#[test]
+fn historical_evidence_versions_keep_exact_migration_and_unsupported_outcomes() -> TestResult {
+    [
+        (0, false),
+        (1, true),
+        (2, true),
+        (4, false),
+        (u16::MAX, false),
+    ]
+    .into_iter()
+    .try_for_each(|(held, migration)| -> TestResult {
+        let mut value = artifact("none-safe.artifact")?;
+        let vb_core::artifact::ArtifactEvidence::Verified(base) = &mut value.verification.evidence
+        else {
+            return Err("unpacked fixture required".into());
+        };
+        base.schema_version = held;
+        rebind(&mut value)?;
+        let result =
+            verify_retained_artifact(&postcard::to_allocvec(&value)?, RuntimePolicy::Strict);
+        match (migration, result) {
+            (
+                true,
+                Err(HistoricalArtifactError::Artifact(JournalError::MigrationRequired {
+                    from,
+                    to,
+                })),
+            ) => assert_eq!((from, to), (held, 3)),
+            (
+                false,
+                Err(HistoricalArtifactError::Artifact(JournalError::UnsupportedSchemaVersion {
+                    version,
+                })),
+            ) => assert_eq!(version, held),
+            (_, result) => {
+                return Err(format!("unexpected evidence version {held}: {result:?}").into());
+            }
+        }
+        Ok(())
+    })
+}

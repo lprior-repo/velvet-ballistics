@@ -44,6 +44,7 @@ YAML source (cold public authoring surface)
 
 ```text
 crates/vb_core         Compiled IR, engine, frame, value store, diagnostics
+crates/vb_http         Bounded cold HTTP observations
 crates/vb_compile      Strict YAML compilation pipeline and checked IR lowering
 crates/vb_yaml         Cold YAML parser, AST, and source maps
 crates/vb_validate     Control-flow, reference, schema, taint validation

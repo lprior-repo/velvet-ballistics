@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "bead": "vb-eirmk.60",
+  "workspace": "/home/lewis/src/isoloated/vb-taxonomy60-cli-ipc-r29",
+  "base": "c05fd5253aa0a997e91b8cfb9e105d83078325a5",
+  "tip": "04641a289c52ed28cdfea70a3a9d85befa3edb6e",
+  "bookmark": "codex/taxonomy60-cli-ipc-compat-r29",
+  "state": "FROZEN; unreviewed partial compatibility candidate for root's single draft PR",
+  "source_count": 6,
+  "bindings": [
+    {
+      "path": "crates/velvet_ballistics/src/replay/event_to_json/continuation_tests/support.rs",
+      "preimage_sha256": "26a0c7bad0b0f82c64a2e011b2de1034f8dce515997e1ddf7f4160059d275140",
+      "postimage_sha256": "642efca1787fb2c30a33a22ad5e1a441b617556723e002e245f9b32b911b614e",
+      "preimage_git_blob": "5df4a8cc248d42a343a749cbf26dc50c2437be20",
+      "postimage_git_blob": "3746138ea9791faf220d5af2efe28c97d6847240",
+      "saved_preimage": "preimage/00-crates__velvet_ballistics__src__replay__event_to_json__continuation_tests__support.rs",
+      "saved_source": "source/00-crates__velvet_ballistics__src__replay__event_to_json__continuation_tests__support.rs"
+    },
+    {
+      "path": "crates/velvet_ballistics/src/semantic_diff_baseline.rs",
+      "preimage_sha256": "de896e7e0799517c03c340fe6ee0d6c3ee45399d812d74583c67a409f45c8461",
+      "postimage_sha256": "55b469008cd944ae8c2cc26c268b55e237c7bb3db74df53e02ba3137330468ea",
+      "preimage_git_blob": "cc06da8059eb33b99d6d3cab04cbbc45a5bf7936",
+      "postimage_git_blob": "83e5a40c9b2d30671107658c5ed398ec2503735c",
+      "saved_preimage": "preimage/01-crates__velvet_ballistics__src__semantic_diff_baseline.rs",
+      "saved_source": "source/01-crates__velvet_ballistics__src__semantic_diff_baseline.rs"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cli_integration/part_a.rs",
+      "preimage_sha256": "3ceb706dc0c863d2e1c67e9652276fd210609d399e9d72189c6dec0d030adf95",
+      "postimage_sha256": "c688da97306b58bbd2f39c336c90be8d9e083db5af4380d2544881ab16d110e3",
+      "preimage_git_blob": "287aaaaee8159a8e72638efba4e42d709bf02e49",
+      "postimage_git_blob": "255a95cba5aa449ba8584c6b6b6083232094035d",
+      "saved_preimage": "preimage/02-crates__velvet_ballistics__tests__cli_integration__part_a.rs",
+      "saved_source": "source/02-crates__velvet_ballistics__tests__cli_integration__part_a.rs"
+    },
+    {
+      "path": "crates/workspace_tests/tests/cli/action_discovery_names.rs",
+      "preimage_sha256": "549ce696fb831a3bf8014d93138b3f3763def278dd2927ea2cead0e5ea776c81",
+      "postimage_sha256": "11b799a7ca9d32a157686756ce632b86bb9bcac6d3a9025659f8aa4c81f4b3dd",
+      "preimage_git_blob": "2de8b06e176a5a86dd44159fc3ed891bedf9fb1b",
+      "postimage_git_blob": "7a994b31de48140d722d29662ce34d63eb784c22",
+      "saved_preimage": "preimage/03-crates__workspace_tests__tests__cli__action_discovery_names.rs",
+      "saved_source": "source/03-crates__workspace_tests__tests__cli__action_discovery_names.rs"
+    },
+    {
+      "path": "crates/workspace_tests/tests/cli/explain_execution_plan.rs",
+      "preimage_sha256": "4711eb5e8479293124c76755601c0a2abed4dd6d1afae78740aa0c3506163411",
+      "postimage_sha256": "3e9c28b3b8fc8dc1a12d986dd69180f62559f60e0b2ccd64ba8159249bcb6519",
+      "preimage_git_blob": "f1b58846a8608929955c3f286b4b96d507b66d95",
+      "postimage_git_blob": "9ef6fe9afdee0c19738c05827f356846f4057854",
+      "saved_preimage": "preimage/04-crates__workspace_tests__tests__cli__explain_execution_plan.rs",
+      "saved_source": "source/04-crates__workspace_tests__tests__cli__explain_execution_plan.rs"
+    },
+    {
+      "path": "crates/workspace_tests/tests/cli/workflow_semantic_diff.rs",
+      "preimage_sha256": "222a4966a7becb49d425b60aa0991e2afd659ef8677f8d06ad88958e0d103e1f",
+      "postimage_sha256": "04cf1dee66d84b08f97ef7173113bd7e554bc9e2f8447cd4b2894d7d68ac177c",
+      "preimage_git_blob": "dbeba06b9f2c8b07ba034bfd524da817acefdca0",
+      "postimage_git_blob": "c6d831ca21764c185331113946af9d3c0b8aff1f",
+      "saved_preimage": "preimage/05-crates__workspace_tests__tests__cli__workflow_semantic_diff.rs",
+      "saved_source": "source/05-crates__workspace_tests__tests__cli__workflow_semantic_diff.rs"
+    }
+  ],
+  "runs": [
+    {
+      "name": "baseline-native",
+      "command": "baseline-native.command.json",
+      "result": {
+        "exit": 101,
+        "signal": null,
+        "finished": "2026-11-15T20:26:20.014Z"
+      },
+      "summary": [
+        "error[E0308]: mismatched types",
+        "error[E0308]: mismatched types"
+      ],
+      "stdout": "baseline-native.stdout.log",
+      "stderr": "baseline-native.stderr.log"
+    },
+    {
+      "name": "native-after-adapters",
+      "command": "native-after-adapters.command.json",
+      "result": {
+        "exit": 100,
+        "signal": null,
+        "finished": "2026-11-15T20:32:13.850Z"
+      },
+      "summary": [
+        "Summary [   1.152s] 828/1868 tests run: 825 passed, 3 failed, 0 skipped",
+        "warning: 1040/1868 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)"
+      ],
+      "stdout": "native-after-adapters.stdout.log",
+      "stderr": "native-after-adapters.stderr.log"
+    },
+    {
+      "name": "native-diagnostic-all",
+      "command": "native-diagnostic-all.command.json",
+      "result": {
+        "exit": 100,
+        "signal": null,
+        "finished": "2026-11-15T20:33:05.479Z"
+      },
+      "summary": [
+        "Summary [  15.405s] 1868 tests run: 1861 passed, 7 failed, 0 skipped"
+      ],
+      "stdout": "native-diagnostic-all.stdout.log",
+      "stderr": "native-diagnostic-all.stderr.log"
+    },
+    {
+      "name": "final-native",
+      "command": "final-native.command.json",
+      "result": {
+        "exit": 0,
+        "signal": null,
+        "finished": "2026-11-15T20:37:13.290Z"
+      },
+      "summary": [
+        "Summary [  81.075s] 1868 tests run: 1868 passed, 0 skipped"
+      ],
+      "stdout": "final-native.stdout.log",
+      "stderr": "final-native.stderr.log"
+    },
+    {
+      "name": "source-clippy",
+      "command": "source-clippy.command.json",
+      "result": {
+        "exit": 0,
+        "signal": null,
+        "finished": "2026-11-15T20:37:45.408Z"
+      },
+      "summary": [],
+      "stdout": "source-clippy.stdout.log",
+      "stderr": "source-clippy.stderr.log"
+    },
+    {
+      "name": "format-check",
+      "command": "format-check.command.json",
+      "result": {
+        "exit": 0,
+        "signal": null,
+        "finished": "2026-11-15T20:37:33.640Z"
+      },
+      "summary": [],
+      "stdout": "format-check.stdout.log",
+      "stderr": "format-check.stderr.log"
+    }
+  ],
+  "changes": "Family-aware canonical projection through sealed verified retained-artifact API; continuation fixture adaptation; exact canonical metadata assertions; valid issued ExternalRead declaration/nonmutation control for Idempotent and RequiresIdempotencyKey.",
+  "limits": [
+    "No independent CODE or TEST approval.",
+    "No full workspace CI or formal closure.",
+    "No overall taxonomy60 completion claim.",
+    "No vb_ipc source changes; package was verified alongside CLI.",
+    "RequiresIdempotencyKey test only inspects declarations; it does not dispatch an external effect or attest a stable operation key.",
+    "No production/core/runtime/storage/validation/gate/dependency/schema/format edits."
+  ],
+  "root_handoff": "Parent imports this exact Git commit and owns single draft PR; no competing PR or main push."
+}

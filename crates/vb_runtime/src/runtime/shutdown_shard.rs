@@ -25,14 +25,16 @@ impl Runtime {
     /// Routes to the shard that currently owns `run` (vb-906ix).
     ///
     /// Existing runs are routed by owner scan so commands reach the run
-    /// after migration; a run with no owner yet (new submission, or an
-    /// unknown run) falls back to its home shard, preserving the previous
-    /// placement and error behavior.
+    /// after migration. Without a materialized owner, a unique pending queue
+    /// supplies placement; otherwise the home shard is used. Ambiguous pending
+    /// placement fails closed without enqueueing or granting execution authority.
     fn shard_for(&self, run: RunId) -> Result<&Shard, RuntimeError> {
         match self.shard_for_run(run) {
             Ok(shard) => Ok(shard),
             Err(_) => {
-                let index = self.shard_index(run);
+                let index = self
+                    .pending_route_index(run)?
+                    .unwrap_or_else(|| self.shard_index(run));
                 self.shards.get(index).ok_or(RuntimeError::RunNotFound)
             }
         }
@@ -43,11 +45,33 @@ impl Runtime {
         let owner_index = self
             .shards
             .iter()
-            .position(|shard| shard.run_state_contains(run) || shard.terminal_runs_contains(run))
-            .unwrap_or_else(|| self.shard_index(run));
+            .position(|shard| shard.run_state_contains(run) || shard.terminal_runs_contains(run));
+        let owner_index = match owner_index {
+            Some(index) => index,
+            None => self
+                .pending_route_index(run)?
+                .unwrap_or_else(|| self.shard_index(run)),
+        };
         self.shards
             .get_mut(owner_index)
             .ok_or(RuntimeError::RunNotFound)
+    }
+
+    /// Pending commands are placement hints, never admission authority.
+    /// Keep later commands on a migrated queue until a materialized owner exists.
+    fn pending_route_index(&self, run: RunId) -> Result<Option<usize>, RuntimeError> {
+        let mut owner = None;
+        for (index, shard) in self.shards.iter().enumerate() {
+            if shard.command_queue.pending_for(run) > 0 {
+                if owner.is_some() {
+                    return Err(RuntimeError::UnsupportedOperation {
+                        operation: "migration_pending_owner_ambiguous",
+                    });
+                }
+                owner = Some(index);
+            }
+        }
+        Ok(owner)
     }
 
     /// Returns the shard that currently owns `run`, scanning all shards.

@@ -149,3 +149,66 @@ fn validate_single_id_checks_invalid_before_reserved() {
 fn reserved_ids_count() {
     assert_eq!(RESERVED_IDS.len(), 31);
 }
+
+#[test]
+fn reserved_ids_match_current_contract_and_precede_duplicates() {
+    for reserved in [
+        "now",
+        "random",
+        "runtime",
+        "null",
+        "true",
+        "false",
+        "input",
+        "inputs",
+        "vars",
+        "secrets",
+        "steps",
+        "error",
+        "attempt",
+        "total",
+        "result",
+        "when",
+        "item",
+        "do",
+        "set",
+        "choose",
+        "for_each",
+        "together",
+        "collect",
+        "reduce",
+        "repeat",
+        "wait",
+        "ask",
+        "try_again",
+        "on_error",
+        "then",
+        "finish",
+    ] {
+        assert!(is_reserved_id(reserved), "{reserved}");
+        assert_eq!(
+            validate_single_id(reserved, &[]),
+            Err(ValidationError::ReservedId {
+                id: reserved.to_owned()
+            }),
+        );
+        assert_eq!(
+            validate_single_id(reserved, &[reserved]),
+            Err(ValidationError::ReservedId {
+                id: reserved.to_owned()
+            }),
+        );
+    }
+}
+
+#[test]
+fn legacy_primitive_words_are_unreserved_ids_but_duplicates_still_reject() {
+    for id in ["parallel", "aggregate"] {
+        assert!(!is_reserved_id(id), "{id}");
+        assert_eq!(validate_single_id(id, &[]), Ok(()));
+        assert_eq!(
+            validate_single_id(id, &[id]),
+            Err(ValidationError::DuplicateId { id: id.to_owned() }),
+        );
+    }
+}

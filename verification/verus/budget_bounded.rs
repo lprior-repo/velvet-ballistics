@@ -962,7 +962,7 @@ pub proof fn lemma_policy_violation_cost_units(
 
 /// Bridge contract: `validate_aggregate_budget` returns Ok iff every
 /// dimension of the aggregate budget is within the policy limits.
-/// Mirrors `crates/vb_core/src/budget/aggregate_validate.rs:109-243`.
+/// Mirrors `crates/vb_core/src/budget/aggregate_validate.rs:125-259`.
 pub assume_specification[ production::validate_aggregate_budget ](
     budget: &AggregateResourceBudget,
     policy: &BoundednessPolicy,
@@ -1238,7 +1238,7 @@ pub proof fn proof_together_fanout_over_limit_rejects(branch_count: int)
 /// refinement of the verified whole budget. Every dimension present in
 /// `WholeWorkflowBudget` is propagated into `AggregateResourceBudget`
 /// by `AggregateResourceBudget::from_whole_workflow_budget` at
-/// `crates/vb_core/src/budget/aggregate_validate.rs:25-59`.
+/// `crates/vb_core/src/budget/aggregate_validate.rs:24-58`.
 pub open spec fn aggregate_refines_whole(
     whole_steps: int,
     whole_actions: int,

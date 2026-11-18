@@ -1,0 +1,30 @@
+include!("register.rs");
+
+pub(super) fn reconcile_checked(
+    adapter: &mut FjallRegister,
+    grant: &RegisterGrant,
+    ticket: ActionTicket,
+    value: i64,
+) -> Result<RegisterReceipt, ExecutorError> {
+    if let Some(bytes) = adapter.metadata.get(b"state")? {
+        validate_canonical::<Metadata>(&bytes, 64)?;
+    }
+    if let Some(bytes) = adapter.receipts.get(receipt::receipt_key(ticket)?)? {
+        validate_canonical::<ReceiptRecord>(&bytes, MAX_RECEIPT_BYTES)?;
+    }
+    adapter.reconcile(grant, ticket, value)
+}
+
+fn validate_canonical<T: serde::de::DeserializeOwned + Serialize>(
+    bytes: &[u8],
+    max: usize,
+) -> Result<(), ExecutorError> {
+    if bytes.len() > max {
+        return Err(ExecutorError::Corrupt);
+    }
+    let (value, rest) = postcard::take_from_bytes::<T>(bytes)?;
+    if !rest.is_empty() || postcard::to_allocvec(&value)? != bytes {
+        return Err(ExecutorError::Corrupt);
+    }
+    Ok(())
+}

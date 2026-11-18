@@ -1,0 +1,94 @@
+//! Read-only original identity checks, separate from canonical activation.
+
+mod contracts;
+mod error;
+pub(crate) mod fingerprints;
+mod gate12;
+mod packs;
+pub(crate) mod proof;
+mod verification;
+pub(crate) mod workflow;
+pub(crate) use verification::decode as decode_retained_envelope;
+
+pub use error::HistoricalArtifactError;
+pub use verification::verify_retained_artifact;
+
+use crate::executor::{FjallRegister, RegisterReceipt};
+use crate::{AcceptedArtifact, StoredActionRegistry, StoredContractError};
+use vb_core::action_pack::CapabilityScopeSpec;
+use vb_core::{ActionContract, ActionTicket, CompiledWorkflow, SideEffect, WorkflowDigest};
+
+/// Exact supported source family checked for the retained proof, not a compatibility grant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArtifactVerifierFamily {
+    /// Actual retained main writer and its eighteen-source verifier.
+    HistoricalMain,
+    /// Current canonical verifier with its explicitly bound source graph.
+    CanonicalCurrent,
+}
+
+/// Sealed immutable identity/evidence result. It never contains an escaping effect grant.
+#[derive(Debug)]
+pub struct VerifiedHistoricalArtifact {
+    artifact: AcceptedArtifact,
+    workflow: CompiledWorkflow,
+    family: ArtifactVerifierFamily,
+    bytes: Box<[u8]>,
+}
+
+impl VerifiedHistoricalArtifact {
+    /// Original complete artifact bytes, unchanged by verification or projection.
+    pub fn original_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+    /// Original complete accepted-envelope identity.
+    pub const fn digest(&self) -> WorkflowDigest {
+        self.artifact.digest
+    }
+    /// Original immutable envelope metadata; its registry remains opaque cold data.
+    pub fn artifact(&self) -> &AcceptedArtifact {
+        &self.artifact
+    }
+    /// Original compiled workflow verified against the stored evidence.
+    pub fn workflow(&self) -> &CompiledWorkflow {
+        &self.workflow
+    }
+    /// Exact original ordered contract registry.
+    pub fn contracts(&self) -> &StoredActionRegistry {
+        &self.artifact.action_contracts
+    }
+    /// Exact source family for the runtime owner's later compatibility decision.
+    pub const fn verifier_family(&self) -> ArtifactVerifierFamily {
+        self.family
+    }
+
+    /// Return compatible canonical data only; the caller still owns runtime activation checks.
+    pub fn try_canonical(&self) -> Result<Box<[ActionContract]>, StoredContractError> {
+        if let vb_core::artifact::ArtifactEvidence::Packed(packed) =
+            &self.artifact.verification.evidence
+            && let Some(pack) = packed.packs.first()
+        {
+            return Err(StoredContractError::ForbiddenAttestedClassification {
+                action: pack.action,
+                side_effect: SideEffect::LocalWrite,
+            });
+        }
+        match self.family {
+            ArtifactVerifierFamily::HistoricalMain => self.contracts().try_canonical(),
+            ArtifactVerifierFamily::CanonicalCurrent => self.contracts().try_current_canonical(),
+        }
+    }
+
+    /// Read one existing receipt only. An internal historical grant cannot escape this call.
+    pub fn reconcile_receipt(
+        &self,
+        adapter: &mut FjallRegister,
+        ticket: ActionTicket,
+        scope: CapabilityScopeSpec,
+        value: i64,
+    ) -> Result<RegisterReceipt, HistoricalArtifactError> {
+        Ok(crate::executor::reconcile_historical_receipt(
+            self, adapter, ticket, scope, value,
+        )?)
+    }
+}

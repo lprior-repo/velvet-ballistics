@@ -415,3 +415,18 @@ fn wrong_ticket_rejected() -> Result<(), Box<dyn std::error::Error>> {
     assert_ticket_and_seq_unchanged(&shard, ticket, seq_before)?;
     Ok(())
 }
+
+#[test]
+fn stale_run_attempt_policy_decision_rejected_without_effects() -> Result<(), String> {
+    let (mut shard, journal, old, current) = super::stale_run_fixture()?;
+    super::assert_stale_route_rejected_without_effects(
+        &mut shard,
+        &journal,
+        current.run,
+        RuntimeError::StaleAttempt {
+            incoming: 1,
+            current: 2,
+        },
+        |shard| shard.append_policy_decision_strict(test_decision_record(old)),
+    )
+}

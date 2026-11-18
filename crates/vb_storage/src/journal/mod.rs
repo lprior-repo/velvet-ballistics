@@ -33,3 +33,6 @@ mod tests;
 pub use self::core::{EventReplayLimit, FjallJournal};
 pub use self::parse::parse_event;
 pub use self::readonly::ReadOnlyJournal;
+
+#[cfg(test)]
+pub(crate) mod write_fence;
