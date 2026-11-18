@@ -13,7 +13,7 @@
 //   - `crates/vb_runtime/src/ipc_refinement.rs`             (REFINE-IPC-003..005)
 //   - `crates/vb_runtime/src/shard/types/runtime_state.rs:4-67`      (RuntimeState, RuntimeEvent)
 //   - `crates/vb_runtime/src/shard/types/shard.rs:63-96`      (ShardStatus, ShardHealth)
-//   - `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8`, `crates/vb_runtime/src/shard/types/command_queue.rs:2`, `crates/vb_runtime/src/shard/types/command_queue.rs:20-36` (PendingTimerKind,
+//   - `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8`, `crates/vb_runtime/src/shard/types/command_queue.rs:2`, `crates/vb_runtime/src/shard/types/command_queue.rs:20-39` (PendingTimerKind,
 //                                                            ShardCommandQueue,
 //                                                            MAX_COMMAND_QUEUE_CAPACITY)
 //   - `crates/vb_runtime/src/shard/timer_wheel.rs:21-165`   (TimerEntry, TimerWheel)
