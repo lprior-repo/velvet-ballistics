@@ -15,7 +15,7 @@
 //   - `crates/vb_runtime/src/shard/types/shard.rs:63-96`      (`ShardStatus`,
 //                                                            `ShardHealth`)
 //   - `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8` (`PendingTimerKind`)
-//   - `crates/vb_runtime/src/shard/types/command_queue.rs:2,20-36` (`ShardCommandQueue`,
+//   - `crates/vb_runtime/src/shard/types/command_queue.rs:2,20-39` (`ShardCommandQueue`,
 //                                                            `MAX_COMMAND_QUEUE_CAPACITY`)
 //   - `crates/vb_runtime/src/shard/timer_wheel.rs:20-159`   (`TimerEntry`,
 //                                                            `TimerWheel`)
@@ -68,7 +68,7 @@
 // Production `crates/vb_runtime/src/shard/types/shard.rs:91-96`
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types/command_queue.rs:2
 //     (declared in the spec file, not this mirror — see header note)
-//   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types/command_queue.rs:20-36
+//   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types/command_queue.rs:20-39
 //   - `PendingTimerKind` (2-variant enum)             <- crates/vb_runtime/src/shard/types/pending_timer.rs:5-8
 // Production `crates/vb_runtime/src/shard/types/pending_timer.rs:5-8`
 //   - `TimerEntry` (4-field struct)                   <- crates/vb_runtime/src/shard/timer_wheel.rs:21-30
@@ -241,40 +241,40 @@ pub struct ShardStatus {
 }
 
 // ============================================================================
-// Mirror of production `ShardCommandQueue` (shard/types/command_queue.rs:20-36)
+// Mirror of production `ShardCommandQueue` (shard/types/command_queue.rs:20-39)
 // ============================================================================
 
 /// Mirror of production `vb_runtime::shard::types::ShardCommandQueue`
-/// at `crates/vb_runtime/src/shard/types/command_queue.rs:20-36`.
+/// at `crates/vb_runtime/src/shard/types/command_queue.rs:20-39`.
 #[derive(Clone)]
 pub struct ShardCommandQueue {
-    /// Production field (types/command_queue.rs:23): configured queue capacity.
+    /// Production field (types/command_queue.rs:24): configured queue capacity.
     pub capacity: usize,
-    /// Production `len` (types/command_queue.rs:197-199): current queue depth.
+    /// Production `len` (types/command_queue.rs:144-152): current queue depth.
     pub depth: usize,
 }
 
 impl ShardCommandQueue {
-    /// Production `ShardCommandQueue::len` at types/command_queue.rs:197-199.
+    /// Production `ShardCommandQueue::len` at types/command_queue.rs:144-152.
     #[verifier::external]
     pub fn len(&self) -> usize {
         self.depth
     }
 
-    /// Production `ShardCommandQueue::capacity` at types/command_queue.rs:209-211.
+    /// Production `ShardCommandQueue::capacity` at types/command_queue.rs:162-164.
     #[verifier::external]
     pub fn capacity(&self) -> usize {
         self.capacity
     }
 
     /// Production `ShardCommandQueue::remaining_capacity` at
-    /// types/command_queue.rs:215-217.
+    /// types/command_queue.rs:168-170.
     #[verifier::external]
     pub fn remaining_capacity(&self) -> usize {
         self.capacity.saturating_sub(self.depth)
     }
 
-    /// Production `ShardCommandQueue::is_full` at types/command_queue.rs:221-223.
+    /// Production `ShardCommandQueue::is_full` at types/command_queue.rs:174-176.
     #[verifier::external]
     pub fn is_full(&self) -> bool {
         self.depth == self.capacity
