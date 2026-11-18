@@ -20,7 +20,28 @@ pub struct TraceRing {
     history: VecDeque<TraceEvent>,
 }
 
+pub(crate) fn validate_trace_capacity(capacity: usize) -> crate::RuntimeResult<()> {
+    let effective = capacity.max(1);
+    if effective.checked_mul(2).is_none()
+        || std::alloc::Layout::array::<TraceEvent>(effective).is_err()
+    {
+        return Err(crate::RuntimeError::TraceCapacityOverflow {
+            requested: capacity,
+        });
+    }
+    Ok(())
+}
+
 impl TraceRing {
+    /// Creates a ring after validating storage and index representability.
+    ///
+    /// Zero preserves the legacy one-slot pending ring with no replay history.
+    /// Allocator exhaustion in rtrb's infallible allocation remains unrecoverable.
+    pub fn try_new(capacity: usize) -> crate::RuntimeResult<Self> {
+        validate_trace_capacity(capacity)?;
+        Ok(Self::new(capacity))
+    }
+
     /// Creates a trace ring with nonzero bounded capacity.
     #[must_use]
     pub fn new(capacity: usize) -> Self {

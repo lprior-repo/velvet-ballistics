@@ -11,6 +11,7 @@ struct PreparedShardServices {
     services: ShardServices,
     queue: ShardCommandQueue,
     aggregate: RunAggregate,
+    trace_ring: TraceRing,
 }
 
 impl Shard {
@@ -53,6 +54,7 @@ impl Shard {
     }
 
     fn with_services(config: ShardConfig, services: ShardServices) -> RuntimeResult<Self> {
+        crate::trace::validate_trace_capacity(config.trace_capacity)?;
         let queue = ShardCommandQueue::from_config(config)?;
         let aggregate = RunAggregate::try_with_timer_capacity(config.max_active_runs)?;
         Ok(Self::with_prepared_services(PreparedShardServices {
@@ -60,6 +62,7 @@ impl Shard {
             services,
             queue,
             aggregate,
+            trace_ring: TraceRing::try_new(config.trace_capacity)?,
         }))
     }
 
@@ -75,7 +78,7 @@ impl Shard {
             bound_open_gates: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
-            trace_ring: TraceRing::new(parts.config.trace_capacity),
+            trace_ring: parts.trace_ring,
             counters: ShardCounters::new(),
             quota: parts.services.quota,
             pending_quota_reservation: None,

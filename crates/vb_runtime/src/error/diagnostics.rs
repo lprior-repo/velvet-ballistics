@@ -11,6 +11,8 @@ impl RuntimeError {
     pub const ADMISSION_DURABILITY_ERROR_RUNTIME_CODE: &str = "ADMISSION_DURABILITY_ERROR";
     pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
 
+    pub const SHARD_ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x202A);
+    pub const TRACE_CAPACITY_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x202B);
     pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2001);
     pub const RUN_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2002);
     pub const ACTIVE_RUN_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2003);
@@ -95,6 +97,8 @@ impl RuntimeError {
 
     fn diagnostic_code_capacity(&self) -> Option<DiagnosticCode> {
         match self {
+            Self::ShardAllocationFailed { .. } => Some(Self::SHARD_ALLOCATION_FAILED_CODE),
+            Self::TraceCapacityOverflow { .. } => Some(Self::TRACE_CAPACITY_OVERFLOW_CODE),
             Self::QueueFull => Some(Self::QUEUE_FULL_CODE),
             Self::PerRunQueueDepthExceeded { .. } => Some(Self::PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE),
             Self::ActiveRunCapacityExceeded { .. } => Some(Self::ACTIVE_RUN_CAPACITY_EXCEEDED_CODE),

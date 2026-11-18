@@ -5,7 +5,8 @@ pub(super) fn write_runtime_error_dynamic(
     error: &RuntimeError,
     f: &mut Formatter<'_>,
 ) -> fmt::Result {
-    let result = write_dynamic_capacity(error, f)
+    let result = write_dynamic_construction(error, f)
+        .or_else(|| write_dynamic_capacity(error, f))
         .or_else(|| write_dynamic_operation(error, f))
         .or_else(|| write_dynamic_persistence(error, f))
         .or_else(|| write_dynamic_action_attempt(error, f))
@@ -208,6 +209,19 @@ fn write_dynamic_other(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fm
         } => Some(write!(
             f,
             "runtime input slot {slot:?} kind mismatch: expected {expected:?}, got {actual:?}"
+        )),
+        _ => None,
+    }
+}
+
+fn write_dynamic_construction(error: &RuntimeError, f: &mut Formatter<'_>) -> Option<fmt::Result> {
+    match error {
+        RuntimeError::ShardAllocationFailed { requested } => {
+            Some(write!(f, "cannot reserve storage for {requested} shards"))
+        }
+        RuntimeError::TraceCapacityOverflow { requested } => Some(write!(
+            f,
+            "trace capacity cannot be represented: {requested}"
         )),
         _ => None,
     }

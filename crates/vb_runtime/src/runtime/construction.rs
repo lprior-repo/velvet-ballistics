@@ -1,4 +1,13 @@
 impl Runtime {
+    fn prepare_shard_storage(count: usize, trace_capacity: usize) -> RuntimeResult<Vec<Shard>> {
+        crate::trace::validate_trace_capacity(trace_capacity)?;
+        let mut shards = Vec::new();
+        shards
+            .try_reserve_exact(count)
+            .map_err(|_| RuntimeError::ShardAllocationFailed { requested: count })?;
+        Ok(shards)
+    }
+
     /// Installs names available to secret declarations on each shard.
     pub fn set_available_secret_names(&mut self, names: Box<[Box<str>]>) {
         let names: std::sync::Arc<[Box<str>]> = names.into();
@@ -25,7 +34,7 @@ impl Runtime {
     ) -> RuntimeResult<Self> {
         crate::shard::impl_::validate_command_queue_capacity(config.command_queue_capacity)?;
         let count = shard_count.get();
-        let mut shards = Vec::with_capacity(count);
+        let mut shards = Self::prepare_shard_storage(count, config.trace_capacity)?;
         let quota = crate::quota::SharedQuotaLedger::new();
         let mut index = 0usize;
         while index < count {

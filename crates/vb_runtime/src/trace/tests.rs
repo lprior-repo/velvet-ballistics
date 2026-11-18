@@ -1308,3 +1308,21 @@ fn trace_ring_fill_pct_boundary_values_are_bit_exact() {
         );
     }
 }
+
+#[test]
+fn trace_capacity_layout_boundary_is_checked_without_allocation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let maximum = usize::try_from(isize::MAX)? / std::mem::size_of::<TraceEvent>();
+    assert_eq!(super::validate_trace_capacity(maximum), Ok(()));
+    let overflow = maximum
+        .checked_add(1)
+        .ok_or("trace layout boundary must have a successor")?;
+    assert!(overflow.checked_mul(2).is_some());
+    assert_eq!(
+        super::validate_trace_capacity(overflow),
+        Err(crate::RuntimeError::TraceCapacityOverflow {
+            requested: overflow
+        })
+    );
+    Ok(())
+}
