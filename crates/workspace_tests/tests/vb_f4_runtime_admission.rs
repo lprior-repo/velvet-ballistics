@@ -13,7 +13,7 @@ fn runtime() -> (Runtime, Arc<VolatileRuntimeJournal>) {
         ..ShardConfig::default()
     };
     (
-        Runtime::new(NonZeroUsize::MIN, config, journal.clone()).expect("valid test configuration"),
+        Runtime::new(NonZeroUsize::MIN, config, journal.clone()),
         journal,
     )
 }

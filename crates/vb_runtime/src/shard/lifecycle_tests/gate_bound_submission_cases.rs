@@ -4,7 +4,7 @@ fn open_bound_gate_rejects_each_zero_digest_before_journal()
     for field in 0..3 {
         let run = RunId::new(94010 + field);
         let journal = BoundJournal::shared();
-        let mut shard = Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+        let mut shard = Shard::new_with_journal(small_config(), journal.clone());
         let workflow = require_workflow("chain", chain_workflow())?;
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
@@ -121,7 +121,7 @@ fn legacy_and_bound_paths_reject_each_others_gates() -> Result<(), Box<dyn std::
 fn bound_path_rejects_legacy_gate_without_binding() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(94004);
     let journal = BoundJournal::shared();
-    let mut shard = Shard::new_with_journal(small_config(), journal).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal);
     let workflow = require_workflow("chain", chain_workflow())?;
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run,

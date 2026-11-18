@@ -165,8 +165,7 @@ fn produce_failed_run(path: &std::path::Path, run: RunId) -> Result<usize, Strin
     .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
-        .expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,
@@ -204,8 +203,7 @@ fn produce_completed_run(path: &std::path::Path, run: RunId) -> Result<usize, St
         .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
-        .expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
     runtime
         .submit_direct(run, workflow.clone())
         .map_err(|e| format!("submit failed: {e}"))?;

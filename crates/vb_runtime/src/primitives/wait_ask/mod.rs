@@ -1,46 +1,10 @@
 #![forbid(unsafe_code)]
 //! Wait and Ask suspension primitive handlers.
 
-use std::time::{Duration, Instant};
 use vb_core::engine::suspension::{validate_ask_inputs, validate_numeric};
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
-
-const TIMER_DURATION_RESOURCE: &str = "timer_duration";
-
-fn timer_duration_error() -> EngineError {
-    EngineError::ResourceLimitExceeded {
-        resource: TIMER_DURATION_RESOURCE,
-    }
-}
-
-fn timeout_duration(value: SlotValue) -> Result<Duration, EngineError> {
-    match value {
-        SlotValue::I64(millis) => u64::try_from(millis.max(0))
-            .map(Duration::from_millis)
-            .map_err(|_| timer_duration_error()),
-        SlotValue::F64(millis) if millis.get() > 0.0 => {
-            let seconds = millis.get() / 1000.0;
-            let duration =
-                Duration::try_from_secs_f64(seconds).map_err(|_| timer_duration_error())?;
-            let millis = u64::try_from(duration.as_millis()).map_err(|_| timer_duration_error())?;
-            Ok(Duration::from_millis(millis))
-        }
-        _ => Ok(Duration::ZERO),
-    }
-}
-
-pub(crate) fn checked_timer_deadline(value: SlotValue) -> Result<Instant, EngineError> {
-    Instant::now()
-        .checked_add(timeout_duration(value)?)
-        .ok_or_else(timer_duration_error)
-}
-
-fn validate_timer_timeout(value: SlotValue) -> Result<(), EngineError> {
-    checked_timer_deadline(value).map(|_| ())
-}
 
 /// Executes WaitUntil: reads the deadline slot, validates it is numeric,
 /// and suspends.
@@ -53,7 +17,6 @@ pub fn wait_until(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let deadline = *run.read_slot(deadline_slot)?;
     validate_numeric(deadline, "deadline")?;
-    validate_timer_timeout(deadline)?;
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
@@ -73,7 +36,6 @@ pub fn wait_event(
     if let Some(timeout) = timeout_slot {
         let timeout_value = *run.read_slot(timeout)?;
         validate_numeric(timeout_value, "timeout")?;
-        validate_timer_timeout(timeout_value)?;
     }
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::AwaitingWait)
@@ -91,9 +53,6 @@ pub fn ask(
     timeout_slot: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     validate_ask_inputs(run, prompt, timeout_slot)?;
-    if let Some(timeout) = timeout_slot {
-        validate_timer_timeout(*run.read_slot(timeout)?)?;
-    }
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::AwaitingAsk)
 }
@@ -123,7 +82,3 @@ pub fn ask_resume(
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-#[path = "timer_duration_tests.rs"]
-mod timer_duration_tests;

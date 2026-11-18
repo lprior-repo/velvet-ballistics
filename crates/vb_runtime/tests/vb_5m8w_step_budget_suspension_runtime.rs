@@ -371,7 +371,7 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
         max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let run = RunId::new(5810);
     let workflow = const_then_finish_workflow(ConstValue::I64(33))?;
 
@@ -410,7 +410,7 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let run = RunId::new(5811);
     let workflow = const_then_finish_workflow(ConstValue::I64(34))?;
 

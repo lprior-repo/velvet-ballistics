@@ -96,8 +96,7 @@ impl Fixture {
                 ..ShardConfig::default()
             },
             journal.clone(),
-        )
-        .expect("valid test configuration");
+        );
         runtime.submit_direct_with_grants_and_contracts(
             RunId::new(1),
             workflow,

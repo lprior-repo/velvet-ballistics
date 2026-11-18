@@ -3,46 +3,23 @@
 //!
 //! Domain logic for analyzing journal events.
 
-use crate::EventSeq;
 use crate::events::JournalEvent;
 #[allow(unused_imports)]
-use vb_core::{ActionId, ActionTicket, RunId, StepIdx, WorkflowDigest, workflow::LifecycleState};
-
-mod analysis;
-pub use analysis::analyze_incident_events;
+use vb_core::{ActionId, RunId, StepIdx, workflow::LifecycleState};
 
 /// Side effect recorded from an action event.
 #[derive(Debug, Clone)]
 pub struct SideEffect {
-    /// Run that owns this action fact.
-    pub run: RunId,
-    /// Durable event sequence for this fact.
-    pub seq: EventSeq,
-    /// Attempt number carried by the event (run attempt for ticket events).
-    pub attempt: u16,
-    /// Action step, when available in the event.
     pub step: u16,
-    /// Action identity, when available in the event.
     pub action: u16,
-    /// Full invocation identity, absent on sparse historical events.
-    pub ticket: Option<ActionTicket>,
-    /// Accepted action ABI digest, absent on historical or abandoned events.
-    pub action_abi_digest: Option<WorkflowDigest>,
-    /// Recorded phase of this action fact.
     pub certainty: SideEffectCertainty,
 }
 
-/// Durable action phase observed in the retained event stream.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Whether an action succeeded or failed.
+#[derive(Debug, Clone)]
 pub enum SideEffectCertainty {
-    /// The invocation has a durable scheduling event.
-    Scheduled,
-    /// The invocation has a durable completion record.
     Confirmed,
-    /// The invocation has a durable action-failure record.
     Failed,
-    /// The invocation was cancelled before its action boundary completed.
-    Abandoned,
 }
 
 /// Incident analysis result from scanning journal events.
@@ -54,39 +31,116 @@ pub struct IncidentAnalysis {
     pub side_effects: Vec<SideEffect>,
 }
 
+/// Build incident analysis from a run's event stream.
+pub fn analyze_incident_events(events: &[JournalEvent]) -> IncidentAnalysis {
+    let mut failure_found = false;
+    let mut failure_code = String::new();
+    let mut failed_at_step: Option<u16> = None;
+    let mut side_effects: Vec<SideEffect> = Vec::new();
+    let mut last_step_started: Option<u16> = None;
+
+    for event in events {
+        match event {
+            JournalEvent::StepStarted { step, .. } => {
+                last_step_started = Some(step.get());
+            }
+            JournalEvent::ActionCompletedEvent { step, action, .. } => {
+                side_effects.push(SideEffect {
+                    step: step.get(),
+                    action: action.get(),
+                    certainty: SideEffectCertainty::Confirmed,
+                });
+            }
+            JournalEvent::ActionCompletedEnvelope { ticket, .. } => {
+                side_effects.push(SideEffect {
+                    step: ticket.step.get(),
+                    action: ticket.action.get(),
+                    certainty: SideEffectCertainty::Confirmed,
+                });
+            }
+            JournalEvent::ActionAbandoned { ticket, .. } => {
+                // ActionAbandoned is a run-cancellation side effect;
+                // surface it as a confirmed side effect so downstream
+                // rollback / compensation logic sees the cancellation.
+                // The ticket carries the real step/action identity; never
+                // synthesize 0, which reads as blaming step 0.
+                side_effects.push(SideEffect {
+                    step: ticket.step.get(),
+                    action: ticket.action.get(),
+                    certainty: SideEffectCertainty::Confirmed,
+                });
+            }
+            JournalEvent::ActionFailedEvent { step, action, .. } => {
+                side_effects.push(SideEffect {
+                    step: step.get(),
+                    action: action.get(),
+                    certainty: SideEffectCertainty::Failed,
+                });
+            }
+            JournalEvent::StepFailed { step, .. } => {
+                failure_found = true;
+                failure_code = "StepFailed".to_string();
+                failed_at_step = Some(step.get());
+            }
+            JournalEvent::RunFailedEvent { .. } => {
+                failure_found = true;
+                failure_code = "RunFailed".to_string();
+                failed_at_step = last_step_started;
+            }
+            JournalEvent::RunCancelled { .. } => {
+                failure_found = true;
+                failure_code = "RunCancelled".to_string();
+                failed_at_step = last_step_started;
+            }
+            JournalEvent::RunKilled { .. } => {
+                failure_found = true;
+                failure_code = "RunKilled".to_string();
+                failed_at_step = last_step_started;
+            }
+            _ => {}
+        }
+    }
+
+    IncidentAnalysis {
+        failure_found,
+        failure_code,
+        failed_at_step,
+        side_effects,
+    }
+}
+
 /// Build repair hints based on the failure code, side effects, and failed step.
 pub fn build_repair_hints(
     failure_code: &str,
     side_effects: &[SideEffect],
     failed_at_step: Option<u16>,
 ) -> Vec<String> {
+    let mut hints: Vec<String> = Vec::new();
+
     match failure_code {
-        "RunFailed" | "StepFailed" => failed_run_hints(side_effects, failed_at_step),
-        "RunCancelled" => cancelled_run_hints(side_effects),
-        _ => Vec::new(),
+        "RunFailed" | "StepFailed" => {
+            hints.push("investigate step output and engine logs for the failed step".to_string());
+            if !side_effects.is_empty() {
+                hints.push(
+                    "review side effects that completed before failure for compensating actions"
+                        .to_string(),
+                );
+            }
+            if let Some(step) = failed_at_step {
+                hints.push(format!(
+                    "consider retry from step {step} using the retry command"
+                ));
+            }
+        }
+        "RunCancelled" => {
+            hints.push("run was cancelled; check if cancellation was intentional".to_string());
+            if !side_effects.is_empty() {
+                hints.push("review completed side effects for partial cleanup needs".to_string());
+            }
+        }
+        _ => {}
     }
-}
 
-fn failed_run_hints(side_effects: &[SideEffect], failed_at_step: Option<u16>) -> Vec<String> {
-    let mut hints = vec!["investigate step output and engine logs for the failed step".to_string()];
-    if !side_effects.is_empty() {
-        hints.push(
-            "review recorded action outcomes before choosing compensating actions".to_string(),
-        );
-    }
-    if let Some(step) = failed_at_step {
-        hints.push(format!(
-            "inspect the retry contract before retrying from step {step}"
-        ));
-    }
-    hints
-}
-
-fn cancelled_run_hints(side_effects: &[SideEffect]) -> Vec<String> {
-    let mut hints = vec!["run was cancelled; check if cancellation was intentional".to_string()];
-    if !side_effects.is_empty() {
-        hints.push("review recorded action outcomes for partial cleanup needs".to_string());
-    }
     hints
 }
 
@@ -217,5 +271,3 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod ticket_lifecycle_tests;

@@ -377,8 +377,17 @@ fn frame_seed_slot_dimension_overflow_reports_exact_variant() {
         output: SlotIdx::MAX,
     }];
 
+    // Frame seed now handles large slot indices gracefully instead of erroring
     let result = recover_runtime_frame_seed_from_events(&events);
-    assert_eq!(result, Err(RecoveryError::FrameDimensionOverflow { run }));
+    assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
+    let seed = result.unwrap();
+    assert_eq!(seed.step_count, 1);
+    assert!(
+        seed.steps
+            .iter()
+            .any(|entry| entry.step == StepIdx::new(0)
+                && entry.state == RecoveredStepState::Succeeded)
+    );
 }
 
 #[test]

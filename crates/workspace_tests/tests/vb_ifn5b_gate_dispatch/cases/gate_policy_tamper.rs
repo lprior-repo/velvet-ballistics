@@ -69,8 +69,7 @@ fn durable_policy_case(mismatch: &'static str) -> TestResult {
             inner: source_storage,
             mismatch,
         }),
-    )
-    .expect("valid test configuration");
+    );
     source_runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {

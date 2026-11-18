@@ -3,27 +3,9 @@ use super::RuntimeError;
 impl RuntimeError {
     #[must_use]
     pub fn runtime_code(&self) -> Option<&'static str> {
-        self.runtime_code_input()
-            .or_else(|| self.runtime_code_secret())
-            .or_else(|| self.runtime_code_capacity())
+        self.runtime_code_capacity()
             .or_else(|| self.runtime_code_storage())
             .or_else(|| self.runtime_code_action())
-    }
-
-    fn runtime_code_input(&self) -> Option<&'static str> {
-        match self {
-            Self::RuntimeInputSlotKindMismatch { .. } => {
-                Some(vb_core::errors::CoreError::INPUT_TYPE_MISMATCH_RUNTIME_CODE)
-            }
-            _ => None,
-        }
-    }
-
-    fn runtime_code_secret(&self) -> Option<&'static str> {
-        match self {
-            Self::SecretUnavailable => Some("SECRET_UNAVAILABLE"),
-            _ => None,
-        }
     }
 
     fn runtime_code_capacity(&self) -> Option<&'static str> {
@@ -50,9 +32,10 @@ impl RuntimeError {
             | Self::AdmissionDigestMismatch { .. } => {
                 Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
             }
-            Self::Core { source } => source
-                .runtime_code()
-                .or(Some(Self::STORAGE_ERROR_RUNTIME_CODE)),
+            Self::Core { source } => match source.as_ref() {
+                vb_core::errors::CoreError::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+                _ => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            },
             _ => None,
         }
     }

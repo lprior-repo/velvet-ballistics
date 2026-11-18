@@ -120,8 +120,7 @@ pub(crate) fn produce_completed_run_with_abi(
     .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
-        .expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,

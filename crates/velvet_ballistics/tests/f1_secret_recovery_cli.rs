@@ -89,8 +89,7 @@ fn failed_run(db: &Path) -> TestResult<vb_core::StepIdx> {
         NonZeroUsize::MIN,
         ShardConfig::default(),
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    )
-    .expect("valid test configuration");
+    );
     runtime.set_available_secret_names(Box::new([KEY.into()]));
     runtime.submit_direct_with_inputs_grants_and_contracts(
         RUN,

@@ -301,7 +301,7 @@ fn ask_answer_debug_format() {
 #[test]
 fn shard_submit_with_run_id_zero_accepted() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = finished_workflow() else {
         return;
     };

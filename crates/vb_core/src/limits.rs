@@ -8,7 +8,7 @@
 
 /// Maximum number of steps allowed in a single compiled workflow.
 ///
-pub const MAX_STEPS_PER_WORKFLOW: usize = 1_000;
+pub const MAX_STEPS_PER_WORKFLOW: usize = 65_535;
 
 /// Maximum number of slots allowed in a single compiled workflow.
 ///
@@ -20,7 +20,7 @@ pub const MAX_SLOTS_PER_STEP: usize = 256;
 
 /// Maximum size of the constant pool in a compiled workflow.
 ///
-pub const MAX_CONSTANTS: usize = 8_192;
+pub const MAX_CONSTANTS: usize = 65_535;
 
 /// Maximum recursive expression-evaluation depth (for safety in the bytecode engine).
 ///

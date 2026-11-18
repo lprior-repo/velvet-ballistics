@@ -21,8 +21,7 @@ enum Delivery {
 
 fn check(tamper: &StaleTamper, delivery: &Delivery) -> Result<(), Box<dyn std::error::Error>> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard =
-        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
 
     let workflow = retry_workflow().ok_or("no retry workflow")?;
     let run = RunId::new(100);

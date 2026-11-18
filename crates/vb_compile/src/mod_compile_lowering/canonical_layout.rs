@@ -47,14 +47,7 @@ pub(in crate::mod_compile_lowering) fn canonical_step_width(
             )
             .ok_or(CompileError::StepIndexOutOfRange { value: 6 }),
         crate::StepPrimitive::Collect { body, .. } => body_width(body, 3),
-        crate::StepPrimitive::Repeat { body, .. } => body_width(
-            body,
-            if super::repeat_body_uses_attempt_number(body) {
-                5
-            } else {
-                4
-            },
-        ),
+        crate::StepPrimitive::Repeat { body, .. } => body_width(body, 4),
         crate::StepPrimitive::Aggregate { body, .. } => {
             if !reduce_direct_body(body) {
                 body_width(body, 5)
@@ -136,11 +129,7 @@ pub(in crate::mod_compile_lowering) fn body_width(
                 }
                 crate::StepPrimitive::Repeat { body, .. } => {
                     pending.push((body, false));
-                    if super::repeat_body_uses_attempt_number(body) {
-                        5
-                    } else {
-                        4
-                    }
+                    4
                 }
                 crate::StepPrimitive::Aggregate { body, .. } => {
                     pending.push((body, false));

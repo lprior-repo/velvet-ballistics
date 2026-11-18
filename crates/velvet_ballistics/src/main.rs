@@ -25,9 +25,6 @@ mod action;
 mod action_specs;
 mod agent_context;
 mod agent_io;
-#[cfg(test)]
-#[path = "agent_context/tests/answer_metadata.rs"]
-mod answer_metadata_tests;
 mod app_impl;
 mod args;
 mod bench_run;
@@ -48,14 +45,10 @@ mod dispatcher;
 mod doctor;
 mod doctor_helpers;
 mod events;
-mod execution_plan;
 mod exit_code;
 mod explain;
 mod file_io;
 mod graph;
-#[cfg(test)]
-#[path = "agent_context/tests/implemented_metadata.rs"]
-mod implemented_metadata_tests;
 mod incident_diff;
 mod incident_ops;
 mod inspect;
@@ -73,9 +66,6 @@ mod run_compiled;
 mod run_compiled_runtime;
 mod run_ops;
 mod run_step;
-mod semantic_diff;
-mod semantic_diff_baseline;
-mod semantic_diff_lines;
 mod simulate;
 mod step_helpers;
 mod step_helpers_display;

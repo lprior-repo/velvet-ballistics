@@ -53,8 +53,7 @@ pub(super) fn execute_owned(source: &str, quantum: u64) -> TestResult<SlotValue>
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    )
-    .expect("valid test configuration");
+    );
     runtime.activate_owned_submission(run, source.digest)?;
     let mut waits = 0;
     for _ in 0..512 {

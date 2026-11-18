@@ -13,7 +13,6 @@ fn runtime_at(journal: Arc<FjallJournal>, quantum: u64) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
-    .expect("valid test configuration")
 }
 
 fn trace(

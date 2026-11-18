@@ -15,7 +15,7 @@ fn test_shard() -> Shard {
         max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
-    Shard::new(config).expect("valid test configuration")
+    Shard::new(config)
 }
 
 fn make_contract(
@@ -171,50 +171,6 @@ fn validate_contracts_rejects_duplicate_action_ids() -> Result<(), Box<dyn std::
         }
         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
     }
-    Ok(())
-}
-
-#[test]
-fn queued_input_kind_mismatch_refuses_submission_without_side_effects(
-) -> Result<(), Box<dyn std::error::Error>> {
-    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let shared: crate::journal::SharedRuntimeJournal = journal.clone();
-    let shard = Shard::new_with_journal(ShardConfig::default(), shared)?;
-    let workflow = input_slot_do_workflow(0)?;
-    let run = RunId::new(765);
-
-    let result = shard.enqueue(ShardCommand::SubmitWithInputs {
-        run,
-        workflow,
-        inputs: Box::from([(SlotIdx::ZERO, vb_core::value::SlotValue::Bool(true))]),
-        caps: CapabilitySet::empty(),
-    });
-
-    match result {
-        Err(error @ RuntimeError::RuntimeInputSlotKindMismatch {
-            slot,
-            expected,
-            actual,
-        }) => {
-            assert_eq!(slot, SlotIdx::ZERO);
-            assert_eq!(expected, InputSlotKind::I64);
-            assert_eq!(actual, InputSlotKind::Bool);
-            assert_eq!(
-                error.runtime_code(),
-                Some(vb_core::errors::CoreError::INPUT_TYPE_MISMATCH_RUNTIME_CODE)
-            );
-            assert_eq!(error.diagnostic_code(), RuntimeError::UNSUPPORTED_OPERATION_CODE);
-            assert_eq!(error.symbolic_code().as_str(), "UNSUPPORTED_OPERATION");
-            assert_eq!(error.to_string(), "runtime input slot kind mismatch");
-        }
-        other => return Err(format!("expected input kind mismatch, got {other:?}").into()),
-    }
-
-    assert_eq!(shard.command_queue_len(), 0);
-    assert_eq!(shard.counters().snapshot().runs_submitted, 0);
-    assert_eq!(shard.active_run_count(), 0);
-    assert!(!shard.run_state_contains(run));
-    assert_eq!(journal.snapshot()?, Vec::<crate::journal::RuntimeJournalEvent>::new());
     Ok(())
 }
 
@@ -540,14 +496,17 @@ fn validate_contracts_duplicate_precedes_index_mismatch() -> Result<(), Box<dyn 
 fn shard_boundary_validates_fabricated_id_before_admission()
 -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(ShardConfig {
-        command_queue_capacity: 64,
-        trace_capacity: 64,
-        step_budget_per_tick: 4,
-        max_active_runs: 8,
-        max_open_gates: 1024,
-        policy: RuntimePolicy::Relaxed,
-    }, journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(
+        ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 8,
+            max_open_gates: 1024,
+            policy: RuntimePolicy::Relaxed,
+        },
+        journal.clone(),
+    );
     let workflow = do_workflow(0)?;
     let run = RunId::new(100);
     let contract = make_contract(999, "fabricated")?;
@@ -588,14 +547,17 @@ fn shard_boundary_validates_fabricated_id_before_admission()
 fn shard_boundary_validates_fabricated_id_with_inputs_before_admission()
 -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(ShardConfig {
-        command_queue_capacity: 64,
-        trace_capacity: 64,
-        step_budget_per_tick: 4,
-        max_active_runs: 8,
-        max_open_gates: 1024,
-        policy: RuntimePolicy::Relaxed,
-    }, journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(
+        ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 8,
+            max_open_gates: 1024,
+            policy: RuntimePolicy::Relaxed,
+        },
+        journal.clone(),
+    );
     let workflow = do_workflow(0)?;
     let run = RunId::new(102);
     let contract = make_contract(777, "fabricated")?;
@@ -637,14 +599,17 @@ fn shard_boundary_validates_fabricated_id_with_inputs_before_admission()
 fn shard_boundary_accepts_valid_contract_and_executes_do() -> Result<(), Box<dyn std::error::Error>>
 {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(ShardConfig {
-        command_queue_capacity: 64,
-        trace_capacity: 64,
-        step_budget_per_tick: 4,
-        max_active_runs: 8,
-        max_open_gates: 1024,
-        policy: RuntimePolicy::Relaxed,
-    }, journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(
+        ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 8,
+            max_open_gates: 1024,
+            policy: RuntimePolicy::Relaxed,
+        },
+        journal.clone(),
+    );
     let workflow = setconst_do_workflow(0)?;
     let run = RunId::new(101);
     let contract = make_contract(0, "valid_action")?;
@@ -754,14 +719,17 @@ fn shard_boundary_accepts_valid_contract_and_executes_do() -> Result<(), Box<dyn
 fn shard_boundary_accepts_valid_contract_with_seeded_input()
 -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(ShardConfig {
-        command_queue_capacity: 64,
-        trace_capacity: 64,
-        step_budget_per_tick: 4,
-        max_active_runs: 8,
-        max_open_gates: 1024,
-        policy: RuntimePolicy::Relaxed,
-    }, journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(
+        ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 8,
+            max_open_gates: 1024,
+            policy: RuntimePolicy::Relaxed,
+        },
+        journal.clone(),
+    );
     let workflow = input_slot_do_workflow(0)?;
     let run = RunId::new(103);
     let inputs: Box<[(SlotIdx, SlotValue)]> = Box::from([(SlotIdx::ZERO, SlotValue::I64(55))]);

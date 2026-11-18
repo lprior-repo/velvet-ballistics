@@ -149,7 +149,7 @@ fn config_new_preserves_all_fields() {
 
 #[test]
 fn shard_new_creates_empty_shard() {
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.command_queue_len(), 0);
@@ -170,7 +170,7 @@ fn enqueue_and_capacity_tracking() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 4);
     assert_eq!(shard.remaining_capacity(), 4);
     assert_eq!(shard.is_queue_full(), false);
@@ -189,7 +189,7 @@ fn queue_full_at_capacity_boundary() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.is_queue_full(), true);
@@ -206,13 +206,13 @@ fn queue_full_at_capacity_boundary() {
 
 #[test]
 fn tick_on_empty_queue_returns_true() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     assert_eq!(shard.tick(), Ok(true));
 }
 
 #[test]
 fn tick_processes_shutdown_returns_false() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.is_shutting_down(), true);
@@ -220,7 +220,7 @@ fn tick_processes_shutdown_returns_false() {
 
 #[test]
 fn tick_after_shutdown_always_returns_false() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
@@ -240,7 +240,7 @@ fn drain_for_shutdown_processes_pending_commands() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -268,7 +268,7 @@ fn drain_for_shutdown_on_empty_queue_hits_capacity_limit() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(
         shard.drain_for_shutdown(),
         Err(RuntimeError::ShutdownInProgress)

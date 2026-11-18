@@ -24,8 +24,7 @@ impl TraceRing {
     /// Creates a trace ring with nonzero bounded capacity.
     #[must_use]
     pub fn new(capacity: usize) -> Self {
-        let capacity = capacity.max(1);
-        let (producer, consumer) = RingBuffer::new(capacity);
+        let (producer, consumer) = RingBuffer::new(capacity.max(1));
         Self {
             producer,
             consumer,

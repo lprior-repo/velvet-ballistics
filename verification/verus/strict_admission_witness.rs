@@ -30,7 +30,7 @@
 //   - SpecRuntimePolicy mirrors `vb_core::policy::RuntimePolicy` referenced
 //     by the production strict-admission dispatch at chunk_005_admit_core.rs:91-113.
 //   - SpecWitnessKind mirrors the four-witness taxonomy used by the
-//     production storage-backend surface at chunk_003_stores.rs:1-213.
+//     production storage-backend surface at chunk_003_stores.rs:1-196.
 //   - strict_admission_witness_decision mirrors the strict-policy branch
 //     of `admit_artifact_run_with_certificate_floor` at
 //     crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:115-130, plus the gate validation
@@ -100,7 +100,7 @@ pub open spec fn production_strict_like_spec(policy: SpecRuntimePolicy) -> bool 
 
 /// Spec predicate: a `SpecWitnessKind` is storage-backed iff it is
 /// `StorageAcceptedArtifact`. Mirrors the production storage-backend
-/// surface at chunk_003_stores.rs:115-213 — only `StorageArtifactStore` reading
+/// surface at chunk_003_stores.rs:113-196 — only `StorageArtifactStore` reading
 /// through `vb_storage::FjallJournal` provides a true storage-backed
 /// witness.
 pub open spec fn storage_backed(witness: SpecWitnessKind) -> bool {
@@ -370,7 +370,7 @@ pub proof fn proof_raw_compiled_not_strict_witness()
 // Non-vacuous proof 5: AlwaysPresentStore is not a storage-backed
 // witness under Strict or Journaled policy. The production
 // `AlwaysPresentArtifactStore` fabricates a valid envelope without
-// reading from storage (chunk_003_stores.rs:51-58) — so while it returns
+// reading from storage (chunk_003_stores.rs:49-56) — so while it returns
 // `Ok` from `load_accepted_artifact`, it does NOT satisfy the
 // strict-admission storage-backed witness obligation.
 pub proof fn proof_always_present_not_strict_witness()
@@ -402,7 +402,7 @@ pub proof fn proof_always_present_not_strict_witness()
 
 // Non-vacuous proof 6: StorageAcceptedArtifact is a valid strict-admission
 // witness. The production `StorageArtifactStore` reads through
-// `vb_storage::FjallJournal` (chunk_003_stores.rs:155-171), which provides the
+// `vb_storage::FjallJournal` (chunk_003_stores.rs:164-180), which provides the
 // storage-backed witness the strict-policy dispatch requires.
 pub proof fn proof_storage_artifact_satisfies_strict_witness()
     ensures

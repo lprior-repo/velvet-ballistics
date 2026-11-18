@@ -44,8 +44,7 @@ fn build_emergency_case() -> CaseResult<EmergencyTestCase> {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let runtime =
-        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
+    let runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
 
     Ok(EmergencyTestCase {
         dir,

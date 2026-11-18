@@ -2,7 +2,7 @@
 fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_arrives() {
     // Given a timed wait has captured a TimerFired authority token.
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for stale replacement test");
     };
@@ -61,7 +61,7 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
         return;
     };
     let mut runtime =
-        crate::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, small_config()).expect("valid test configuration");
+        crate::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, small_config());
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for runtime legacy test");
     };
@@ -94,7 +94,7 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
 fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arrives() {
     // Given a timed wait has a captured TimerFired authority token.
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for stale cancel test");
     };
@@ -141,7 +141,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
 fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arrives() {
     // Given a timed wait run has already reached a terminal completed state.
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for terminal stale test");
     };
@@ -247,7 +247,7 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() -> Result
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared_journal: crate::journal::SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared_journal).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, shared_journal);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for overflow test");
     };
@@ -421,7 +421,7 @@ fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
     let journal = RejectTimerScheduledJournal::shared(PendingTimerKind::Ask);
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(workflow) = ask_timeout_only_workflow() else {
         panic!("ask_timeout_only_workflow fixture must compile for append failure test");
     };
@@ -471,7 +471,7 @@ fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
 fn runtime_timer_fired_rejects_wrong_generation_authority() {
     // Given a run with a live wait timer.
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for generation mismatch test");
     };
@@ -512,7 +512,7 @@ fn runtime_timer_fired_rejects_wrong_generation_authority() {
 fn runtime_timer_fired_rejects_wrong_deadline_authority() {
     // Given a run with a live wait timer.
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for deadline mismatch test");
     };
@@ -554,7 +554,7 @@ fn runtime_timer_fired_rejects_wrong_deadline_authority() {
 fn runtime_timer_fired_rejects_wrong_kind_authority() {
     // Given a run with a live wait timer.
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for kind mismatch test");
     };

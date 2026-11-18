@@ -1,7 +1,7 @@
 #[test]
 fn shard_action_failure_non_retryable_with_handler_routes_to_handler() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let workflow = workflow_fixture(
         action_with_error_handler_workflow(),
         "action_with_error_handler",
@@ -46,7 +46,7 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() -> Result
 #[test]
 fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputs {
@@ -77,7 +77,7 @@ fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() -> Resu
 #[test]
 fn shard_ask_answer_completes_ask_workflow() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
     let run = super::RunId::new(750);
     assert_eq!(
@@ -118,7 +118,7 @@ fn shard_ask_answer_completes_ask_workflow() -> Result<(), String> {
 #[test]
 fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
     let run = super::RunId::new(751);
     assert_eq!(
@@ -162,7 +162,7 @@ fn shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion() -> Re
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, shared);
     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
     let run = super::RunId::new(752);
     assert_eq!(
@@ -250,7 +250,7 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() -> Result<(), Stri
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, shared);
     let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
     let run = super::RunId::new(760);
     assert_eq!(
@@ -284,7 +284,7 @@ fn shard_timer_fire_for_ask_timeout_fails_run() -> Result<(), String> {
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, shared);
     let workflow = timed_ask_without_answer_workflow()
         .ok_or_else(|| "timed ask workflow fixture must build".to_owned())?;
     let run = super::RunId::new(761);
@@ -385,7 +385,7 @@ impl crate::journal::RuntimeJournal for TerminalAppendFailsJournal {
 #[test]
 fn shard_cancel_append_failure_preserves_run_state_and_pending_timer() -> Result<(), String> {
     let shared: SharedRuntimeJournal = std::sync::Arc::new(CancelAppendFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let workflow = timed_ask_without_answer_workflow()
         .ok_or_else(|| "timed ask workflow fixture must build".to_owned())?;
     let run = super::RunId::new(762);
@@ -420,7 +420,7 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
     let shared: SharedRuntimeJournal = std::sync::Arc::new(TerminalAppendFailsJournal);
     let mut config = small_config();
     config.max_active_runs = 1;
-    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, shared);
     let run = super::RunId::new(763);
     let workflow =
         suspended_workflow().ok_or_else(|| "suspended workflow fixture must build".to_owned())?;
@@ -481,7 +481,7 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
 #[test]
 fn shard_cancel_removes_pending_ask_timer() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let workflow = workflow_fixture(
         timed_ask_without_answer_workflow(),
         "timed_ask_without_answer",

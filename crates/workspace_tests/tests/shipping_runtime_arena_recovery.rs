@@ -14,8 +14,7 @@ fn open(journal: Arc<vb_storage::FjallJournal>) -> Runtime {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal),
-    )
-    .expect("valid test configuration");
+    );
     runtime.set_available_secret_names(Box::new([Box::from("TOKEN")]));
     runtime
 }

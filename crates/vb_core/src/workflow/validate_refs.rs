@@ -92,18 +92,6 @@ pub(super) fn validate_expression_accessors(
     Ok(())
 }
 
-pub(super) fn validate_expression_pool_bounds(
-    parts: &super::WorkflowParts,
-) -> Result<(), WorkflowError> {
-    parts.expressions.iter().try_for_each(|expression| {
-        expression.ops.iter().try_for_each(|op| match op {
-            ExprOp::LoadSlot(slot) => validate_slot(*slot, parts.slot_count),
-            ExprOp::LoadConst(constant) => validate_const(*constant, parts.constants.len()),
-            _ => Ok(()),
-        })
-    })
-}
-
 pub(super) fn validate_accessors(
     accessors: &[AccessorProgram],
     slot_count: u16,

@@ -286,7 +286,7 @@ fn validate_references_accepts_var_alias() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn undeclared_secret_reference_uses_secret_specific_diagnostic() {
+fn adversarial_undeclared_secret_reference_is_rejected_as_unknown() {
     // Given a workflow referencing $secrets.api_key when "api_key" is NOT declared
     let workflow = WorkflowRefs {
         inputs: vec![],
@@ -297,28 +297,13 @@ fn undeclared_secret_reference_uses_secret_specific_diagnostic() {
     };
     // When validate_references is called
     let result = validate_references(&workflow);
-    // Then it preserves the secret name as the typed validation error.
-    let error = ValidationError::SecretNotDeclared {
-        secret: "api_key".to_owned(),
-    };
-    assert_eq!(result, Err(error.clone()));
-    let diagnostic = crate::diagnostic::diagnostic_from_error(&error);
-    assert_eq!(diagnostic.numeric_code.code(), 0x0203);
-    assert_eq!(diagnostic.code.as_str(), "SECRET_NOT_DECLARED");
-    assert_eq!(diagnostic.message.as_ref(), "secret not declared: api_key");
-}
-
-#[test]
-fn malformed_secret_references_keep_unknown_reference_classification() {
-    let tables = make_tables(&[], &[], &[], &[]);
-    ["$secrets", "$secrets."].iter().for_each(|reference| {
-        assert_eq!(
-            validate_single_reference(reference, &tables),
-            Err(ValidationError::UnknownReference {
-                reference: (*reference).to_owned(),
-            })
-        );
-    });
+    // Then it returns UnknownReference (E0201) -- secret name not declared
+    assert_eq!(
+        result,
+        Err(ValidationError::UnknownReference {
+            reference: "$secrets.api_key".to_owned(),
+        })
+    );
 }
 
 #[test]

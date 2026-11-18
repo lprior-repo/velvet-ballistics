@@ -175,89 +175,6 @@ fn nested_repeat_repeated_activation_resets_attempt_counter() -> TestResult {
     Ok(())
 }
 
-#[test]
-fn canonical_repeat_attempt_number_is_one_based_and_shadowed() -> TestResult {
-    let source = format!(
-        "{HEADER}steps:\n  - id: outer\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: inner\n          repeat:\n            max_attempts: 2\n            steps:\n              - id: inner_value\n                set: {{output: observed_inner, value: '$attempt.number'}}\n        - id: combined\n          set: {{output: observed, value: '$step.inner * 100 + $attempt.number'}}\n  - id: done\n    finish:\n      result: '$step.outer'\n"
-    );
-    let workflow =
-        compile_workflow(source.as_bytes()).map_err(|error| format!("compile: {error:?}"))?;
-    let repeat_slots = workflow
-        .to_parts()
-        .nodes
-        .iter()
-        .filter_map(|node| match node.kind {
-            CompiledNodeKind::RepeatStart { body, .. } => workflow.node(body)?.output.slot(),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    let outer_slot = repeat_slots.first().copied().ok_or("outer attempt slot")?;
-    let inner_slot = repeat_slots.get(1).copied().ok_or("inner attempt slot")?;
-    let (signal, events) = drive_source(&source, &[])?;
-    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(203)));
-    let writes = |slot| {
-        events
-            .iter()
-            .filter_map(|event| match event {
-                EvidenceEvent::SlotWritten {
-                    slot: written,
-                    value,
-                    ..
-                } if *written == slot => Some(*value),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(
-        writes(outer_slot),
-        [SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
-    );
-    assert_eq!(
-        writes(inner_slot),
-        [
-            SlotValue::I64(1),
-            SlotValue::I64(2),
-            SlotValue::I64(1),
-            SlotValue::I64(2),
-            SlotValue::I64(1),
-            SlotValue::I64(2),
-        ]
-    );
-    Ok(())
-}
-
-#[test]
-fn canonical_repeat_attempt_number_inherits_through_choose() -> TestResult {
-    let source = format!(
-        "{HEADER}steps:\n  - id: outer\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: route\n          choose:\n            branches:\n              - when: '$attempt.number == 3'\n                steps:\n                  - id: nested_attempt\n                    set: {{output: nested_value, value: '$attempt.number'}}\n            otherwise: after_route\n        - id: after_route\n          set: {{output: outer_value, value: '$attempt.number'}}\n  - id: done\n    finish:\n      result: '$step.outer'\n"
-    );
-    let workflow =
-        compile_workflow(source.as_bytes()).map_err(|error| format!("compile: {error:?}"))?;
-    let branch_step = (0..workflow.node_count())
-        .map(StepIdx::new)
-        .find(|step| workflow.step_name(*step) == Some("nested_attempt"))
-        .ok_or("nested choose output step")?;
-    let branch_slot = workflow
-        .node(branch_step)
-        .and_then(|node| node.output.slot())
-        .ok_or("nested choose output slot")?;
-    let (signal, events) = drive_source(&source, &[])?;
-    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(3)));
-    assert_eq!(
-        events
-            .iter()
-            .filter_map(|event| match event {
-                EvidenceEvent::SlotWritten { slot, value, .. } if *slot == branch_slot => {
-                    Some(*value)
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>(),
-        [SlotValue::I64(3)]
-    );
-    Ok(())
-}
-
 // Triple nesting: repeat outer drives each inner activation to exhaustion.
 // Verifies per-attempt rearm for multiple levels.
 #[test]
@@ -268,15 +185,13 @@ fn triple_nested_repeat_per_attempt_rearm() -> TestResult {
     let workflow = compile_workflow(source.as_bytes()).map_err(|e| format!("compile: {e:?}"))?;
     let regions = repeat_regions(&workflow)?;
     let outer = regions.first().ok_or("outer repeat")?;
-    let middle_start = outer.body();
     let middle = regions
         .iter()
-        .find(|region| region.start() == middle_start)
+        .find(|region| region.start() == outer.body())
         .ok_or("middle repeat")?;
-    let inner_start = middle.body();
     let inner = regions
         .iter()
-        .find(|region| region.start() == inner_start)
+        .find(|region| region.start() == middle.body())
         .ok_or("inner repeat")?;
     let (signal, events) = drive_twice(&source, &[])?;
     assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(5)));

@@ -29,7 +29,20 @@ pub(crate) fn write_action_registry(registry: &ActionRegistry, output: OutputFor
         return ExitCode::SUCCESS;
     }
 
-    let actions: Vec<_> = rows.iter().map(action_row_json).collect();
+    let actions: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            serde_json::json!({
+                "id": row.id,
+                "idempotency": row.idempotency,
+                "retry_safety": row.retry_safety,
+                "side_effect": row.side_effect,
+                "input_slot_count": row.input_slot_count,
+                "output_slot_count": row.output_slot_count,
+                "timeout_ms": row.timeout_ms,
+            })
+        })
+        .collect();
     emit_json_or_return!(
         &serde_json::json!({
             "success": true,
@@ -38,19 +51,6 @@ pub(crate) fn write_action_registry(registry: &ActionRegistry, output: OutputFor
         output,
     );
     ExitCode::SUCCESS
-}
-
-fn action_row_json(row: &ActionTableRow) -> serde_json::Value {
-    serde_json::json!({
-        "id": row.id,
-        "name": row.name,
-        "idempotency": row.idempotency,
-        "retry_safety": row.retry_safety,
-        "side_effect": row.side_effect,
-        "input_slot_count": row.input_slot_count,
-        "output_slot_count": row.output_slot_count,
-        "timeout_ms": row.timeout_ms,
-    })
 }
 
 pub(crate) fn write_action_inspect(
@@ -118,7 +118,6 @@ pub(crate) fn write_action_contract(
 
 pub(crate) fn write_action_contract_text(detail: &ActionContractDetail) {
     outln!("action {}", detail.id);
-    outln!("  name: {}", detail.name);
     outln!("  input_slot_count: {}", detail.input_slot_count);
     outln!("  output_slot_count: {}", detail.output_slot_count);
     outln!("  max_input_bytes: {}", detail.max_input_bytes);
@@ -140,7 +139,6 @@ pub(crate) fn write_action_contract_text(detail: &ActionContractDetail) {
 #[derive(Debug, Clone)]
 pub(crate) struct ActionContractDetail {
     pub(crate) id: u16,
-    pub(crate) name: String,
     pub(crate) input_slot_count: u16,
     pub(crate) output_slot_count: u16,
     pub(crate) max_input_bytes: u32,
@@ -162,7 +160,6 @@ impl ActionContractDetail {
             "success": true,
             "action": {
                 "id": self.id,
-                "name": self.name,
                 "input_slot_count": self.input_slot_count,
                 "output_slot_count": self.output_slot_count,
                 "max_input_bytes": self.max_input_bytes,
@@ -181,10 +178,9 @@ impl ActionContractDetail {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct ActionTableRow {
     pub(crate) id: u16,
-    pub(crate) name: String,
     pub(crate) idempotency: &'static str,
     pub(crate) retry_safety: &'static str,
     pub(crate) side_effect: &'static str,

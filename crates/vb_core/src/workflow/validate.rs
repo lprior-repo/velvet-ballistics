@@ -16,7 +16,6 @@ use super::{
     InputConstraintIssue, WorkflowError, WorkflowParts,
 };
 use crate::ids::{SlotIdx, StepIdx};
-mod local_resources;
 
 pub(super) fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     if parts.nodes.is_empty() {
@@ -167,8 +166,7 @@ fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), Workf
     }
     validate_node_kind(&node.kind, parts)?;
     validate_reduce_branch_targets(node)?;
-    validate_for_each_next_targets(node)?;
-    local_resources::validate(&node.kind, &parts.resource_contract)
+    validate_for_each_next_targets(node)
 }
 
 fn validate_reduce_branch_targets(node: &CompiledNode) -> Result<(), WorkflowError> {

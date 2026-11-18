@@ -25,7 +25,7 @@ pub(crate) fn test_runtime_with_journal() -> Result<(Runtime, Arc<VolatileRuntim
     let shard_count = std::num::NonZeroUsize::new(1).ok_or("shard count must be non-zero")?;
     // Coerce Arc<VolatileRuntimeJournal> to Arc<dyn RuntimeJournal>
     let shared: Arc<dyn vb_runtime::journal::RuntimeJournal> = journal.clone();
-    let runtime = Runtime::new(shard_count, config, shared).expect("valid test configuration");
+    let runtime = Runtime::new(shard_count, config, shared);
     Ok((runtime, journal))
 }
 

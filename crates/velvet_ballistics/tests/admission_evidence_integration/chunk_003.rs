@@ -19,7 +19,7 @@ fn evidence_chain_after_execution() {
     };
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
     let mut runtime =
-        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone()).expect("valid test configuration");
+        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone());
     let run_id = RunId::new(3);
 
     // When: submitting and ticking (suspends on action)
@@ -202,7 +202,11 @@ fn capability_check_rejects_unauthorized_action() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, test_config(), vb_runtime::journal::NoopRuntimeJournal::shared()).expect("valid test configuration");
+    let mut runtime = vb_runtime::runtime::Runtime::new(
+        shard_count,
+        test_config(),
+        vb_runtime::journal::NoopRuntimeJournal::shared(),
+    );
     let run_id = RunId::new(4);
     match submit_do_action_run(&runtime, run_id, workflow) {
         Ok(()) => {}
@@ -262,7 +266,7 @@ fn evidence_chain_captures_action_timeout_and_failure() {
     };
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
     let mut runtime =
-        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone()).expect("valid test configuration");
+        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone());
     let run_id = RunId::new(10);
 
     match submit_do_action_run(&runtime, run_id, workflow) {
@@ -347,7 +351,7 @@ fn evidence_chain_preserves_event_ordering_across_restarts() {
     let run_id = RunId::new(11);
 
     let mut runtime1 =
-        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone()).expect("valid test configuration");
+        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone());
     match submit_do_action_run(&runtime1, run_id, workflow) {
         Ok(()) => {}
         Err(err) => {

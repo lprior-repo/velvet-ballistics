@@ -242,7 +242,7 @@ fn running_shard_with_config(
     config: crate::shard::ShardConfig,
 ) -> Result<(Shard, Arc<BoundJournal>), Box<dyn std::error::Error>> {
     let journal = BoundJournal::shared();
-    let mut shard = Shard::new_with_journal(config, journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, journal.clone());
     let workflow = require_workflow("chain", chain_workflow())?;
     let policy_digest = vb_storage::admission::compute_policy_digest(&workflow)?;
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {

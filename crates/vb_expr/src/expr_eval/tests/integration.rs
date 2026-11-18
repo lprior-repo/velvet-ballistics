@@ -209,8 +209,10 @@ fn public_helper_eval_supports_scalar_exists() -> ExprResult<()> {
 fn end_to_end_lex_parse_compile_eval() -> ExprResult<()> {
     let tokens = lex_expr("3 + 4 * 2")?;
     let ast = parse_expr(&tokens)?;
-    let (program, constants) = bytecode::compile_expr_to_bytecode(&ast)?;
-    let result = eval_expr_program(&program, &[], &constants)?;
+    let _program = bytecode::compile_expr_to_bytecode(&ast)?;
+    let mut constants = Vec::new();
+    let p2 = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+    let result = eval_expr_program(&p2, &[], &constants)?;
     assert_eq!(result, SlotValue::I64(11));
     Ok(())
 }

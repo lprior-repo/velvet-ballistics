@@ -1,14 +1,5 @@
 use crate::shard::transitions::TransitionOutcome;
 
-struct AwaitingSchedule<'a> {
-    run: RunId,
-    state: &'a RunState,
-    step: StepIdx,
-    kind: PendingTimerKind,
-    register_timer: bool,
-    journal_events: &'a mut Vec<RuntimeJournalEvent>,
-}
-
 impl Shard {
     fn prepare_awaiting_action(
         &self,
@@ -66,54 +57,42 @@ impl Shard {
         let (mut journal_events, trace_events) =
             self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
-        let (timer, ask_boundary_seq) = self.prepare_awaiting_schedule(AwaitingSchedule {
+        let (timer, ask_boundary_seq) = self.prepare_awaiting_schedule(
             run,
-            state: &state,
+            &state,
             step,
             kind,
             register_timer,
-            journal_events: &mut journal_events,
-        })?;
+            &mut journal_events,
+        )?;
         Ok((journal_events, trace_events, state, timer, ask_boundary_seq))
     }
 
     fn prepare_awaiting_schedule(
         &self,
-        schedule: AwaitingSchedule<'_>,
+        run: RunId,
+        state: &RunState,
+        step: StepIdx,
+        kind: PendingTimerKind,
+        register_timer: bool,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
     ) -> RuntimeResult<(Option<PendingTimer>, Option<vb_storage::EventSeq>)> {
-        if !schedule.register_timer && schedule.kind != PendingTimerKind::Ask {
+        if !register_timer && kind != PendingTimerKind::Ask {
             return Ok((None, None));
         }
-        let boundary_seq = self.awaiting_ask_boundary_sequence(&schedule)?;
-        let timer = self.awaiting_pending_timer(&schedule)?;
-        Self::push_drive_journal_event(
-            schedule.journal_events,
-            awaiting_schedule_event(schedule.run, schedule.step, schedule.kind),
-        )?;
+        let boundary_seq = if kind == PendingTimerKind::Ask {
+            Some(self.ask_boundary_sequence(run, journal_events.len())?)
+        } else {
+            None
+        };
+        let timer = if register_timer {
+            let generation = self.scheduled_timer_generation(run, journal_events.len())?;
+            Some(self.pending_timer_for_awaiting(state, step, kind, generation))
+        } else {
+            None
+        };
+        Self::push_drive_journal_event(journal_events, awaiting_schedule_event(run, step, kind))?;
         Ok((timer, boundary_seq))
-    }
-
-    fn awaiting_ask_boundary_sequence(
-        &self,
-        schedule: &AwaitingSchedule<'_>,
-    ) -> RuntimeResult<Option<vb_storage::EventSeq>> {
-        if schedule.kind != PendingTimerKind::Ask {
-            return Ok(None);
-        }
-        self.ask_boundary_sequence(schedule.run, schedule.journal_events.len())
-            .map(Some)
-    }
-
-    fn awaiting_pending_timer(
-        &self,
-        schedule: &AwaitingSchedule<'_>,
-    ) -> RuntimeResult<Option<PendingTimer>> {
-        if !schedule.register_timer {
-            return Ok(None);
-        }
-        let generation = self.scheduled_timer_generation(schedule.run, schedule.journal_events.len())?;
-        self.pending_timer_for_awaiting(schedule.state, schedule.step, schedule.kind, generation)
-            .map(Some)
     }
 
     fn apply_awaiting_action(

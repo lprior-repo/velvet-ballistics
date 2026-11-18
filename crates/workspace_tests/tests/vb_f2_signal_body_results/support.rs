@@ -57,8 +57,7 @@ pub(super) fn execute_compiled(
             ..ShardConfig::default()
         },
         journal.clone(),
-    )
-    .expect("valid test configuration");
+    );
     runtime.submit_compiled_with_inputs(run, plan, inputs.into_boxed_slice())?;
     let mut asks = 0_usize;
     let mut waits = 0_usize;

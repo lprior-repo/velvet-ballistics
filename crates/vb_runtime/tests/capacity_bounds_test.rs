@@ -28,7 +28,7 @@ fn queue_capacity_one_succeeds() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 1);
 }
 
@@ -42,7 +42,7 @@ fn queue_capacity_max_succeeds() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), MAX_COMMAND_QUEUE_CAPACITY);
 }
 
@@ -56,7 +56,7 @@ fn queue_capacity_at_limit_accepts_enqueue() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert!(shard.is_queue_full() == false);
     assert_eq!(shard.remaining_capacity(), 1);
 }
@@ -65,13 +65,13 @@ fn queue_capacity_at_limit_accepts_enqueue() {
 
 #[test]
 fn default_config_has_expected_capacity() {
-    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
+    let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.command_queue_capacity(), 1024);
 }
 
 #[test]
 fn default_config_shard_is_not_full_initially() {
-    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
+    let shard = Shard::new(ShardConfig::default());
     assert!(!shard.is_queue_full());
     assert_eq!(shard.command_queue_len(), 0);
 }
@@ -80,7 +80,7 @@ fn default_config_shard_is_not_full_initially() {
 
 #[test]
 fn shard_pending_timer_count_starts_at_zero() {
-    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
+    let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.pending_timer_count(), 0);
 }
 
@@ -88,7 +88,7 @@ fn shard_pending_timer_count_starts_at_zero() {
 
 #[test]
 fn shard_active_run_count_starts_at_zero() {
-    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
+    let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.active_run_count(), 0);
 }
 
@@ -96,7 +96,7 @@ fn shard_active_run_count_starts_at_zero() {
 
 #[test]
 fn shard_not_shutting_down_on_creation() {
-    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
+    let shard = Shard::new(ShardConfig::default());
     assert!(!shard.is_shutting_down());
 }
 
@@ -112,7 +112,7 @@ fn shard_status_reports_command_queue_capacity() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let status = shard.status();
     assert_eq!(status.command_queue_capacity, 512);
     assert_eq!(status.command_queue_depth, 0);
@@ -130,7 +130,7 @@ fn shard_status_reports_step_budget() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let status = shard.status();
     assert_eq!(status.step_budget_per_tick, 200);
 }

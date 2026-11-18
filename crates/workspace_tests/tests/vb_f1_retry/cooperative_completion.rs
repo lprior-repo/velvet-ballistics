@@ -30,8 +30,7 @@ fn pending_action_with_tail() -> TestResult<(tempfile::TempDir, Arc<FjallJournal
             policy: RuntimePolicy::Journaled,
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    )
-    .expect("valid test configuration");
+    );
     submit(&mut runtime, workflow)?;
     for _ in 0..5 {
         if runtime.lookup_pending_action_ticket(RUN, 1).is_some() {

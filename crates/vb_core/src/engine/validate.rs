@@ -25,25 +25,20 @@ pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowE
     crate::workflow::check_resource_contract_limits(&parts.resource_contract)
 }
 
-/// Validates node IDs and ordinary/error routing targets against the node count.
+/// Validates that all node indices are within the node array bounds.
 pub fn validate_node_bounds(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let node_count = parts.nodes.len();
-    parts.nodes.iter().try_for_each(|node| {
-        [
-            Some(node.id),
-            node.routing.next.step(),
-            node.routing.error.handler(),
-        ]
-        .into_iter()
-        .flatten()
-        .try_for_each(|step| {
-            if step.as_usize() < node_count {
-                Ok(())
-            } else {
-                Err(WorkflowError::StepOutOfBounds { step })
-            }
-        })
-    })
+    for node in &parts.nodes {
+        if node.id.as_usize() >= node_count {
+            return Err(WorkflowError::StepOutOfBounds { step: node.id });
+        }
+        if let Some(next) = node.routing.next.step()
+            && next.as_usize() >= node_count
+        {
+            return Err(WorkflowError::StepOutOfBounds { step: next });
+        }
+    }
+    Ok(())
 }
 
 /// Validates that all step transition targets reference valid node indices.

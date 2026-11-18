@@ -14,7 +14,7 @@ fn review_raw_recovery_cannot_bypass_active_queue_cap() -> Result<(), Box<dyn st
     let workflow = review_low_wait_workflow(1)?;
     let run = RunId::new(961);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = crate::shard::Shard::new_with_journal(runtime_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = crate::shard::Shard::new_with_journal(runtime_config(), journal.clone());
     shard.enqueue(crate::shard::ShardCommand::Submit {
         run,
         workflow: workflow.clone(),
@@ -142,10 +142,14 @@ fn review_owned_cap_runtime() -> Result<
     Box<dyn std::error::Error>,
 > {
     let (directory, journal, run, source) = review_owned_cap_journal()?;
-    let runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig {
-        policy: RuntimePolicy::Strict,
-        ..ShardConfig::default()
-    }, crate::journal::StorageRuntimeJournal::shared_strict(journal.clone())).expect("valid test configuration");
+    let runtime = Runtime::new(
+        NonZeroUsize::MIN,
+        ShardConfig {
+            policy: RuntimePolicy::Strict,
+            ..ShardConfig::default()
+        },
+        crate::journal::StorageRuntimeJournal::shared_strict(journal.clone()),
+    );
     Ok((directory, journal, runtime, run, source))
 }
 
@@ -209,10 +213,13 @@ fn review_raw_owned_activation_uses_verified_cap_before_queue_push()
 -> Result<(), Box<dyn std::error::Error>> {
     let (_directory, journal, run, source) = review_owned_cap_journal()?;
     let adapter = crate::journal::StorageRuntimeJournal::shared_strict(journal.clone());
-    let shard = crate::shard::Shard::new_with_journal(ShardConfig {
-        policy: RuntimePolicy::Strict,
-        ..runtime_config()
-    }, adapter).expect("valid test configuration");
+    let shard = crate::shard::Shard::new_with_journal(
+        ShardConfig {
+            policy: RuntimePolicy::Strict,
+            ..runtime_config()
+        },
+        adapter,
+    );
     let before = journal.events_for_run_full(run)?;
     let command = || crate::shard::ShardCommand::ActivateOwnedSubmission {
         run,
@@ -238,10 +245,13 @@ fn review_raw_owned_activation_rejects_unknown_source_before_queue_push()
 -> Result<(), Box<dyn std::error::Error>> {
     let (_directory, journal, run, _source) = review_owned_cap_journal()?;
     let adapter = crate::journal::StorageRuntimeJournal::shared_strict(journal.clone());
-    let shard = crate::shard::Shard::new_with_journal(ShardConfig {
-        policy: RuntimePolicy::Strict,
-        ..runtime_config()
-    }, adapter).expect("valid test configuration");
+    let shard = crate::shard::Shard::new_with_journal(
+        ShardConfig {
+            policy: RuntimePolicy::Strict,
+            ..runtime_config()
+        },
+        adapter,
+    );
     let before = journal.events_for_run_full(run)?;
     assert_eq!(
         shard.enqueue(crate::shard::ShardCommand::ActivateOwnedSubmission {
@@ -262,10 +272,13 @@ fn review_raw_owned_activation_keeps_nondefault_cap_for_generic_commands()
 -> Result<(), Box<dyn std::error::Error>> {
     let (_directory, journal, run, source) = review_owned_cap_journal_with_depth(2)?;
     let adapter = crate::journal::StorageRuntimeJournal::shared_strict(journal.clone());
-    let shard = crate::shard::Shard::new_with_journal(ShardConfig {
-        policy: RuntimePolicy::Strict,
-        ..runtime_config()
-    }, adapter).expect("valid test configuration");
+    let shard = crate::shard::Shard::new_with_journal(
+        ShardConfig {
+            policy: RuntimePolicy::Strict,
+            ..runtime_config()
+        },
+        adapter,
+    );
     let activation = crate::shard::ShardCommand::ActivateOwnedSubmission {
         run,
         expected_source_digest: source,

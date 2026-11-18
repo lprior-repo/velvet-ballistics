@@ -6,7 +6,7 @@
 #[test]
 fn shard_created_with_default_config_has_expected_properties() {
     let config = ShardConfig::default();
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 1024);
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.pending_timer_count(), 0);
@@ -30,7 +30,7 @@ fn shard_created_with_custom_config_has_custom_properties() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 64);
     assert_eq!(shard.active_run_count(), 0);
     let status = shard.status();
@@ -133,7 +133,7 @@ fn shard_config_new_accepts_maximum_capacity_limit() {
 #[test]
 fn shard_status_reports_running_health_for_fresh_shard() {
     let config = small_config();
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let status = shard.status();
     assert_eq!(status.health, super::ShardHealth::Running);
     assert_eq!(status.running, true);
@@ -145,7 +145,7 @@ fn shard_status_reports_running_health_for_fresh_shard() {
 #[test]
 fn shard_status_reports_shutting_down_after_shutdown_command() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let status = shard.status();
@@ -157,7 +157,7 @@ fn shard_status_reports_shutting_down_after_shutdown_command() {
 #[test]
 fn shard_status_active_runs_increments_after_submitting_run() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -181,7 +181,7 @@ fn shard_status_active_runs_increments_after_submitting_run() {
 #[test]
 fn shard_is_shutting_down_returns_false_before_shutdown_command() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(shard.is_shutting_down(), false);
     let Some(workflow) = suspended_workflow() else {
         return;
@@ -203,7 +203,7 @@ fn shard_is_shutting_down_returns_false_before_shutdown_command() {
 #[test]
 fn shard_tick_returns_false_when_shutting_down_and_queue_empty() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
@@ -218,7 +218,7 @@ fn shard_tick_returns_false_when_shutting_down_and_queue_empty() {
 #[test]
 fn shard_drain_for_shutdown_clears_queue_and_shuts_down() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
     assert_eq!(shard.is_shutting_down(), true);
@@ -228,7 +228,7 @@ fn shard_drain_for_shutdown_clears_queue_and_shuts_down() {
 #[test]
 fn shard_drain_pending_and_shutdown_clears_timers_and_shuts_down() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(shard.drain_pending_and_shutdown(), Ok(()));
     assert_eq!(shard.is_shutting_down(), true);
     assert_eq!(shard.pending_timer_count(), 0);
@@ -245,7 +245,7 @@ fn shard_remaining_capacity_decreases_after_each_enqueue() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let initial = shard.remaining_capacity();
     assert_eq!(initial, 8);
     assert_eq!(
@@ -262,7 +262,7 @@ fn shard_remaining_capacity_decreases_after_each_enqueue() {
 #[test]
 fn shard_can_process_commands_in_fifo_order() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -308,7 +308,7 @@ fn shard_command_queue_initial_capacity_matches_config() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 256);
     assert_eq!(shard.remaining_capacity(), 256);
     assert_eq!(shard.command_queue_len(), 0);
@@ -318,7 +318,7 @@ fn shard_command_queue_initial_capacity_matches_config() {
 #[test]
 fn shard_frame_pool_metrics_new_shard_has_no_pools() {
     let config = small_config();
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let (free, total) = shard.frame_pool_metrics();
     assert_eq!(free, 0);
     assert_eq!(total, 0);
@@ -334,7 +334,7 @@ fn shard_trace_ring_capacity_matches_config() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let status = shard.status();
     assert_eq!(status.trace_capacity, 32);
 }
@@ -342,14 +342,14 @@ fn shard_trace_ring_capacity_matches_config() {
 #[test]
 fn shard_pending_timer_count_zero_for_new_shard() {
     let config = small_config();
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.pending_timer_count(), 0);
 }
 
 #[test]
 fn shard_snapshot_run_returns_not_found_for_unknown_run() {
     let config = small_config();
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let unknown_run = super::RunId::new(8888);
     let response = shard.snapshot_run(unknown_run, 42);
     match response {
@@ -364,7 +364,7 @@ fn shard_snapshot_run_returns_not_found_for_unknown_run() {
 #[test]
 fn shard_snapshot_run_returns_found_for_active_run() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -404,7 +404,7 @@ fn shard_enqueue_rejects_when_queue_is_full() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let cancel_cmd = ShardCommand::Cancel {
         run: super::RunId::new(7001),
         reason: None,
@@ -425,7 +425,7 @@ fn shard_is_queue_full_returns_false_when_below_capacity() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.is_queue_full(), false);
     let cancel_cmd = ShardCommand::Cancel {
         run: super::RunId::new(7002),
@@ -445,7 +445,7 @@ fn shard_max_active_runs_rejects_excess_submissions() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -502,7 +502,7 @@ fn shard_command_queue_capacity_match_is_exact_after_construction() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let status = shard.status();
     assert_eq!(status.command_queue_capacity, 512);
     assert_eq!(status.command_queue_depth, 0);
@@ -519,7 +519,7 @@ fn shard_queue_is_empty_and_full_are_mutually_consistent() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     assert_eq!(shard.command_queue_len(), 0);
     assert_eq!(shard.remaining_capacity(), 1);
     assert_eq!(shard.is_queue_full(), false);
@@ -540,7 +540,7 @@ fn shard_queue_is_empty_and_full_are_mutually_consistent() {
 #[test]
 fn shard_multiple_runs_different_states_preserve_isolation() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -616,7 +616,7 @@ fn shard_multiple_runs_different_states_preserve_isolation() {
 #[test]
 fn shard_sequential_ticks_process_all_queued_commands() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow_a) = suspended_workflow() else {
         return;
     };
@@ -654,7 +654,7 @@ fn shard_sequential_ticks_process_all_queued_commands() {
 #[test]
 fn shard_cancel_command_removes_run_and_frees_resources() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -690,7 +690,7 @@ fn shard_cancel_command_removes_run_and_frees_resources() {
 #[test]
 fn shard_remains_operational_after_tick_returns_error_for_bad_command() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let invalid_ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(9999),
         step: vb_core::ids::StepIdx::ZERO,
@@ -734,7 +734,7 @@ fn shard_remains_operational_after_tick_returns_error_for_bad_command() {
 #[test]
 fn shard_after_cancel_run_can_accept_new_run_with_same_id() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -776,7 +776,7 @@ fn shard_after_cancel_run_can_accept_new_run_with_same_id() {
 #[test]
 fn shard_enqueue_rejects_submit_after_shutdown() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let Some(workflow) = suspended_workflow() else {
@@ -798,7 +798,7 @@ fn shard_enqueue_rejects_submit_after_shutdown() {
 #[test]
 fn shard_submit_rejects_duplicate_run_id_with_exact_error() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -831,7 +831,7 @@ fn shard_submit_rejects_duplicate_run_id_with_exact_error() {
 #[test]
 fn shard_timer_entry_returns_none_for_unknown_run() {
     let config = small_config();
-    let shard = Shard::new(config).expect("valid test configuration");
+    let shard = Shard::new(config);
     let entry = shard.timer_entry(super::RunId::new(9010));
     assert_eq!(entry, None);
 }
@@ -857,7 +857,7 @@ mod kani_proofs {
             max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
-        let shard = Shard::new(config).expect("valid test configuration");
+        let shard = Shard::new(config);
         assert_eq!(shard.command_queue_capacity(), capacity);
         assert_eq!(shard.command_queue_len(), 0);
         assert!(shard.remaining_capacity() <= capacity);
@@ -876,7 +876,7 @@ mod kani_proofs {
             max_active_runs: 4,
             max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
-        }).expect("valid test configuration");
+        });
         let rem = shard.remaining_capacity();
         assert!(rem <= capacity);
     }
@@ -893,7 +893,7 @@ mod kani_proofs {
             max_active_runs: 4,
             max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
-        }).expect("valid test configuration");
+        });
         let len = shard.command_queue_len();
         let is_full = shard.is_queue_full();
         assert_eq!(is_full, len == capacity);

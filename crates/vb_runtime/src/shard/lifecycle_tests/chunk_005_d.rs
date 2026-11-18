@@ -2,7 +2,7 @@
 fn retry_await_charges_second_action_scheduled_ticket_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(778);
     submit_run(
         &mut shard,
@@ -80,7 +80,7 @@ fn retry_await_charges_second_action_scheduled_ticket_bytes() -> Result<(), Stri
 fn empty_evidence_fail_charges_run_failed_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
     let run = RunId::new(779);
     let digest = wf.digest();
@@ -165,7 +165,7 @@ fn journal_bytes_after_append_projects_measured_total() -> Result<(), String> {
             .len(),
     )
     .map_err(|_| "length overflow".to_string())?;
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     assert_eq!(
         shard
             .journal_bytes_after_append(&state, &[event])
@@ -204,7 +204,7 @@ fn journal_bytes_after_append_projects_measured_total() -> Result<(), String> {
 fn empty_evidence_finish_within_budget_applies() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
     let run = RunId::new(781);
     let digest = wf.digest();
@@ -248,7 +248,7 @@ fn empty_evidence_finish_within_budget_applies() -> Result<(), String> {
 fn empty_evidence_finish_over_budget_fails_run_instead() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
     let run = RunId::new(782);
     let digest = wf.digest();
@@ -293,7 +293,7 @@ fn empty_evidence_finish_over_budget_fails_run_instead() -> Result<(), String> {
 fn empty_evidence_fail_over_budget_returns_state_unjournaled() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
     let run = RunId::new(783);
     let digest = wf.digest();
@@ -335,7 +335,7 @@ fn empty_evidence_fail_over_budget_returns_state_unjournaled() -> Result<(), Str
 fn empty_evidence_await_timer_over_budget_returns_state_unjournaled() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
     let run = RunId::new(784);
     let digest = wf.digest();
@@ -660,7 +660,7 @@ fn command_journal_bytes_exceeds_boundary() -> Result<(), String> {
     let bytes =
         postcard::to_allocvec(&event).map_err(|error| format!("event encode failed: {error:?}"))?;
     let len = u64::try_from(bytes.len()).map_err(|_| "event length overflow".to_string())?;
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -704,7 +704,7 @@ fn command_journal_bytes_exceeds_boundary() -> Result<(), String> {
 fn command_completion_charges_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_action", two_action_workflow())?;
     let run = RunId::new(781);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -730,7 +730,7 @@ fn command_completion_falls_back_to_single_run_failed_when_journal_budget_exceed
 -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = retry_workflow()?;
     let digest = wf.digest();
     let run = RunId::new(782);
@@ -762,7 +762,7 @@ fn command_completion_falls_back_to_single_run_failed_when_journal_budget_exceed
 fn command_legacy_completion_charges_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_action", two_action_workflow())?;
     let run = RunId::new(783);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -791,7 +791,7 @@ fn command_legacy_completion_charges_journal_bytes() -> Result<(), String> {
 fn command_retryable_failure_charges_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = retry_workflow()?;
     let run = RunId::new(784);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -808,7 +808,7 @@ fn command_retryable_failure_charges_journal_bytes() -> Result<(), String> {
 fn command_retryable_failure_falls_back_when_journal_budget_exceeded() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = retry_workflow()?;
     let digest = wf.digest();
     let run = RunId::new(785);
@@ -833,7 +833,7 @@ fn command_fail_run_failure_records_fallback_only_when_journal_budget_exceeded()
 -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = retry_workflow()?;
     let digest = wf.digest();
     let run = RunId::new(786);
@@ -865,7 +865,7 @@ fn command_fail_run_failure_records_fallback_only_when_journal_budget_exceeded()
 fn command_fail_run_failure_records_both_events_when_budget_allows() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = retry_workflow()?;
     let run = RunId::new(787);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -898,7 +898,7 @@ fn command_fail_run_failure_records_both_events_when_budget_allows() -> Result<(
 fn command_ask_answer_charges_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_ask", two_ask_workflow())?;
     let run = RunId::new(788);
     submit_with_journal(&mut shard, run, wf);
@@ -930,7 +930,7 @@ fn command_ask_answer_charges_journal_bytes() -> Result<(), String> {
 fn command_ask_answer_falls_back_when_journal_budget_exceeded() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_ask", two_ask_workflow())?;
     let digest = wf.digest();
     let run = RunId::new(789);
@@ -969,7 +969,7 @@ fn command_ask_answer_falls_back_when_journal_budget_exceeded() -> Result<(), St
 fn command_timer_resolution_charges_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_wait", two_wait_workflow())?;
     let run = RunId::new(790);
     submit_with_journal(&mut shard, run, wf);
@@ -987,7 +987,7 @@ fn command_timer_resolution_charges_journal_bytes() -> Result<(), String> {
 fn command_timer_resolution_falls_back_when_journal_budget_exceeded() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_wait", two_wait_workflow())?;
     let digest = wf.digest();
     let run = RunId::new(791);
@@ -1012,7 +1012,7 @@ fn command_timer_resolution_falls_back_when_journal_budget_exceeded() -> Result<
 fn command_cancel_records_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(792);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -1038,7 +1038,7 @@ fn command_cancel_records_journal_bytes() -> Result<(), String> {
 fn command_kill_records_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(793);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -1064,7 +1064,7 @@ fn command_kill_records_journal_bytes() -> Result<(), String> {
 fn command_resumed_records_journal_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("ask_then_finish", ask_workflow())?;
     let run = RunId::new(794);
     submit_with_journal(&mut shard, run, wf);
@@ -1081,7 +1081,7 @@ fn command_resumed_records_journal_bytes() -> Result<(), String> {
 fn retry_checkpoint_counter_case(base: u64, run: RunId) -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let workflow = two_slot_workflow().ok_or_else(|| "two slot workflow builds".to_string())?;
     let digest = workflow.digest();
     shard

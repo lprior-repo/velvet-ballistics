@@ -40,7 +40,7 @@
 // model that:
 //
 //   1. Models `SpecFjallJournal::append_strict` (the production
-//      entry point at crates/vb_storage/src/journal/append.rs:40-62) directly, with the Fjall
+//      entry point at crates/vb_storage/src/journal/append.rs:39-61) directly, with the Fjall
 //      commit decision exposed as a `commit_ok: bool` exec parameter.
 //   2. Models `Err(Fjall)` as a first-class return variant
 //      (SpecJournalError::Fjall), reachable from BOTH the pre-check
@@ -59,7 +59,7 @@
 // =============================================================================
 //
 // Target: vb_storage::journal::FjallJournal::append_strict
-//   * source: crates/vb_storage/src/journal/append.rs:40-62
+//   * source: crates/vb_storage/src/journal/append.rs:39-61
 //
 // Binding mechanism: `#[path = "extern_vb_6da68_append_strict.rs"]`
 // brings the production-mirror types (`SpecJournalError`,
@@ -90,10 +90,9 @@
 //         2 |     error::JournalError, events::JournalEvent,
 //           |     ^^^^^  ^^^^^^  ^^^^^^^  ^^^^ could not be found in the
 //           |                                        crate root
-//       Production `append.rs:1-4` has
+//       Production `append.rs:1-3` has
 //       `use crate::{error::JournalError, events::JournalEvent,
-//       inputs::RunInputsRecord, journal::FjallJournal,
-//       keys::run_event_key, types::DurabilityProfile};`. These `crate::`
+//       journal::FjallJournal, keys::run_event_key};`. These `crate::`
 //       relative imports require the vb_storage crate root, which is NOT
 //       registered under `verus --crate-type=lib` (the verus lib's crate
 //       root is the spec file itself). This is a HARD SYNTACTIC BLOCKER:
@@ -141,7 +140,7 @@
 // cited in the bridge's `Err(Fjall)` postcondition:
 //
 //   On `Err(Fjall)` returned by `batch.strict().commit()` (the path
-//   `append_strict` uses at crates/vb_storage/src/journal/append.rs:61), the journal's events
+//   `append_strict` uses at crates/vb_storage/src/journal/append.rs:60), the journal's events
 //   keyspace is UNCHANGED from its pre-call state. Equivalently:
 //   Fjall's OwnedWriteBatch::commit is atomic — no partial memtable
 //   application occurs on Err.
@@ -218,7 +217,7 @@
 //   * `crates/vb_storage/src/batch/commit.rs:20-40` `commit()` runs
 //     `self.inner.commit()?` at L38 (the Fjall primitive above) and lifts
 //     `fjall::Error` into `JournalError::Fjall` via `#[from]`.
-//   * `crates/vb_storage/src/journal/append.rs:61` `append_strict`
+//   * `crates/vb_storage/src/journal/append.rs:60` `append_strict`
 //     calls `batch.strict().commit()`.
 //
 // Fjall is 100% safe Rust (no `unsafe`), so there is no soundness
@@ -347,7 +346,7 @@ pub open spec fn spec_fjall_commit_atomic_on_err(
 // assume_specification bridge: production contract for `append_strict`
 // =============================================================================
 //
-// Production: `crates/vb_storage/src/journal/append.rs:40-62`.
+// Production: `crates/vb_storage/src/journal/append.rs:39-61`.
 //
 // This is the FULL behavioral contract for the append_strict surface.
 // The bridge encodes:
@@ -366,15 +365,15 @@ pub open spec fn spec_fjall_commit_atomic_on_err(
 //
 // Arm summary (production site -> bridge postcondition):
 //
-//   Err(InvalidEvent)         append.rs:43-45  !event.valid
-//   Err(KeyCapacity)          append.rs:52     !event.key_ok && event.valid
-//   Err(Fjall)                append.rs:53 OR  event.valid && event.key_ok &&
-//                            61                  && !contains_before && !commit_ok
+//   Err(InvalidEvent)         append.rs:42-44  !event.valid
+//   Err(KeyCapacity)          append.rs:51     !event.key_ok && event.valid
+//   Err(Fjall)                append.rs:52 OR  event.valid && event.key_ok &&
+//                            60                  && !contains_before && !commit_ok
 //                                              && events_unchanged (TRUSTED)
-//   Err(DuplicateEvent)       append.rs:53-57  event.valid && event.key_ok &&
+//   Err(DuplicateEvent)       append.rs:52-56  event.valid && event.key_ok &&
 //                                              && contains_before
 //                                              && events_unchanged (no commit)
-//   Ok(())                    append.rs:61      event.valid && event.key_ok
+//   Ok(())                    append.rs:60      event.valid && event.key_ok
 //                                              && !contains_before
 //                                              && commit_ok
 //                                              && events_gained_key (insert)
@@ -397,8 +396,8 @@ pub assume_specification[ production::SpecFjallJournal::append_strict ](
             },
             Err(SpecJournalError::Fjall) => {
                 // REACHABLE from BOTH the pre-check I/O failure
-                // (append.rs:53 contains_key returns Err) AND the
-                // commit failure (append.rs:61 commit returns Err).
+                // (append.rs:52 contains_key returns Err) AND the
+                // commit failure (append.rs:60 commit returns Err).
                 // The bridge folds both into a single arm: the
                 // post-state is identical (events keyspace
                 // unchanged).

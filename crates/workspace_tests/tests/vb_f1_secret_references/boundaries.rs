@@ -116,8 +116,7 @@ fn raw_shard_submission_cannot_bypass_presence_or_forge_an_opaque_root() -> Test
             ..vb_runtime::shard::ShardConfig::default()
         },
         journal.clone(),
-    )
-    .expect("valid test configuration");
+    );
     assert_eq!(
         shard.enqueue(vb_runtime::shard::ShardCommand::Submit {
             run: RunId::new(20),

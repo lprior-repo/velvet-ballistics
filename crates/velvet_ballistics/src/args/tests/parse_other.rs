@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn parse_answer_rejects_legacy_step_before_validating_its_value() {
+fn parse_answer_rejects_invalid_step_with_exact_variant() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "answer",
@@ -14,12 +14,9 @@ fn parse_answer_rejects_legacy_step_before_validating_its_value() {
         "test-db",
     ]));
 
-    assert_eq!(
-        parsed,
-        Err(ParseError::UnknownFlag {
-            command: "answer",
-            flag: "--step".into(),
-        })
+    assert!(
+        matches!(parsed, Err(ParseError::InvalidStep(ref s)) if s == "not-a-step"),
+        "expected InvalidStep(not-a-step), got {parsed:?}"
     );
 }
 

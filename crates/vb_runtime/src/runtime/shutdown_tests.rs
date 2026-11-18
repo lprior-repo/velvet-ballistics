@@ -143,8 +143,7 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
             journal.clone(),
             queue.clone(),
         )),
-    )
-    .expect("valid test configuration");
+    );
     for run in [RunId::new(710), RunId::new(711)] {
         let workflow = finished_workflow()?;
         accept_workflow(&journal, &workflow, &[])?;

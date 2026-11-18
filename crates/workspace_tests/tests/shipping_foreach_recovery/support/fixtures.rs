@@ -25,7 +25,6 @@ pub(super) fn runtime(journal: Arc<FjallJournal>, step_budget_per_tick: u64) -> 
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
-    .expect("valid test configuration")
 }
 
 pub(super) fn multi_source(result: &str) -> String {

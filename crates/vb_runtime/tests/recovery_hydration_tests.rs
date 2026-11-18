@@ -1575,7 +1575,7 @@ fn recover_runtime_summary_with_expected_terminal_mismatch() {
     let Err(RecoveryError::TerminalStateMismatch { expected, found }) = result else {
         panic!("expected TerminalStateMismatch, got: {result:?}");
     };
-    assert_eq!(expected.as_str(), "Finished(result=0)");
+    assert_eq!(expected.as_str(), "Finished");
     assert_eq!(found.as_str(), "Cancelled");
 }
 

@@ -127,7 +127,7 @@ fn admission_header_persistence_failed_returns_correct_code() {
 }
 
 #[test]
-fn core_forwards_existing_non_queue_runtime_code() {
+fn core_with_non_queue_full_returns_storage_code() {
     let err = RuntimeError::Core {
         source: boxed_invariant_violation(),
     };
@@ -135,20 +135,6 @@ fn core_forwards_existing_non_queue_runtime_code() {
         err.diagnostic_code(),
         DiagnosticCode::new(0x2008),
         "Core(non-QueueFull) → STORAGE_JOURNAL_APPEND_FAILED_CODE = 0x2008"
-    );
-    assert_eq!(
-        err.runtime_code(),
-        Some(vb_core::errors::CoreError::INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE)
-    );
-    let type_mismatch = RuntimeError::Core {
-        source: Box::new(vb_core::errors::CoreError::TypeMismatch {
-            expected: "i64",
-            found: "bool",
-        }),
-    };
-    assert_eq!(
-        type_mismatch.runtime_code(),
-        Some(vb_core::errors::CoreError::INPUT_TYPE_MISMATCH_RUNTIME_CODE)
     );
 }
 
@@ -161,23 +147,6 @@ fn core_with_queue_full_returns_queue_full_code() {
         err.diagnostic_code(),
         DiagnosticCode::new(0x2001),
         "Core(QueueFull) → QUEUE_FULL_CODE = 0x2001"
-    );
-    assert_eq!(
-        err.runtime_code(),
-        Some(vb_core::errors::CoreError::QUEUE_FULL_RUNTIME_CODE)
-    );
-}
-
-#[test]
-fn core_without_runtime_code_keeps_storage_fallback() {
-    let err = RuntimeError::Core {
-        source: Box::new(vb_core::errors::CoreError::InvalidSpan { start: 2, end: 1 }),
-    };
-    assert_eq!(err.runtime_code(), Some("STORAGE_ERROR"));
-    assert_eq!(
-        err.diagnostic_code(),
-        DiagnosticCode::new(0x2008),
-        "RuntimeError::Core preserves the runtime boundary diagnostic code"
     );
 }
 

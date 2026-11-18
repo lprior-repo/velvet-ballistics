@@ -4,7 +4,7 @@
 mod adversarial;
 
 #[allow(unused_imports, dead_code)]
-use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx, SlotValue};
+use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 
 #[allow(unused_imports)]
 use crate::ExprError;
@@ -221,22 +221,11 @@ fn rejects_text_literals_explicitly() {
 fn compile_expr_to_bytecode_produces_non_empty_bytecode() -> crate::ExprResult<()> {
     let tokens = lex_expr("1 + 2")?;
     let ast = parse_expr(&tokens)?;
-    let (program, _constants) = compile_expr_to_bytecode(&ast)?;
+    let program = compile_expr_to_bytecode(&ast)?;
     assert!(
         !program.ops.is_empty(),
         "bytecode should contain at least one op"
     );
-    Ok(())
-}
-
-#[test]
-fn compile_expr_to_bytecode_returns_the_pool_used_by_its_program() -> crate::ExprResult<()> {
-    let tokens = lex_expr("1 + 2")?;
-    let ast = parse_expr(&tokens)?;
-    let (program, constants) = compile_expr_to_bytecode(&ast)?;
-    assert_eq!(constants, vec![ConstValue::I64(1), ConstValue::I64(2)]);
-    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
-    assert_eq!(result, SlotValue::I64(3));
     Ok(())
 }
 
@@ -346,7 +335,7 @@ fn check_expr_stack_bound_returns_ok_within_limit() -> crate::ExprResult<()> {
 fn compile(source: &str) -> crate::ExprResult<crate::bytecode::ExprProgram> {
     let tokens = lex_expr(source)?;
     let ast = parse_expr(&tokens)?;
-    compile_expr_to_bytecode(&ast).map(|(program, _constants)| program)
+    compile_expr_to_bytecode(&ast)
 }
 
 #[test]

@@ -6,7 +6,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -42,7 +42,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -84,7 +84,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -125,7 +125,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let unknown_run = vb_core::ids::RunId::new(7777);
 
         // list_events
@@ -164,7 +164,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When draining trace
         let events = runtime.drain_trace();
         // Then result is empty
@@ -177,7 +177,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -199,7 +199,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -229,7 +229,7 @@
         let Some(shard_count) = NonZeroUsize::new(3) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When shutting down gracefully
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false
@@ -242,7 +242,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
         // When ticking again
@@ -265,7 +265,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
         // When filling the queue
         let Some(wf) = finished_workflow() else {
             return;
@@ -290,7 +290,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let events = runtime.list_events(vb_core::ids::RunId::new(1));
         assert_eq!(events, Err(RuntimeError::RunNotFound));
     }
@@ -301,7 +301,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf1) = finished_workflow() else {
             return;
         };
@@ -330,7 +330,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -353,7 +353,7 @@
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When shutting down
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false (all shards shut down)
@@ -373,7 +373,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When inspecting a non-existent run
         let run = vb_core::ids::RunId::new(999);
         assert_eq!(runtime.inspect_run(run, 1), Ok(()));
@@ -389,7 +389,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -417,7 +417,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -436,7 +436,7 @@
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -466,7 +466,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When completing an action for a run that was never submitted
         let run = vb_core::ids::RunId::new(999);
         assert_eq!(runtime.complete_action(run, StepIdx::new(0)), Ok(()));
@@ -480,7 +480,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When failing an action for a run that was never submitted
         let ticket = ActionTicket {
             run: vb_core::ids::RunId::new(998),
@@ -517,7 +517,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -539,7 +539,7 @@
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };

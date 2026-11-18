@@ -42,7 +42,7 @@ fn make_case_runtime(
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    Ok(Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration"))
+    Ok(Runtime::new(shard_count(1)?, strict_config(), storage))
 }
 
 fn build_suspended_case() -> CaseResult<SuspendedTestCase> {

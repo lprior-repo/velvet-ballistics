@@ -14,7 +14,7 @@ pub(crate) fn cmd_explain(workflow: &Path, output: OutputFormat) -> ExitCode {
     match vb_compile::compile_workflow(&bytes) {
         Ok(compiled) => {
             match reject_unknown_actions(&compiled, output, CliExitCode::ValidationFailed) {
-                Ok(()) => explain_valid(&compiled, &bytes, output),
+                Ok(()) => explain_valid(&compiled, output),
                 Err(code) => code,
             }
         }
@@ -22,33 +22,30 @@ pub(crate) fn cmd_explain(workflow: &Path, output: OutputFormat) -> ExitCode {
     }
 }
 
-fn explain_valid(
-    compiled: &vb_core::CompiledWorkflow,
-    source: &[u8],
-    output: OutputFormat,
-) -> ExitCode {
-    let report = match crate::execution_plan::report(compiled, source) {
-        Ok(report) => report,
-        Err(error) => {
-            write_failure_message(&error, output, CliExitCode::ValidationFailed);
-            return CliExitCode::ValidationFailed.into();
-        }
-    };
-    emit_plan(&report, output)
-}
-
-fn emit_plan(report: &serde_json::Value, output: OutputFormat) -> ExitCode {
+fn explain_valid(compiled: &vb_core::CompiledWorkflow, output: OutputFormat) -> ExitCode {
     if output == OutputFormat::Text {
-        match serde_saphyr::to_string(report) {
-            Ok(plan) => outln!("{plan}"),
-            Err(error) => {
-                write_failure_message(&error.to_string(), output, CliExitCode::ValidationFailed);
-                return CliExitCode::ValidationFailed.into();
-            }
-        }
-    } else {
-        emit_json_or_return!(&report, output);
+        outln!("valid workflow");
+        outln!("nodes: {}", compiled.node_count());
+        outln!("entry step: {}", compiled.entry().get());
+        return ExitCode::SUCCESS;
     }
+
+    emit_json_or_return!(
+        &serde_json::json!({
+            "schema_version": cli_envelope::SCHEMA_VERSION,
+            "kind": "explain_report",
+            "success": true,
+            "status": "valid",
+            "node_count": compiled.node_count(),
+            "entry": compiled.entry().get(),
+            "artifact": {
+                "node_count": compiled.node_count(),
+                "entry": compiled.entry().get()
+            },
+            "repair_hints": []
+        }),
+        output,
+    );
     ExitCode::SUCCESS
 }
 

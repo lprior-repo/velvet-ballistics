@@ -74,7 +74,7 @@ fn review_all_submit_and_control_shapes_keep_active_cap() -> Result<(), Box<dyn 
     let run = RunId::new(963);
     for command in review_command_shapes(run, high) {
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut shard = crate::shard::Shard::new_with_journal(runtime_config(), journal.clone()).expect("valid test configuration");
+        let mut shard = crate::shard::Shard::new_with_journal(runtime_config(), journal.clone());
         shard.enqueue(crate::shard::ShardCommand::Submit {
             run,
             workflow: low.clone(),

@@ -171,4 +171,3 @@ include!("cli_integration/part_a.rs");
 include!("cli_integration/part_b.rs");
 include!("cli_integration/part_c.rs");
 include!("cli_integration/part_d.rs");
-include!("cli_integration/part_e.rs");

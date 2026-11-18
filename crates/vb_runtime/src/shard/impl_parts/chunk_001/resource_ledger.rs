@@ -63,8 +63,8 @@ impl crate::shard::Shard {
     /// Sets admitted-cost quotas on this shard's ledger.
     ///
     /// Standalone shards own a private ledger. Every shard created by
-    /// [`crate::runtime::Runtime::new`] shares one runtime-wide ledger, so production
-    /// callers must use [`crate::runtime::Runtime::set_resource_quotas`] to reject a
+    /// [`crate::Runtime::new`] shares one runtime-wide ledger, so production
+    /// callers must use [`crate::Runtime::set_resource_quotas`] to reject a
     /// finite policy below already-admitted usage.
     pub fn set_resource_quotas(
         &mut self,

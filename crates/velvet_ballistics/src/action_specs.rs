@@ -9,7 +9,6 @@ pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow
         .iter()
         .map(|contract| ActionTableRow {
             id: contract.id.get(),
-            name: contract.name.as_str().to_owned(),
             idempotency: action_idempotency_name(contract.idempotency),
             retry_safety: action_retry_safety_name(contract.retry_safety),
             side_effect: action_side_effect_name(contract.side_effect),
@@ -25,7 +24,6 @@ pub(crate) fn action_contract_detail(
 ) -> ActionContractDetail {
     ActionContractDetail {
         id: contract.id.get(),
-        name: contract.name.as_str().to_owned(),
         input_slot_count: contract.input_slot_count,
         output_slot_count: contract.output_slot_count,
         max_input_bytes: contract.max_input_bytes,
@@ -47,20 +45,17 @@ pub(crate) fn action_contract_detail(
 }
 
 pub(crate) fn write_action_table_rows(rows: &[ActionTableRow]) {
-    outln!(
-        "id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms\tname"
-    );
+    outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
     rows.iter().for_each(|row| {
         outln!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
             row.id,
             row.idempotency,
             row.retry_safety,
             row.side_effect,
             row.input_slot_count,
             row.output_slot_count,
-            row.timeout_ms,
-            row.name
+            row.timeout_ms
         );
     });
 }

@@ -143,8 +143,7 @@ fn old_approval_cannot_authorize_second_real_action_occurrence() -> TestResult {
         std::num::NonZeroUsize::new(1).ok_or("shard")?,
         config,
         storage,
-    )
-    .expect("valid test configuration");
+    );
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {

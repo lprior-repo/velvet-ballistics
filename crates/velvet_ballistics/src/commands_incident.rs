@@ -6,8 +6,9 @@
 //! This CLI module builds the CLI-specific IncidentReport with JSON values.
 
 use vb_storage::events::JournalEvent;
-use vb_storage::journal::incident::{analyze_incident_events, build_repair_hints};
-mod report;
+use vb_storage::journal::incident::{
+    SideEffectCertainty, analyze_incident_events, build_repair_hints,
+};
 
 /// Structured incident report for CLI output.
 pub struct IncidentReport {
@@ -19,10 +20,8 @@ pub struct IncidentReport {
     pub failure_found: bool,
     /// Step at which the failure occurred, if known.
     pub failed_at_step: Option<u16>,
-    /// Recorded action lifecycle facts.
+    /// Side effects collected from action completed/failed events.
     pub side_effects: Vec<serde_json::Value>,
-    /// Ordered, redacted event facts retained in the run journal.
-    pub journal_tail: Vec<serde_json::Value>,
     /// Repair hints based on failure type.
     pub repair_hints: Vec<serde_json::Value>,
 }
@@ -41,8 +40,20 @@ pub fn build_incident_report(run_id: &str, events: &[JournalEvent]) -> IncidentR
         failure_code: analysis.failure_code,
         failure_found: analysis.failure_found,
         failed_at_step: analysis.failed_at_step,
-        side_effects: report::side_effect_rows(events, &analysis.side_effects),
-        journal_tail: report::journal_tail(events),
+        side_effects: analysis
+            .side_effects
+            .into_iter()
+            .map(|se| {
+                serde_json::json!({
+                    "step": se.step,
+                    "action": se.action,
+                    "certainty": match se.certainty {
+                        SideEffectCertainty::Confirmed => "confirmed",
+                        SideEffectCertainty::Failed => "failed",
+                    }
+                })
+            })
+            .collect(),
         repair_hints: hints.into_iter().map(serde_json::Value::String).collect(),
     }
 }

@@ -380,8 +380,7 @@ fn contracts_through(action: ActionId) -> Box<[ActionContract]> {
 fn ticket_with_retry_capacity_increases_capacity_to_max_attempts() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = retry_workflow() else {
         panic!("retry workflow must exist");
     };
@@ -408,8 +407,7 @@ fn ticket_with_retry_capacity_increases_capacity_to_max_attempts() {
 fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow_no_retry() else {
         panic!("workflow must exist");
     };
@@ -437,8 +435,7 @@ fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() {
 fn journal_replay_idempotent_action_failed() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow_no_retry() else {
         panic!("suspended workflow must exist");
     };
@@ -507,8 +504,7 @@ fn journal_replay_idempotent_action_failed() {
 fn action_failure_preserves_action_completed_slots_integration_gap() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = slot_preservation_workflow() else {
         panic!("workflow must exist");
     };
@@ -550,8 +546,7 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry()
 -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = retry_workflow() else {
         return Err("fixture missing".into());
     };
@@ -623,8 +618,7 @@ fn apply_error_handler_writes_step_index_to_error_slot_integration_gap()
 -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = error_handler_with_slot_workflow() else {
         return Err("fixture missing".into());
     };
@@ -688,8 +682,7 @@ fn retry_is_available_returns_false_for_nonretryable_policy()
 -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = retry_workflow() else {
         return Err("fixture missing".into());
     };
@@ -722,8 +715,7 @@ fn retry_is_available_returns_false_for_nonretryable_policy()
 fn retry_is_available_returns_false_when_no_retry_metadata() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow_no_retry() else {
         panic!("workflow must exist");
     };

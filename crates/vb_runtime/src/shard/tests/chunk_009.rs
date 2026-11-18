@@ -2,7 +2,7 @@
 fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
     // Given a shard with a cancelled run that is then re-submitted
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -47,7 +47,7 @@ fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
 fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
     // Given a shard with a suspended run on ActionId(0)
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -92,7 +92,7 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
 fn shard_action_completed_for_finished_run_returns_run_not_found() {
     // Given a shard where a run has already finished
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -124,7 +124,7 @@ fn shard_action_completed_for_finished_run_returns_run_not_found() {
 fn shard_snapshot_run_after_cancel_returns_not_found() {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -161,7 +161,7 @@ fn shard_snapshot_run_after_cancel_returns_not_found() {
 fn shard_timer_for_cancelled_run_returns_run_not_found() {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -192,7 +192,7 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() {
 fn shard_resume_for_cancelled_run_returns_run_not_found() {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -230,7 +230,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     // When submitting and completing multiple runs (producing >2 trace events)
     let Some(workflow) = finished_workflow() else {
         return;

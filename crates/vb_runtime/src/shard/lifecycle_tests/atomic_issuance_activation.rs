@@ -63,7 +63,11 @@ fn atomic_issued_owned_submission_activates_from_persisted_authority_after_reope
     let mut config = small_config();
     config.policy = policy;
     config.max_active_runs = 1;
-    let mut shard = Shard::new_with_journal_and_artifact_store(config, crate::journal::StorageRuntimeJournal::shared_strict(journal.clone()), crate::admission::StorageArtifactStore::shared(journal.clone())).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal_and_artifact_store(
+        config,
+        crate::journal::StorageRuntimeJournal::shared_strict(journal.clone()),
+        crate::admission::StorageArtifactStore::shared(journal.clone()),
+    );
     shard.enqueue(ShardCommand::ActivateOwnedSubmission {
         run,
         expected_source_digest: source_digest,

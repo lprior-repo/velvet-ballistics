@@ -137,8 +137,7 @@ impl Case {
                 ..ShardConfig::default()
             },
             adapter,
-        )
-        .expect("valid test configuration");
+        );
         Ok((journal, runtime))
     }
 

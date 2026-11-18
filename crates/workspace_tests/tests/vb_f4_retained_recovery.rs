@@ -30,8 +30,7 @@ fn runtime(journal: Arc<FjallJournal>) -> Runtime {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal),
-    )
-    .expect("valid test configuration");
+    );
     runtime.set_available_secret_names(Box::new([KEY.into()]));
     runtime
 }
@@ -137,6 +136,3 @@ fn pristine_scalar_secret_survives_real_fjall_close_reopen() -> TestResult {
 fn pristine_owned_secret_survives_real_fjall_close_reopen() -> TestResult {
     reopen_and_finish_secret(true)
 }
-
-#[path = "vb_f4_retained_recovery/timer_duration.rs"]
-mod timer_duration;

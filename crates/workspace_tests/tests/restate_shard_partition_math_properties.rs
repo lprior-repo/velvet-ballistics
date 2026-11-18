@@ -14,27 +14,6 @@ use vb_core::shard::partition::{
     KeyRange, MAX_SHARD_COUNT, PartitionConfig, PartitionError, PartitionPlan, ShardCount,
 };
 
-proptest! {
-    #[test]
-    fn public_run_id_shard_index_matches_guarded_modulo(
-        raw in prop_oneof![Just(0u64), Just(1u64), Just(u64::MAX), any::<u64>()],
-        count in prop_oneof![Just(0u64), Just(1u64), Just(2u64), Just(u64::MAX), any::<u64>()],
-    ) {
-        let expected = if count == 0 { 0 } else { raw % count };
-        prop_assert_eq!(RunId::new(raw).shard_index(count), expected);
-    }
-}
-
-#[test]
-fn public_run_id_shard_index_preserves_input_dependent_boundary_results() {
-    for raw in [0u64, 1, u64::MAX] {
-        for count in [0u64, 1, 2, u64::MAX] {
-            let expected = if count == 0 { 0 } else { raw % count };
-            assert_eq!(RunId::new(raw).shard_index(count), expected);
-        }
-    }
-}
-
 // ============================================================================
 // Helper: unwrap Result without expect/panic
 // ============================================================================

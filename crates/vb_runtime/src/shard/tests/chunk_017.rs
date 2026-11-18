@@ -4,7 +4,7 @@
 #[test]
 fn bh_shd_02_run_removed_from_map_during_drive() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -31,7 +31,7 @@ fn bh_shd_02_run_removed_from_map_during_drive() {
 #[test]
 fn bh_shd_03_action_failure_trace_events_count() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -129,7 +129,7 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let result = shard.drain_for_shutdown();
@@ -142,7 +142,7 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
 #[test]
 fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -202,7 +202,7 @@ fn bh_shd_07_frame_pool_bounded_no_fresh_alloc() {
 #[test]
 fn bh_shd_08_pending_timers_last_wins_per_run() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -244,7 +244,7 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
 #[test]
 fn bh_shd_09_ask_answer_for_nonexistent_run_errors() {
     let config = small_config();
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let run = super::RunId::new(809);
     let answer = AskAnswer {
         ticket: AskTicket {
@@ -275,7 +275,7 @@ fn live_resume_fixture(
     Box<dyn Error>,
 > {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run,
         workflow: action_with_error_handler_workflow().ok_or("workflow fixture must compile")?,
