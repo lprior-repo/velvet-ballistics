@@ -46,7 +46,7 @@ fn requested_lifetime_submission_reserves_shared_global_quota() -> Result<(), St
         .map_err(|error| error.to_string())?
         .max_cost_units;
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
     runtime
         .set_resource_quotas(u64::MAX, cost)
         .map_err(|error| error.to_string())?;
@@ -179,10 +179,14 @@ fn owned_activation_keeps_one_durable_budget_origin_in_sequence() -> Result<(), 
     journal
         .commit_run_submission(&submission, vb_core::RuntimePolicy::Strict)
         .map_err(|error| error.to_string())?;
-    let mut runtime = Runtime::new(NonZeroUsize::new(1).ok_or_else(|| String::from("one shard"))?, ShardConfig {
-        policy: vb_core::RuntimePolicy::Strict,
-        ..ShardConfig::default()
-    }, crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal))).expect("valid test configuration");
+    let mut runtime = Runtime::new(
+        NonZeroUsize::new(1).ok_or_else(|| String::from("one shard"))?,
+        ShardConfig {
+            policy: vb_core::RuntimePolicy::Strict,
+            ..ShardConfig::default()
+        },
+        crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
+    );
     runtime
         .activate_owned_submission(run, source_digest)
         .map_err(|error| error.to_string())?;

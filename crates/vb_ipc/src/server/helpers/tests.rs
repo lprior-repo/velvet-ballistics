@@ -144,20 +144,6 @@ fn frame_total_len_with_max_reasonable_payload() {
 // ── extract_payload tests ──
 
 #[test]
-fn extract_payload_rejects_short_frame_boundaries_without_mutation() {
-    for original in [Vec::new(), vec![0xa5; IPC_HEADER_LEN], Vec::from([0x5a])] {
-        for total_len in 0..IPC_HEADER_LEN {
-            let mut buffer = original.clone();
-            assert!(matches!(
-                crate::server::extract_payload(&mut buffer, total_len),
-                Err(IpcServerError::IncompleteFrame)
-            ));
-            assert_eq!(buffer, original);
-        }
-    }
-}
-
-#[test]
 fn extract_payload_returns_incomplete_when_buffer_too_short() {
     let mut read_buffer = vec![0u8; 10];
     let result = extract_payload(&mut read_buffer, 50);

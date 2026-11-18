@@ -50,7 +50,7 @@ fn admission_persistence_failure_releases_transferred_runtime_quota() -> Result<
     let tenant = vb_core::ids::TenantId::new(91);
     let run = vb_core::ids::RunId::new(901);
     let journal = Arc::new(RejectAdmissionJournal::default());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
     runtime
         .set_resource_quotas(cost, cost)
         .map_err(|error| error.to_string())?;
@@ -83,7 +83,7 @@ fn repeated_terminal_commands_release_quota_and_append_once() -> Result<(), Stri
     let tenant = vb_core::ids::TenantId::new(92);
     let run = vb_core::ids::RunId::new(902);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
     runtime
         .set_resource_quotas(cost, cost)
         .map_err(|error| error.to_string())?;
@@ -127,7 +127,7 @@ fn zero_cost_completions_preserve_shared_positive_tenant_charge() -> Result<(), 
     let tenant = vb_core::ids::TenantId::new(93);
     let other_tenant = vb_core::ids::TenantId::new(94);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal);
     runtime
         .set_resource_quotas(positive_cost, positive_cost)
         .map_err(|error| error.to_string())?;
@@ -218,7 +218,7 @@ fn two_zero_cost_tenant_runs_release_independently() -> Result<(), String> {
     }
     let tenant = vb_core::ids::TenantId::new(930);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal);
     for id in [930, 931] {
         runtime
             .submit_direct_with_tenant(
@@ -243,7 +243,11 @@ fn duplicate_submit_cannot_raise_pending_run_queue_cap() -> Result<(), String> {
     parts.resource_contract.max_queue_depth = 1;
     let limited =
         vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
-    let runtime = Runtime::new(shard_count, runtime_config(), Arc::new(VolatileRuntimeJournal::new())).expect("valid test configuration");
+    let runtime = Runtime::new(
+        shard_count,
+        runtime_config(),
+        Arc::new(VolatileRuntimeJournal::new()),
+    );
     let run = RunId::new(940);
     let tenant = vb_core::ids::TenantId::new(940);
     runtime
@@ -282,7 +286,7 @@ fn active_run_admission_cap_rejects_widening_duplicate_submit() -> Result<(), St
     let run = RunId::new(950);
     let tenant = vb_core::ids::TenantId::new(950);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal);
     runtime
         .set_resource_quotas(cost, cost)
         .map_err(|error| error.to_string())?;

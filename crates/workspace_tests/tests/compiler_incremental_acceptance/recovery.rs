@@ -38,8 +38,7 @@ fn make_runtime(journal: Arc<FjallJournal>) -> TestResult<Runtime> {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal),
-    )
-    .expect("valid test configuration"))
+    ))
 }
 
 fn open_journal(case: &Case) -> TestResult<Arc<FjallJournal>> {

@@ -54,7 +54,6 @@ fn make_runtime() -> Runtime {
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
     Runtime::new_for_tests_and_benchmarks_only(NonZeroUsize::MIN, config)
-        .expect("valid test configuration")
 }
 
 /// Builds a raw IPC frame: header + payload bytes.
@@ -369,8 +368,7 @@ fn ipc_returns_queue_full_when_backpressure_limit_is_hit() {
     // Create a runtime with minimum capacity to make backpressure observable.
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(NonZeroUsize::MIN, config)
-        .expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(NonZeroUsize::MIN, config);
 
     let mut client = UnixStream::connect(&path).expect("client should connect");
 

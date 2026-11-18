@@ -25,7 +25,6 @@ fn runtime(journal: Arc<FjallJournal>) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
-    .expect("valid test configuration")
 }
 
 /// Runs one owned cell through a nonterminal inner-progress cut, drop, reopen,

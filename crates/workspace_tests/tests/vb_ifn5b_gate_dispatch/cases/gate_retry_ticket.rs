@@ -41,8 +41,7 @@ fn fresh_approval_authorizes_real_retry_but_old_approval_does_not() -> TestResul
         std::num::NonZeroUsize::new(1).ok_or("shard")?,
         config,
         storage,
-    )
-    .expect("valid test configuration");
+    );
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {

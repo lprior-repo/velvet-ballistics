@@ -33,8 +33,8 @@
 //
 // BINDING LEDGER (mirrors production_inner/v1_primitive_lowering_production.rs)
 // ============================================================================
-//   - lower_set           <- crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs:46-53
-//   - lower_do            <- crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs:56-66
+//   - lower_set           <- part_05_ir.rs:44-51
+//   - lower_do            <- part_05_ir.rs:54-64
 //   - lower_choose        <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:22-51
 //   - lower_for_each      <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:54-90
 //   - lower_together      <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:93-127

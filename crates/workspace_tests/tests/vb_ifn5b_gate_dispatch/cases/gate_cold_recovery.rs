@@ -27,7 +27,7 @@ fn cold_resume_reissues_bound_authority_for_pending_registered_do() -> TestResul
     let shards = std::num::NonZeroUsize::new(1).ok_or("shard count")?;
     let mut config = crate::common::runtime_fixture::strict_config();
     config.step_budget_per_tick = 1;
-    let mut runtime = Runtime::new(shards, config, storage).expect("valid test configuration");
+    let mut runtime = Runtime::new(shards, config, storage);
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {
@@ -75,8 +75,7 @@ fn cold_resume_reissues_bound_authority_for_pending_registered_do() -> TestResul
     let journal = Arc::new(FjallJournal::open(&dir, Some(FjallConfig::default()))?);
     let before_missing_catalog = journal.events_for_run_full(run)?;
     let missing_catalog_storage = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut missing_catalog_runtime =
-        Runtime::new(shards, config, missing_catalog_storage).expect("valid test configuration");
+    let mut missing_catalog_runtime = Runtime::new(shards, config, missing_catalog_storage);
     missing_catalog_runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {
@@ -133,7 +132,7 @@ fn cold_resume_reissues_bound_authority_for_pending_registered_do() -> TestResul
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shards, config, storage).expect("valid test configuration");
+    let mut runtime = Runtime::new(shards, config, storage);
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {

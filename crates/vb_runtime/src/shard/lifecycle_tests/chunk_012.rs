@@ -2,7 +2,7 @@
 fn journal_before_dispatch() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(workflow) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return Ok(());
@@ -61,7 +61,7 @@ fn journal_before_dispatch_full_journal_blocks_dispatch() -> Result<(), String> 
         capacity,
     ));
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(workflow) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return Ok(());

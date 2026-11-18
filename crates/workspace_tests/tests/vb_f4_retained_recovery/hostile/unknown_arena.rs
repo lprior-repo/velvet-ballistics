@@ -111,7 +111,6 @@ fn action_runtime(journal: Arc<FjallJournal>) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
-    .expect("valid test configuration")
 }
 
 fn completed_trace(value: SlotValue) -> TestResult<(tempfile::TempDir, Vec<JournalEvent>)> {

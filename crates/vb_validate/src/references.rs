@@ -209,16 +209,12 @@ fn validate_step_reference(
 fn validate_declared(
     reference: &str,
     tail: &str,
-    kind: &str,
+    _kind: &str,
     names: &HashSet<String>,
 ) -> ValidationResult<()> {
     let name = reference_name(tail);
     if names.contains(name) {
         Ok(())
-    } else if kind == "secrets" && !name.is_empty() {
-        Err(ValidationError::SecretNotDeclared {
-            secret: name.to_owned(),
-        })
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),

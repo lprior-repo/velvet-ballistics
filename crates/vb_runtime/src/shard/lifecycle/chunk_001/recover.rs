@@ -104,15 +104,10 @@ mod recover_phases {
                 &verified.workflow,
                 command.retry_checkpoint.is_some(),
             )?;
-            let next_seq = command.next_seq;
-            let mut continuation = Continuation::take(&mut command, timer);
+            self.seed_journal_sequence(command.run, command.next_seq)?;
+            let continuation = Continuation::take(&mut command, timer);
             let tenant = command.recovered_tenant;
             let state = verified.restore(self, command, origin, store)?;
-            continuation.prepare_timer(&state)?;
-            if let Some(timer) = continuation.timer {
-                self.prepare_pending_timer(continuation.run, timer)?;
-            }
-            self.seed_journal_sequence(continuation.run, next_seq)?;
             self.admit_recovered_state(continuation.run, state, tenant)?;
             continuation.resume(self)
         }
@@ -171,47 +166,5 @@ mod recover_phases {
             }
             shard.drive_recovered_run(self.run)
         }
-
-        fn prepare_timer(&mut self, state: &RunState) -> RuntimeResult<()> {
-            if self.timer.is_none() {
-                self.timer = recovered_boundary_timer(self.boundary, state)?;
-            }
-            Ok(())
-        }
-    }
-
-    fn recovered_boundary_timer(
-        boundary: RecoveredRunBoundary,
-        state: &RunState,
-    ) -> RuntimeResult<Option<PendingTimer>> {
-        let Some((suspension, kind)) = recovered_timer_boundary(boundary) else {
-            return Ok(None);
-        };
-        let step = suspension.step();
-        let generation = suspension
-            .boundary_seq()
-            .get()
-            .checked_add(1)
-            .ok_or(RuntimeError::InvalidTimerFire)?;
-        let deadline = awaiting_deadline(state, step)?;
-        Ok(Some(PendingTimer {
-            step,
-            kind,
-            generation,
-            deadline,
-        }))
-    }
-
-    fn recovered_timer_boundary(
-        boundary: RecoveredRunBoundary,
-    ) -> Option<(crate::recovery::RecoveredTimerSuspension, PendingTimerKind)> {
-        boundary
-            .waiting_timer()
-            .map(|timer| (timer, PendingTimerKind::Wait))
-            .or_else(|| {
-                boundary
-                    .timed_ask()
-                    .map(|timer| (timer, PendingTimerKind::Ask))
-            })
     }
 }

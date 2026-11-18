@@ -38,81 +38,11 @@
   ],
   "cli": "velvet-ballistics",
   "commands": {
-    "action inspect": {
-      "flags": {
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml",
-            "postcard"
-          ]
-        },
-        "--registry": {
-          "default": "registered",
-          "type": "enum",
-          "values": [
-            "registered",
-            "empty",
-            "uninitialized"
-          ]
-        }
-      },
-      "positionals": [
-        "action_name"
-      ],
-      "summary": "Inspect a named action in the selected registry."
-    },
-    "action list": {
-      "flags": {
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml",
-            "postcard"
-          ]
-        },
-        "--registry": {
-          "default": "registered",
-          "type": "enum",
-          "values": [
-            "registered",
-            "empty",
-            "uninitialized"
-          ]
-        }
-      },
-      "summary": "List the selected action registry."
-    },
     "agent-context": {
       "outputs": [
         "json"
       ],
       "summary": "Emit this versioned machine-readable CLI schema."
-    },
-    "ai-context": {
-      "flags": {
-        "--db": {
-          "required": true,
-          "type": "path"
-        },
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml",
-            "postcard"
-          ]
-        }
-      },
-      "positionals": [
-        "run_id"
-      ],
-      "summary": "Read the bounded diagnostic context for a durable run."
     },
     "answer": {
       "flags": {
@@ -129,11 +59,11 @@
             "postcard"
           ]
         },
-        "--slot": {
+        "--step": {
           "required": true,
           "type": "u16"
         },
-        "--value": {
+        "--value-file": {
           "required": true,
           "type": "path"
         }
@@ -141,7 +71,7 @@
       "positionals": [
         "run_id"
       ],
-      "summary": "Answer a suspended ask by its pending slot using --slot with --value."
+      "summary": "Answer a suspended ask step."
     },
     "bench-run": {
       "flags": {
@@ -159,31 +89,6 @@
         "workflow.yaml"
       ],
       "summary": "Benchmark a workflow fixture."
-    },
-    "cancel": {
-      "flags": {
-        "--db": {
-          "required": true,
-          "type": "path"
-        },
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml",
-            "postcard"
-          ]
-        },
-        "--reason": {
-          "max_bytes": 256,
-          "type": "string"
-        }
-      },
-      "positionals": [
-        "run_id"
-      ],
-      "summary": "Cancel a durable run."
     },
     "compile": {
       "flags": {
@@ -226,32 +131,7 @@
         "run_a",
         "run_b"
       ],
-      "summary": "Compare two durable runs.",
-      "variants": [
-        {
-          "flags": {
-            "--against": {
-              "type": "path"
-            },
-            "--db": {
-              "type": "path"
-            },
-            "--emit": {
-              "default": "text",
-              "type": "enum",
-              "values": [
-                "text",
-                "yaml",
-                "postcard"
-              ]
-            }
-          },
-          "positionals": [
-            "workflow.yaml"
-          ],
-          "summary": "Compare workflow definitions using exactly one baseline: --against old.yaml or --db path; these flags are mutually exclusive."
-        }
-      ]
+      "summary": "Compare two durable runs."
     },
     "doctor": {
       "flags": {
@@ -285,20 +165,6 @@
             "yaml",
             "postcard"
           ]
-        },
-        "--limit": {
-          "type": "i64"
-        },
-        "--status": {
-          "type": "enum",
-          "values": [
-            "pending",
-            "active",
-            "waiting_answer",
-            "cancelled",
-            "completed",
-            "failed"
-          ]
         }
       },
       "positionals": [
@@ -321,7 +187,7 @@
       "positionals": [
         "workflow.yaml"
       ],
-      "summary": "Compile without execution and report the execution plan."
+      "summary": "Explain validation errors in detail."
     },
     "graph": {
       "flags": {
@@ -339,12 +205,6 @@
         "workflow.yaml"
       ],
       "summary": "Output the control-flow graph."
-    },
-    "help": {
-      "outputs": [
-        "text"
-      ],
-      "summary": "Show command help."
     },
     "incident": {
       "flags": {
@@ -457,10 +317,6 @@
             "yaml",
             "postcard"
           ]
-        },
-        "--step": {
-          "required": true,
-          "type": "u16"
         }
       },
       "positionals": [
@@ -549,28 +405,6 @@
       ],
       "summary": "Dry-run a workflow without executing actions."
     },
-    "status": {
-      "flags": {
-        "--active-runs": {
-          "type": "usize"
-        },
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml"
-          ]
-        },
-        "--queue-depth": {
-          "type": "usize"
-        },
-        "--trace-dropped": {
-          "type": "u64"
-        }
-      },
-      "summary": "Report explicitly supplied local runtime counters."
-    },
     "submit": {
       "flags": {
         "--db": {
@@ -605,40 +439,8 @@
       ],
       "summary": "Submit a workflow run to durable storage."
     },
-    "system status": {
-      "flags": {
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml"
-          ]
-        },
-        "--profile": {
-          "default": "standard",
-          "type": "enum",
-          "values": [
-            "quick",
-            "standard",
-            "full"
-          ]
-        },
-        "--server": {
-          "default": "none",
-          "type": "enum",
-          "values": [
-            "none"
-          ]
-        }
-      },
-      "summary": "Run local system checks for the selected profile."
-    },
     "trace": {
       "flags": {
-        "--action": {
-          "type": "u16"
-        },
         "--db": {
           "required": true,
           "type": "path"
@@ -651,29 +453,6 @@
             "yaml",
             "postcard"
           ]
-        },
-        "--limit": {
-          "type": "usize"
-        },
-        "--since-seq": {
-          "type": "u64"
-        },
-        "--status": {
-          "type": "enum",
-          "values": [
-            "pending",
-            "active",
-            "waiting_answer",
-            "cancelled",
-            "completed",
-            "failed"
-          ]
-        },
-        "--step": {
-          "type": "u16"
-        },
-        "--until-seq": {
-          "type": "u64"
         }
       },
       "positionals": [
@@ -723,12 +502,6 @@
         "workflow.yaml"
       ],
       "summary": "Verify a workflow with a bounded profile."
-    },
-    "version": {
-      "outputs": [
-        "text"
-      ],
-      "summary": "Show the CLI version."
     }
   },
   "enums": {

@@ -252,8 +252,7 @@ fn small_config() -> ShardConfig {
 #[test]
 fn submit_handler_persists_before_ack() {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard =
-        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -282,8 +281,7 @@ fn submit_handler_persists_before_ack() {
 #[test]
 fn action_completed_persists_before_ack() -> Result<(), Box<dyn std::error::Error>> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard =
-        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let workflow = suspended_workflow().ok_or("suspended workflow")?;
     let run = RunId::new(1);
     submit_suspended(&shard, run, workflow);
@@ -347,8 +345,7 @@ fn action_completed_persists_before_ack() -> Result<(), Box<dyn std::error::Erro
 #[test]
 fn action_failed_persists_before_ack() {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard =
-        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -397,8 +394,7 @@ fn action_failed_persists_before_ack() {
 #[test]
 fn ask_answered_persists_before_ack() {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard =
-        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let Some(workflow) = timed_ask_without_answer_workflow() else {
         return;
     };
@@ -444,8 +440,7 @@ fn ask_answered_persists_before_ack() {
 #[test]
 fn cancel_persists_before_ack() {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard =
-        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -474,8 +469,7 @@ fn cancel_persists_before_ack() {
 #[test]
 fn timer_fired_persists_before_ack() {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard =
-        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };

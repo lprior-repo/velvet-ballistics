@@ -62,8 +62,7 @@ steps:
     assert_eq!(node_resume.output, NodeOutput::Slot(answer_slot));
 
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone())
-        .expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(2001);
     runtime
         .submit_direct(run, compiled)

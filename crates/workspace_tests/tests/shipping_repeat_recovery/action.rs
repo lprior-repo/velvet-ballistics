@@ -89,8 +89,7 @@ fn repeat_action_outcomes_are_recorded_once_per_attempt() -> TestResult {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    )
-    .expect("valid test configuration");
+    );
     runtime.submit_direct_with_inputs_grants_and_contracts(
         RUN,
         workflow.clone(),

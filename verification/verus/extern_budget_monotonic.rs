@@ -26,8 +26,8 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_monotonic_production.rs)
 // ============================================================================
-//   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:21-97
-//   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:104-110
+//   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:17-93
+//   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:100-106
 //   - `BudgetTraversalError`       <- crates/vb_core/src/budget/traversal_error.rs:13-37
 //   - `WorkflowError`              <- crates/vb_core/src/workflow/error.rs:13-250
 //   - `ResourceContract`           <- crates/vb_core/src/workflow/resource_contract.rs:8-45
@@ -84,7 +84,7 @@ fn prod_methods_drift_check(
     entry: production_inner::StepIdx,
     contract: production_inner::ResourceContract,
 ) {
-    // Reference every field of WholeWorkflowBudget (budget/compute.rs:21-97)
+    // Reference every field of WholeWorkflowBudget (budget/compute.rs:17-93)
     // to surface any rename in production.
     let _budget = production_inner::WholeWorkflowBudget {
         max_total_steps: 0,

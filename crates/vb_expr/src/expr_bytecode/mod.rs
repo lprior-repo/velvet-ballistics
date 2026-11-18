@@ -17,11 +17,18 @@ const MAX_OPS: usize = 256;
 /// Maximum constant pool entries.
 const MAX_CONSTANTS: usize = 65_535;
 
-/// Compiles an expression AST into bounded bytecode and its ordered constants.
-pub fn compile_expr_to_bytecode(ast: &ExprAst) -> ExprResult<(ExprProgram, Vec<ConstValue>)> {
+/// Compiles an expression AST into a bounded postfix bytecode program.
+pub fn compile_expr_to_bytecode(ast: &ExprAst) -> ExprResult<ExprProgram> {
+    let mut ops = Vec::new();
     let mut constants = Vec::new();
-    let program = compile_expr_with_pool(ast, &mut constants)?;
-    Ok((program, constants))
+    let resolver = RejectingResolver;
+    lower_expr(ast, &mut constants, &mut ops, &resolver)?;
+    let op_count = ops.len();
+    validate_op_count(&ops)?;
+    ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::BytecodeTooLong {
+        len: op_count,
+        max: MAX_OPS,
+    })
 }
 
 /// Compiles an expression AST into bytecode using an external constant pool.

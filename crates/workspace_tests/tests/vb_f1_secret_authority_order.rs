@@ -26,8 +26,7 @@ fn unknown_artifact_has_identical_rejection_for_available_and_missing_secrets() 
             ..ShardConfig::default()
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(NonZeroUsize::MIN, config, journal.clone())
-            .expect("valid test configuration");
+        let mut runtime = Runtime::new(NonZeroUsize::MIN, config, journal.clone());
         runtime.set_available_secret_names(names.clone());
         let run = RunId::new(1);
         for result in [
@@ -52,8 +51,7 @@ fn unknown_artifact_has_identical_rejection_for_available_and_missing_secrets() 
         assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
         assert_eq!(journal.snapshot()?, Vec::new());
 
-        let mut shard =
-            Shard::new_with_journal(config, journal.clone()).expect("valid test configuration");
+        let mut shard = Shard::new_with_journal(config, journal.clone());
         shard.set_available_secret_names(names.into());
         for command in [
             ShardCommand::SubmitPrePersisted {
@@ -154,8 +152,7 @@ fn accepted_artifact_capability_denial_precedes_presence_on_every_submit() -> Te
             NonZeroUsize::MIN,
             config,
             StorageRuntimeJournal::shared_strict(journal.clone()),
-        )
-        .expect("valid test configuration");
+        );
         runtime.set_available_secret_names(names.clone());
         for result in [
             runtime.submit_compiled(run, workflow.clone()),
@@ -187,8 +184,7 @@ fn accepted_artifact_capability_denial_precedes_presence_on_every_submit() -> Te
         let mut shard = Shard::new_with_journal(
             config,
             StorageRuntimeJournal::shared_strict(journal.clone()),
-        )
-        .expect("valid test configuration");
+        );
         shard.set_available_secret_names(names.into());
         for command in [
             ShardCommand::SubmitPrePersisted {

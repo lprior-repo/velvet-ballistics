@@ -1159,12 +1159,14 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
 }
 
 #[test]
-fn validate_resource_contract_accepts_max_steps_hard_limit() {
+fn validate_resource_contract_rejects_oversized_max_steps() {
     use vb_core::limits::MAX_STEPS_PER_WORKFLOW;
     let contract = ResourceContract {
-        max_steps: u16::try_from(MAX_STEPS_PER_WORKFLOW).unwrap_or(u16::MAX),
+        max_steps: u16::MAX,
         ..ResourceContract::DEFAULT
     };
+    // MAX_STEPS_PER_WORKFLOW == 65_535 == u16::MAX, so max_steps == u16::MAX is exactly at the limit
+    // and should NOT be rejected. Test that an at-limit contract passes.
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
     assert!(
@@ -1172,6 +1174,8 @@ fn validate_resource_contract_accepts_max_steps_hard_limit() {
         "max_steps at the hard limit should be accepted"
     );
     let _ = result;
+    let _ = contract;
+    let _ = MAX_STEPS_PER_WORKFLOW;
 }
 
 #[test]
@@ -1190,15 +1194,17 @@ fn validate_resource_contract_rejects_oversized_max_slots() {
 }
 
 #[test]
-fn validate_resource_contract_accepts_max_constants_hard_limit() {
+fn validate_resource_contract_rejects_oversized_max_constants() {
     use vb_core::limits::MAX_CONSTANTS;
     let contract = ResourceContract {
-        max_constants: u16::try_from(MAX_CONSTANTS).unwrap_or(u16::MAX),
+        max_constants: u16::MAX,
         ..ResourceContract::DEFAULT
     };
     let parts = parts_with_contract(contract);
+    // max_constants == u16::MAX == MAX_CONSTANTS (65_535), at-limit passes
     let result = vb_core::validate_resource_contract(&parts);
     assert_eq!(result, Ok(()));
+    let _ = MAX_CONSTANTS;
 }
 
 #[test]

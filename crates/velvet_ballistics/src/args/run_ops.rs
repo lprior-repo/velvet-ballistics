@@ -4,11 +4,9 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use super::answer_selector::AnswerSelector;
 use super::error::ParseError;
 use super::shared::{find_positional, named_flag, parse_output_format, validate_known_flags};
 use super::types::{Command, EventStatus, OutputFormat};
-use vb_core::ids::SlotIdx;
 
 pub(super) struct RunDbArgs {
     pub(super) run_id: String,
@@ -145,39 +143,22 @@ pub(super) fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
 
 pub(super) fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "answer")?;
-    let run_id = run_id_argument(args)?;
-    let (selector, value_file) = answer_selector_and_file(args)?;
-    let db = required_flag(args, "--db")?;
+    let run_id = find_positional(args, 2)
+        .and_then(|path| path.to_str().map(String::from))
+        .ok_or(ParseError::MissingArgument("run_id"))?;
+    let step_raw = named_flag(args, "--step").ok_or(ParseError::MissingArgument("--step"))?;
+    let step = step_raw
+        .parse::<u16>()
+        .map_err(|_| ParseError::InvalidStep(step_raw))?;
+    let value_file =
+        named_flag(args, "--value-file").ok_or(ParseError::MissingArgument("--value-file"))?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);
     Ok(Command::Answer {
         run_id,
-        selector,
+        step,
         value_file: PathBuf::from(value_file),
         db: PathBuf::from(db),
         output,
     })
-}
-
-fn run_id_argument(args: &[OsString]) -> Result<String, ParseError> {
-    find_positional(args, 2)
-        .and_then(|path| path.to_str().map(String::from))
-        .ok_or(ParseError::MissingArgument("run_id"))
-}
-
-fn answer_selector_and_file(args: &[OsString]) -> Result<(AnswerSelector, String), ParseError> {
-    let slot = named_flag(args, "--slot").ok_or(ParseError::MissingArgument("--slot"))?;
-    Ok((
-        AnswerSelector::Slot(parse_answer_slot(slot)?),
-        required_flag(args, "--value")?,
-    ))
-}
-
-fn parse_answer_slot(raw: String) -> Result<SlotIdx, ParseError> {
-    raw.parse::<u16>()
-        .map(SlotIdx::new)
-        .map_err(|_| ParseError::InvalidArgument(format!("invalid --slot: {raw}")))
-}
-
-fn required_flag(args: &[OsString], flag: &'static str) -> Result<String, ParseError> {
-    named_flag(args, flag).ok_or(ParseError::MissingArgument(flag))
 }

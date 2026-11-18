@@ -76,10 +76,14 @@ pub(crate) fn owned_journal_for_run(
 fn strict_runtime_for_owned_journal(
     journal: Arc<vb_storage::FjallJournal>,
 ) -> Result<Runtime, String> {
-    Ok(Runtime::new(NonZeroUsize::new(1).ok_or("one shard")?, ShardConfig {
-        policy: RuntimePolicy::Strict,
-        ..ShardConfig::default()
-    }, crate::journal::StorageRuntimeJournal::shared_strict(journal)).expect("valid test configuration"))
+    Ok(Runtime::new(
+        NonZeroUsize::new(1).ok_or("one shard")?,
+        ShardConfig {
+            policy: RuntimePolicy::Strict,
+            ..ShardConfig::default()
+        },
+        crate::journal::StorageRuntimeJournal::shared_strict(journal),
+    ))
 }
 
 #[test]

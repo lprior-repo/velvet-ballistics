@@ -76,7 +76,8 @@ fn mixed_completion_order_and_failure_guidance_are_preserved_without_mutation() 
             analysis.failed_at_step
         )
         .iter()
-        .any(|hint| hint == "review recorded action outcomes before choosing compensating actions")
+        .any(|hint| hint
+            == "review side effects that completed before failure for compensating actions")
     );
     assert_eq!(events, original_events);
 }

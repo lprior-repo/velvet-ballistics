@@ -168,8 +168,7 @@ pub const SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS: u64 = 2_592_000;
 /// maximum (`crates/vb_core/src/budget/compute.rs:180`), the small-linear
 /// route sets it too (`crates/vb_core/src/budget/small_linear.rs:47`),
 /// and the concurrent route sets both fields from the step count
-/// (`max_total_steps` at `crates/vb_core/src/budget/concurrent/output.rs:47`,
-/// `max_run_time_seconds` at `crates/vb_core/src/budget/concurrent/output.rs:61`).
+/// (`crates/vb_core/src/budget/concurrent/output.rs:61`).
 pub open spec fn spec_run_time_equals_policy_max(b: WholeWorkflowBudget) -> bool {
     b.max_run_time_seconds as int == SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS as int
         || b.max_run_time_seconds as int == b.max_total_steps as int
@@ -298,9 +297,8 @@ pub proof fn proof_run_time_equals_policy_max(b: WholeWorkflowBudget)
 // traversal route sets max_run_time_seconds to the policy maximum
 // (compute.rs:180), the small-linear route does the same
 // (small_linear.rs:47), and the concurrent route sets it to the step
-// count (concurrent/output.rs:61), which is also max_total_steps
-// (concurrent/output.rs:47), so the disjunction is satisfied by every
-// Ok-branch budget.
+// count, which is also max_total_steps (concurrent/output.rs:61), so
+// the disjunction is satisfied by every Ok-branch budget.
 
         b.max_run_time_seconds == SPEC_ABSOLUTE_MAX_RUN_TIME_SECONDS || b.max_run_time_seconds
             == b.max_total_steps,

@@ -106,7 +106,11 @@ mod secret_authority {
         };
         let run = RunId::new(31);
         let source_journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut source = Shard::new_with_journal_and_artifact_store(config, source_journal.clone(), store.clone()).expect("valid test configuration");
+        let mut source = Shard::new_with_journal_and_artifact_store(
+            config,
+            source_journal.clone(),
+            store.clone(),
+        );
         source.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         source.enqueue(ShardCommand::Submit {
             run,
@@ -160,7 +164,7 @@ mod secret_authority {
             }
             let journal = Arc::new(VolatileRuntimeJournal::new());
             let mut target =
-                Shard::new_with_journal_and_artifact_store(config, journal.clone(), store.clone()).expect("valid test configuration");
+                Shard::new_with_journal_and_artifact_store(config, journal.clone(), store.clone());
             target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
             target.enqueue(ShardCommand::Recover {
                 command: Box::new(
@@ -262,7 +266,10 @@ mod secret_authority {
             ..ShardConfig::default()
         };
         let run = RunId::new(32);
-        let mut source = Shard::new_with_journal(config, crate::journal::StorageRuntimeJournal::shared_strict(journal.clone())).expect("valid test configuration");
+        let mut source = Shard::new_with_journal(
+            config,
+            crate::journal::StorageRuntimeJournal::shared_strict(journal.clone()),
+        );
         source.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         source.enqueue(ShardCommand::Submit {
             run,
@@ -329,7 +336,10 @@ mod secret_authority {
         *loose.taint.first_mut().ok_or("loose taint")? = Taint::Clean;
         command.frame =
             RunFrame::from_checkpoint_v1(loose).map_err(|error| format!("{error:?}"))?;
-        let mut target = Shard::new_with_journal(fixture.config, crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone())).expect("valid test configuration");
+        let mut target = Shard::new_with_journal(
+            fixture.config,
+            crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
+        );
         target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         target.enqueue(ShardCommand::Recover {
             command: Box::new(command),
@@ -377,7 +387,10 @@ mod secret_authority {
         fixture.checkpoint.admission =
             Some(admission.with_attached_budget(budget).with_tenant(tenant));
         let command = RecoverRunCommand::for_retry(fixture.checkpoint.clone(), fixture.next_seq)?;
-        let mut target = Shard::new_with_journal(fixture.config, crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone())).expect("valid test configuration");
+        let mut target = Shard::new_with_journal(
+            fixture.config,
+            crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
+        );
         target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         target.set_resource_quotas(cost, cost);
         target.enqueue(ShardCommand::Recover {
@@ -414,7 +427,10 @@ mod secret_authority {
             // The loose frame remains valid; the attached full checkpoint is authoritative.
             let command = RecoverRunCommand::for_retry(checkpoint.clone(), fixture.next_seq)?
                 .with_retry_checkpoint(tampered);
-            let mut target = Shard::new_with_journal(fixture.config, crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone())).expect("valid test configuration");
+            let mut target = Shard::new_with_journal(
+                fixture.config,
+                crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
+            );
             target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
             let pending = target.pending_boundary_snapshot(0, 8);
             target.enqueue(ShardCommand::Recover {

@@ -1,3 +1,0 @@
-# Public run shard mapping
-
-The existing public RunId::shard_index method returns zero for count zero and raw modulo count otherwise. Recover one direct-public property over the entire u64 domain with boundary-biased inputs and an explicit boundary matrix that distinguishes an implementation ignoring raw input. Production code and existing properties remain unchanged. No copied Runtime routing model, unknown-run error oracle, benchmark or formal closure claim. Use the existing proptest dependency, preserve all current scenarios, and obtain independent TEST review plus scoped execution evidence before landing.

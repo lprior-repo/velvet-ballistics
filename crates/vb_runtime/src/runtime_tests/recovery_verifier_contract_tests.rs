@@ -133,14 +133,18 @@ mod recovery_verifier_contract_tests {
             "unused RunId should have no events before load"
         );
 
-        let runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig {
-            command_queue_capacity: 16,
-            trace_capacity: 16,
-            step_budget_per_tick: 4,
-            max_active_runs: 4,
-            max_open_gates: 1024,
-            policy: RuntimePolicy::Strict,
-        }, StorageRuntimeJournal::shared_strict(Arc::clone(&journal))).expect("valid test configuration");
+        let runtime = Runtime::new(
+            NonZeroUsize::MIN,
+            ShardConfig {
+                command_queue_capacity: 16,
+                trace_capacity: 16,
+                step_budget_per_tick: 4,
+                max_active_runs: 4,
+                max_open_gates: 1024,
+                policy: RuntimePolicy::Strict,
+            },
+            StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
+        );
 
         // Capture pre-state
         let pre_counters = runtime.counters_snapshot();
@@ -216,14 +220,18 @@ mod recovery_verifier_contract_tests {
         // Derive expected full workflow independently via admission verifier
         let expected_workflow = vb_storage::admission::verify_accepted_artifact(&artifact)?;
 
-        let runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig {
-            command_queue_capacity: 16,
-            trace_capacity: 16,
-            step_budget_per_tick: 4,
-            max_active_runs: 4,
-            max_open_gates: 1024,
-            policy: RuntimePolicy::Journaled,
-        }, StorageRuntimeJournal::shared_journaled(Arc::clone(&journal))).expect("valid test configuration");
+        let runtime = Runtime::new(
+            NonZeroUsize::MIN,
+            ShardConfig {
+                command_queue_capacity: 16,
+                trace_capacity: 16,
+                step_budget_per_tick: 4,
+                max_active_runs: 4,
+                max_open_gates: 1024,
+                policy: RuntimePolicy::Journaled,
+            },
+            StorageRuntimeJournal::shared_journaled(Arc::clone(&journal)),
+        );
 
         // Capture pre-state
         let pre_counters = runtime.counters_snapshot();

@@ -36,8 +36,7 @@ fn open(path: &Path) -> TestResult<(Arc<FjallJournal>, Runtime)> {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    )
-    .expect("valid test configuration");
+    );
     Ok((journal, runtime))
 }
 

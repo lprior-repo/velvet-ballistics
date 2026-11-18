@@ -28,7 +28,7 @@ fn allocations_and_reservations_are_monotonic() -> TestResult {
 
 #[test]
 fn allocation_checks_every_representable_count_before_mutation() -> TestResult {
-    assert_eq!(MAX_SOURCE_STEPS, vb_core::limits::MAX_STEPS_PER_WORKFLOW);
+    assert_eq!(MAX_SOURCE_STEPS, usize::from(u16::MAX));
     for count in 0..=u16::MAX {
         let mut builder = SlotCompiler::new();
         builder.reserve_slots(count)?;

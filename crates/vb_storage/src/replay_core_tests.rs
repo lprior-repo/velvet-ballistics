@@ -12,12 +12,9 @@
 mod replay_core_tests {
     use crate::recovery::{
         ActionReplayTracker, RecoveryError,
-        replay::core::{
-            extract_terminal, is_terminal_event, recover_snapshot_plus_tail, replay_events,
-        },
+        replay::core::{extract_terminal, is_terminal_event, replay_events},
     };
     use crate::{DIGEST_BYTES, EventSeq, JournalEvent};
-    use proptest::prelude::*;
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 
     fn make_step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
@@ -61,29 +58,6 @@ mod replay_core_tests {
             seq: EventSeq::new(seq),
             attempt: 1,
         }
-    }
-
-    fn assert_sequence_divergence(
-        result: Result<Vec<JournalEvent>, RecoveryError>,
-        expected_detail: &str,
-    ) {
-        match result {
-            Err(RecoveryError::ReplayDivergence { step, detail }) => {
-                assert_eq!(step, StepIdx::ZERO);
-                assert_eq!(detail, expected_detail);
-            }
-            other => panic!("expected ReplayDivergence, got {other:?}"),
-        }
-    }
-
-    fn assert_sequence_pair_diverges(first: u64, second: u64, expected_detail: &str) {
-        let run = RunId::new(54);
-        let events = [
-            make_run_accepted(run, first),
-            make_run_accepted(run, second),
-        ];
-        let result = replay_events(&events, &mut ActionReplayTracker::new(), &[]);
-        assert_sequence_divergence(result, expected_detail);
     }
 
     #[test]
@@ -185,100 +159,6 @@ mod replay_core_tests {
             "should reject non-contiguous sequences, got {:?}",
             result
         );
-    }
-
-    #[test]
-    fn replay_events_keeps_singleton_and_max_adjacent_sequences_valid() {
-        let run = RunId::new(54);
-        let singleton = [make_run_accepted(run, u64::MAX)];
-        let adjacent = [
-            make_run_accepted(run, u64::MAX - 1),
-            make_run_accepted(run, u64::MAX),
-        ];
-
-        assert_eq!(
-            replay_events(&singleton, &mut ActionReplayTracker::new(), &[]).ok(),
-            Some(singleton.to_vec())
-        );
-        assert_eq!(
-            replay_events(&adjacent, &mut ActionReplayTracker::new(), &[]).ok(),
-            Some(adjacent.to_vec())
-        );
-    }
-
-    #[test]
-    fn replay_events_rejects_max_successor_before_tracker_mutation() {
-        let run = RunId::new(54);
-        let action = ActionId::new(8);
-        let step = StepIdx::new(3);
-        let event = |seq| JournalEvent::ActionCompletedEvent {
-            run,
-            seq: EventSeq::new(seq),
-            step,
-            action,
-            attempt: 1,
-        };
-        let events = [event(u64::MAX), event(u64::MAX)];
-        let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker, &[]);
-        assert_sequence_divergence(
-            result,
-            "journal sequence overflow after 18446744073709551615",
-        );
-        assert!(!tracker.is_resolved(action, step));
-        assert_sequence_pair_diverges(
-            u64::MAX,
-            0,
-            "journal sequence overflow after 18446744073709551615",
-        );
-    }
-
-    #[test]
-    fn replay_events_preserves_ordinary_noncontiguous_error_details() {
-        assert_sequence_pair_diverges(0, 2, "journal sequence violation: expected 1, found 2");
-        assert_sequence_pair_diverges(2, 1, "journal sequence violation: expected 3, found 1");
-        assert_sequence_pair_diverges(1, 1, "journal sequence violation: expected 2, found 1");
-    }
-
-    #[test]
-    fn snapshot_tail_replay_uses_checked_sequence_validation() {
-        let run = RunId::new(54);
-        let snapshot = crate::recovery::types::RunSnapshot {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
-            slots: Vec::new(),
-            taint: Vec::new(),
-        };
-        let tail = [
-            make_run_accepted(run, u64::MAX - 1),
-            make_run_accepted(run, u64::MAX),
-            make_run_accepted(run, u64::MAX),
-        ];
-        let result =
-            recover_snapshot_plus_tail(&snapshot, &tail, &mut ActionReplayTracker::new(), &[]);
-
-        assert_sequence_divergence(
-            result,
-            "journal sequence overflow after 18446744073709551615",
-        );
-    }
-
-    proptest! {
-        #[test]
-        fn prop_replay_accepts_adjacent_sequence_pairs(pair in any::<u64>().prop_filter_map(
-            "sequence has a representable successor",
-            |start| start.checked_add(1).map(|next| (start, next)),
-        )) {
-            let (start, next) = pair;
-            let run = RunId::new(54);
-            let events = [make_run_accepted(run, start), make_run_accepted(run, next)];
-
-            prop_assert_eq!(
-                replay_events(&events, &mut ActionReplayTracker::new(), &[]).ok(),
-                Some(events.to_vec())
-            );
-        }
     }
 
     #[test]

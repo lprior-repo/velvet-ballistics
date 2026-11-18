@@ -154,7 +154,7 @@ pub enum RecoveryFrameSeedProduct {
 }
 
 /// Mirror of production `reject_unsupported_live_frame_state` decision
-/// at `crates/vb_storage/src/recovery/types/cannot_resume.rs:167-181`. Production body checks
+/// at `crates/vb_runtime/src/recovery.rs:111-117`. Production body checks
 /// `seed.cannot_resume_state().is_resumable()`. Body is `#[verifier::external]`.
 #[verifier::external]
 pub fn reject_unsupported_stub(state: RecoveryCannotResumeStateStub) -> bool {

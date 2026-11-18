@@ -6,7 +6,6 @@ use super::resolve_slot_taint_or_fail;
 
 use crate::JournalEvent;
 use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
-use crate::slot_extra::DecodedSlotWrittenExtra;
 use vb_core::{ActionId, RunId, WorkflowDigest};
 
 /// Categorizes the result of dispatching an event to a category helper.
@@ -119,11 +118,7 @@ fn apply_slot_written(
     event: &JournalEvent,
 ) -> RecoveryResult<ApplyOutcome> {
     let JournalEvent::SlotWrittenEvent {
-        run,
-        slot,
-        value,
-        extra,
-        ..
+        run, slot, value, ..
     } = event
     else {
         return Ok(ApplyOutcome::NotApplicable);
@@ -132,22 +127,9 @@ fn apply_slot_written(
         return Err(reject_missing_slot_payload(*run));
     };
     let slot_value = decode_slot_value(bytes, *run, *slot)?;
-    let snapshot_taint = resolve_slot_taint_or_fail(frame, *slot)?;
-    let taint = slot_written_taint(extra.as_deref(), *slot, snapshot_taint)?;
+    let taint = resolve_slot_taint_or_fail(frame, *slot)?;
     write_slot_with_replay_divergence(frame, *slot, slot_value, taint)?;
     Ok(ApplyOutcome::Executed)
-}
-
-fn slot_written_taint(
-    extra: Option<&[u8]>,
-    slot: vb_core::SlotIdx,
-    snapshot_taint: vb_core::Taint,
-) -> RecoveryResult<vb_core::Taint> {
-    match extra.map(crate::slot_extra::decode_slot_written_extra) {
-        None | Some(Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(_))) => Ok(snapshot_taint),
-        Some(Ok(DecodedSlotWrittenExtra::Envelope(envelope))) => Ok(envelope.taint),
-        Some(Err(_)) => Err(RecoveryError::CorruptSlotTaint { slot }),
-    }
 }
 
 fn write_slot_with_replay_divergence(

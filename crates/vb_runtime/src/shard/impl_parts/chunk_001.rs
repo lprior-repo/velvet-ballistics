@@ -8,7 +8,7 @@ struct ShardServices {
 
 impl Shard {
     /// Creates a new shard with the given configuration.
-    pub fn new(config: ShardConfig) -> RuntimeResult<Self> {
+    pub fn new(config: ShardConfig) -> Self {
         Self::new_with_journal_and_artifact_store(
             config,
             VolatileRuntimeJournal::shared(),
@@ -21,7 +21,7 @@ impl Shard {
         config: ShardConfig,
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
-    ) -> RuntimeResult<Self> {
+    ) -> Self {
         Self::new_with_shared_quota(
             config,
             journal,
@@ -36,27 +36,21 @@ impl Shard {
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
         quota: crate::quota::SharedQuotaLedger,
-    ) -> RuntimeResult<Self> {
+    ) -> Self {
         let services = ShardServices {
             quota,
             artifact_store,
             journal,
         };
-        Self::try_with_services(config, services)
+        Self::with_services(config, services)
     }
 
-    fn try_with_services(config: ShardConfig, services: ShardServices) -> RuntimeResult<Self> {
-        validate_command_queue_capacity(config.command_queue_capacity)?;
-        let aggregate = RunAggregate::try_with_timer_capacity(config.max_active_runs)?;
-        Ok(Self::with_services(config, services, aggregate))
-    }
-
-    fn with_services(config: ShardConfig, ports: ShardServices, aggregate: RunAggregate) -> Self {
+    fn with_services(config: ShardConfig, services: ShardServices) -> Self {
         Self {
             secret_availability: std::sync::Arc::from([]),
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
-            run_aggregate: aggregate,
+            run_aggregate: RunAggregate::new(),
             journal_sequences: IndexMap::new(),
             pending_ask_authorities: IndexMap::new(),
             open_gates: IndexMap::new(),
@@ -65,16 +59,16 @@ impl Shard {
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
-            quota: ports.quota,
+            quota: services.quota,
             pending_quota_reservation: None,
             charged_quotas: IndexMap::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
             max_open_gates: config.max_open_gates,
             policy: config.policy,
-            artifact_store: ports.artifact_store,
+            artifact_store: services.artifact_store,
             control: ShardControlState::new(),
-            journal: ports.journal,
+            journal: services.journal,
             fencing_tokens: super::fencing::FencingTokens::new(),
         }
     }
@@ -87,10 +81,7 @@ impl Shard {
     /// `MissingAcceptedArtifactStore` is used so direct runtime construction without a
     /// storage-backed accepted-artifact source rejects admission instead of silently
     /// accepting unbacked artifacts.
-    pub fn new_with_journal(
-        config: ShardConfig,
-        journal: SharedRuntimeJournal,
-    ) -> RuntimeResult<Self> {
+    pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
         Self::new_with_journal_and_quota(config, journal, crate::quota::SharedQuotaLedger::new())
     }
 
@@ -99,7 +90,7 @@ impl Shard {
         config: ShardConfig,
         journal: SharedRuntimeJournal,
         quota: crate::quota::SharedQuotaLedger,
-    ) -> RuntimeResult<Self> {
+    ) -> Self {
         let artifact_store = Self::artifact_store_for(&config, &journal);
         Self::new_with_shared_quota(config, journal, artifact_store, quota)
     }

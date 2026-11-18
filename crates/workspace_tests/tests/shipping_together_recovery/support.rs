@@ -121,8 +121,7 @@ pub(crate) fn live(source: &str, inputs: Box<[(SlotIdx, SlotValue)]>) -> TestRes
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    )
-    .expect("valid test configuration");
+    );
     if inputs.is_empty() {
         runtime.submit_compiled(RUN, plan.clone())?;
     } else {

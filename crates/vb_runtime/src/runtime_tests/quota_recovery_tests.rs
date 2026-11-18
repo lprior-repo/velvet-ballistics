@@ -53,7 +53,11 @@ fn cold_recovery_restores_tenant_global_quota_and_exact_journal_bytes() -> Resul
         policy: RuntimePolicy::Journaled,
         ..ShardConfig::default()
     };
-    let mut runtime = Runtime::new(shard_count, config, crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal))).expect("valid test configuration");
+    let mut runtime = Runtime::new(
+        shard_count,
+        config,
+        crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
+    );
     runtime
         .set_resource_quotas(cost, cost)
         .map_err(|error| error.to_string())?;
@@ -105,7 +109,11 @@ fn cold_recovery_restores_tenant_global_quota_and_exact_journal_bytes() -> Resul
         vb_storage::FjallJournal::open(directory.path(), None)
             .map_err(|error| error.to_string())?,
     );
-    let mut over_quota_runtime = Runtime::new(shard_count, config, crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&reopened))).expect("valid test configuration");
+    let mut over_quota_runtime = Runtime::new(
+        shard_count,
+        config,
+        crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&reopened)),
+    );
     let tenant_ceiling = cost
         .checked_sub(1)
         .ok_or_else(|| String::from("cost must be positive"))?;
@@ -126,7 +134,11 @@ fn cold_recovery_restores_tenant_global_quota_and_exact_journal_bytes() -> Resul
         .map_err(|error| error.to_string())?;
     assert_eq!(rejected_events, before);
     drop(over_quota_runtime);
-    let mut recovered_runtime = Runtime::new(shard_count, config, crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&reopened))).expect("valid test configuration");
+    let mut recovered_runtime = Runtime::new(
+        shard_count,
+        config,
+        crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&reopened)),
+    );
     recovered_runtime
         .set_resource_quotas(cost, cost)
         .map_err(|error| error.to_string())?;
@@ -152,7 +164,10 @@ fn cold_recovery_restores_tenant_global_quota_and_exact_journal_bytes() -> Resul
             "action_attempts_missing" => incomplete.recovered_action_attempts = None,
             _ => incomplete.recovered_journal_bytes_written = None,
         }
-        let mut shard = crate::shard::Shard::new_with_journal(config, crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&reopened))).expect("valid test configuration");
+        let mut shard = crate::shard::Shard::new_with_journal(
+            config,
+            crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&reopened)),
+        );
         shard.set_resource_quotas(cost, cost);
         shard
             .enqueue(crate::shard::ShardCommand::Recover {
@@ -213,7 +228,7 @@ fn cold_recovery_restores_tenant_global_quota_and_exact_journal_bytes() -> Resul
 #[test]
 fn public_tenant_quota_releases_after_action_failure() -> Result<(), String> {
     let shard_count = NonZeroUsize::new(1).ok_or_else(|| String::from("one shard"))?;
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let workflow = suspended_workflow().ok_or_else(|| String::from("workflow fixture"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)
         .map_err(|error| error.to_string())?
@@ -252,7 +267,7 @@ fn public_tenant_quota_releases_after_action_failure() -> Result<(), String> {
 #[test]
 fn public_tenant_quota_releases_after_kill() -> Result<(), String> {
     let shard_count = NonZeroUsize::new(1).ok_or_else(|| String::from("one shard"))?;
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let workflow = suspended_workflow().ok_or_else(|| String::from("workflow fixture"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)
         .map_err(|error| error.to_string())?

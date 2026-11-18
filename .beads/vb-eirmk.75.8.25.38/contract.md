@@ -1,5 +1,0 @@
-# Implemented CLI introspection
-
-Recover the existing command metadata for help, version, status, system status, action list, action inspect, ai-context and cancel. Describe only actual positional arguments, flag types, enums, defaults and requiredness from the current parser. Add current events/trace filters and required retry step. Preserve the existing command metadata and schema version except those explicit corrections. No new parser surface, runtime behavior, health probes, legacy output flags, planned-primitive availability claims or delivery modes.
-
-Split the existing literal command builder by command domain so modified and new production functions stay within 25 raw lines and five parameters, with files within 300 lines. Tests bind returned metadata to real parsed Command values, include exact field/requiredness/enum assertions and reject unsupported flags/modes. Existing metadata tests remain intact. Workflow-diff metadata belongs to the separately qualified .29 feature; do not restore old definitions over that owner. Independent CODE/TEST review and canonical gates are required. CPU/cloud only; benchmarks waived.

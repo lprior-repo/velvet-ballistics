@@ -398,8 +398,7 @@ fn durable_runtime_public_surface(
         scenario_id,
         public_surface: "vb_storage accepted artifact for strict runtime admission",
     })?;
-    let mut runtime =
-        Runtime::new(shard_count, runtime_config(), shared).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), shared);
     runtime
         .submit_compiled_with_inputs(
             run,

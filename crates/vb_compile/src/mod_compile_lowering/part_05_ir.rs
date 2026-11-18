@@ -21,7 +21,6 @@ pub fn lower_steps_to_ir(
     name: &str,
     digest: WorkflowDigest,
 ) -> Result<CompiledWorkflow, CompileErrors> {
-    crate::mod_compile_lowering::validate_compiled_node_count(nodes.len())?;
     let parts = WorkflowParts {
         name: Box::from(name),
         digest,

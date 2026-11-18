@@ -539,16 +539,12 @@ mod bdd_scenarios {
     // answer
 
     #[test]
-    fn cli_answer_without_slot_selector_fails() {
-        // answer requires the canonical --slot and --value selector.
+    fn cli_answer_requires_db_and_step_and_value_file() {
+        // answer requires --db, --step, --value-file
         let output = run_cli_failing(&["answer", "test-run-id"]).unwrap();
         assert!(
             output.status.code() == Some(2),
             "expected exit 2 for missing required args"
-        );
-        assert!(
-            String::from_utf8_lossy(&output.stderr).contains("missing argument: --slot"),
-            "expected the canonical missing-slot error"
         );
     }
 

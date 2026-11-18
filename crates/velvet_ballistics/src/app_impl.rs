@@ -49,8 +49,8 @@ pub(crate) mod prelude {
     };
     pub(crate) use crate::step_helpers_display::{error_name, print_step_result};
     pub(crate) use crate::{
-        agent_context, cli_envelope, commands_diff, commands_journal, commands_status,
-        commands_system_status, commands_workflow, deliver_sink,
+        agent_context, cli_envelope, commands_diff, commands_incident, commands_journal,
+        commands_status, commands_system_status, commands_workflow, deliver_sink,
     };
     pub(crate) use vb_ipc::client::IpcClient;
     pub(crate) use vb_ipc::{IpcCommand, IpcPayload};

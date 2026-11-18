@@ -529,8 +529,7 @@ fn durable_fixture_with_lifetime(
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    )
-    .expect("valid test configuration");
+    );
     Ok(DurableFixture {
         runtime,
         journal,

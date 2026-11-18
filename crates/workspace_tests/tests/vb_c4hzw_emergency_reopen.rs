@@ -94,8 +94,7 @@ fn trigger_emergency_deny(
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage.clone())
-        .expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage.clone());
 
     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
     runtime.configure_live_policy(
@@ -138,8 +137,7 @@ fn emergency_deny_survives_journal_reopen() -> TestResult {
         journal_reopen.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime_reopen = Runtime::new(shard_count(1)?, strict_config(), storage_reopen)
-        .expect("valid test configuration");
+    let mut runtime_reopen = Runtime::new(shard_count(1)?, strict_config(), storage_reopen);
 
     // Submit a NEW legal run and attempt execution
     let run = RunId::new(9_201);

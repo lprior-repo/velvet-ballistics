@@ -1,8 +1,8 @@
 //! Module: events
 
 use crate::app_impl::prelude::*;
-
-mod command;
+use crate::inspect::write_vb_kyyf_trace;
+use crate::replay::{event_to_json, write_locked_read_surface};
 
 pub(crate) fn cmd_events(
     run_id: &str,
@@ -11,10 +11,90 @@ pub(crate) fn cmd_events(
     status: Option<EventStatus>,
     limit: Option<i64>,
 ) -> ExitCode {
-    match command::read(run_id, db, output) {
-        Ok(events) => command::render(run_id, command::select(events, status, limit), output),
-        Err(code) => code,
+    let _status_filter = status.map(|value| value.as_str());
+    let _limit_filter = limit;
+    let rid = match parse_run_id(run_id, output) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
     }
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
+            return write_locked_read_surface("events", run_id, output);
+        }
+        Err(error) => {
+            report_storage_open_error(&error, db, output);
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    match journal.events_for_run(rid) {
+        Ok(events) => {
+            if events.is_empty() {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "run_id": run_id,
+                            "status": "not_found",
+                            "events": [],
+                            "total": 0,
+                            "error": format!("run {run_id}: no events found")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("run {run_id}: no events found");
+                }
+                return CliExitCode::ValidationFailed.into();
+            } else {
+                match output {
+                    OutputFormat::Yaml | OutputFormat::Postcard => {
+                        let event_list: Vec<serde_json::Value> =
+                            events.iter().map(event_to_json).collect();
+                        emit_json_or_return!(
+                            &serde_json::json!({
+                                "schema_version": cli_envelope::SCHEMA_VERSION,
+                                "kind": "events_report",
+                                "run_id": run_id,
+                                "events": event_list,
+                                "total": events.len()
+                            }),
+                            output,
+                        );
+                    }
+                    OutputFormat::Text => {
+                        for event in &events {
+                            print_event(event);
+                        }
+                        outln!("{} event(s) total", events.len());
+                        write_vb_kyyf_trace("events", run_id, events.len());
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading events for run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading events for run {run_id}: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    }
+
+    ExitCode::SUCCESS
 }
 
 pub(crate) fn print_event(event: &vb_storage::JournalEvent) {

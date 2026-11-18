@@ -16,7 +16,6 @@ fn runtime() -> Runtime {
         },
         vb_runtime::journal::NoopRuntimeJournal::shared(),
     )
-    .expect("valid test configuration")
 }
 
 #[test]

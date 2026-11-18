@@ -11,7 +11,7 @@ impl Shard {
             state,
             step,
             register_timer,
-            timer,
+            generation,
             ask_boundary_seq,
         } = registration;
         let mut state = state;
@@ -23,7 +23,7 @@ impl Shard {
                 return Ok(TransitionOutcome::JournalBudgetExceeded(Box::new(state)));
             }
         }
-        self.finish_await_timer_registration(run, state, timer, ask_boundary_seq)
+        self.finish_await_timer_registration(run, state, step, kind, generation, ask_boundary_seq)
     }
 
     fn append_await_timer_schedule(
@@ -55,59 +55,22 @@ impl Shard {
         state: RunState,
         kind: PendingTimerKind,
     ) -> RuntimeResult<AwaitTimerRegistration> {
+        self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
+        let (state, generation) =
+            self.prepare_await_timer_generation(run, state, register_timer)?;
+        let ask_boundary_seq = self.prepare_ask_boundary_sequence(run, kind)?;
         if register_timer {
-            crate::shard::lifecycle::awaiting_deadline(&state, step)?;
+            self.reserve_pending_timer_slot(run)?;
         }
-        self.add_executed_step_delta(run, state.frame.executed());
-        self.prepare_await_timer_registration_slots(
-            run,
-            kind,
-            AwaitTimerRegistration {
-                state,
-                step,
-                register_timer,
-                timer: None,
-                ask_boundary_seq: None,
-            },
-        )
-    }
-
-    fn prepare_await_timer_registration_slots(
-        &mut self,
-        run: RunId,
-        kind: PendingTimerKind,
-        mut registration: AwaitTimerRegistration,
-    ) -> RuntimeResult<AwaitTimerRegistration> {
-        let (state, generation) = self.prepare_await_timer_generation(
-            run,
-            registration.state,
-            registration.register_timer,
-        )?;
-        registration.state = state;
-        registration.timer = generation.map(|generation| PendingTimer {
-            step: registration.step,
-            kind,
+        Ok(AwaitTimerRegistration {
+            state,
+            step,
+            register_timer,
             generation,
-            deadline: Instant::now(),
-        });
-        registration.ask_boundary_seq = self.prepare_ask_boundary_sequence(run, kind)?;
-        self.prepare_await_timer_storage(run, registration)
-    }
-
-    fn prepare_await_timer_storage(
-        &mut self,
-        run: RunId,
-        registration: AwaitTimerRegistration,
-    ) -> RuntimeResult<AwaitTimerRegistration> {
-        if let Some(timer) = registration.timer
-            && let Err(error) = self.prepare_pending_timer(run, timer)
-        {
-            self.run_state_insert(run, registration.state)?;
-            return Err(error);
-        }
-        Ok(registration)
+            ask_boundary_seq,
+        })
     }
 
     fn prepare_await_timer_generation(
@@ -144,14 +107,24 @@ impl Shard {
         &mut self,
         run: RunId,
         state: RunState,
-        timer: Option<PendingTimer>,
+        step: vb_core::ids::StepIdx,
+        kind: PendingTimerKind,
+        generation: Option<u64>,
         ask_boundary_seq: Option<vb_storage::EventSeq>,
     ) -> RuntimeResult<TransitionOutcome> {
-        if let Some(timer) = timer {
-            self.pending_timer_insert(run, timer)?;
+        if let Some(generation) = generation {
+            self.pending_timer_insert(
+                run,
+                PendingTimer {
+                    step,
+                    kind,
+                    generation,
+                    deadline: Instant::now(),
+                },
+            )?;
         }
         if let Some(boundary_seq) = ask_boundary_seq {
-            self.record_pending_ask_authority(run, state.frame.pc(), boundary_seq);
+            self.record_pending_ask_authority(run, step, boundary_seq);
         }
         self.run_state_insert(run, state)?;
         Ok(TransitionOutcome::Applied)

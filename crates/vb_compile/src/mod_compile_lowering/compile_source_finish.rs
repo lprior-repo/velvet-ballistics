@@ -13,7 +13,6 @@ pub(super) fn finalize_compiled_workflow(
     steps: &[crate::StepAst],
     layout: &[CanonicalStepLayout],
 ) -> Result<CompiledWorkflow, CompileErrors> {
-    crate::mod_compile_lowering::validate_compiled_node_count(builder.nodes.len())?;
     for (id, display) in &builder.display_names {
         if let Some(name) = step_names.get_mut(id.as_usize()) {
             *name = display.clone();

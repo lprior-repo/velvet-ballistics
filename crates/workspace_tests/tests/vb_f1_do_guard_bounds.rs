@@ -101,7 +101,7 @@ fn build_guard_source(count: u16) -> String {
 
 #[test]
 fn bounded_guard_table() -> Result<(), String> {
-    let table = [(498_u16, 998_usize, 499_u16), (499, 1000, 500)];
+    let table = [(1022_u16, 2046_usize, 1023_u16), (1023, 2048, 1024)];
     for (count, expected_nodes, expected_slots) in table {
         let source = build_guard_source(count);
         let wf = compile(&source)?;
@@ -139,24 +139,26 @@ fn bounded_guard_table() -> Result<(), String> {
 
         check_guard(&parts, 1, 2, 2, 3, 1)?;
 
-        if count == 499 {
-            check_guard(&parts, 997, 998, 998, 999, 499)?;
+        if count == 1023 {
+            check_guard(&parts, 2045, 2046, 2046, 2047, 1023)?;
         }
     }
 
-    for count in [500, 1022, 1023, 1024] {
-        let source = build_guard_source(count);
-        match compile_workflow(source.as_bytes()) {
-            Err(errors) => {
-                if errors.0 != vec![vb_compile::CompileError::NodeLimit { limit: 1000 }] {
-                    return Err(format!(
-                        "expected node limit for {count} guards, got: {:?}",
-                        errors.0
-                    ));
-                }
+    let source = build_guard_source(1024);
+    let result = compile_workflow(source.as_bytes());
+    match result {
+        Err(errors) => {
+            if errors.0
+                != vec![vb_compile::CompileError::Workflow(
+                    vb_core::WorkflowError::ResourceContractExceeded {
+                        resource: vb_core::workflow::ContractResource::Slots,
+                    },
+                )]
+            {
+                return Err(format!("expected max_slots error, got: {:?}", errors.0));
             }
-            Ok(_) => return Err(format!("expected node limit for {count} guards")),
         }
+        Ok(_) => return Err("expected compile error for 1024 guards".to_string()),
     }
 
     Ok(())

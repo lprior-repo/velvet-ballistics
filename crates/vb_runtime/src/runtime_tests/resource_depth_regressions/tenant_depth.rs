@@ -6,7 +6,7 @@ fn tenant_depth_runtime(limit: u32) -> Result<(Runtime, Arc<VolatileRuntimeJourn
         ..runtime_config()
     };
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let runtime = Runtime::new(shard_count, config, journal.clone()).expect("valid test configuration");
+    let runtime = Runtime::new(shard_count, config, journal.clone());
     Ok((runtime, journal))
 }
 

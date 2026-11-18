@@ -12,8 +12,7 @@ use vb_core::workflow::node;
 fn submit_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
 
     let run = RunId::new(1);
     let workflow = finished_workflow().ok_or("missing fixture")?;
@@ -46,8 +45,7 @@ fn submit_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
 fn submit_with_inputs_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
 
     let run = RunId::new(2);
     let workflow = suspended_workflow().ok_or("missing fixture")?;
@@ -81,8 +79,7 @@ fn submit_with_inputs_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> 
 fn submit_with_contracts_empty_caps_denied() -> Result<(), Box<dyn Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard =
-        Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
 
     let run = RunId::new(3);
     let workflow = suspended_workflow().ok_or("missing fixture")?;
@@ -162,7 +159,7 @@ fn bare_submit_no_input_fabrication() -> Result<(), Box<dyn Error>> {
     let mut config = small_config();
     config.step_budget_per_tick = 1;
 
-    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, shared);
 
     let run = RunId::new(10);
     let workflow = nop_then_do()?;
@@ -198,7 +195,7 @@ fn submit_with_inputs_no_fabrication() -> Result<(), Box<dyn Error>> {
     let mut config = small_config();
     config.step_budget_per_tick = 1;
 
-    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(config, shared);
 
     let run = RunId::new(11);
     let workflow = nop_then_do()?;

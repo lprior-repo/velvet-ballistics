@@ -233,7 +233,7 @@ mod vb_3l40a_contract_validation_tests {
             max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
-        let shard = Shard::new(shard_config).expect("valid test configuration");
+        let shard = Shard::new(shard_config);
         let run = vb_core::ids::RunId::new(1);
         let workflow = do_workflow();
 
@@ -282,7 +282,7 @@ mod vb_3l40a_contract_validation_tests {
             max_open_gates: 1024,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
-        let shard = Shard::new(shard_config).expect("valid test configuration");
+        let shard = Shard::new(shard_config);
         let run = vb_core::ids::RunId::new(2);
         let workflow = do_workflow();
 

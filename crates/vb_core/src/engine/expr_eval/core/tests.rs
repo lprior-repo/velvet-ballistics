@@ -76,24 +76,13 @@ fn eval_load_const_returns_constant_value() -> Result<(), String> {
 #[test]
 fn eval_load_const_rejects_out_of_bounds() -> Result<(), String> {
     let workflow = make_workflow(
-        vec![ExprOp::LoadConst(ConstIdx::new(0))],
+        vec![ExprOp::LoadConst(ConstIdx::new(5))],
         vec![ConstValue::I64(1)],
         1,
     )?;
     let run = make_run(1)?;
     let mut store = ValueStore::new();
-    let mut stack = ExprStack::new(1).map_err(|error| error.to_string())?;
-    let mut taint = Taint::Clean;
-    let result = eval_expr_op(
-        &workflow,
-        &run,
-        &mut store,
-        ExprOp::LoadConst(ConstIdx::new(5)),
-        &mut stack,
-        &mut taint,
-    );
-    ensure_equal(stack.len(), 0)?;
-    ensure_equal(taint, Taint::Clean)?;
+    let result = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0));
     match result {
         Err(EngineError::ConstOutOfBounds { index }) if index == ConstIdx::new(5) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
@@ -272,21 +261,10 @@ fn eval_multi_op_expression_produces_correct_result() -> Result<(), String> {
 
 #[test]
 fn eval_load_slot_rejects_out_of_bounds_slot() -> Result<(), String> {
-    let workflow = make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(0))], vec![], 1)?;
+    let workflow = make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(5))], vec![], 1)?;
     let run = make_run(1)?;
     let mut store = ValueStore::new();
-    let mut stack = ExprStack::new(1).map_err(|error| error.to_string())?;
-    let mut taint = Taint::Clean;
-    let result = eval_expr_op(
-        &workflow,
-        &run,
-        &mut store,
-        ExprOp::LoadSlot(SlotIdx::new(5)),
-        &mut stack,
-        &mut taint,
-    );
-    ensure_equal(stack.len(), 0)?;
-    ensure_equal(taint, Taint::Clean)?;
+    let result = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0));
     match result {
         Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(5) => Ok(()),
         other => Err(format!("expected SlotOutOfBounds, got {other:?}")),

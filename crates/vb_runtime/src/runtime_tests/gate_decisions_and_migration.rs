@@ -4,7 +4,7 @@ fn runtime_counters_snapshot_starts_at_zero() {
     let Some(shard_count) = NonZeroUsize::new(3) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     // When taking counters snapshot
     let snap = runtime.counters_snapshot();
     // Then all counters are zero
@@ -20,7 +20,7 @@ fn runtime_submit_compiled_delegates_to_submit_direct() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -40,7 +40,7 @@ fn runtime_fail_action_routes_to_run_shard() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let ticket = ActionTicket {
         run: vb_core::ids::RunId::new(1),
         step: StepIdx::ZERO,
@@ -68,7 +68,7 @@ fn runtime_answer_ask_routes_to_run_shard() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let run = vb_core::ids::RunId::new(1);
     let Some(wf) = ask_waiting_workflow() else {
         return;
@@ -288,7 +288,7 @@ fn running_runtime_with_open_gate(
 ) -> (Runtime, Arc<GateDecisionTestJournal>) {
     let shard_count = NonZeroUsize::new(1).expect("one shard");
     let journal = GateDecisionTestJournal::shared();
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
     let workflow = gate_chain_workflow().expect("chain workflow must compile");
     assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -336,7 +336,7 @@ fn running_runtime_with_open_bound_gate(
 ) -> (Runtime, Arc<GateDecisionTestJournal>) {
     let shard_count = NonZeroUsize::new(1).expect("one shard");
     let journal = GateDecisionTestJournal::shared();
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
     let workflow = gate_chain_workflow().expect("chain workflow must compile");
     assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -384,7 +384,7 @@ fn runtime_submit_bound_gate_decision_approves_open_bound_gate()
 fn runtime_submit_bound_gate_decision_rejects_unknown_gate() {
     let run = RunId::new(93102);
     let shard_count = NonZeroUsize::new(1).expect("one shard");
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let workflow = gate_chain_workflow().expect("chain workflow must compile");
     assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -467,7 +467,7 @@ fn runtime_submit_gate_decision_approves_open_gate() {
 fn runtime_submit_gate_decision_rejects_unknown_gate() {
     let run = RunId::new(93002);
     let shard_count = NonZeroUsize::new(1).expect("one shard");
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let workflow = gate_chain_workflow().expect("chain workflow must compile");
     assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -511,7 +511,7 @@ fn runtime_submit_gate_decision_rejects_run_mismatch() {
 #[test]
 fn runtime_submit_gate_decision_rejects_unknown_run() {
     let shard_count = NonZeroUsize::new(1).expect("one shard");
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     assert_eq!(
         runtime.submit_gate_decision(
             RunId::new(93005),
@@ -528,7 +528,7 @@ fn runtime_answer_ask_finds_run_on_migrated_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let run = vb_core::ids::RunId::new(1);
     // Pick a run that actually lives on shard 0 so the migration target
     // (shard 1) differs from the home shard. This guarantees the
@@ -579,7 +579,7 @@ fn runtime_answer_ask_returns_run_not_found_for_unknown_run() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     // Unknown runs cannot be used to issue an opaque ticket.
     assert_eq!(
         runtime.lookup_pending_ask_ticket(vb_core::ids::RunId::new(424242), StepIdx::ZERO),
@@ -593,7 +593,7 @@ fn runtime_cancel_run_finds_run_on_migrated_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     // Find a run whose home shard is 0 so migration to shard 1 is real.
     let Some(run) = (1..=64)
         .map(vb_core::ids::RunId::new)
@@ -630,7 +630,7 @@ fn runtime_snapshot_run_finds_run_on_migrated_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     // Find a run whose home shard is 0 so migration to shard 1 is real.
     let Some(run) = (1..=64)
         .map(vb_core::ids::RunId::new)
@@ -681,7 +681,7 @@ fn runtime_list_events_finds_run_on_migrated_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let run = vb_core::ids::RunId::new(1);
     let home_index = runtime.shard_index(run);
     if home_index != 0 {
@@ -712,7 +712,7 @@ fn runtime_take_inspect_response_finds_run_on_migrated_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
     let run = vb_core::ids::RunId::new(1);
     let home_index = runtime.shard_index(run);
     if home_index != 0 {

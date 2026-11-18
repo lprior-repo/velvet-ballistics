@@ -129,7 +129,7 @@ fn make_shard_with_journal(
     run: RunId,
 ) -> Result<(Shard, Arc<RecordingJournal>), Box<dyn std::error::Error>> {
     let journal = RecordingJournal::shared();
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let workflow = require_workflow("suspended", suspended_workflow())?;
 
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {

@@ -15,8 +15,7 @@ fn pending(db: &Path, workflow: &CompiledWorkflow, run: RunId) -> TestResult {
         NonZeroUsize::MIN,
         ShardConfig::default(),
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    )
-    .expect("valid test configuration");
+    );
     runtime.set_available_secret_names(Box::new([KEY_A.into(), KEY_B.into()]));
     runtime.submit_compiled(run, workflow.clone())?;
     runtime.tick_all()?;

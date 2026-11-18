@@ -198,8 +198,7 @@ fn execute_recovery_with_cursor_writes(
             ..ShardConfig::default()
         },
         journal.clone(),
-    )
-    .expect("valid test configuration");
+    );
     let run = RunId::new(42);
     runtime.submit_direct(run, plan)?;
     runtime.tick_all()?;

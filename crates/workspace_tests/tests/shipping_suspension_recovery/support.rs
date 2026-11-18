@@ -66,8 +66,7 @@ pub(crate) fn open(path: &Path) -> TestResult<(Arc<FjallJournal>, Runtime)> {
         NonZeroUsize::MIN,
         config(),
         StorageRuntimeJournal::shared_journaled(Arc::clone(&journal)),
-    )
-    .expect("valid test configuration");
+    );
     Ok((journal, runtime))
 }
 

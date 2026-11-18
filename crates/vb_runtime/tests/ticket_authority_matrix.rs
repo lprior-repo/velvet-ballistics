@@ -169,8 +169,7 @@ fn check_case(case: Tamper, delivery: Delivery) -> TestResult<()> {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    )
-    .expect("valid test configuration");
+    );
     let run = RunId::new(500);
     let other = RunId::new(501);
     let original = submit(&mut shard, run)?;

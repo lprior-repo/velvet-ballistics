@@ -4,14 +4,10 @@
 use crate::args::VerifyProfile;
 use crate::exit_code::CliExitCode;
 
-mod pipeline;
-
 /// Structured result of a successful verification.
 pub(crate) struct VerifyOk {
     /// Hex-encoded workflow digest.
     pub digest_hex: String,
-    /// BLAKE3 of the Postcard-encoded compiled workflow parts.
-    pub ir_digest_hex: String,
     /// Number of compiled workflow nodes.
     pub node_count: u16,
     /// Check names that passed.
@@ -51,19 +47,78 @@ pub(crate) fn run_verification(
     bytes: &[u8],
     profile: VerifyProfile,
 ) -> Result<VerifyOk, VerifyError> {
-    let source = vb_compile::parse_workflow_source(text)
-        .map_err(|error| VerifyError::YamlParse(format!("YAML parse error: {error}")))?;
-    let compiled = pipeline::compile_registered(bytes)?;
-    let (checks, warnings) = pipeline::checks(&source, &compiled, profile)?;
+    // Phase 1: strict YAML parse
+    if let Err(e) = vb_compile::parse_workflow_source(text) {
+        return Err(VerifyError::YamlParse(format!("YAML parse error: {e}")));
+    }
+
+    // Phase 2: compilation pipeline
+    let compiled = match vb_compile::compile_workflow(bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            return Err(VerifyError::Compile(error_msgs));
+        }
+    };
+    if let Some(id) = crate::action_specs::unknown_action_id(&compiled) {
+        return Err(VerifyError::Compile(vec![format!(
+            "unknown action id: {id} (not in the CLI action registry)"
+        )]));
+    }
+
     let digest = compiled.digest();
     let digest_hex: String = digest
         .as_bytes()
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect();
+    let mut checks: Vec<&'static str> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+
+    checks.push("yaml_parse");
+    checks.push("compilation");
+
+    // Phase 3: IR validation gates
+    let parts = compiled.to_parts();
+    match vb_validate::shared::validate(&parts) {
+        Ok(()) => {
+            checks.push("ir_validation");
+        }
+        Err(e) => {
+            return Err(VerifyError::IrValidation(format!(
+                "IR validation failed: {e}"
+            )));
+        }
+    }
+
+    // Phase 4: profile-dependent checks (standard and full)
+    if profile == VerifyProfile::Standard || profile == VerifyProfile::Full {
+        let entry = compiled.entry();
+        let nodes: Vec<vb_core::CompiledNode> = {
+            let mut result = Vec::new();
+            for i in 0..compiled.node_count() {
+                let step = vb_core::StepIdx::new(i);
+                if let Some(node) = compiled.node(step) {
+                    result.push(node.clone());
+                }
+            }
+            result
+        };
+        let contract = compiled.resource_contract();
+        let budget_result = vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract);
+        record_budget_result(profile, budget_result, &mut checks, &mut warnings)?;
+    }
+
+    let source = vb_compile::parse_workflow_source(text)
+        .map_err(|error| VerifyError::YamlParse(error.to_string()))?;
+    if !source.examples().is_empty() {
+        crate::workflow_examples::verify(&source, &compiled)
+            .map_err(|error| VerifyError::Compile(vec![error]))?;
+        checks.push("examples");
+    }
+
     Ok(VerifyOk {
         digest_hex,
-        ir_digest_hex: pipeline::ir_digest(&compiled)?,
         node_count: compiled.node_count(),
         checks,
         warnings,
@@ -163,7 +218,6 @@ mod tests {
     fn verify_ok_holds_all_fields() {
         let ok = VerifyOk {
             digest_hex: "abcdef".into(),
-            ir_digest_hex: "fedcba".into(),
             node_count: 5,
             checks: vec!["yaml_parse", "compilation"],
             warnings: vec!["note: old format".into()],
@@ -178,7 +232,6 @@ mod tests {
     fn verify_ok_empty_checks_and_warnings() {
         let ok = VerifyOk {
             digest_hex: "00".into(),
-            ir_digest_hex: "11".into(),
             node_count: 0,
             checks: vec![],
             warnings: vec![],

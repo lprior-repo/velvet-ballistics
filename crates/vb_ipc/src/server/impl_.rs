@@ -4,29 +4,24 @@ use super::{IpcServer, IpcServerError, WorkflowResolver};
 use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Token};
 use std::collections::HashMap;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use vb_runtime::runtime::Runtime;
 
 pub(crate) const SERVER_TOKEN: Token = Token(0);
 pub(crate) const MAX_CLIENTS: usize = 256;
 
-fn bind_listener(socket_path: &Path) -> Result<(UnixListener, Poll), IpcServerError> {
-    let mut listener =
-        UnixListener::bind(socket_path).map_err(|source| IpcServerError::BindFailed { source })?;
-    std::fs::set_permissions(socket_path, std::fs::Permissions::from_mode(0o600))
-        .map_err(|source| IpcServerError::BindFailed { source })?;
-    let poll = Poll::new().map_err(|source| IpcServerError::PollFailed { source })?;
-    poll.registry()
-        .register(&mut listener, SERVER_TOKEN, Interest::READABLE)
-        .map_err(|source| IpcServerError::PollFailed { source })?;
-    Ok((listener, poll))
-}
-
 impl IpcServer {
     /// Creates a new IPC server bound to the given Unix socket path.
     pub fn bind(socket_path: &Path) -> Result<Self, IpcServerError> {
-        let (listener, poll) = bind_listener(socket_path)?;
+        let mut listener = UnixListener::bind(socket_path)
+            .map_err(|source| IpcServerError::BindFailed { source })?;
+
+        let poll = Poll::new().map_err(|source| IpcServerError::PollFailed { source })?;
+
+        poll.registry()
+            .register(&mut listener, SERVER_TOKEN, Interest::READABLE)
+            .map_err(|source| IpcServerError::PollFailed { source })?;
+
         let events = Events::with_capacity(MAX_CLIENTS);
 
         Ok(Self {

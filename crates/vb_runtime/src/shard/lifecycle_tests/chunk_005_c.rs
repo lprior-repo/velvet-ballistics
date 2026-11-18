@@ -186,7 +186,7 @@ fn drive_state_without_admitted_budget_drives_to_finish() {
 fn queued_retry_flushes_emitted_prefix_and_resumes_drive() -> Result<(), String> {
     let (journal, _queue, _adapter, shared) =
         queued_journal_fixture("vb-runtime-retry-watermark-", 16, 4)?;
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(710);
     submit_run(
         &mut shard,
@@ -268,7 +268,7 @@ impl crate::journal::RuntimeJournal for NeverDurableJournal {
 #[test]
 fn blocked_retry_reports_typed_error_and_keeps_run() -> Result<(), String> {
     let shared: SharedRuntimeJournal = std::sync::Arc::new(NeverDurableJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(711);
     submit_run(
         &mut shard,
@@ -792,7 +792,7 @@ fn drive_state_run_time_repeated_checks_keep_original_origin() {
 #[test]
 fn suspended_run_over_lifetime_fails_on_tick() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let workflow = suspended_workflow().ok_or_else(|| "suspended workflow builds".to_string())?;
     let run = RunId::new(764);
     let digest = workflow.digest();
@@ -838,7 +838,7 @@ fn suspended_run_over_lifetime_fails_on_tick() -> Result<(), String> {
 #[test]
 fn multiple_expired_suspended_runs_progress_one_per_tick() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), journal);
     let workflow = suspended_workflow().ok_or_else(|| "suspended workflow builds".to_string())?;
     let digest = workflow.digest();
     let first = RunId::new(765);
@@ -1095,7 +1095,7 @@ fn charge_drive_journal_bytes_enforces_cumulative_total() -> Result<(), String> 
     let digest = workflow.digest();
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .ok_or_else(|| "run state builds".to_string())?;
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     let event = RuntimeJournalEvent::RunFailed { run, attempt: 1 };
     let bytes =
         postcard::to_allocvec(&event).map_err(|error| format!("event encode failed: {error:?}"))?;
@@ -1145,7 +1145,7 @@ fn charge_drive_journal_bytes_without_budget_charges_without_enforcing() -> Resu
     let run = RunId::new(771);
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .ok_or_else(|| "run state builds".to_string())?;
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     let event = RuntimeJournalEvent::RunFailed { run, attempt: 1 };
     let bytes =
         postcard::to_allocvec(&event).map_err(|error| format!("event encode failed: {error:?}"))?;
@@ -1164,7 +1164,7 @@ fn drive_finished_run_falls_back_to_single_run_failed_when_journal_budget_exceed
 -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
     let run = RunId::new(772);
     submit_with_journal(&mut shard, run, wf);
@@ -1188,7 +1188,7 @@ fn drive_continue_run_falls_back_to_single_run_failed_when_journal_budget_exceed
 -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_chain", tiny_journal_chain_workflow())?;
     let run = RunId::new(773);
     submit_with_journal(&mut shard, run, wf);
@@ -1211,7 +1211,7 @@ fn drive_awaiting_run_falls_back_to_single_run_failed_when_journal_budget_exceed
 -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("tiny_journal_ask", tiny_journal_ask_workflow())?;
     let run = RunId::new(774);
     submit_with_journal(&mut shard, run, wf);
@@ -1233,7 +1233,7 @@ fn drive_awaiting_run_falls_back_to_single_run_failed_when_journal_budget_exceed
 fn journal_bytes_counter_matches_appended_header_and_drive_events() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("ask_then_finish", ask_workflow())?;
     let run = RunId::new(775);
     submit_with_journal(&mut shard, run, wf);
@@ -1268,7 +1268,7 @@ fn storage_journal_byte_counter_matches_durable_storage_events() -> Result<(), S
     );
     let shared: SharedRuntimeJournal =
         crate::journal::StorageRuntimeJournal::shared_strict(fjall.clone());
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let workflow = suspended_workflow().ok_or_else(|| "suspended workflow".to_string())?;
     let run = RunId::new(779);
     submit_run(
@@ -1294,7 +1294,7 @@ fn storage_journal_byte_counter_matches_durable_storage_events() -> Result<(), S
 fn pre_persisted_submit_seeds_counter_with_admission_event_only() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("ask_then_finish", ask_workflow())?;
     let run = RunId::new(776);
     assert_eq!(
@@ -1354,7 +1354,7 @@ fn measured_journal_bytes(events: &[RuntimeJournalEvent]) -> Result<u64, String>
 fn empty_evidence_await_timer_charges_ask_scheduled_bytes() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("ask", ask_workflow())?;
     let run = RunId::new(777);
     submit_run(&mut shard, run, wf, &[]);
@@ -1410,7 +1410,7 @@ fn tenant_quota_charges_on_submit_and_releases_on_cancel() -> Result<(), String>
     let workflow = suspended_workflow().ok_or_else(|| "suspended workflow".to_string())?;
     let tenant = vb_core::ids::TenantId::new(7);
     let run = RunId::new(8_001);
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     shard.set_resource_quotas(u64::MAX, u64::MAX);
     shard
         .handle_submit_with_inputs_contracts_and_tenant(
@@ -1444,7 +1444,7 @@ fn tenant_quota_charges_on_submit_and_releases_on_cancel() -> Result<(), String>
 fn tenant_quota_rejects_limit_plus_one_without_mutation() -> Result<(), String> {
     let tenant = vb_core::ids::TenantId::new(8);
     let run = RunId::new(8_002);
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     shard.set_resource_quotas(0, u64::MAX);
     let result = shard.charge_admission_quota(run, Some(tenant), 1);
     assert!(matches!(
@@ -1462,7 +1462,7 @@ fn tenant_quota_rejects_limit_plus_one_without_mutation() -> Result<(), String> 
 #[test]
 fn global_quota_rejects_limit_plus_one() -> Result<(), String> {
     let run = RunId::new(8_003);
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     shard.set_resource_quotas(u64::MAX, 0);
     let result = shard.charge_admission_quota(run, None, 1);
     assert!(matches!(

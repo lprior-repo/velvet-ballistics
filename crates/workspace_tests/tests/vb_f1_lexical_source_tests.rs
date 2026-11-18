@@ -456,8 +456,7 @@ fn execute_action(
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         },
         shared,
-    )
-    .expect("valid test configuration");
+    );
     let run = RunId::new(50);
     runtime
         .submit_direct_with_inputs_grants_and_contracts(

@@ -2,14 +2,82 @@
 //! Command handlers that advance run state.
 
 use vb_core::action::{ActionFailure, ActionFailureCode, RetryPolicy};
-use vb_core::value::Taint;
+use vb_core::value::{SlotValue, Taint};
 use vb_runtime::runtime::Runtime;
+use vb_runtime::shard::AskAnswer;
 
-use super::{MAX_ACTION_ERROR_LEN, MAX_ACTION_OUTPUT_LEN, decode_payload, sanitize_runtime_error};
+use super::{
+    MAX_ACTION_ERROR_LEN, MAX_ACTION_OUTPUT_LEN, MAX_ANSWER_ASK_BYTES, decode_payload,
+    sanitize_runtime_error,
+};
 use crate::server::IpcResponse;
 use crate::server::ticket::{payload_len, step_from_ticket};
 
-pub use super::answer::handle_answer_ask;
+/// Handles answer-ask.
+pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+    let Ok(crate::IpcPayload::AnswerAsk {
+        run_id,
+        ticket,
+        answer,
+        taint,
+    }) = decode_payload::<crate::IpcPayload>(payload)
+    else {
+        return IpcResponse::BadRequest;
+    };
+    if answer.len() > MAX_ANSWER_ASK_BYTES {
+        return IpcResponse::PayloadError {
+            diagnostic: crate::IpcError::PayloadDecodeFailed
+                .diagnostic_code()
+                .code(),
+            message: String::from("answer payload exceeds maximum allowed size"),
+        };
+    }
+
+    let Some(ask_step) = step_from_ticket(ticket) else {
+        return IpcResponse::BadRequest;
+    };
+    let encoded_len = match u32::try_from(answer.len()) {
+        Ok(len) => len,
+        Err(_) => {
+            // MAX_ANSWER_ASK_BYTES (65536) is well below u32::MAX, so this
+            // branch is logically unreachable due to the prior bounds check.
+            // The match handles the fallible conversion without panicking.
+            return IpcResponse::RuntimeError {
+                message: String::from("answer payload size exceeds u32::MAX"),
+            };
+        }
+    };
+    // Decode the caller's answer bytes as a postcard-serialized SlotValue.
+    // The bytes are expected to be valid postcard-encoded SlotValue; if decode
+    // fails, return an error rather than silently discarding the payload.
+    let value = match postcard::from_bytes::<SlotValue>(&answer) {
+        Ok(v) => v,
+        Err(_) => {
+            return IpcResponse::RuntimeError {
+                message: String::from("answer bytes are not valid postcard-encoded SlotValue"),
+            };
+        }
+    };
+    let Some(ticket) = runtime.lookup_pending_ask_ticket(run_id, ask_step) else {
+        return IpcResponse::BadRequest;
+    };
+    let answer = AskAnswer {
+        answer_slot: ticket.answer_slot(),
+        ticket,
+        value,
+        taint: taint.unwrap_or(Taint::Clean),
+        encoded_len,
+    };
+
+    match runtime.answer_ask(answer) {
+        Ok(()) => IpcResponse::AcceptedRun {
+            run_id: run_id.get(),
+        },
+        Err(e) => IpcResponse::RuntimeError {
+            message: sanitize_runtime_error(&e),
+        },
+    }
+}
 
 /// Handles complete-action.
 pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {

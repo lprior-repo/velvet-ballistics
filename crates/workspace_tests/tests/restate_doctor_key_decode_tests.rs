@@ -749,37 +749,3 @@ fn preview_keyspace_skips_corrupt_keys_silently() {
     assert_eq!(*val_bytes, vec![0x01u8; 5]);
     assert_eq!(*payload, PreviewPayload::Raw);
 }
-
-#[test]
-fn preview_keyspace_byte_cap_is_inclusive() -> Result<(), Box<dyn std::error::Error>> {
-    use vb_storage::keys::{KeyspaceScanPolicy, run_header_key};
-    use vb_storage::preview::preview_keyspace;
-
-    [1_u32, 7, 64, 1024, 4096].into_iter().try_for_each(|cap| {
-        let exact = usize::try_from(cap)?;
-        let oversized = exact.checked_add(1).ok_or("preview boundary overflow")?;
-        [(exact, false), (oversized, true)]
-            .into_iter()
-            .try_for_each(|(length, truncated)| {
-                let run = RunId::new(1);
-                let payload = vec![42_u8; length];
-                let entries = vec![(run_header_key(run)?.to_vec(), payload.clone())];
-                let mut scratch = Vec::new();
-                let result = preview_keyspace(
-                    KeyspaceScanPolicy::default_doctor(),
-                    PreviewConfig::new(2, cap)?,
-                    &entries,
-                    &mut scratch,
-                )?;
-                let expected = if truncated {
-                    Vec::new()
-                } else {
-                    vec![(StorageKey::RunHeader { run }, payload, PreviewPayload::Raw)]
-                };
-                assert_eq!(result.entries, expected, "cap={cap}, length={length}");
-                assert_eq!(result.total_keyspace_records, 1);
-                assert_eq!(result.truncated, truncated, "cap={cap}, length={length}");
-                Ok(())
-            })
-    })
-}

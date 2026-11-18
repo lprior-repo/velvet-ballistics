@@ -4,7 +4,7 @@
 
 #[test]
 fn snapshot_run_returns_not_found_for_missing_run() {
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     let response = shard.snapshot_run(RunId::new(999), 42);
     match response {
         super::InspectResponse::NotFound { run, correlation } => {
@@ -45,7 +45,7 @@ fn submit_finished_run(shard: &mut Shard, run: RunId) {
 
 #[test]
 fn frame_pool_metrics_zero_initially() {
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     let (free, total) = shard.frame_pool_metrics();
     assert_eq!(free, 0);
     assert_eq!(total, 0);
@@ -57,7 +57,7 @@ fn frame_pool_metrics_zero_initially() {
 
 #[test]
 fn shard_with_run_id_zero() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -75,7 +75,7 @@ fn shard_with_run_id_zero() {
 
 #[test]
 fn shard_with_max_run_id() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -93,7 +93,7 @@ fn shard_with_max_run_id() {
 
 #[test]
 fn shard_handles_multiple_sequential_finished_runs() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     submit_finished_run(&mut shard, RunId::new(0));
     submit_finished_run(&mut shard, RunId::new(1));
     submit_finished_run(&mut shard, RunId::new(2));
@@ -107,7 +107,7 @@ fn shard_with_run_id_zero_volatile_journal() -> Result<(), &'static str> {
     // RunId zero must be accepted by explicitly Volatile storage-free journals.
     let journal = crate::journal::VolatileRuntimeJournal::new();
     let shared: crate::journal::SharedRuntimeJournal = std::sync::Arc::new(journal);
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = finished_workflow().ok_or("volatile zero-run workflow fixture failed")?;
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -124,13 +124,13 @@ fn shard_with_run_id_zero_volatile_journal() -> Result<(), &'static str> {
 
 #[test]
 fn take_inspect_response_returns_none_when_none_pending() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     assert_eq!(shard.take_inspect_response(), None);
 }
 
 #[test]
 fn status_reports_shard_health_and_capacity_without_mutation() {
-    let shard = Shard::new(small_config()).expect("valid test configuration");
+    let shard = Shard::new(small_config());
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let before_len = shard.command_queue_len();
 
@@ -155,7 +155,7 @@ fn status_reports_shard_health_and_capacity_without_mutation() {
 
 #[test]
 fn status_reports_shutting_down_after_shutdown_tick() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
 

@@ -59,12 +59,9 @@ impl From<ResumeError> for RuntimeError {
         match error {
             ResumeError::RunIdNotFound { run_id: _ } => Self::RunNotFound,
             ResumeError::NotResumable {
-                run_id,
-                current_state,
-            } => Self::NotResumable {
-                run: run_id,
-                current_state,
-            },
+                run_id: _,
+                current_state: _,
+            } => Self::InvalidActionCompletion,
             ResumeError::IncompleteHydration { run_id: _ } => {
                 Self::UnsupportedFullRecoveryHydration
             }

@@ -31,8 +31,7 @@ fn runtime(
         NonZeroUsize::new(1).ok_or("zero shard count")?,
         config(policy),
         StorageRuntimeJournal::shared_strict(journal),
-    )
-    .expect("valid test configuration"))
+    ))
 }
 fn pure_contract() -> Result<vb_core::ActionContract, Box<dyn std::error::Error>> {
     let mut contract = contract()?;
@@ -109,8 +108,7 @@ fn replacement_contracts_rejected(policy: RuntimePolicy) -> TestResult {
     let mut shard = Shard::new_with_journal(
         config(policy),
         StorageRuntimeJournal::shared_strict(journal),
-    )
-    .expect("valid test configuration");
+    );
     let mut replacement = contract()?;
     replacement.idempotency = vb_core::Idempotency::AtLeastOnceExternal;
     replacement.retry_safety = vb_core::RetrySafety::Unsafe;
@@ -160,8 +158,7 @@ fn changed_ir_rejected(policy: RuntimePolicy) -> TestResult {
     let mut shard = Shard::new_with_journal(
         config(policy),
         StorageRuntimeJournal::shared_strict(journal),
-    )
-    .expect("valid test configuration");
+    );
     shard.enqueue(ShardCommand::Submit {
         run: RunId::new(43),
         workflow: altered,

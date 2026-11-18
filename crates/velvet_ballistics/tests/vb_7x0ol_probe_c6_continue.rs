@@ -91,8 +91,7 @@ fn recovered_run_continues_to_exact_finish_result_slot() -> TestResult {
         assert_eq!(input_slot, SlotValue::I64(value));
 
         let storage_journal = Arc::new(StorageRuntimeJournal::journaled(fjall_journal.clone()));
-        let mut runtime = Runtime::new(shard_count(1)?, journaled_config(), storage_journal)
-            .expect("valid test configuration");
+        let mut runtime = Runtime::new(shard_count(1)?, journaled_config(), storage_journal);
         runtime.recover_and_resume(run)?;
         runtime.tick_all()?;
 

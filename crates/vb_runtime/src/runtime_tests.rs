@@ -39,8 +39,6 @@ pub(crate) mod tests {
 
     include!("runtime_tests/lifecycle_and_routing.rs");
 
-    include!("runtime_tests/constructor_errors.rs");
-
     include!("runtime_tests/quota_recovery_tests.rs");
 
     include!("runtime_tests/gate_decisions_and_migration.rs");

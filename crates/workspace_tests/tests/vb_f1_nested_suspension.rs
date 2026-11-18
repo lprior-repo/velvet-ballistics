@@ -77,8 +77,7 @@ fn exercise(
             ..ShardConfig::default()
         },
         journal.clone(),
-    )
-    .expect("valid test configuration");
+    );
     runtime.submit_direct(run, plan)?;
     let expected = if repeat { 2 } else { 1 };
     let mut boundaries = 0;

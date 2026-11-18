@@ -125,7 +125,7 @@ fn submission_pair_one_free_queue_slot_publishes_neither_event() -> Result<(), S
     let (journal, queue, adapter, shared) =
         queued_journal_fixture("vb-submission-pair-refusal-", 2, 1)?;
     fill_queue_to_one_free_slot(&queue, 2, 60_100)?;
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(60_101);
     shard
         .seed_journal_sequence(run, vb_storage::EventSeq::new(7))
@@ -167,7 +167,7 @@ fn submission_pair_one_free_queue_slot_publishes_neither_event() -> Result<(), S
 fn submission_pair_flush_is_indivisible_at_batch_size_one() -> Result<(), String> {
     let (journal, queue, adapter, shared) =
         queued_journal_fixture("vb-submission-pair-flush-", 4, 1)?;
-    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(60_102);
     let prepared =
         prepare_submission_pair_fixture(&mut shard, run).map_err(|error| error.to_string())?;
@@ -336,7 +336,11 @@ impl crate::journal::RuntimeJournal for SubmissionSingletonJournal {
 #[test]
 fn submission_pair_default_batch_refusal_has_no_singleton_fallback() -> Result<(), String> {
     let journal = std::sync::Arc::new(SubmissionSingletonJournal::default());
-    let mut shard = Shard::new_with_journal_and_artifact_store(small_config(), journal.clone(), crate::admission::AlwaysPresentArtifactStore::shared()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal_and_artifact_store(
+        small_config(),
+        journal.clone(),
+        crate::admission::AlwaysPresentArtifactStore::shared(),
+    );
     let run = RunId::new(60_103);
     let result = submit_pair_fixture(&mut shard, run);
     assert!(matches!(
@@ -385,7 +389,11 @@ impl crate::journal::RuntimeJournal for SubmissionRejectingBatchJournal {
 #[test]
 fn submission_pair_explicit_batch_rejection_has_no_singleton_fallback() -> Result<(), String> {
     let journal = std::sync::Arc::new(SubmissionRejectingBatchJournal::default());
-    let mut shard = Shard::new_with_journal_and_artifact_store(small_config(), journal.clone(), crate::admission::AlwaysPresentArtifactStore::shared()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal_and_artifact_store(
+        small_config(),
+        journal.clone(),
+        crate::admission::AlwaysPresentArtifactStore::shared(),
+    );
     let run = RunId::new(60_104);
     let result = submit_pair_fixture(&mut shard, run);
     assert!(matches!(
@@ -446,7 +454,7 @@ fn submission_journals_ir_compat_decision() -> Result<(), String> {
     };
     let store: crate::admission::SharedAcceptedArtifactStore =
         std::sync::Arc::new(PreparedArtifactStore { artifact });
-    let mut shard = Shard::new_with_journal_and_artifact_store(strict_config, shared, store).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal_and_artifact_store(strict_config, shared, store);
     let run = RunId::new(60_105);
     shard
         .handle_submit_with_inputs_and_contracts(

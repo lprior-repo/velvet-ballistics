@@ -105,7 +105,7 @@ const PATH_VALUE_FLAGS: &[&str] = &[
     "--out",
     "--input-bin",
     "--socket",
-    "--value",
+    "--value-file",
     "--step-input",
 ];
 

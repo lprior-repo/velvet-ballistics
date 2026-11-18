@@ -72,8 +72,7 @@ pub(super) fn open_runtime_with_config(
         Durability::Strict => StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
         Durability::Journaled => StorageRuntimeJournal::shared_journaled(Arc::clone(&journal)),
     };
-    let runtime = Runtime::new(std::num::NonZeroUsize::MIN, config, shared)
-        .expect("valid test configuration");
+    let runtime = Runtime::new(std::num::NonZeroUsize::MIN, config, shared);
     Ok(OpenRuntime { journal, runtime })
 }
 

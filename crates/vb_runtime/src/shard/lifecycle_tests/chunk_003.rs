@@ -1,7 +1,7 @@
 
 #[test]
 fn submit_suspended_workflow_suspends_on_action() -> Result<(), String> {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(2);
     assert_eq!(
@@ -24,7 +24,7 @@ fn submit_suspended_workflow_suspends_on_action() -> Result<(), String> {
 
 #[test]
 fn submit_duplicate_run_returns_run_already_exists() -> Result<(), String> {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(10);
     assert_eq!(
@@ -63,7 +63,7 @@ fn submit_rejects_duplicate_run_id() -> Result<(), String> {
 
 #[test]
 fn admission_rejection_does_not_insert_run_state() -> Result<(), String> {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(53);
 
@@ -96,7 +96,7 @@ fn submit_at_capacity_returns_active_run_capacity_exceeded() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config).expect("valid test configuration");
+    let mut shard = Shard::new(config);
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -140,7 +140,7 @@ fn submit_at_capacity_returns_active_run_capacity_exceeded() {
 
 #[test]
 fn submit_with_inputs_seeds_slots_before_driving() -> Result<(), String> {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(20);
     assert_eq!(
@@ -164,7 +164,7 @@ fn submit_with_inputs_seeds_slots_before_driving() -> Result<(), String> {
 
 #[test]
 fn submit_with_inputs_rejects_duplicate() -> Result<(), String> {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(21);
     assert_eq!(
@@ -200,7 +200,7 @@ fn submit_with_inputs_rejects_duplicate() -> Result<(), String> {
 
 #[test]
 fn resume_on_suspended_run_re_drives() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -225,7 +225,7 @@ fn resume_on_suspended_run_re_drives() {
 
 #[test]
 fn resume_unknown_run_returns_run_not_found() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     assert_eq!(
         shard.enqueue(ShardCommand::Resume {
             run: RunId::new(9999),
@@ -237,7 +237,7 @@ fn resume_unknown_run_returns_run_not_found() {
 
 #[test]
 fn action_completed_typed_writes_slot_and_advances() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -279,7 +279,7 @@ fn action_completed_typed_writes_slot_and_advances() {
 
 #[test]
 fn action_completed_unknown_run_returns_run_not_found() {
-    let mut shard = Shard::new(small_config()).expect("valid test configuration");
+    let mut shard = Shard::new(small_config());
     let ticket = make_ticket(RunId::new(9999), StepIdx::ZERO, 1);
     let output = ActionOutputReady {
         output_slot: SlotIdx::new(0),

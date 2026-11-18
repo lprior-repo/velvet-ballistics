@@ -37,18 +37,17 @@ fn awaiting_schedule_event(
 /// Shared with timer recovery: a recomputed deadline is conservative (the full
 /// timeout from the recovery point) because wall-clock instants are not
 /// durable, but it preserves live timeout semantics for resumed timers.
-pub(crate) fn awaiting_deadline(
-    state: &RunState,
-    step: StepIdx,
-) -> RuntimeResult<std::time::Instant> {
+pub(crate) fn awaiting_deadline(state: &RunState, step: StepIdx) -> std::time::Instant {
     let now = std::time::Instant::now();
     let Some(slot) = awaiting_timeout_slot(state, step) else {
-        return Ok(now);
+        return now;
     };
     let Ok(value) = state.frame.read_slot(slot) else {
-        return Ok(now);
+        return now;
     };
-    crate::primitives::wait_ask::checked_timer_deadline(*value).map_err(Into::into)
+    let millis = awaiting_timeout_millis(value);
+    now.checked_add(std::time::Duration::from_millis(millis))
+        .unwrap_or(now)
 }
 
 fn awaiting_timeout_slot(state: &RunState, step: StepIdx) -> Option<vb_core::ids::SlotIdx> {
@@ -64,5 +63,18 @@ fn awaiting_timeout_slot(state: &RunState, step: StepIdx) -> Option<vb_core::ids
             ..
         } => Some(*slot),
         _ => None,
+    }
+}
+
+fn awaiting_timeout_millis(value: &vb_core::value::SlotValue) -> u64 {
+    match value {
+        vb_core::value::SlotValue::I64(value) => u64::try_from((*value).max(0)).unwrap_or(0),
+        vb_core::value::SlotValue::F64(value) => {
+            let seconds = (*value).get() / 1000.0;
+            std::time::Duration::try_from_secs_f64(seconds)
+                .map(|duration| u64::try_from(duration.as_millis()).unwrap_or(u64::MAX))
+                .unwrap_or(0)
+        }
+        _ => 0,
     }
 }

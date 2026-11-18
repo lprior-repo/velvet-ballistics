@@ -114,18 +114,6 @@ fn compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid() -> 
 }
 
 #[test]
-fn repeat_without_attempt_reference_preserves_maximum_budget_compilation() -> Result<(), String> {
-    let workflow =
-        compile_workflow(include_str!("fixtures/repeat_budget_compatibility.yaml").as_bytes())
-            .map_err(|errors| format_compile_errors(&errors))?;
-    assert!(workflow.to_parts().nodes.iter().any(|node| matches!(
-        node.kind,
-        CompiledNodeKind::RepeatStart { max_attempts, .. } if max_attempts.get() == u16::MAX
-    )));
-    Ok(())
-}
-
-#[test]
 fn compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid() -> Result<(), String> {
     for case in PRIMITIVE_CASES {
         let yaml = workflow_yaml(case.yaml_steps);

@@ -58,7 +58,7 @@ fn due_wait_append_refusal_preserves_both_runs_then_retries_exactly_once() -> Re
         inner: journal.clone(),
         armed: std::sync::atomic::AtomicBool::new(false),
     });
-    let mut shard = Shard::new_with_journal(small_config(), wrapper.clone()).expect("valid test configuration");
+    let mut shard = Shard::new_with_journal(small_config(), wrapper.clone());
     let runs = [RunId::new(84_020), RunId::new(84_021)];
     let due = std::time::Instant::now();
     runs.iter().try_for_each(|run| {

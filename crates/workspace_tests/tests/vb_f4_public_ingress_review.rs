@@ -33,7 +33,7 @@ fn runtime() -> (Runtime, Arc<VolatileRuntimeJournal>) {
         ..ShardConfig::default()
     };
     (
-        Runtime::new(NonZeroUsize::MIN, config, journal.clone()).expect("valid test configuration"),
+        Runtime::new(NonZeroUsize::MIN, config, journal.clone()),
         journal,
     )
 }
@@ -470,8 +470,7 @@ fn recursive_owned_defaults_nulls_and_secret_payloads_survive_retention_and_runt
         NonZeroUsize::MIN,
         config,
         vb_runtime::journal::StorageRuntimeJournal::shared_strict(journal.clone()),
-    )
-    .expect("valid test configuration");
+    );
     runtime.activate_owned_submission(run, source.digest)?;
     assert_eq!(journal.events_for_run_full(run)?, before);
     runtime.tick_all()?;

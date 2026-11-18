@@ -1849,7 +1849,6 @@ dependencies = [
  "bytes",
  "chrono",
  "crc32fast",
- "fjall",
  "postcard",
  "proptest",
  "serde",

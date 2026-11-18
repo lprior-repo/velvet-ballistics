@@ -147,8 +147,7 @@ fn retained_inputs_recovered_from_cold_storage_with_runtime_api() -> TestResult 
 
         // Create a runtime with the storage journal and recover the run
         let storage_journal = Arc::new(StorageRuntimeJournal::journaled(fjall_journal.clone()));
-        let runtime = Runtime::new(shard_count(1)?, journaled_config(), storage_journal)
-            .expect("valid test configuration");
+        let runtime = Runtime::new(shard_count(1)?, journaled_config(), storage_journal);
 
         // Recover via the public API - this should load retained inputs
         // and restore the initial input slots before applying journal overlays

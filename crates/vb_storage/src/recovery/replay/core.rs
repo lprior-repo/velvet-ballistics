@@ -255,37 +255,23 @@ fn reject_if_resolved(
 }
 
 fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> {
-    events
-        .iter()
-        .zip(events.iter().skip(1))
-        .try_for_each(|(previous, event)| validate_contiguous_pair(previous, event))
-}
-
-fn validate_contiguous_pair(previous: &JournalEvent, event: &JournalEvent) -> RecoveryResult<()> {
-    let previous = previous.seq();
-    let expected = previous
-        .get()
-        .checked_add(1)
-        .map(EventSeq::new)
-        .ok_or_else(|| sequence_overflow(previous))?;
-    let found = event.seq();
-    if found != expected {
-        Err(RecoveryError::ReplayDivergence {
-            step: StepIdx::ZERO,
-            detail: format!(
-                "journal sequence violation: expected {}, found {}",
-                expected.get(),
-                found.get()
-            ),
-        })
-    } else {
-        Ok(())
+    let Some(first) = events.first() else {
+        return Ok(());
+    };
+    let mut expected = first.seq();
+    for event in events {
+        let seq = event.seq();
+        if seq != expected {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "journal sequence violation: expected {}, found {}",
+                    expected.get(),
+                    seq.get()
+                ),
+            });
+        }
+        expected = EventSeq::new(expected.get().saturating_add(1));
     }
-}
-
-fn sequence_overflow(previous: EventSeq) -> RecoveryError {
-    RecoveryError::ReplayDivergence {
-        step: StepIdx::ZERO,
-        detail: format!("journal sequence overflow after {}", previous.get()),
-    }
+    Ok(())
 }

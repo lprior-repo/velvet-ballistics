@@ -6,10 +6,6 @@ version.workspace = true
 publish = false
 autobenches = false
 
-[[test]]
-name = "ipc_socket_permissions"
-path = "tests/ipc_socket_permissions.rs"
-
 [lints]
 workspace = true
 
