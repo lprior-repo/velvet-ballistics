@@ -131,7 +131,8 @@ pub(crate) fn open(path: &Path) -> TestResult<(Arc<FjallJournal>, Runtime)> {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    );
+    )
+    .expect("valid test configuration");
     Ok((journal, runtime))
 }
 

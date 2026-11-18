@@ -19,6 +19,7 @@ fn runtime(journal: Arc<FjallJournal>) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
+    .expect("valid test configuration")
 }
 
 fn direct_terminal_cold_recovery(source: &str, run: RunId) -> TestResult {

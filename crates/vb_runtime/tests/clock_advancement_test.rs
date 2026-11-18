@@ -20,7 +20,7 @@ use vb_runtime::shard::types::{Shard, ShardConfig, TimerTick};
 
 #[test]
 fn advance_clock_to_rejects_backward_tick_returns_error() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     let result = shard.advance_clock_to(TimerTick::new(50));
     assert_eq!(result, Err(vb_runtime::RuntimeError::InvalidTimerFire));
@@ -30,7 +30,7 @@ fn advance_clock_to_rejects_backward_tick_returns_error() {
 
 #[test]
 fn advance_clock_to_backward_tick_preserves_current_tick() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(1000)), Ok(()));
     // Attempt to go backward
     let _ = shard.advance_clock_to(TimerTick::new(500));
@@ -40,7 +40,7 @@ fn advance_clock_to_backward_tick_preserves_current_tick() {
 
 #[test]
 fn advance_clock_to_rejects_single_tick_backward() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(10)), Ok(()));
     assert_eq!(
         shard.advance_clock_to(TimerTick::new(9)),
@@ -53,7 +53,7 @@ fn advance_clock_to_rejects_single_tick_backward() {
 
 #[test]
 fn advance_clock_to_same_tick_is_noop() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(42));
@@ -61,7 +61,7 @@ fn advance_clock_to_same_tick_is_noop() {
 
 #[test]
 fn advance_clock_to_same_zero_tick_is_noop() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.current_tick(), TimerTick::new(0));
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(0));
@@ -71,7 +71,7 @@ fn advance_clock_to_same_zero_tick_is_noop() {
 
 #[test]
 fn advance_clock_to_forward_increments_current_tick() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(50)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(50));
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
@@ -80,7 +80,7 @@ fn advance_clock_to_forward_increments_current_tick() {
 
 #[test]
 fn advance_clock_to_multiple_forward_steps_are_monotonic() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     let ticks = [1u64, 5, 10, 50, 100, 500, 1000];
     for (i, &tick) in ticks.iter().enumerate() {
         assert_eq!(shard.advance_clock_to(TimerTick::new(tick)), Ok(()));
@@ -94,7 +94,7 @@ fn advance_clock_to_multiple_forward_steps_are_monotonic() {
 
 #[test]
 fn advance_clock_to_large_jump_succeeds() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(1_000_000)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(1_000_000));
@@ -104,14 +104,14 @@ fn advance_clock_to_large_jump_succeeds() {
 
 #[test]
 fn advance_clock_to_accepts_max_u64_tick() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(u64::MAX));
 }
 
 #[test]
 fn advance_clock_to_max_tick_then_reject_any_subsequent() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
     // Any tick < u64::MAX is now backward
     assert_eq!(
@@ -126,13 +126,13 @@ fn advance_clock_to_max_tick_then_reject_any_subsequent() {
 
 #[test]
 fn current_tick_starts_at_zero_for_new_shard() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.current_tick(), TimerTick::new(0));
 }
 
 #[test]
 fn current_tick_returns_consistent_value() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(77)), Ok(()));
     // Multiple reads all return the same value
     for _ in 0..10 {
@@ -144,7 +144,7 @@ fn current_tick_returns_consistent_value() {
 
 #[test]
 fn shard_status_available_after_clock_advance() {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     let status = shard.status();
     // Status is available; tick does not corrupt shard state

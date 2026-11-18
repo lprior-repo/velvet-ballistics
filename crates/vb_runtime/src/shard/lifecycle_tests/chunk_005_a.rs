@@ -2,7 +2,7 @@
 fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(600);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -32,7 +32,7 @@ fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Res
 
 #[test]
 fn action_failure_routes_to_error_handler() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let wf = require_workflow("error_handler", error_handler_workflow())?;
     let run = RunId::new(61);
     assert_eq!(
@@ -67,7 +67,7 @@ fn action_failure_routed_to_handler_emits_action_failed_before_handler_step() ->
 {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let wf = require_workflow("error_handler", error_handler_workflow())?;
     let run = RunId::new(610);
     submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
@@ -99,7 +99,7 @@ fn action_failure_routed_to_handler_emits_action_failed_before_handler_step() ->
 
 #[test]
 fn action_failure_unknown_run_returns_run_not_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let ticket = make_ticket(RunId::new(9999), StepIdx::ZERO, 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -115,7 +115,7 @@ fn action_failure_unknown_run_returns_run_not_found() {
 fn retry_exhaustion_emits_single_action_failed() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let run = RunId::new(620);
     submit_run(
         &mut shard,
@@ -132,7 +132,7 @@ fn retry_exhaustion_emits_single_action_failed() -> Result<(), String> {
 
 #[test]
 fn ask_answer_completes_ask_workflow() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = ask_workflow() else {
         return;
     };
@@ -169,7 +169,7 @@ fn ask_answer_completes_ask_workflow() {
 fn stale_ask_ticket_is_rejected_after_same_step_is_scheduled_again() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let wf = require_workflow("ask", ask_workflow())?;
     let run = RunId::new(71);
     submit_run(&mut shard, run, wf, &[]);
@@ -219,7 +219,7 @@ fn stale_ask_ticket_is_rejected_after_same_step_is_scheduled_again() -> Result<(
 
 #[test]
 fn ask_answer_unknown_run_returns_run_not_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let answer = AskAnswer {
         ticket: AskTicket {
             run: RunId::new(9999),
@@ -240,7 +240,7 @@ fn ask_answer_unknown_run_returns_run_not_found() {
 
 #[test]
 fn timer_fire_advances_wait_to_completion() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let wf = require_workflow("wait_workflow", wait_workflow())?;
     let run = RunId::new(80);
     assert_eq!(
@@ -265,7 +265,7 @@ fn timer_fire_advances_wait_to_completion() -> Result<(), String> {
 
 #[test]
 fn timer_fire_for_non_timer_run_returns_invalid_timer_fire() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -289,7 +289,7 @@ fn timer_fire_for_non_timer_run_returns_invalid_timer_fire() {
 
 #[test]
 fn timer_fire_unknown_run_returns_run_not_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     assert_eq!(
         shard.enqueue(invalid_timer_command(RunId::new(9999))),
         Ok(())
@@ -299,7 +299,7 @@ fn timer_fire_unknown_run_returns_run_not_found() {
 
 #[test]
 fn cancel_removes_active_run_and_increments_failed() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -329,7 +329,7 @@ fn cancel_removes_active_run_and_increments_failed() {
 
 #[test]
 fn cancel_nonexistent_run_succeeds_without_counter_change() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: RunId::new(9999),
@@ -349,7 +349,7 @@ fn cancel_nonexistent_run_succeeds_without_counter_change() {
 fn finish_run_appends_run_finished_event_and_inserts_terminal_run() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let Some(wf) = finished_workflow() else {
         return Ok(());
     };
@@ -390,7 +390,7 @@ fn finish_run_appends_run_finished_event_and_inserts_terminal_run() -> Result<()
 fn retry_remaining_advances_attempt_and_resumes_drive() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     let run = RunId::new(501);
     submit_run(
         &mut shard,
@@ -423,7 +423,7 @@ fn retry_remaining_advances_attempt_and_resumes_drive() -> Result<(), String> {
 
 #[test]
 fn retry_exhausted_fails_run_when_no_more_attempts() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let run = RunId::new(502);
     submit_run(
         &mut shard,
@@ -458,7 +458,7 @@ fn retry_exhausted_fails_run_when_no_more_attempts() -> Result<(), String> {
 
 #[test]
 fn non_retryable_failure_fails_run_immediately() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let run = RunId::new(503);
     submit_run(
         &mut shard,
@@ -483,7 +483,7 @@ fn non_retryable_failure_fails_run_immediately() -> Result<(), String> {
 
 #[test]
 fn action_failure_drives_error_handler_when_no_retry_metadata() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let wf = require_workflow("error_handler", error_handler_workflow())?;
     let run = RunId::new(504);
     assert_eq!(
@@ -517,7 +517,7 @@ fn action_failure_drives_error_handler_when_no_retry_metadata() -> Result<(), St
 
 #[test]
 fn handle_action_failure_rejects_when_step_out_of_bounds() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };

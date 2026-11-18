@@ -63,7 +63,16 @@ pub(crate) fn run_compiled_workflow(
         Ok(journal) => journal,
         Err(code) => return code,
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, journal);
+    let mut runtime = match vb_runtime::runtime::Runtime::new(shard_count, config, journal) {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            crate::run_compiled_runtime::report_runtime_error(
+                format_args!("runtime construction failed: {error}"),
+                output,
+            );
+            return CliExitCode::RuntimeFailed.into();
+        }
+    };
     secret_presence::install(&mut runtime, compiled);
 
     if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {

@@ -83,7 +83,7 @@ fn strict_runtime_for_owned_journal(
             ..ShardConfig::default()
         },
         crate::journal::StorageRuntimeJournal::shared_strict(journal),
-    ))
+    ).expect("valid test configuration"))
 }
 
 #[test]

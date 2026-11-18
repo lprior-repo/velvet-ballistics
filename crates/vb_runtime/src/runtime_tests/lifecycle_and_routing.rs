@@ -3,7 +3,7 @@ fn new_creates_configured_shard_count() {
     let Some(shard_count) = NonZeroUsize::new(3) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false));
 }
@@ -17,18 +17,18 @@ fn new_creates_configured_shard_count() {
 /// than a silent production durability loss.
 #[test]
 fn new_requires_explicit_journal_at_compile_time() {
-    // The signature at the right is the contract: (shard_count, config, journal) -> Runtime.
+    // The signature at the right is the contract: (shard_count, config, journal) -> RuntimeResult<Runtime>.
     // If anyone removes the journal argument, this line stops compiling and the
     // CI red signal is loud.
     let _new_signature: fn(
         std::num::NonZeroUsize,
         ShardConfig,
         crate::journal::SharedRuntimeJournal,
-    ) -> Runtime = Runtime::new;
+    ) -> crate::RuntimeResult<Runtime> = Runtime::new;
 
     // The test/benchmark-only long-named factory is the explicit non-durable path.
     // It accepts (shard_count, config) and internally wires `VolatileRuntimeJournal::shared()`.
-    let _bench_signature: fn(std::num::NonZeroUsize, ShardConfig) -> Runtime =
+    let _bench_signature: fn(std::num::NonZeroUsize, ShardConfig) -> crate::RuntimeResult<Runtime> =
         Runtime::new_for_tests_and_benchmarks_only;
 }
 
@@ -37,7 +37,7 @@ fn shutdown_graceful_enqueues_on_all_shards() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false));
 }
@@ -48,7 +48,7 @@ fn shutdown_graceful_processes_shards_before_journal_drain() -> Result<(), Strin
         return Err(String::from("expected non-zero shard count"));
     };
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
     let Some(wf) = finished_workflow() else {
         return Err(String::from("expected finished workflow fixture"));
     };
@@ -139,7 +139,7 @@ fn counters_snapshot_aggregates_across_shards() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -162,7 +162,7 @@ fn counters_snapshot_aggregates_across_shards() {
 #[test]
 fn drain_trace_aggregates_across_shards() -> Result<(), String> {
     let shard_count = NonZeroUsize::new(2).ok_or("shard count")?;
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let wf1 = suspended_workflow().ok_or("first workflow")?;
     let wf2 = suspended_workflow().ok_or("second workflow")?;
     assert_eq!(
@@ -246,7 +246,7 @@ fn runtime_submit_direct_enqueues_on_correct_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -264,7 +264,7 @@ fn runtime_global_quota_spans_two_shards_and_rejects_limit_plus_one() -> Result<
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return Err(String::from("expected two shards"));
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let wf = suspended_workflow().ok_or_else(|| String::from("suspended workflow"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&wf)
         .map_err(|error| format!("workflow budget: {error:?}"))?
@@ -335,7 +335,7 @@ fn runtime_global_quota_exact_limit_admits_one_and_rejects_limit_plus_one() -> R
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return Err(String::from("expected two shards"));
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let wf = suspended_workflow().ok_or_else(|| String::from("suspended workflow"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&wf)
         .map_err(|error| format!("workflow budget: {error:?}"))?
@@ -369,7 +369,7 @@ fn runtime_duplicate_pending_submit_does_not_double_reserve_quota() -> Result<()
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return Err(String::from("expected one shard"));
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let workflow = suspended_workflow().ok_or_else(|| String::from("suspended workflow"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)
         .map_err(|error| format!("workflow budget: {error:?}"))?
@@ -401,7 +401,7 @@ fn runtime_quota_rejection_leaves_no_durable_or_live_run() -> Result<(), String>
         return Err(String::from("expected one shard"));
     };
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
     let wf = suspended_workflow().ok_or_else(|| String::from("suspended workflow"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&wf)
         .map_err(|error| format!("workflow budget: {error:?}"))?
@@ -434,7 +434,7 @@ fn runtime_queue_full_rolls_back_pending_quota_reservation() -> Result<(), Strin
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return Err(String::from("expected one shard"));
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     for correlation in 0..16 {
         runtime
             .inspect_run(RunId::new(51), correlation)
@@ -459,7 +459,7 @@ fn runtime_shutdown_releases_admitted_quota() -> Result<(), String> {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return Err(String::from("expected one shard"));
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let wf = suspended_workflow().ok_or_else(|| String::from("suspended workflow"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&wf)
         .map_err(|error| format!("workflow budget: {error:?}"))?
@@ -488,7 +488,7 @@ fn runtime_shutdown_releases_pending_quota_reservation() -> Result<(), String> {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return Err(String::from("expected one shard"));
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let workflow = suspended_workflow().ok_or_else(|| String::from("suspended workflow"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)
         .map_err(|error| format!("workflow budget: {error:?}"))?
@@ -520,7 +520,7 @@ fn runtime_finish_releases_admitted_quota() -> Result<(), String> {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return Err(String::from("expected one shard"));
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let wf = finished_workflow().ok_or_else(|| String::from("finished workflow"))?;
     let cost = vb_core::budget::AggregateResourceBudget::from_workflow(&wf)
         .map_err(|error| format!("workflow budget: {error:?}"))?
@@ -548,7 +548,7 @@ fn runtime_cancel_run_routes_to_correct_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -575,7 +575,7 @@ fn runtime_complete_action_routes_to_correct_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -609,7 +609,7 @@ fn do_action_completion_writes_output_and_journals_events() {
         return;
     };
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
     let Some(wf) = action_then_finish_workflow() else {
         return;
     };
@@ -685,7 +685,7 @@ fn runtime_action_completion_preserves_frame_when_completion_envelope_append_fai
         return;
     };
     let journal = RejectCompletionJournal::shared();
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
     let Some(wf) = action_then_finish_workflow() else {
         return;
     };
@@ -758,7 +758,7 @@ fn do_action_completion_rejects_wrong_action_ticket() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let Some(wf) = action_then_finish_workflow() else {
         return;
     };
@@ -794,7 +794,7 @@ fn runtime_inspect_run_returns_found_from_correct_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -824,7 +824,7 @@ fn runtime_tick_all_returns_false_when_any_shard_shuts_down() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     // When shutting down only one shard
     // Use shutdown_graceful which enqueues to all shards
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
@@ -838,7 +838,7 @@ fn runtime_tick_all_returns_true_when_all_shards_alive() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     // When ticking with empty queues
     let result = runtime.tick_all();
     // Then result is true
@@ -851,7 +851,7 @@ fn runtime_list_events_returns_events_for_target_run_only() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -885,7 +885,7 @@ fn runtime_take_inspect_response_returns_none_initially() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config()).expect("valid test configuration");
     let run = vb_core::ids::RunId::new(1);
     let response = runtime.take_inspect_response(run);
     assert_eq!(response, Err(RuntimeError::RunNotFound));

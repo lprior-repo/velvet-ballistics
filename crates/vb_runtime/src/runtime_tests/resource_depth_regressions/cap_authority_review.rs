@@ -5,7 +5,7 @@ fn review_strict_owned_shard(journal: Arc<vb_storage::FjallJournal>) -> crate::s
             ..runtime_config()
         },
         crate::journal::StorageRuntimeJournal::shared_strict(journal),
-    )
+    ).expect("valid test configuration")
 }
 
 #[test]

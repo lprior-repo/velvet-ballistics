@@ -299,7 +299,7 @@ fn assert_retry_exhaustion_journal(events: &[RuntimeJournalEvent], run: RunId) {
 
 #[test]
 fn submit_finished_workflow_completes_immediately() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = finished_workflow() else {
         return;
     };

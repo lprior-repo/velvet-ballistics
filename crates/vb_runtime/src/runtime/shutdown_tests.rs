@@ -11,7 +11,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 #[test]
 fn failed_shutdown_preserves_actual_pending_timer_authority() -> TestResult {
     let (_dir, journal, queue) = storage()?;
-    let mut runtime = runtime(&journal, &queue);
+    let mut runtime = runtime(&journal, &queue)?;
     let run = RunId::new(700);
     let workflow = waiting_workflow()?;
     accept_workflow(&journal, &workflow, &[])?;
@@ -88,7 +88,7 @@ fn failed_shutdown_preserves_actual_pending_timer_authority() -> TestResult {
 #[test]
 fn successful_shutdown_reports_suspended_authority_without_cancelling_run() -> TestResult {
     let (_dir, journal, queue) = storage()?;
-    let mut runtime = runtime(&journal, &queue);
+    let mut runtime = runtime(&journal, &queue)?;
     let run = RunId::new(701);
     let workflow = waiting_workflow()?;
     accept_workflow(&journal, &workflow, &[])?;
@@ -143,7 +143,8 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
             journal.clone(),
             queue.clone(),
         )),
-    );
+    )
+    .expect("valid test configuration");
     for run in [RunId::new(710), RunId::new(711)] {
         let workflow = finished_workflow()?;
         accept_workflow(&journal, &workflow, &[])?;
@@ -175,7 +176,7 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
 #[test]
 fn explicit_shutdown_sentinel_reports_commands_it_did_not_process() -> TestResult {
     let (_dir, journal, queue) = storage()?;
-    let mut runtime = runtime(&journal, &queue);
+    let mut runtime = runtime(&journal, &queue)?;
     let shard = runtime.shards.first().ok_or("missing shard")?;
     shard.enqueue(crate::shard::ShardCommand::Shutdown)?;
     runtime.inspect_run(RunId::new(720), 9)?;
@@ -199,7 +200,7 @@ fn explicit_shutdown_sentinel_reports_commands_it_did_not_process() -> TestResul
 #[test]
 fn suspended_action_report_keeps_actual_ticket_and_frame() -> TestResult {
     let (_dir, journal, queue) = storage()?;
-    let mut runtime = runtime(&journal, &queue);
+    let mut runtime = runtime(&journal, &queue)?;
     let run = RunId::new(730);
     submit_action(&runtime, &journal, run)?;
     assert!(runtime.tick_all()?);
@@ -232,7 +233,7 @@ fn report_bounds_details_without_losing_actual_totals() -> TestResult {
         64,
         vb_storage::StorageLimits::DEFAULT,
     )?);
-    let mut runtime = runtime(&journal, &queue);
+    let mut runtime = runtime(&journal, &queue)?;
     for id in 1..=65 {
         let workflow = waiting_workflow()?;
         accept_workflow(&journal, &workflow, &[])?;

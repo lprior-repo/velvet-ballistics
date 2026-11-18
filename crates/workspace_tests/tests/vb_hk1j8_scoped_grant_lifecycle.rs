@@ -191,7 +191,8 @@ fn setup() -> TestResult<Fixture> {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([0x11u8; 32]),
         PolicyRule {

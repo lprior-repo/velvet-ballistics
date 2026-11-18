@@ -35,7 +35,8 @@ impl RestartSession {
             NonZeroUsize::MIN,
             vb_runtime::shard::ShardConfig::default(),
             sink,
-        );
+        )
+        .expect("valid test configuration");
         let server = IpcServer::bind(socket)?;
         let client = UnixStream::connect(socket)?;
         client.set_write_timeout(Some(Duration::from_secs(1)))?;

@@ -46,7 +46,7 @@ fn requested_lifetime_submission_reserves_shared_global_quota() -> Result<(), St
         .map_err(|error| error.to_string())?
         .max_cost_units;
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
     runtime
         .set_resource_quotas(u64::MAX, cost)
         .map_err(|error| error.to_string())?;
@@ -186,7 +186,7 @@ fn owned_activation_keeps_one_durable_budget_origin_in_sequence() -> Result<(), 
             ..ShardConfig::default()
         },
         crate::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    );
+    ).expect("valid test configuration");
     runtime
         .activate_owned_submission(run, source_digest)
         .map_err(|error| error.to_string())?;

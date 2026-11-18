@@ -346,7 +346,8 @@ fn run_strict_submit_with_store(
         },
         journal.clone(),
         Arc::new(store),
-    );
+    )
+    .expect("valid test configuration");
     let before = snapshot(&shard, &journal)?;
     shard.enqueue(ShardCommand::SubmitPrePersisted {
         run: run_id,
@@ -1240,7 +1241,8 @@ fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_
             ..ShardConfig::default()
         },
         VolatileRuntimeJournal::shared(),
-    );
+    )
+    .expect("valid test configuration");
 
     shard
         .enqueue(ShardCommand::SubmitPrePersisted {

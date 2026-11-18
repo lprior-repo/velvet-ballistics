@@ -43,7 +43,8 @@ pub(super) fn open_runtime(
         std::num::NonZeroUsize::MIN,
         config,
         StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    );
+    )
+    .expect("valid test configuration");
     Ok(OpenRuntime { journal, runtime })
 }
 

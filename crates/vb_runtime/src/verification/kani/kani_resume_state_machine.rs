@@ -57,6 +57,7 @@ fn new_shard() -> Shard {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     })
+    .expect("valid test configuration")
 }
 
 /// PO-vb282my-RS-KANI-001/002: construct a bounded symbolic workflow through

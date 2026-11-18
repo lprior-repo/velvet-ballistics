@@ -175,7 +175,8 @@ fn produce_failed_attempt(
     .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,
@@ -212,7 +213,8 @@ fn recover_and_schedule(
 ) -> Result<Runtime, String> {
     let journal = Arc::new(FjallJournal::open(path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
     runtime
         .recover_retry(run, checkpoint, next_seq)
         .map_err(|e| format!("recover_retry failed: {e}"))?;
@@ -240,7 +242,8 @@ fn auto_recovery_does_not_resume_failed_run() -> Result<(), String> {
     // Cold reopen WITHOUT recover_retry: exercise the automatic recovery path.
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let product = runtime
         .recover_product(run)
@@ -300,7 +303,8 @@ fn auto_recovery_resumes_suspended_pending_action_run() -> Result<(), String> {
         )
         .map_err(|e| format!("artifact submit failed: {e}"))?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
         runtime
             .submit_direct_with_inputs_grants_and_contracts(
                 run,
@@ -319,7 +323,8 @@ fn auto_recovery_resumes_suspended_pending_action_run() -> Result<(), String> {
     // Cold reopen and exercise the automatic path on the suspended run.
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let product = runtime
         .recover_product(run)
@@ -355,7 +360,8 @@ fn recover_retry_rejects_tampered_run_attempt() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let result = runtime.recover_retry(run, checkpoint, next_seq);
     assert!(
@@ -389,7 +395,8 @@ fn recover_retry_rejects_tampered_prior_seq() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let result = runtime.recover_retry(run, checkpoint, next_seq);
     assert!(
@@ -416,7 +423,8 @@ fn recover_retry_rejects_tampered_next_seq() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let result = runtime.recover_retry(run, checkpoint, wrong_next_seq);
     assert!(
@@ -438,7 +446,8 @@ fn recover_retry_rejects_cross_run_checkpoint() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let result = runtime.recover_retry(run_b, checkpoint, next_seq);
     assert!(
@@ -462,7 +471,8 @@ fn recover_retry_rejects_missing_durable_checkpoint() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let result = runtime.recover_retry(run_b, checkpoint, next_seq);
     assert!(
@@ -508,7 +518,8 @@ fn recover_retry_rejects_stale_checkpoint_but_accepts_current() -> Result<(), St
     {
         let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
         let result = runtime.recover_retry(run, checkpoint_1, next_seq_1);
         assert!(
             result.is_err(),
@@ -520,7 +531,8 @@ fn recover_retry_rejects_stale_checkpoint_but_accepts_current() -> Result<(), St
     {
         let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+        let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+            .expect("valid test configuration");
         runtime
             .recover_retry(run, checkpoint_2, next_seq_2)
             .map_err(|e| format!("recover_retry failed: {e}"))?;
@@ -566,7 +578,8 @@ fn recover_retry_rejects_already_consumed_checkpoint() -> Result<(), String> {
     // the checkpoint (StepStarted/ActionCompleted/RunFinished), so it is already consumed.
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared)
+        .expect("valid test configuration");
 
     let events_before = journal
         .events_for_run(run)

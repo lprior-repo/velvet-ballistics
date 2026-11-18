@@ -30,7 +30,7 @@ fn any_run_id() -> RunId {
 }
 
 fn new_shard() -> Shard {
-    Shard::new(ShardConfig::default())
+    Shard::new(ShardConfig::default()).expect("valid test configuration")
 }
 
 fn seed_checked_out_run(shard: &mut Shard, run: RunId) {

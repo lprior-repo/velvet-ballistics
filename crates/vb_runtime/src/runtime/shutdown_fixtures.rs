@@ -45,7 +45,10 @@ pub(super) fn waiting_workflow() -> TestResult<CompiledWorkflow> {
     )
 }
 
-pub(super) fn runtime(journal: &Arc<FjallJournal>, queue: &Arc<JournalWriterQueue>) -> Runtime {
+pub(super) fn runtime(
+    journal: &Arc<FjallJournal>,
+    queue: &Arc<JournalWriterQueue>,
+) -> crate::RuntimeResult<Runtime> {
     let config = ShardConfig {
         policy: vb_core::policy::RuntimePolicy::Journaled,
         ..Default::default()

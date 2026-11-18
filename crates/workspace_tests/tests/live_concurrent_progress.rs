@@ -104,7 +104,8 @@ fn live_owned_foreach_completes_across_small_runtime_ticks()
                 ..ShardConfig::default()
             },
             runtime_journal,
-        );
+        )
+        .expect("valid test configuration");
         runtime.activate_owned_submission(RUN, source_digest)?;
         let mut completed_output = None;
         for _ in 0..256 {

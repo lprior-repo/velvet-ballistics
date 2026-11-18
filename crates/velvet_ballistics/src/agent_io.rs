@@ -46,7 +46,16 @@ pub(crate) fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> 
     } else {
         output
     };
-    let status = commands_status::build_status(options);
+    let status = match commands_status::build_status(options) {
+        Ok(status) => status,
+        Err(error) => {
+            crate::run_compiled_runtime::report_runtime_error(
+                format_args!("status runtime construction failed: {error}"),
+                requested_output,
+            );
+            return CliExitCode::RuntimeFailed.into();
+        }
+    };
     match commands_status::print_status(&status, requested_output) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => output_error_exit(&error),

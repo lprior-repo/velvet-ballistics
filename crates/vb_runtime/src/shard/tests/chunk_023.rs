@@ -1,7 +1,7 @@
 #[test]
 fn shard_submit_with_run_id_one_accepted() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -173,7 +173,7 @@ fn inspect_response_not_found_inequality_different_correlation() {
 #[test]
 fn shard_tick_counts_zero_initially() {
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     let snap = shard.counters().snapshot();
     assert_eq!(snap.runs_submitted, 0);
     assert_eq!(snap.runs_completed, 0);
@@ -184,7 +184,7 @@ fn shard_tick_counts_zero_initially() {
 #[test]
 fn shard_submit_with_inputs_completes_input_result_workflow() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = input_result_workflow() else {
         return;
     };
@@ -206,7 +206,7 @@ fn shard_submit_with_inputs_completes_input_result_workflow() {
 #[test]
 fn shard_multiple_submits_complete() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = finished_workflow() else {
         return;
     };

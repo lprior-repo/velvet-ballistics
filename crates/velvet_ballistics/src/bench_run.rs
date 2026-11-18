@@ -54,8 +54,19 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
     let config = runtime_config_for_durability(DurabilityMode::None);
     // `cmd_bench_run` is the explicit benchmark path. The non-durable intent is
     // documented at the call site by using the long-named test/bench-only factory.
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+    let mut runtime = match vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(
+        shard_count,
+        config,
+    ) {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            crate::run_compiled_runtime::report_runtime_error(
+                format_args!("runtime construction failed: {error}"),
+                output,
+            );
+            return CliExitCode::RuntimeFailed.into();
+        }
+    };
     crate::run_compiled_runtime::secret_presence::AvailableNames::default()
         .install(&mut runtime, &compiled);
     if let Err(e) = runtime.submit_compiled(run_id, compiled) {

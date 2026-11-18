@@ -2,6 +2,8 @@
 
 use crate::app_impl::prelude::*;
 
+mod construction;
+
 pub(crate) fn cmd_retry(
     run_id: &str,
     requested_step: u16,
@@ -173,14 +175,11 @@ pub(crate) fn cmd_retry(
     };
 
     let config = vb_runtime::shard::ShardConfig::default();
-    // Retry must not silently downgrade the durability barrier. The original per-run
-    // append mode (strict vs journaled) is not recorded in the journal (admission
-    // `RuntimePolicy` is `Strict` for both), so retry selects the strict barrier as the
-    // safe default: it never weakens a previously-strict run and only upgrades a
-    // journaled run's retry phase to a `SyncAll`-acknowledged append.
     let journal = Arc::new(journal);
-    let shared = vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal));
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, shared);
+    let mut runtime = match construction::runtime(shard_count, config, &journal, output) {
+        Ok(runtime) => runtime,
+        Err(code) => return code,
+    };
     crate::run_compiled_runtime::secret_presence::install_stored(
         &mut runtime,
         journal,

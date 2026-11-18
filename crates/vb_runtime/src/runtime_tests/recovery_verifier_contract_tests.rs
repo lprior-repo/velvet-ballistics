@@ -144,7 +144,7 @@ mod recovery_verifier_contract_tests {
                 policy: RuntimePolicy::Strict,
             },
             StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-        );
+        ).expect("valid test configuration");
 
         // Capture pre-state
         let pre_counters = runtime.counters_snapshot();
@@ -231,7 +231,7 @@ mod recovery_verifier_contract_tests {
                 policy: RuntimePolicy::Journaled,
             },
             StorageRuntimeJournal::shared_journaled(Arc::clone(&journal)),
-        );
+        ).expect("valid test configuration");
 
         // Capture pre-state
         let pre_counters = runtime.counters_snapshot();

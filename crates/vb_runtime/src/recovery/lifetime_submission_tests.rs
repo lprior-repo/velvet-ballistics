@@ -82,7 +82,8 @@ fn requested_lifetime_cap_is_durable_and_recovers_unchanged() -> TestResult {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    );
+    )
+    .expect("valid test configuration");
     let run = RunId::new(71_001);
     let requested = NonZeroU64::new(3).ok_or("three-second cap must be nonzero")?;
     runtime.submit_direct_with_lifetime_cap(
@@ -146,7 +147,8 @@ fn requested_lifetime_cap_is_durable_and_recovers_unchanged() -> TestResult {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(Arc::clone(&reopened)),
-    );
+    )
+    .expect("valid test configuration");
     crate::shard::helpers::timer::install_wall_clock_millis_for_test(100_001);
     let product = match runtime.recover_product(run)? {
         crate::recovery::RuntimeRecoveryProduct::Resumable(product) => product,

@@ -2,7 +2,7 @@
 #[test]
 fn shard_submit_finish_then_inspect_counters() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(wf) = finished_workflow() else {
         return;
     };

@@ -10,7 +10,7 @@ fn review_duplicate_submit_cannot_raise_active_run_queue_cap() -> Result<(), Str
         shard_count,
         runtime_config(),
         Arc::new(VolatileRuntimeJournal::new()),
-    );
+    ).expect("valid test configuration");
     let run = RunId::new(950);
     let tenant = vb_core::ids::TenantId::new(950);
     submit_suspended_tenant(&runtime, run, limited, tenant).map_err(|error| error.to_string())?;

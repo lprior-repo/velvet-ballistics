@@ -9,7 +9,7 @@ fn timer_due_regression_fixture(
 > {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     timer_due_regression_submit_wait(&mut shard, run)?;
     Ok((shard, journal))
 }

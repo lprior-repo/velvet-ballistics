@@ -39,7 +39,8 @@ fn build_fixture(run_id: u64, input: i64) -> FixtureResult {
     )?;
     let storage =
         StorageRuntimeJournal::shared_strict_with_catalog(journal, Arc::new(catalog.clone()));
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([0x5au8; 32]),
         PolicyRule {
@@ -133,7 +134,8 @@ fn cold_reopen_reads_durable_receipt_without_new_effect() -> TestResult {
     )?);
     let storage =
         StorageRuntimeJournal::shared_strict_with_catalog(journal, Arc::new(catalog.clone()));
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     runtime.recover_and_resume(run)?;
     runtime.tick_all()?;
     let ticket = runtime

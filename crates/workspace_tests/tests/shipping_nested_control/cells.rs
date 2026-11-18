@@ -115,7 +115,8 @@ fn reopen_finish(label: &str, cut: &Cut) -> TestResult<Vec<JournalEvent>> {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    );
+    )
+    .expect("valid test configuration");
     match runtime
         .recover_product(cut.run)
         .map_err(|error| format!("{label}: recover_product: {error:?}"))?

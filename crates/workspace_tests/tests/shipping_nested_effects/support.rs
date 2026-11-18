@@ -118,7 +118,8 @@ impl Case {
                 ..ShardConfig::default()
             },
             StorageRuntimeJournal::shared_strict(journal.clone()),
-        );
+        )
+        .expect("valid test configuration");
         Ok((journal, runtime))
     }
 

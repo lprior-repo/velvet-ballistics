@@ -78,7 +78,8 @@ fn journal_port_failure_preserves_timer_then_retry_drains_actual_fjall_queue() -
         policy: vb_core::policy::RuntimePolicy::Journaled,
         ..Default::default()
     };
-    let mut runtime = Runtime::new(NonZeroUsize::MIN, config, port);
+    let mut runtime =
+        Runtime::new(NonZeroUsize::MIN, config, port).expect("valid test configuration");
     let run = RunId::new(740);
     let workflow = waiting_workflow()?;
     accept_workflow(&journal, &workflow, &[])?;
@@ -122,7 +123,7 @@ fn journal_port_failure_preserves_timer_then_retry_drains_actual_fjall_queue() -
 #[test]
 fn full_journal_queue_is_durably_drained_after_nonwriting_command() -> TestResult {
     let (_dir, journal, queue) = storage()?;
-    let mut runtime = runtime(&journal, &queue);
+    let mut runtime = runtime(&journal, &queue)?;
     let run = RunId::new(750);
     let workflow = waiting_workflow()?;
     accept_workflow(&journal, &workflow, &[])?;
@@ -172,7 +173,8 @@ fn shard_failure_reports_completed_prefix_and_keeps_other_timer_authorities() ->
             journal.clone(),
             queue.clone(),
         )),
-    );
+    )
+    .expect("valid test configuration");
     let workflow = waiting_workflow()?;
     accept_workflow(&journal, &workflow, &[])?;
     runtime.submit_direct(RunId::new(760), workflow)?;

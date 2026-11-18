@@ -10,7 +10,7 @@ fn recovery_context_test_shard() -> crate::shard::Shard {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    crate::shard::Shard::new(config)
+    crate::shard::Shard::new(config).expect("valid test configuration")
 }
 
 #[test]
@@ -36,7 +36,7 @@ fn recover_rejects_malformed_command() -> Result<(), Box<dyn std::error::Error>>
         small_config(),
         std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new()),
         action_recovery_artifact_store(artifact),
-    );
+    ).expect("valid test configuration");
 
     let frame = vb_core::frame::RunFrame::new(
         vb_core::ids::RunId::new(1),

@@ -179,7 +179,8 @@ fn exercise_with_capacity(
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    );
+    )
+    .expect("valid test configuration");
     runtime.activate_owned_submission(run, source.digest)?;
     let mut observed_failed_starts = 0_usize;
     for _ in 0..256 {

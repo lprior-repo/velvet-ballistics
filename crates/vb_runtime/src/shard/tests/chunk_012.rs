@@ -9,7 +9,7 @@ fn shard_remaining_capacity_decrements_on_enqueue() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     assert_eq!(shard.remaining_capacity(), 4);
     // When enqueuing commands
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -29,7 +29,7 @@ fn shard_remaining_capacity_is_zero_when_full() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     // Fill the queue
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -41,7 +41,7 @@ fn shard_remaining_capacity_is_zero_when_full() {
 fn shard_is_queue_full_returns_false_initially() {
     // Given a fresh shard
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     // Then queue is not full
     assert_eq!(shard.is_queue_full(), false);
 }
@@ -57,7 +57,7 @@ fn shard_is_queue_full_returns_true_when_at_capacity() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     // Fill the queue
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -76,7 +76,7 @@ fn shard_command_queue_capacity_returns_configured_value() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     // Then the capacity method returns 512
     assert_eq!(shard.command_queue_capacity(), 512);
 }
@@ -92,7 +92,7 @@ fn shard_remaining_capacity_after_pop() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.remaining_capacity(), 2);
@@ -111,7 +111,7 @@ fn shard_queue_len_decrements_after_tick() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     // Cancel for a non-existent run returns typed error
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {

@@ -231,7 +231,7 @@ fn make_running_shard_with_config(
     config: ShardConfig,
 ) -> Result<(Shard, Arc<RecordingJournal>), Box<dyn std::error::Error>> {
     let journal = RecordingJournal::shared();
-    let mut shard = Shard::new_with_journal(config, journal.clone());
+    let mut shard = Shard::new_with_journal(config, journal.clone()).expect("valid test configuration");
     let workflow = require_workflow("chain", chain_workflow())?;
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run,
@@ -256,7 +256,7 @@ fn make_suspended_shard(
     run: RunId,
 ) -> Result<(Shard, Arc<RecordingJournal>), Box<dyn std::error::Error>> {
     let journal = RecordingJournal::shared();
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
     let workflow = require_workflow("suspended", suspended_workflow())?;
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run,
@@ -334,7 +334,7 @@ fn open_gate_count_tracks_per_run_gates() -> Result<(), Box<dyn std::error::Erro
 #[test]
 fn drive_state_threads_registered_manual_gate_count() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(92102);
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     shard.open_gates.insert(
         GateId::new(7),
         OpenGate {
@@ -372,7 +372,7 @@ fn drive_state_threads_registered_manual_gate_count() -> Result<(), Box<dyn std:
 fn drive_state_without_registered_gate_suspends_on_ask() -> Result<(), Box<dyn std::error::Error>>
 {
     let run = RunId::new(92103);
-    let shard = Shard::new(small_config());
+    let shard = Shard::new(small_config()).expect("valid test configuration");
     let workflow = require_workflow("ask", ask_workflow())?;
     let digest = workflow.digest();
     let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {

@@ -58,7 +58,8 @@ pub(crate) fn runtime_with_policy(
             policy,
         },
         journal,
-    ))
+    )
+    .expect("valid test configuration"))
 }
 pub(crate) fn durable() -> TestResult<(tempfile::TempDir, Arc<FjallJournal>, Runtime)> {
     let directory = tempfile::tempdir()?;

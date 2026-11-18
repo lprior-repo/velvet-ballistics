@@ -4,7 +4,7 @@ fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared);
+    let mut shard = Shard::new_with_journal(config, shared).expect("valid test configuration");
     let run = super::RunId::new(810);
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
@@ -36,7 +36,7 @@ fn bh_shd_11_zero_step_budget_never_executes() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -64,7 +64,7 @@ fn bh_shd_11_zero_step_budget_never_executes() {
 #[test]
 fn bh_shd_12_legacy_completion_on_finished_run_errors() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -94,7 +94,7 @@ fn bh_shd_12_legacy_completion_on_finished_run_errors() {
 #[test]
 fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -124,7 +124,7 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
 #[test]
 fn bh_shd_14_inspect_after_immediate_completion_returns_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -175,7 +175,7 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(wf_suspend) = suspended_workflow() else {
         return;
     };
@@ -245,7 +245,7 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
 #[test]
 fn shard_submit_with_empty_inputs_matches_submit() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = finished_workflow() else {
         return;
     };

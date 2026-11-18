@@ -54,7 +54,8 @@ steps:
                 ..ShardConfig::default()
             },
             journal.clone(),
-        );
+        )
+        .expect("valid test configuration");
         let run = RunId::new(71);
         runtime.submit_direct_with_inputs_grants_and_contracts(
             run,

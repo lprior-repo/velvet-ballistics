@@ -18,12 +18,12 @@ impl Runtime {
     /// [`crate::journal::VolatileRuntimeJournal::shared`] or
     /// [`crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks`] so the
     /// call site documents the non-durable intent.
-    #[must_use]
     pub fn new(
         shard_count: NonZeroUsize,
         config: ShardConfig,
         journal: SharedRuntimeJournal,
-    ) -> Self {
+    ) -> RuntimeResult<Self> {
+        crate::shard::impl_::validate_command_queue_capacity(config.command_queue_capacity)?;
         let count = shard_count.get();
         let mut shards = Vec::with_capacity(count);
         let quota = crate::quota::SharedQuotaLedger::new();
@@ -33,17 +33,17 @@ impl Runtime {
                 config,
                 journal.clone(),
                 quota.clone(),
-            ));
+            )?);
             index = index.saturating_add(1);
         }
-        Self {
+        Ok(Self {
             shards,
             shard_count: count,
             journal,
             policy: config.policy,
             live_policy: crate::policy::LivePolicy::new(),
             quota,
-        }
+        })
     }
 
     /// Creates a new runtime whose journal events survive only until process exit.
@@ -52,11 +52,10 @@ impl Runtime {
     /// long and explicit so every call site self-documents the trade-off. Production
     /// callers must use [`Runtime::new`] with a storage-backed
     /// [`SharedRuntimeJournal`].
-    #[must_use]
     pub fn new_for_tests_and_benchmarks_only(
         shard_count: NonZeroUsize,
         config: ShardConfig,
-    ) -> Self {
+    ) -> RuntimeResult<Self> {
         Self::new(
             shard_count,
             config,

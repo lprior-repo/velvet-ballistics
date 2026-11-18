@@ -288,7 +288,8 @@ fn policy_pin_survives_recovery_scenario(policy: RuntimePolicy, run: RunId) -> R
 
         // Create runtime with matching policy.
         let shared = runtime_journal_for_policy(journal.clone(), policy)?;
-        let mut runtime = Runtime::new(shard_count()?, config, shared);
+        let mut runtime =
+            Runtime::new(shard_count()?, config, shared).expect("valid test configuration");
 
         runtime
             .submit_direct_with_inputs_grants_and_contracts(
@@ -392,7 +393,8 @@ fn policy_pin_survives_recovery_scenario(policy: RuntimePolicy, run: RunId) -> R
 
         // Create fresh runtime with matching policy for recovery.
         let shared = runtime_journal_for_policy(journal.clone(), policy)?;
-        let mut runtime = Runtime::new(shard_count()?, config, shared);
+        let mut runtime =
+            Runtime::new(shard_count()?, config, shared).expect("valid test configuration");
 
         // Recover from the checkpoint captured in Scope A.
         runtime
@@ -551,7 +553,8 @@ fn tampered_policy_pin_rejected_by_recover_retry() -> Result<(), String> {
         .map_err(|e| format!("artifact submit failed: {e}"))?;
 
         let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
-        let mut runtime = Runtime::new(shard_count()?, config, shared);
+        let mut runtime =
+            Runtime::new(shard_count()?, config, shared).expect("valid test configuration");
 
         runtime
             .submit_direct_with_inputs_grants_and_contracts(
@@ -618,7 +621,8 @@ fn tampered_policy_pin_rejected_by_recover_retry() -> Result<(), String> {
 
     {
         let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
-        let runtime = Runtime::new(shard_count()?, config, shared);
+        let runtime =
+            Runtime::new(shard_count()?, config, shared).expect("valid test configuration");
 
         // The forged checkpoint should be rejected because its pin differs
         // from the durable evidence.
@@ -695,7 +699,8 @@ fn admission_policy_pin_mismatch_rejected_by_recover_retry() -> Result<(), Strin
         .map_err(|e| format!("artifact submit failed: {e}"))?;
 
         let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
-        let mut runtime = Runtime::new(shard_count()?, config, shared);
+        let mut runtime =
+            Runtime::new(shard_count()?, config, shared).expect("valid test configuration");
 
         runtime
             .submit_direct_with_inputs_grants_and_contracts(
@@ -855,7 +860,8 @@ fn admission_policy_pin_mismatch_rejected_by_recover_retry() -> Result<(), Strin
 
     {
         let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
-        let mut runtime = Runtime::new(shard_count()?, config, shared);
+        let mut runtime =
+            Runtime::new(shard_count()?, config, shared).expect("valid test configuration");
 
         // recover_retry enqueues the command; shard validates on processing.
         runtime

@@ -98,7 +98,7 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String>
     .map_err(|error| error.to_string())?;
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Journaled;
-    let runtime = Runtime::new(shard_count, config, runtime_journal);
+    let runtime = Runtime::new(shard_count, config, runtime_journal).expect("valid test configuration");
 
     assert_eq!(
         runtime.submit_direct_with_inputs_grants_and_contracts(

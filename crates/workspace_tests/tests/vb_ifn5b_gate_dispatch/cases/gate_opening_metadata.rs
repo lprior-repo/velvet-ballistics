@@ -60,7 +60,8 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
         std::num::NonZeroUsize::new(1).ok_or("shard")?,
         config,
         source_storage,
-    );
+    )
+    .expect("valid test configuration");
     source_runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {
@@ -116,7 +117,8 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
         std::num::NonZeroUsize::new(1).ok_or("shard")?,
         config,
         storage,
-    );
+    )
+    .expect("valid test configuration");
     runtime.configure_live_policy(
         PolicyDigest::from_bytes([4; 32]),
         PolicyRule {
