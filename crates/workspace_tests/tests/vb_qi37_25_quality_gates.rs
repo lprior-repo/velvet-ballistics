@@ -6,9 +6,10 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-// Authoritative master §34: exact 11 members
+// Authoritative master §34: exact 12 members
 const MEMBERS: &[(&str, &str)] = &[
     ("crates/vb_core", "vb_core"),
+    ("crates/vb_http", "vb_http"),
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_expr", "vb_expr"),

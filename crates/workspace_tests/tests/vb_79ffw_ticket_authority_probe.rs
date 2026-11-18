@@ -333,9 +333,15 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
                 return Err("tick must reject stale failure".to_string());
             }
             Err(e) => {
-                if !matches!(e, vb_runtime::RuntimeError::InvalidActionCompletion) {
+                if !matches!(
+                    e,
+                    vb_runtime::RuntimeError::StaleAttempt {
+                        incoming: 1,
+                        current: 3
+                    }
+                ) {
                     return Err(format!(
-                        "expected InvalidActionCompletion from tick, got: {e:?}"
+                        "expected StaleAttempt{{incoming:1,current:3}} from tick, got: {e:?}"
                     ));
                 }
             }
