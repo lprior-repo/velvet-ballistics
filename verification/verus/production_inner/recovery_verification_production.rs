@@ -17,7 +17,7 @@
 // `verification/verus/extern_recovery_verification.rs`, which carries
 // verbatim copies of the production source at:
 //
-//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types/unsupported.rs:5-14
+//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types/unsupported.rs:9-18
 //   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types/cannot_resume.rs:14-41
 //   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types/recovered.rs:8-19
 //   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types/recovered.rs:23-28
@@ -40,7 +40,7 @@
 //
 // DRIFT POLICY: `crates/vb_storage/src/recovery/types/hydration.rs:42-135`
 // Production source coverage:
-//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types/unsupported.rs:5-14
+//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types/unsupported.rs:9-18
 //   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types/cannot_resume.rs:14-41
 //   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types/recovered.rs:8-19
 //   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types/recovered.rs:23-28
@@ -71,7 +71,7 @@ verus! {
 // Drift-detection stubs
 // ---------------------------------------------------------------------------
 /// Mirror of production `UnsupportedRecoveryState` field shape at
-/// `crates/vb_storage/src/recovery/types/unsupported.rs:5-14`. The stub is a
+/// `crates/vb_storage/src/recovery/types/unsupported.rs:9-18`. The stub is a
 /// struct with the SAME field names and types as production so any
 /// rename breaks the build.
 #[derive(Clone, Copy)]
@@ -154,7 +154,7 @@ pub enum RecoveryFrameSeedProduct {
 }
 
 /// Mirror of production `reject_unsupported_live_frame_state` decision
-/// at `crates/vb_runtime/src/recovery.rs:111-117`. Production body checks
+/// at `crates/vb_storage/src/recovery/types/cannot_resume.rs:167-181`. Production body checks
 /// `seed.cannot_resume_state().is_resumable()`. Body is `#[verifier::external]`.
 #[verifier::external]
 pub fn reject_unsupported_stub(state: RecoveryCannotResumeStateStub) -> bool {
