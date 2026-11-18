@@ -1,17 +1,16 @@
 use crate::shard::types::{RunAggregate, RuntimeState, ShardControlState};
 
-struct ShardServices {
+struct ShardInputs {
     quota: crate::quota::SharedQuotaLedger,
     artifact_store: crate::admission::SharedAcceptedArtifactStore,
     journal: SharedRuntimeJournal,
 }
 
-struct PreparedShardServices {
-    config: ShardConfig,
-    services: ShardServices,
+struct ShardServices {
+    quota: crate::quota::SharedQuotaLedger,
+    artifact_store: crate::admission::SharedAcceptedArtifactStore,
+    journal: SharedRuntimeJournal,
     queue: ShardCommandQueue,
-    aggregate: RunAggregate,
-    trace_ring: TraceRing,
 }
 
 impl Shard {
@@ -45,51 +44,51 @@ impl Shard {
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
         quota: crate::quota::SharedQuotaLedger,
     ) -> RuntimeResult<Self> {
-        let services = ShardServices {
+        let services = ShardInputs {
             quota,
             artifact_store,
             journal,
         };
-        Self::with_services(config, services)
+        Self::try_with_services(config, services)
     }
 
-    fn with_services(config: ShardConfig, services: ShardServices) -> RuntimeResult<Self> {
-        crate::trace::validate_trace_capacity(config.trace_capacity)?;
-        let queue = ShardCommandQueue::from_config(config)?;
+    fn try_with_services(config: ShardConfig, services: ShardInputs) -> RuntimeResult<Self> {
+        validate_command_queue_capacity(config.command_queue_capacity)?;
         let aggregate = RunAggregate::try_with_timer_capacity(config.max_active_runs)?;
-        Ok(Self::with_prepared_services(PreparedShardServices {
-            config,
-            services,
+        let queue = ShardCommandQueue::from_config(config)?;
+        let services = ShardServices {
+            quota: services.quota,
+            artifact_store: services.artifact_store,
+            journal: services.journal,
             queue,
-            aggregate,
-            trace_ring: TraceRing::try_new(config.trace_capacity)?,
-        }))
+        };
+        Ok(Self::with_services(config, services, aggregate))
     }
 
-    fn with_prepared_services(parts: PreparedShardServices) -> Self {
+    fn with_services(config: ShardConfig, ports: ShardServices, aggregate: RunAggregate) -> Self {
         Self {
             secret_availability: std::sync::Arc::from([]),
-            command_queue: parts.queue,
+            command_queue: ports.queue,
             runs: IndexMap::new(),
-            run_aggregate: parts.aggregate,
+            run_aggregate: aggregate,
             journal_sequences: IndexMap::new(),
             pending_ask_authorities: IndexMap::new(),
             open_gates: IndexMap::new(),
             bound_open_gates: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
-            trace_ring: parts.trace_ring,
+            trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
-            quota: parts.services.quota,
+            quota: ports.quota,
             pending_quota_reservation: None,
             charged_quotas: IndexMap::new(),
-            step_budget_per_tick: parts.config.step_budget_per_tick,
-            max_active_runs: parts.config.max_active_runs,
-            max_open_gates: parts.config.max_open_gates,
-            policy: parts.config.policy,
-            artifact_store: parts.services.artifact_store,
+            step_budget_per_tick: config.step_budget_per_tick,
+            max_active_runs: config.max_active_runs,
+            max_open_gates: config.max_open_gates,
+            policy: config.policy,
+            artifact_store: ports.artifact_store,
             control: ShardControlState::new(),
-            journal: parts.services.journal,
+            journal: ports.journal,
             fencing_tokens: super::fencing::FencingTokens::new(),
         }
     }
