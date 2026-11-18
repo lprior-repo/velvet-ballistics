@@ -1,6 +1,6 @@
 fn strict_cold_timer_runtime(
     journal: std::sync::Arc<vb_storage::FjallJournal>,
-) -> crate::runtime::Runtime {
+) -> crate::RuntimeResult<crate::runtime::Runtime> {
     crate::runtime::Runtime::new(
         std::num::NonZeroUsize::MIN,
         ShardConfig {
@@ -142,7 +142,7 @@ fn hydrate_strict_cold_timer(
             &[],
         )
         .map_err(|error| error.to_string())?;
-        let mut runtime = strict_cold_timer_runtime(journal.clone());
+        let mut runtime = strict_cold_timer_runtime(journal.clone()).map_err(|error| error.to_string())?;
         runtime
             .submit_direct(run, workflow)
             .map_err(|error| error.to_string())?;
@@ -163,7 +163,7 @@ fn hydrate_strict_cold_timer(
         vb_storage::FjallJournal::open(directory.path(), None)
             .map_err(|error| error.to_string())?,
     );
-    let mut runtime = strict_cold_timer_runtime(journal.clone());
+    let mut runtime = strict_cold_timer_runtime(journal.clone()).map_err(|error| error.to_string())?;
     let started = std::time::Instant::now();
     runtime
         .recover_and_resume(run)

@@ -11,6 +11,7 @@ fn open(journal: Arc<vb_storage::FjallJournal>) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
+    .expect("valid test configuration")
 }
 
 #[test]

@@ -9,7 +9,7 @@ fn submit_returns_active_run_capacity_exceeded_at_limit() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -49,7 +49,7 @@ fn submit_returns_active_run_capacity_exceeded_at_limit() {
 fn shard_submit_creates_run_state_in_runs_map() {
     // Given a shard and a workflow
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -92,7 +92,7 @@ fn shard_submit_creates_run_state_in_runs_map() {
 fn shard_submit_records_run_submitted_trace_event() {
     // Given a shard and a workflow
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -121,7 +121,7 @@ fn shard_submit_records_run_submitted_trace_event() {
 fn shard_submit_drives_run_immediately_for_finished_workflow() {
     // Given a shard and a finished workflow
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -162,7 +162,7 @@ fn shard_submit_drives_run_immediately_for_finished_workflow() {
 fn shard_resume_returns_error_for_unknown_run() {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     // When resuming a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Resume {
@@ -178,7 +178,7 @@ fn shard_resume_returns_error_for_unknown_run() {
 fn shard_action_completed_returns_error_for_unknown_run() {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     // When completing an action for a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompletedLegacy {
@@ -195,7 +195,7 @@ fn shard_action_completed_returns_error_for_unknown_run() {
 fn shard_action_completed_marks_step_succeeded() {
     // Given a shard with a suspended run (Do node at step 0)
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -240,7 +240,7 @@ fn shard_action_completed_marks_step_succeeded() {
 fn shard_action_completed_records_trace_event() {
     // Given a shard with a suspended run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let Some(workflow) = suspended_workflow() else {
         return;
     };

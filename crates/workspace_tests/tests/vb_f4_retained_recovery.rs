@@ -30,7 +30,8 @@ fn runtime(journal: Arc<FjallJournal>) -> Runtime {
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal),
-    );
+    )
+    .expect("valid test configuration");
     runtime.set_available_secret_names(Box::new([KEY.into()]));
     runtime
 }

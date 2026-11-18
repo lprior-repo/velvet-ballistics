@@ -1,6 +1,6 @@
 #[test]
 fn ask_timer_fire_fails_run_when_no_answer() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let Some(wf) = ask_workflow() else {
         return;
     };
@@ -34,7 +34,7 @@ fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     submit_run(
         &mut shard,
         RunId::new(0),
@@ -67,7 +67,7 @@ fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
 
 #[test]
 fn red_ask_answer_secret_redaction() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let wf = require_workflow("ask", ask_workflow())?;
     let run = RunId::new(2);
     assert_eq!(
@@ -99,7 +99,7 @@ fn red_ask_answer_secret_redaction() -> Result<(), String> {
 
 #[test]
 fn red_ask_answer_payload_size_one_byte_over() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()).expect("valid test configuration");
     let wf = require_workflow("ask", ask_workflow())?;
     let max_size = wf.resource_contract().max_ipc_payload_bytes;
     let run = RunId::new(12);

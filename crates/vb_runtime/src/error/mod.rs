@@ -11,6 +11,16 @@ use crate::shard::types::RuntimeState;
 pub enum RuntimeError {
     /// A declared opaque secret requirement is unavailable on this runtime.
     SecretUnavailable,
+    /// Storage for the requested number of shards could not be reserved.
+    ShardAllocationFailed {
+        /// Requested shard count.
+        requested: usize,
+    },
+    /// Trace capacity cannot be represented by the ring's storage or indices.
+    TraceCapacityOverflow {
+        /// Requested trace capacity.
+        requested: usize,
+    },
     /// Bounded queue is full.
     QueueFull,
     /// A run already has its admitted number of commands pending on the

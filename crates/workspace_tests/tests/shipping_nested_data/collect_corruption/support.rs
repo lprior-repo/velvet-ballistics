@@ -31,6 +31,7 @@ pub(super) fn runtime(journal: Arc<FjallJournal>) -> Runtime {
         },
         StorageRuntimeJournal::shared_strict(journal),
     )
+    .expect("valid test configuration")
 }
 
 pub(super) fn expected_error(corruption: Corruption, error: &str) -> bool {

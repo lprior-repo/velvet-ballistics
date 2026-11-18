@@ -1,4 +1,13 @@
 impl Runtime {
+    fn prepare_shard_storage(count: usize, trace_capacity: usize) -> RuntimeResult<Vec<Shard>> {
+        crate::trace::validate_trace_capacity(trace_capacity)?;
+        let mut shards = Vec::new();
+        shards
+            .try_reserve_exact(count)
+            .map_err(|_| RuntimeError::ShardAllocationFailed { requested: count })?;
+        Ok(shards)
+    }
+
     /// Installs names available to secret declarations on each shard.
     pub fn set_available_secret_names(&mut self, names: Box<[Box<str>]>) {
         let names: std::sync::Arc<[Box<str>]> = names.into();
@@ -18,14 +27,14 @@ impl Runtime {
     /// [`crate::journal::VolatileRuntimeJournal::shared`] or
     /// [`crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks`] so the
     /// call site documents the non-durable intent.
-    #[must_use]
     pub fn new(
         shard_count: NonZeroUsize,
         config: ShardConfig,
         journal: SharedRuntimeJournal,
-    ) -> Self {
+    ) -> RuntimeResult<Self> {
+        crate::shard::impl_::validate_command_queue_capacity(config.command_queue_capacity)?;
         let count = shard_count.get();
-        let mut shards = Vec::with_capacity(count);
+        let mut shards = Self::prepare_shard_storage(count, config.trace_capacity)?;
         let quota = crate::quota::SharedQuotaLedger::new();
         let mut index = 0usize;
         while index < count {
@@ -33,17 +42,17 @@ impl Runtime {
                 config,
                 journal.clone(),
                 quota.clone(),
-            ));
+            )?);
             index = index.saturating_add(1);
         }
-        Self {
+        Ok(Self {
             shards,
             shard_count: count,
             journal,
             policy: config.policy,
             live_policy: crate::policy::LivePolicy::new(),
             quota,
-        }
+        })
     }
 
     /// Creates a new runtime whose journal events survive only until process exit.
@@ -52,11 +61,10 @@ impl Runtime {
     /// long and explicit so every call site self-documents the trade-off. Production
     /// callers must use [`Runtime::new`] with a storage-backed
     /// [`SharedRuntimeJournal`].
-    #[must_use]
     pub fn new_for_tests_and_benchmarks_only(
         shard_count: NonZeroUsize,
         config: ShardConfig,
-    ) -> Self {
+    ) -> RuntimeResult<Self> {
         Self::new(
             shard_count,
             config,

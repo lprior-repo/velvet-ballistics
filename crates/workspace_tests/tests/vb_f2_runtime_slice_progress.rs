@@ -24,7 +24,8 @@ fn runtime(quantum: u64) -> (Runtime, Arc<VolatileRuntimeJournal>) {
                 ..ShardConfig::default()
             },
             journal.clone(),
-        ),
+        )
+        .expect("valid test configuration"),
         journal,
     )
 }

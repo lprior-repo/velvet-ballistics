@@ -108,7 +108,8 @@ fn host_resume(workflow: CompiledWorkflow, answer_is_result: bool) -> TestResult
             ..ShardConfig::default()
         },
         journal.clone(),
-    );
+    )
+    .expect("valid test configuration");
     runtime.submit_direct(run, workflow)?;
     let mut ticket = None;
     for _ in 0..8 {

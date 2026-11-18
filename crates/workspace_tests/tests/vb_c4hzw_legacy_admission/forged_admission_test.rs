@@ -143,7 +143,8 @@ fn forged_policy_pin_rejected_before_recovery_mutation() -> TestResult {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let runtime =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     // Capture full pending state before recovery.
     let pending_before = runtime.pending_boundary_snapshot(8);

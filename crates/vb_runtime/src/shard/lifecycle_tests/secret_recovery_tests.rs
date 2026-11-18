@@ -110,7 +110,7 @@ mod secret_authority {
             config,
             source_journal.clone(),
             store.clone(),
-        );
+        ).expect("valid test configuration");
         source.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         source.enqueue(ShardCommand::Submit {
             run,
@@ -164,7 +164,7 @@ mod secret_authority {
             }
             let journal = Arc::new(VolatileRuntimeJournal::new());
             let mut target =
-                Shard::new_with_journal_and_artifact_store(config, journal.clone(), store.clone());
+                Shard::new_with_journal_and_artifact_store(config, journal.clone(), store.clone()).expect("valid test configuration");
             target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
             target.enqueue(ShardCommand::Recover {
                 command: Box::new(
@@ -269,7 +269,7 @@ mod secret_authority {
         let mut source = Shard::new_with_journal(
             config,
             crate::journal::StorageRuntimeJournal::shared_strict(journal.clone()),
-        );
+        ).expect("valid test configuration");
         source.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         source.enqueue(ShardCommand::Submit {
             run,
@@ -339,7 +339,7 @@ mod secret_authority {
         let mut target = Shard::new_with_journal(
             fixture.config,
             crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
-        );
+        ).expect("valid test configuration");
         target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         target.enqueue(ShardCommand::Recover {
             command: Box::new(command),
@@ -390,7 +390,7 @@ mod secret_authority {
         let mut target = Shard::new_with_journal(
             fixture.config,
             crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
-        );
+        ).expect("valid test configuration");
         target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
         target.set_resource_quotas(cost, cost);
         target.enqueue(ShardCommand::Recover {
@@ -430,7 +430,7 @@ mod secret_authority {
             let mut target = Shard::new_with_journal(
                 fixture.config,
                 crate::journal::StorageRuntimeJournal::shared_strict(fixture.journal.clone()),
-            );
+            ).expect("valid test configuration");
             target.set_available_secret_names(Arc::from([Box::<str>::from("TOKEN")]));
             let pending = target.pending_boundary_snapshot(0, 8);
             target.enqueue(ShardCommand::Recover {

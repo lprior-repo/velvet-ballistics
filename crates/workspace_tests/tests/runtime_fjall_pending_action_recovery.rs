@@ -779,7 +779,8 @@ fn assert_pending_recovery_rejects(
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     assert_cannot_resume(recovered.recover_and_resume(run), expected_reason)
 }
 
@@ -800,7 +801,8 @@ fn runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest() -
     assert_ne!(accepted_digest, zero_digest());
 
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,
@@ -823,7 +825,8 @@ fn runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest() -
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     recovered
         .recover_and_resume(run)
         .map_err(|err| err.to_string())?;
@@ -902,7 +905,8 @@ fn strict_submit_rejects_unbound_action_abi_before_ticket_persist() -> Result<()
     assert_ne!(expected, submitted);
 
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     let result = runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,
@@ -1028,7 +1032,8 @@ fn recover_and_resume_rehydrates_fjall_pending_action_ticket_after_reopen() -> R
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     recovered
         .recover_and_resume(run)
         .map_err(|err| err.to_string())?;
@@ -1085,7 +1090,8 @@ fn recovered_fjall_pending_action_can_complete_after_reopen() -> Result<(), Stri
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     recovered
         .recover_and_resume(run)
         .map_err(|err| err.to_string())?;
@@ -1141,7 +1147,8 @@ fn recover_and_resume_fails_closed_for_store_dependent_fjall_pending_action_afte
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     assert_product_cannot_resume(
         recovered
             .recover_product(run)
@@ -1173,7 +1180,8 @@ fn recovered_fjall_wait_timer_resumes_after_reopen() -> Result<(), String> {
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     match recovered
         .recover_product(run)
@@ -1227,7 +1235,8 @@ fn recovered_fjall_open_ask_can_answer_after_reopen() -> Result<(), String> {
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     match recovered
         .recover_product(run)
@@ -1253,7 +1262,8 @@ fn recovered_fjall_open_ask_can_answer_after_reopen() -> Result<(), String> {
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered_again = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered_again =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     recovered_again
         .recover_and_resume(run)
         .map_err(|err| err.to_string())?;
@@ -1298,7 +1308,8 @@ fn recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen() -> Resu
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     match recovered
         .recover_product(run)
@@ -1360,7 +1371,8 @@ fn recover_and_resume_fails_closed_for_store_dependent_fjall_open_ask_after_reop
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     assert_product_cannot_resume(
         recovered
             .recover_product(run)
@@ -1402,7 +1414,8 @@ fn recovered_fjall_timed_ask_can_answer_after_reopen() -> Result<(), String> {
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     match recovered
         .recover_product(run)
@@ -1535,7 +1548,8 @@ fn recover_store_missing_probe(
     let journal = open_journal(temp.path())?;
     let storage_requires_value_store = storage_seed_requires_value_store(&journal, run)?;
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     let product = recovered
         .recover_product(run)
         .map_err(|err| err.to_string())?;
@@ -1662,7 +1676,8 @@ fn runtime_recover_product_refines_pending_timers_to_resumable_timer() -> Result
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     let product = recovered
         .recover_product(run)
@@ -1715,7 +1730,8 @@ fn runtime_recover_product_refines_pending_asks_to_resumable_timer() -> Result<(
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     let product = recovered
         .recover_product(run)
@@ -1754,7 +1770,8 @@ fn runtime_records_actual_action_abi_at_schedule_boundary() -> Result<(), String
     let expected_digest = action_contract_abi_digest(contract)?;
 
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     runtime
         .submit_direct_with_inputs_grants_and_contracts(
             run,
@@ -1918,7 +1935,8 @@ fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> 
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     // Reaching Resumable (rather than `store_missing`) proves the arena
     // restored: the prompt root is a `List` handle that only resolves
@@ -2042,7 +2060,8 @@ fn runtime_recovers_bound_gate_and_blocks_resume_after_fjall_reopen() -> Result<
         submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &Box::from([]))
             .map_err(|err| err.to_string())?;
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     runtime
         .submit_direct_with_grants_and_contracts(
             run,
@@ -2066,7 +2085,8 @@ fn runtime_recovers_bound_gate_and_blocks_resume_after_fjall_reopen() -> Result<
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     recovered
         .recover_and_resume(run)
         .map_err(|err| err.to_string())?;

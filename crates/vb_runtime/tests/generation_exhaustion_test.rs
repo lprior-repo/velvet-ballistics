@@ -28,13 +28,13 @@ fn run(id: u64) -> RunId {
 
 #[test]
 fn next_pending_timer_generation_returns_one_for_new_run() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
 }
 
 #[test]
 fn next_pending_timer_generation_returns_one_for_different_new_runs() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.next_pending_timer_generation(run(42)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(99)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(7)), Some(1));
@@ -42,7 +42,7 @@ fn next_pending_timer_generation_returns_one_for_different_new_runs() {
 
 #[test]
 fn next_pending_timer_generation_always_starts_at_one_for_new_runs() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     // Multiple queries on a new run all return Some(1)
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
@@ -50,7 +50,7 @@ fn next_pending_timer_generation_always_starts_at_one_for_new_runs() {
 
 #[test]
 fn next_pending_timer_generation_returns_one_for_run_zero() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.next_pending_timer_generation(run(0)), Some(1));
 }
 
@@ -61,7 +61,7 @@ fn next_pending_timer_generation_returns_one_for_run_zero() {
 
 #[test]
 fn next_pending_timer_generation_is_pure_query_no_mutation() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     // Querying does not create a pending timer
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
@@ -77,7 +77,7 @@ fn next_pending_timer_generation_is_pure_query_no_mutation() {
 
 #[test]
 fn next_pending_timer_generation_is_independent_of_other_runs() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     // All fresh runs start at 1
     for i in 0..100u64 {
         assert_eq!(shard.next_pending_timer_generation(run(i)), Some(1));
@@ -86,7 +86,7 @@ fn next_pending_timer_generation_is_independent_of_other_runs() {
 
 #[test]
 fn next_pending_timer_generation_handles_max_run_id() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.next_pending_timer_generation(run(u64::MAX)), Some(1));
 }
 
@@ -94,7 +94,7 @@ fn next_pending_timer_generation_handles_max_run_id() {
 
 #[test]
 fn shard_new_has_no_pending_timers_and_returns_generation_one() {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default()).expect("valid test configuration");
     assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
 }
@@ -109,6 +109,6 @@ fn shard_new_with_custom_config_returns_generation_one() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
 }

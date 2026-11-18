@@ -171,7 +171,8 @@ fn ipc_commands_route_to_correct_shard_by_run_id() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf1) = suspended_workflow() else {
         return;
@@ -202,7 +203,8 @@ fn ipc_commands_stay_on_same_shard_across_operations() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf1) = finished_workflow() else {
         return;
@@ -239,7 +241,8 @@ fn ipc_queue_full_does_not_corrupt_other_runs() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config)
+        .expect("valid test configuration");
 
     let Some(wf1) = finished_workflow() else {
         return;
@@ -278,7 +281,8 @@ fn ipc_commands_processed_in_fifo_order() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf1) = finished_workflow() else {
         return;
@@ -325,7 +329,8 @@ fn ipc_cancel_after_submit_processed_in_order() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -361,7 +366,8 @@ fn ipc_ask_answer_enqueues_successfully() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     assert_eq!(
         runtime.lookup_pending_ask_ticket(RunId::new(1), StepIdx::ZERO),
@@ -378,7 +384,8 @@ fn ipc_ask_answer_enqueues_for_unknown_run() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     assert_eq!(
         runtime.lookup_pending_ask_ticket(RunId::new(999), StepIdx::ZERO),
@@ -397,7 +404,8 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     // Complete action for non-existent run - enqueues successfully
     let ticket = ActionTicket {
@@ -670,7 +678,8 @@ fn connection_shutdown_drains_pending_commands_before_termination() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -697,7 +706,8 @@ fn connection_shutdown_affects_all_shards() {
     let Some(shard_count) = NonZeroUsize::new(3) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     // Initiate graceful shutdown
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
@@ -721,7 +731,8 @@ fn connection_migration_transfers_commands_to_target() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -746,7 +757,8 @@ fn connection_migration_with_pending_work_transfers_commands() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     // Don't tick after submit - keep work pending
     let Some(wf) = finished_workflow() else {
@@ -780,7 +792,8 @@ fn connection_migration_to_self_returns_error() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     assert_eq!(
         runtime.tick_shard(0, ShardDirective::Migrate { target: 0 }),
@@ -795,7 +808,8 @@ fn connection_migration_to_invalid_shard_returns_error() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     assert_eq!(
         runtime.tick_shard(0, ShardDirective::Migrate { target: 99 }),
@@ -814,7 +828,8 @@ fn connection_suspend_preserves_pending_commands() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -845,7 +860,8 @@ fn connection_tick_shard_continue_processes_only_selected_shard() {
     let Some(shard_count) = NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -875,7 +891,8 @@ fn ordering_trace_events_appear_in_execution_order() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -914,7 +931,8 @@ fn ordering_completion_events_isolated_per_run() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf1) = finished_workflow() else {
         return;
@@ -975,7 +993,8 @@ fn resource_active_run_capacity_enforced_on_tick() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config)
+        .expect("valid test configuration");
 
     let Some(wf1) = finished_workflow() else {
         return;
@@ -1013,7 +1032,8 @@ fn resource_runs_submitted_count_includes_all_submissions() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config)
+        .expect("valid test configuration");
 
     let Some(wf1) = finished_workflow() else {
         return;
@@ -1046,7 +1066,8 @@ fn resource_action_failure_enqueues_for_nonexistent_run() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let ticket = ActionTicket {
         run: RunId::new(999),
@@ -1078,7 +1099,8 @@ fn resource_action_failure_enqueued_for_nonexistent_run() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let ticket = ActionTicket {
         run: RunId::new(999),
@@ -1114,7 +1136,8 @@ fn edge_shutdown_with_pending_runs_processes_all_during_drain() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -1144,7 +1167,8 @@ fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config())
+        .expect("valid test configuration");
 
     let Some(wf) = suspended_workflow() else {
         return;

@@ -15,7 +15,9 @@ pub(super) fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeEr
 }
 
 fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
-    runtime_error_queue_capacity_eq(left, right) || runtime_error_resource_capacity_eq(left, right)
+    runtime_error_construction_eq(left, right)
+        || runtime_error_queue_capacity_eq(left, right)
+        || runtime_error_resource_capacity_eq(left, right)
 }
 
 fn runtime_error_queue_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
@@ -251,3 +253,17 @@ fn runtime_error_shard_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
 #[path = "core_groups.rs"]
 mod core_groups;
 use self::core_groups::{runtime_error_gate_eq, runtime_error_recovery_and_contract_eq};
+
+fn runtime_error_construction_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
+            RuntimeError::ShardAllocationFailed { requested: a },
+            RuntimeError::ShardAllocationFailed { requested: b },
+        )
+        | (
+            RuntimeError::TraceCapacityOverflow { requested: a },
+            RuntimeError::TraceCapacityOverflow { requested: b },
+        ) => a == b,
+        _ => false,
+    }
+}

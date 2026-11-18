@@ -101,7 +101,7 @@ fn compat_gate_blocks_submit_with_journaled_replay_only_decision() {
     let run = RunId::new(91_001);
     compat_gate_journal_replay_only(&journal, run, EventSeq::ZERO);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     shard
         .seed_journal_sequence(run, EventSeq::new(1))
         .expect("seed journal sequence past the decision");
@@ -120,7 +120,7 @@ fn compat_gate_blocks_resume_with_journaled_replay_only_decision() {
     let (_temp, journal) = compat_gate_temp_journal();
     let run = RunId::new(91_002);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     compat_gate_submit_suspended(&mut shard, run);
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
@@ -149,7 +149,7 @@ fn compat_gate_allows_continuation_after_journaled_decision() {
     let (_temp, journal) = compat_gate_temp_journal();
     let run = RunId::new(91_003);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     compat_gate_submit_suspended(&mut shard, run);
     assert_eq!(shard.tick(), Ok(true));
     let Some(seq) = shard.journal_seq_get(run) else {
@@ -181,7 +181,7 @@ fn compat_gate_passes_submit_with_no_journaled_decision() {
     let (_temp, journal) = compat_gate_temp_journal();
     let run = RunId::new(91_004);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared).expect("valid test configuration");
     compat_gate_submit_suspended(&mut shard, run);
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(

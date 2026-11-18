@@ -59,7 +59,7 @@ fn workflow_fixture(
 #[test]
 fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
 
     assert_eq!(
@@ -81,7 +81,7 @@ fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {
 #[test]
 fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     let run = super::RunId::new(11);
 
@@ -118,7 +118,7 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
 #[test]
 fn cancel_cleans_pending_timer() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
     let run = super::RunId::new(12);
 
@@ -146,7 +146,7 @@ fn cancel_cleans_pending_timer() -> Result<(), String> {
 #[test]
 fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
     let run = super::RunId::new(13);
 
@@ -175,7 +175,7 @@ fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), String> {
 #[test]
 fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = workflow_fixture(
         timed_ask_without_answer_workflow(),
         "timed_ask_without_answer",
@@ -215,7 +215,7 @@ fn enqueue_returns_queue_full_when_capacity_exceeded() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config).expect("valid test configuration");
     // When enqueuing more commands than capacity allows
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -230,7 +230,7 @@ fn enqueue_returns_queue_full_when_capacity_exceeded() {
 fn tick_after_shutdown_returns_false() {
     // Given a shard that has received a shutdown command
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     // When ticking after shutdown
     assert_eq!(shard.tick(), Ok(false));
@@ -242,7 +242,7 @@ fn tick_after_shutdown_returns_false() {
 fn submit_returns_run_already_exists_for_duplicate() -> Result<(), String> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config).expect("valid test configuration");
     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     let run = super::RunId::new(42);
     assert_eq!(

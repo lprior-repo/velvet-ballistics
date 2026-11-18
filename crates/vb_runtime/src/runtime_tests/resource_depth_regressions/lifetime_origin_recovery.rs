@@ -138,7 +138,7 @@ fn relaxed_runtime_for_journal(journal: Arc<vb_storage::FjallJournal>) -> Result
             ..ShardConfig::default()
         },
         crate::journal::StorageRuntimeJournal::shared_strict(journal),
-    ))
+    ).expect("valid test configuration"))
 }
 
 fn assert_public_origin_refusal(

@@ -20,7 +20,8 @@ pub(super) fn recover_and_reconcile(probe: ColdReconcileProbe) -> TestResult {
         shard_count,
         crate::common::runtime_fixture::strict_config(),
         storage,
-    );
+    )
+    .expect("valid test configuration");
     runtime.recover_and_resume(probe.run)?;
     runtime.tick_all()?;
     let ticket = super::pending_ticket(&mut runtime, probe.run)?;

@@ -126,7 +126,8 @@ fn legacy_unverified_admission_is_rejected_before_resume() -> TestResult {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let recovered =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
 
     let events_before = vb_storage::read_run_events(&journal, run)?;
     let pending_before = recovered.pending_boundary_snapshot(8);
@@ -171,7 +172,8 @@ fn current_valid_admission_denies_live_effect_without_mutation() -> TestResult {
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), shared).expect("valid test configuration");
     runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,

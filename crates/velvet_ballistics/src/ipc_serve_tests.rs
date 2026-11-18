@@ -34,7 +34,8 @@ fn service_turn_commits_accepted_journal_work_before_shutdown() -> TestResult {
     let mut runtime = vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(
         NonZeroUsize::MIN,
         vb_runtime::shard::ShardConfig::default(),
-    );
+    )
+    .expect("valid test configuration");
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
         available_names: Default::default(),
@@ -66,7 +67,8 @@ fn service_turn_preserves_and_reports_failed_journal_staging() -> TestResult {
     let mut runtime = vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(
         NonZeroUsize::MIN,
         vb_runtime::shard::ShardConfig::default(),
-    );
+    )
+    .expect("valid test configuration");
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
         available_names: Default::default(),
@@ -103,7 +105,8 @@ fn shutdown_acknowledgement_follows_all_65_owned_queue_events_before_exit() -> T
         NonZeroUsize::MIN,
         vb_runtime::shard::ShardConfig::default(),
         runtime_journal,
-    );
+    )
+    .expect("valid test configuration");
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
         available_names: Default::default(),
@@ -161,7 +164,8 @@ fn failed_owned_shutdown_reports_wire_error_and_typed_storage_failure() -> TestR
         NonZeroUsize::MIN,
         vb_runtime::shard::ShardConfig::default(),
         runtime_journal,
-    );
+    )
+    .expect("valid test configuration");
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&service.journal),
         available_names: Default::default(),

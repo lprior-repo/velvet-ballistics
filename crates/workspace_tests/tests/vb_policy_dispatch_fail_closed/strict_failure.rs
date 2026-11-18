@@ -31,7 +31,8 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         journal.clone(),
         catalog.clone(),
     ));
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped.clone())
+        .expect("valid test configuration");
 
     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
     runtime.configure_live_policy(

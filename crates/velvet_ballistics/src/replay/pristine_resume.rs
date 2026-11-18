@@ -178,11 +178,20 @@ pub(super) fn run_pristine_resume(
     output: OutputFormat,
 ) -> ExitCode {
     let journal = Arc::new(journal);
-    let mut runtime = vb_runtime::runtime::Runtime::new(
+    let mut runtime = match vb_runtime::runtime::Runtime::new(
         NonZeroUsize::MIN,
         vb_runtime::shard::ShardConfig::default(),
         vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
-    );
+    ) {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            crate::run_compiled_runtime::report_runtime_error(
+                format_args!("resume runtime construction failed: {error}"),
+                output,
+            );
+            return CliExitCode::RuntimeFailed.into();
+        }
+    };
     if let Ok(events) = journal.events_for_run_full(run)
         && let Some(admission) = vb_runtime::recovery::hydrate_run_admission_from_events(&events)
     {

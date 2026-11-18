@@ -71,7 +71,8 @@ fn resume_pre001_run_id_not_found_returns_error() {
     // Given: a shard with empty journal (no run_id "run-999")
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(999);
 
     // When: handle_resume is called with non-existent run_id
@@ -99,7 +100,8 @@ fn resume_pre001_run_id_not_found_returns_error() {
 fn resume_pre002_nonexistent_run_returns_run_id_not_found() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(101);
 
     // run_id 101 was never submitted — run does not exist in journal.
@@ -119,7 +121,8 @@ fn resume_pre002_nonexistent_run_returns_run_id_not_found() {
 fn resume_pre002_resumable_after_action_wait_returns_resumed() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(102);
 
     // First, submit a workflow that stays running (suspended on action)
@@ -167,7 +170,8 @@ fn resume_pre002_resumable_after_action_wait_returns_resumed() {
 fn resume_pre002_from_failed_fails_not_resumable() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(103);
 
     // run_id 103 has never been submitted — it's not in the journal.
@@ -193,7 +197,8 @@ fn resume_pre002_from_failed_fails_not_resumable() {
 fn resume_pre002_second_resume_after_action_wait_returns_resumed() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(104);
 
     // Submit a suspended workflow
@@ -237,7 +242,8 @@ fn resume_pre002_second_resume_after_action_wait_returns_resumed() {
 fn resume_pre002_from_resumable_succeeds() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(105);
 
     // Submit a workflow that we'll mark as Resumable
@@ -275,7 +281,8 @@ fn resume_pre002_from_resumable_succeeds() {
 fn resume_pre003_incomplete_hydration_fails() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(201);
 
     // Submit a suspended workflow (suspends after tick, enters Resumable state)
@@ -313,7 +320,8 @@ fn resume_pre003_incomplete_hydration_fails() {
 fn resume_post001_journal_appended_before_success() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(301);
 
     // Submit a suspended workflow
@@ -358,7 +366,8 @@ fn resume_post001_journal_appended_before_success() {
 fn resume_post001_journal_append_failure_returns_error() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(302);
 
     // Submit a suspended workflow
@@ -385,7 +394,8 @@ fn resume_post001_journal_append_failure_returns_error() {
 fn resume_post002_result_contains_required_fields() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(401);
 
     // Submit a suspended workflow
@@ -424,7 +434,8 @@ fn resume_post002_result_contains_required_fields() {
 fn resume_post003_error_returns_error_for_invalid_run() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(501);
 
     // Submit a workflow
@@ -457,7 +468,8 @@ fn resume_post003_error_returns_error_for_invalid_run() {
 fn resume_post004_resumed_event_is_durable() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(601);
 
     // Submit a suspended workflow
@@ -486,7 +498,8 @@ fn resume_post004_resumed_event_is_durable() {
 fn resume_inv001_only_resumable_permits_resume() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
 
     // Resume from non-existent run fails
     let result = shard.handle_resume(RunId::new(9999));
@@ -528,7 +541,8 @@ fn resume_inv001_no_invalid_transitions() {
     // handle_resume enforces INV-001: non-Resumable states return NotResumable
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
 
     // Non-existent run: RunIdNotFound (PRE-001 enforced first)
     let result = shard.handle_resume(RunId::new(9999));
@@ -553,7 +567,8 @@ fn resume_inv001_no_invalid_transitions() {
 fn resume_inv002_journal_append_is_immutable() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(701);
 
     // Submit and resume multiple times
@@ -587,7 +602,8 @@ fn resume_inv002_journal_append_is_immutable() {
 fn resume_inv003_result_fields_are_present() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(801);
 
     // Submit a suspended workflow
@@ -630,7 +646,8 @@ fn resume_inv003_result_fields_are_present() {
 fn resume_inv004_failed_run_not_resumable() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared_journal);
+    let mut shard =
+        Shard::new_with_journal(small_config(), shared_journal).expect("valid test configuration");
     let run_id = RunId::new(901);
 
     // Submit a workflow that suspends (becomes Resumable)

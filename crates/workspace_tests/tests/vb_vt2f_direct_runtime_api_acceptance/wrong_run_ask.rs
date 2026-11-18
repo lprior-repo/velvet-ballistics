@@ -13,8 +13,10 @@ fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelate
     // separate receiver runtime with an unrelated suspended ask run.
     let issuer_journal = Arc::new(VolatileRuntimeJournal::new());
     let receiver_journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut issuer = Runtime::new(shard_count(1)?, relaxed_config(), issuer_journal.clone());
-    let mut receiver = Runtime::new(shard_count(1)?, relaxed_config(), receiver_journal.clone());
+    let mut issuer = Runtime::new(shard_count(1)?, relaxed_config(), issuer_journal.clone())
+        .expect("valid test configuration");
+    let mut receiver = Runtime::new(shard_count(1)?, relaxed_config(), receiver_journal.clone())
+        .expect("valid test configuration");
     let issuer_run = RunId::new(1606);
     let receiver_run = RunId::new(2606);
 

@@ -24,11 +24,10 @@ pub(crate) struct CliStatus {
 
 /// Builds a status snapshot from a transient shard. Optional values are diagnostic overlays for
 /// no-runtime smoke tests and do not mutate a shard.
-#[must_use]
-pub(crate) fn build_status(options: StatusOptions) -> CliStatus {
-    let shard = Shard::new(ShardConfig::default());
+pub(crate) fn build_status(options: StatusOptions) -> vb_runtime::RuntimeResult<CliStatus> {
+    let shard = Shard::new(ShardConfig::default())?;
     let status = shard.status();
-    from_shard_status(status, options)
+    Ok(from_shard_status(status, options))
 }
 
 #[must_use]
@@ -172,8 +171,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn build_status_reports_default_no_runtime_shard() {
-        let status = build_status(StatusOptions::default());
+    fn build_status_reports_default_no_runtime_shard() -> vb_runtime::RuntimeResult<()> {
+        let status = build_status(StatusOptions::default())?;
         assert_eq!(status.health, "running");
         assert!(status.running);
         assert!(!status.shutting_down);
@@ -185,31 +184,36 @@ mod tests {
         assert_eq!(status.trace_dropped, 0);
         assert_eq!(status.step_budget_per_tick, 1000);
         assert_eq!(status.runtime_policy, "Strict");
+        Ok(())
     }
 
     #[test]
-    fn build_status_applies_diagnostic_overlays_without_mutation() {
+    fn build_status_applies_diagnostic_overlays_without_mutation() -> vb_runtime::RuntimeResult<()>
+    {
         let status = build_status(StatusOptions {
             active_runs: Some(5),
             queue_depth: Some(3),
             trace_dropped: Some(0),
             emit_yaml: false,
-        });
+        })?;
         assert_eq!(status.active_runs, 5);
         assert_eq!(status.command_queue_depth, 3);
         assert_eq!(status.trace_dropped, 0);
+        Ok(())
     }
 
     #[test]
-    fn build_status_reports_overlay_values_without_silent_clamping() {
+    fn build_status_reports_overlay_values_without_silent_clamping() -> vb_runtime::RuntimeResult<()>
+    {
         let status = build_status(StatusOptions {
             active_runs: Some(2048),
             queue_depth: Some(2048),
             trace_dropped: Some(7),
             emit_yaml: false,
-        });
+        })?;
         assert_eq!(status.active_runs, 2048);
         assert_eq!(status.command_queue_depth, 2048);
         assert_eq!(status.trace_dropped, 7);
+        Ok(())
     }
 }

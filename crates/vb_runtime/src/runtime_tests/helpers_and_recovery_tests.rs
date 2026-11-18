@@ -527,7 +527,7 @@ fn snapshot_run_reports_missing_run_without_command_queue() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, ShardConfig::default());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, ShardConfig::default()).expect("valid test configuration");
     let result = runtime.snapshot_run(vb_core::ids::RunId::new(1), 7);
     assert_eq!(
         result,
@@ -555,7 +555,7 @@ fn list_events_is_non_destructive() {
         max_open_gates: 1024,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config).expect("valid test configuration");
     let first = runtime.list_events(vb_core::ids::RunId::new(1));
     let second = runtime.list_events(vb_core::ids::RunId::new(1));
     assert_eq!(first, Err(RuntimeError::RunNotFound));

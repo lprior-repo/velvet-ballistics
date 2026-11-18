@@ -23,3 +23,6 @@ mod ask;
 
 #[path = "shipping_suspension_recovery/refusals.rs"]
 mod refusals;
+
+#[path = "shipping_suspension_recovery/timer_preflight.rs"]
+mod timer_preflight;

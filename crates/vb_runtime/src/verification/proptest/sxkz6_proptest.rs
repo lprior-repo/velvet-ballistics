@@ -100,7 +100,7 @@ proptest! {
         run_raw in 0u64..16,
     ) {
         let count = NonZeroUsize::new(shard_count).unwrap();
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default()).expect("valid test configuration");
         let run = RunId::new(run_raw);
         let answer = make_answer(run);
         let result = runtime.answer_ask(answer);
@@ -114,7 +114,7 @@ proptest! {
         run_raw in 0u64..16,
     ) {
         let count = NonZeroUsize::new(shard_count).unwrap();
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default()).expect("valid test configuration");
         let run = RunId::new(run_raw);
         let result = runtime.list_events(run);
         prop_assert!(matches!(result, Err(RuntimeError::RunNotFound)));
@@ -127,7 +127,7 @@ proptest! {
         run_raw in 0u64..16,
     ) {
         let count = NonZeroUsize::new(shard_count).unwrap();
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default());
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default()).expect("valid test configuration");
         let run = RunId::new(run_raw);
         let result = runtime.take_inspect_response(run);
         prop_assert!(matches!(result, Err(RuntimeError::RunNotFound)));
@@ -140,7 +140,7 @@ proptest! {
         run_raw in 0u64..16,
     ) {
         let count = NonZeroUsize::new(shard_count).unwrap();
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default()).expect("valid test configuration");
         let run = RunId::new(run_raw);
         let result = runtime.capture_timer_entry(run);
         prop_assert!(matches!(result, Err(RuntimeError::RunNotFound)));
@@ -153,7 +153,7 @@ proptest! {
         run_raw in 0u64..16,
     ) {
         let count = NonZeroUsize::new(shard_count).unwrap();
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default()).expect("valid test configuration");
         let run = RunId::new(run_raw);
         let entry = make_timer_entry(run);
         let result = runtime.timer_entry_fired(entry);
@@ -182,7 +182,7 @@ proptest! {
         run_raw in 1u64..=8,
     ) {
         let count = NonZeroUsize::new(shard_count).unwrap();
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default());
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default()).expect("valid test configuration");
         let run = RunId::new(run_raw);
         // Compute home shard manually (mirrors shard_index logic).
         let home = (run_raw % (shard_count as u64)) as usize;

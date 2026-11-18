@@ -15,7 +15,7 @@ fn test_shard() -> Shard {
         max_open_gates: 1024,
         policy: RuntimePolicy::Relaxed,
     };
-    Shard::new(config)
+    Shard::new(config).expect("valid test configuration")
 }
 
 fn make_contract(
@@ -506,7 +506,7 @@ fn shard_boundary_validates_fabricated_id_before_admission()
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ).expect("valid test configuration");
     let workflow = do_workflow(0)?;
     let run = RunId::new(100);
     let contract = make_contract(999, "fabricated")?;
@@ -557,7 +557,7 @@ fn shard_boundary_validates_fabricated_id_with_inputs_before_admission()
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ).expect("valid test configuration");
     let workflow = do_workflow(0)?;
     let run = RunId::new(102);
     let contract = make_contract(777, "fabricated")?;
@@ -609,7 +609,7 @@ fn shard_boundary_accepts_valid_contract_and_executes_do() -> Result<(), Box<dyn
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ).expect("valid test configuration");
     let workflow = setconst_do_workflow(0)?;
     let run = RunId::new(101);
     let contract = make_contract(0, "valid_action")?;
@@ -729,7 +729,7 @@ fn shard_boundary_accepts_valid_contract_with_seeded_input()
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ).expect("valid test configuration");
     let workflow = input_slot_do_workflow(0)?;
     let run = RunId::new(103);
     let inputs: Box<[(SlotIdx, SlotValue)]> = Box::from([(SlotIdx::ZERO, SlotValue::I64(55))]);

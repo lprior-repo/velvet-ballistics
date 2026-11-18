@@ -140,7 +140,7 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard =
-        Shard::new_with_journal_and_artifact_store(small_config(), shared, store.clone());
+        Shard::new_with_journal_and_artifact_store(small_config(), shared, store.clone()).expect("valid test configuration");
     submit_run(
         &mut shard,
         run,
@@ -198,7 +198,7 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     let post_crash = require_snapshot(&journal)?;
     assert_eq!(post_crash, pre_crash);
     let mut recovered =
-        Shard::new_with_journal_and_artifact_store(small_config(), journal.clone(), store);
+        Shard::new_with_journal_and_artifact_store(small_config(), journal.clone(), store).expect("valid test configuration");
     let boundary_ticket = crash_lab_boundary_ticket(&pre_crash, ticket_seq)?;
     let boundary = crate::recovery::RecoveredRunBoundary::from_pending_action(boundary_ticket);
     let command = crate::shard::types::RecoverRunCommand::new(

@@ -71,7 +71,8 @@ fn strict_owned_activation_rechecks_host_presence_and_preserves_canonical_refere
             ..ShardConfig::default()
         },
         StorageRuntimeJournal::shared_strict(journal.clone()),
-    );
+    )
+    .expect("valid test configuration");
     assert_eq!(
         runtime.activate_owned_submission(run, source.digest),
         Err(RuntimeError::SecretUnavailable)

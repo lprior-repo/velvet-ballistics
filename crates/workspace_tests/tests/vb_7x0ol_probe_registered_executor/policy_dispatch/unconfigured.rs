@@ -77,7 +77,8 @@ fn create_and_submit_runtime(
         journal.clone(),
         Arc::new(catalog.clone()),
     );
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    let mut runtime =
+        Runtime::new(shard_count(1)?, strict_config(), storage).expect("valid test configuration");
     let workflow = action_then_finish_workflow()?;
     let contract = external_contract(ActionId::new(0))?;
     runtime.submit_direct_with_inputs_grants_and_contracts(
