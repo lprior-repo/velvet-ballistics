@@ -297,12 +297,16 @@ pub open spec fn spec_resume_kind_valid(kind: SpecResumeKind) -> bool {
 }
 
 /// Spec-side mirror of `resume_action_outcome_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:138-200.
+/// Mirrors resume/failure branches at crates/vb_runtime/src/engine/action/mod.rs:197-235,
+/// retry-ticket construction at crates/vb_runtime/src/engine/action/mod.rs:243-262
+/// and checked increments in crates/vb_runtime/src/engine/action/retry_helpers.rs.
 pub open spec fn spec_resume_action_outcome_decision(
     outcome_disc: u8,
     attempt: u16,
     capacity: u16,
     retry_policy_disc: u8,
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
     seq_would_overflow: bool,
     attempt_would_overflow: bool,
 ) -> SpecResumeKind {
@@ -311,14 +315,15 @@ pub open spec fn spec_resume_action_outcome_decision(
     } else if outcome_disc == 1 {
         SpecResumeKind::AwaitingAction
     } else if outcome_disc == 2 {
-        if retry_policy_disc == 0 {
-            if attempt < capacity && !seq_would_overflow && !attempt_would_overflow {
-                SpecResumeKind::AwaitingAction
-            } else {
-                SpecResumeKind::ErrRetryExhausted
-            }
-        } else {
+        if retry_policy_disc != 0
+            || (!side_effect_is_none && retry_safety_disc != 0 && retry_safety_disc != 1) {
             SpecResumeKind::ErrUnsupportedPrimitive
+        } else if attempt >= capacity {
+            SpecResumeKind::ErrRetryExhausted
+        } else if seq_would_overflow || attempt_would_overflow {
+            SpecResumeKind::ErrInternalInvariantViolation
+        } else {
+            SpecResumeKind::AwaitingAction
         }
     } else {
         SpecResumeKind::ErrInternalInvariantViolation
@@ -329,16 +334,19 @@ pub open spec fn spec_resume_action_outcome_decision(
 /// Mirrors the production body at crates/vb_core/src/action/ticket.rs:78-96
 /// (`compute_action_idempotency_key`, FNV-1a-inspired wrapping multiply-add
 /// hash), reached from the runtime via `compute_idempotency_key` at
-/// crates/vb_runtime/src/engine/action/mod.rs:265-266.
-pub open spec fn spec_compute_idempotency_key_decision(run: u64, seq: u64, action: u32) -> int {
-    let run_part = run as int * 0x6c62272e07bb0143;
-    let seq_part = seq as int;
-    let action_part = action as int;
-    let step1 = run_part + seq_part;
-    let step2 = step1 * 0x3b4f1a5b6c2d8e7f;
-    let step3 = step2 + action_part;
-    let result = step3 * 0x5bd1e9956c7b4d3a;
-    result
+/// crates/vb_runtime/src/engine/action/mod.rs:267-269.
+// This mathematical projection models each wrapping operation explicitly.
+// The external production bridge remains trusted, not a body-equivalence proof.
+pub open spec fn spec_compute_idempotency_key_decision(
+    run: u64, run_attempt: u16, seq: u64, action: u16,
+) -> int {
+    let modulus: int = (u128::MAX as int) + 1;
+    let step1 = (run as int * 0x6c62272e07bb0143) % modulus;
+    let step2 = (step1 + run_attempt as int) % modulus;
+    let step3 = (step2 * 0x3b4f1a5b6c2d8e7f) % modulus;
+    let step4 = (step3 + seq as int) % modulus;
+    let step5 = (step4 * 0x5bd1e9956c7b4d3a) % modulus;
+    (step5 + action as int) % modulus
 }
 
 /// Spec-side mirror of `resolve_contract_pure_decision`.
@@ -441,6 +449,8 @@ pub assume_specification[ production::resume_action_outcome_pure_decision ](
     attempt: u16,
     capacity: u16,
     retry_policy_disc: u8,
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
     seq_would_overflow: bool,
     attempt_would_overflow: bool,
 ) -> (kind: SpecResumeKind)
@@ -450,6 +460,8 @@ pub assume_specification[ production::resume_action_outcome_pure_decision ](
             attempt,
             capacity,
             retry_policy_disc,
+            side_effect_is_none,
+            retry_safety_disc,
             seq_would_overflow,
             attempt_would_overflow,
         ),
@@ -458,16 +470,15 @@ pub assume_specification[ production::resume_action_outcome_pure_decision ](
 
 pub assume_specification[ production::compute_idempotency_key_pure ](
     run: u64,
+    run_attempt: u16,
     seq: u64,
-    action: u32,
+    action: u16,
 ) -> (key: u128)
     ensures
-// Equality with the spec-mirror arithmetic. The production body
-// delegates to `compute_action_idempotency_key` which is a
-// wrapping-multiply-add hash; the projection uses the same
-// arithmetic. Wrapping modulo 2^128 is implicit in u128 ops.
+// Trusted equality to the explicit wrapping-arithmetic projection.
+// This assumption does not verify the external production body.
 
-        key as int == spec_compute_idempotency_key_decision(run, seq, action),
+        key as int == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
 ;
 
 pub assume_specification[ production::resolve_contract_pure_decision ](
@@ -732,12 +743,14 @@ pub exec fn checked_prod_execute_error_handler(
 
 /// Production-bound exec wrapper that exercises
 /// `resume_action_outcome_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action/mod.rs:138-200.
+/// crates/vb_runtime/src/engine/action/mod.rs:197-235 and retry_helpers.rs.
 pub exec fn checked_prod_resume_action_outcome(
     outcome_disc: u8,
     attempt: u16,
     capacity: u16,
     retry_policy_disc: u8,
+    side_effect_is_none: bool,
+    retry_safety_disc: u8,
     seq_would_overflow: bool,
     attempt_would_overflow: bool,
 ) -> (kind: SpecResumeKind)
@@ -750,6 +763,8 @@ pub exec fn checked_prod_resume_action_outcome(
             attempt,
             capacity,
             retry_policy_disc,
+            side_effect_is_none,
+            retry_safety_disc,
             seq_would_overflow,
             attempt_would_overflow,
         ),
@@ -760,6 +775,8 @@ pub exec fn checked_prod_resume_action_outcome(
         attempt,
         capacity,
         retry_policy_disc,
+        side_effect_is_none,
+        retry_safety_disc,
         seq_would_overflow,
         attempt_would_overflow,
     );
@@ -768,6 +785,8 @@ pub exec fn checked_prod_resume_action_outcome(
         attempt,
         capacity,
         retry_policy_disc,
+        side_effect_is_none,
+        retry_safety_disc,
         seq_would_overflow,
         attempt_would_overflow,
     ));
@@ -779,13 +798,13 @@ pub exec fn checked_prod_resume_action_outcome(
 /// `compute_idempotency_key_pure`. Mirrors the production body at
 /// crates/vb_core/src/action/ticket.rs:78-96, reached from the runtime
 /// via `compute_idempotency_key` at
-/// crates/vb_runtime/src/engine/action/mod.rs:265-266.
-pub exec fn checked_prod_compute_idempotency_key(run: u64, seq: u64, action: u32) -> (key: u128)
+/// crates/vb_runtime/src/engine/action/mod.rs:267-269.
+pub exec fn checked_prod_compute_idempotency_key(run: u64, run_attempt: u16, seq: u64, action: u16) -> (key: u128)
     ensures
-        key as int == spec_compute_idempotency_key_decision(run, seq, action),
+        key as int == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
 {
-    let first = compute_idempotency_key_pure(run, seq, action);
-    assert(first as int == spec_compute_idempotency_key_decision(run, seq, action));
+    let first = compute_idempotency_key_pure(run, run_attempt, seq, action);
+    assert(first as int == spec_compute_idempotency_key_decision(run, run_attempt, seq, action));
     first
 }
 
@@ -1092,7 +1111,7 @@ pub proof fn proof_execute_error_handler_branch(
 /// Non-vacuous: `resume_action_outcome` Ready case maps to Continue.
 pub proof fn proof_resume_ready_is_continue()
     ensures
-        spec_resume_action_outcome_decision(0, 0, 0, 0, false, false) == SpecResumeKind::Continue,
+        spec_resume_action_outcome_decision(0, 0, 0, 0, false, 2, false, false) == SpecResumeKind::Continue,
 {
     reveal(spec_resume_action_outcome_decision);
 }
@@ -1100,7 +1119,7 @@ pub proof fn proof_resume_ready_is_continue()
 /// Non-vacuous: `resume_action_outcome` Suspended case maps to AwaitingAction.
 pub proof fn proof_resume_suspended_is_awaiting()
     ensures
-        spec_resume_action_outcome_decision(1, 0, 0, 0, false, false)
+        spec_resume_action_outcome_decision(1, 0, 0, 0, false, 2, false, false)
             == SpecResumeKind::AwaitingAction,
 {
     reveal(spec_resume_action_outcome_decision);
@@ -1111,7 +1130,7 @@ pub proof fn proof_resume_failed_retryable_with_capacity_is_awaiting(attempt: u1
     requires
         attempt < capacity,
     ensures
-        spec_resume_action_outcome_decision(2, attempt, capacity, 0, false, false)
+        spec_resume_action_outcome_decision(2, attempt, capacity, 0, true, 0, false, false)
             == SpecResumeKind::AwaitingAction,
 {
     reveal(spec_resume_action_outcome_decision);
@@ -1119,15 +1138,47 @@ pub proof fn proof_resume_failed_retryable_with_capacity_is_awaiting(attempt: u1
 
 /// Non-vacuous: `resume_action_outcome` Failed-retryable-exhausted maps to ErrRetryExhausted.
 pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(attempt: u16, capacity: u16)
+    requires attempt >= capacity,
     ensures
-        spec_resume_action_outcome_decision(
-            2,
-            attempt,
-            capacity,
-            0,
-            true,  // seq_would_overflow
-            false,
-        ) == SpecResumeKind::ErrRetryExhausted,
+        spec_resume_action_outcome_decision(2, attempt, capacity, 0, true, 0, true, true)
+            == SpecResumeKind::ErrRetryExhausted,
+{
+    reveal(spec_resume_action_outcome_decision);
+}
+
+/// With capacity remaining, either checked increment overflow is an invariant error.
+pub proof fn proof_resume_overflow_is_invariant_error(attempt: u16, capacity: u16)
+    requires attempt < capacity,
+    ensures
+        spec_resume_action_outcome_decision(2, attempt, capacity, 0, true, 0, true, false)
+            == SpecResumeKind::ErrInternalInvariantViolation,
+        spec_resume_action_outcome_decision(2, attempt, capacity, 0, true, 0, false, true)
+            == SpecResumeKind::ErrInternalInvariantViolation,
+{
+    reveal(spec_resume_action_outcome_decision);
+}
+
+/// Unsafe and future retry-safety discriminants refuse side-effecting retries first.
+pub proof fn proof_resume_unsafe_side_effects_refuse(retry_safety_disc: u8)
+    requires retry_safety_disc != 0, retry_safety_disc != 1,
+    ensures
+        spec_resume_action_outcome_decision(2, 0, 1, 0, false, retry_safety_disc, false, false)
+            == SpecResumeKind::ErrUnsupportedPrimitive,
+        spec_resume_action_outcome_decision(2, 1, 1, 0, false, retry_safety_disc, true, true)
+            == SpecResumeKind::ErrUnsupportedPrimitive,
+{
+    reveal(spec_resume_action_outcome_decision);
+}
+
+/// Safe/key-required effects and effect-free work preserve the eligible retry branch.
+pub proof fn proof_resume_eligible_safety_cases()
+    ensures
+        spec_resume_action_outcome_decision(2, 0, 1, 0, false, 0, false, false)
+            == SpecResumeKind::AwaitingAction,
+        spec_resume_action_outcome_decision(2, 0, 1, 0, false, 1, false, false)
+            == SpecResumeKind::AwaitingAction,
+        spec_resume_action_outcome_decision(2, 0, 1, 0, true, 255, false, false)
+            == SpecResumeKind::AwaitingAction,
 {
     reveal(spec_resume_action_outcome_decision);
 }
@@ -1135,7 +1186,7 @@ pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(attempt:
 /// Non-vacuous: `resume_action_outcome` Failed-non-retryable maps to ErrUnsupportedPrimitive.
 pub proof fn proof_resume_failed_non_retryable_is_unsupported()
     ensures
-        spec_resume_action_outcome_decision(2, 0, 0, 1, false, false)
+        spec_resume_action_outcome_decision(2, 0, 0, 1, true, 0, false, false)
             == SpecResumeKind::ErrUnsupportedPrimitive,
 {
     reveal(spec_resume_action_outcome_decision);
@@ -1152,12 +1203,30 @@ pub proof fn proof_resolve_contract_matches_id(id_at_index_match: bool)
 /// Non-vacuous: `compute_idempotency_key` is deterministic — two
 /// invocations with identical inputs produce identical keys. The
 /// arithmetic is referentially transparent.
-pub proof fn proof_compute_idempotency_key_deterministic(run: u64, seq: u64, action: u32)
+pub proof fn proof_compute_idempotency_key_deterministic(run: u64, run_attempt: u16, seq: u64, action: u16)
     ensures
-        spec_compute_idempotency_key_decision(run, seq, action)
-            == spec_compute_idempotency_key_decision(run, seq, action),
+        spec_compute_idempotency_key_decision(run, run_attempt, seq, action)
+            == spec_compute_idempotency_key_decision(run, run_attempt, seq, action),
 {
     reveal(spec_compute_idempotency_key_decision);
+}
+
+/// Concrete input-boundary witnesses distinguish attempt contribution and wrapping.
+/// These prove projection facts only, not native body equivalence or collision freedom.
+pub proof fn proof_idempotency_projection_boundaries()
+    ensures
+        spec_compute_idempotency_key_decision(0, 0, 0, 0) == 0,
+        spec_compute_idempotency_key_decision(0, 0, 0, 65535) == 65535,
+        spec_compute_idempotency_key_decision(0, 1, 0, 0) == 28275951934922302338996992951343872966,
+        spec_compute_idempotency_key_decision(18446744073709551615, 65535, 18446744073709551615, 65535)
+            == 269997330972226837284306421837379734573,
+{
+    assert(spec_compute_idempotency_key_decision(0, 0, 0, 0) == 0) by (compute);
+    assert(spec_compute_idempotency_key_decision(0, 0, 0, 65535) == 65535) by (compute);
+    assert(spec_compute_idempotency_key_decision(0, 1, 0, 0)
+        == 28275951934922302338996992951343872966) by (compute);
+    assert(spec_compute_idempotency_key_decision(18446744073709551615, 65535, 18446744073709551615, 65535)
+        == 269997330972226837284306421837379734573) by (compute);
 }
 
 fn main() {
