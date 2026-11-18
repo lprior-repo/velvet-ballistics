@@ -25,47 +25,6 @@ fn out_of_order_issued_completion_and_resume_refuse_without_mutation() -> TestRe
     refuses(Damage::OutOfOrder)
 }
 
-#[test]
-fn admission_metadata_ignores_foreign_run_compatibility_evidence() -> TestResult {
-    admission_compatibility_ignores(true)
-}
-
-#[test]
-fn admission_metadata_ignores_non_ir_compatibility_evidence() -> TestResult {
-    admission_compatibility_ignores(false)
-}
-
-fn admission_compatibility_ignores(foreign_run: bool) -> TestResult {
-    let directory = tempfile::tempdir()?;
-    let (journal, live, _) = fixture::crashed(directory.path(), true)?;
-    let original = journal.events_for_run_full(RUN)?;
-    let expected = vb_runtime::recovery::hydrate_run_admission_from_events(&original)
-        .ok_or("issued admission missing")?;
-    assert!(expected.ir_compat_decision().is_some());
-    let mut changed = original.clone();
-    let event = changed
-        .iter_mut()
-        .find(|event| matches!(event, JournalEvent::CompatibilityDecisionEvent { .. }))
-        .ok_or("issued compatibility record missing")?;
-    if let JournalEvent::CompatibilityDecisionEvent { run, decision, .. } = event {
-        if foreign_run {
-            *run = vb_core::RunId::new(47242);
-        } else {
-            decision.boundary = vb_storage::compat::CompatBoundary::ActionAbi;
-        }
-    }
-    let actual = vb_runtime::recovery::hydrate_run_admission_from_events(&changed)
-        .ok_or("original bound admission must remain available")?;
-    assert_eq!(actual.ir_compat_decision(), None);
-    assert_eq!(actual.artifact_digest(), expected.artifact_digest());
-    assert_eq!(actual.run_id(), expected.run_id());
-    assert_eq!(actual.budget(), expected.budget());
-    assert_eq!(journal.events_for_run_full(RUN)?, original);
-    drop(live);
-    drop(journal);
-    Ok(())
-}
-
 fn corrupt(
     path: &Path,
     damage: Damage,

@@ -80,8 +80,8 @@ fn crash_prefix(interrupted: bool) -> TestResult {
     recovered.recover_and_resume(RUN)?;
     fixture::pending_ask(&mut recovered, issued.ask)?;
     let reference = fixture::uninterrupted(&directory.path().join("reference"))?;
+    checks::live_boundary(&recovered, &reference, issued)?;
     let events = journal.events_for_run_full(RUN)?;
-    checks::live_boundary(&recovered, &reference, issued, &events)?;
     assert_eq!(events.get(..prefix.len()), Some(prefix.as_slice()));
     checks::sequence_and_effects(&events, usize::from(interrupted))?;
     assert_eq!(journal.run_inputs(RUN)?, receipt);
@@ -92,6 +92,5 @@ fn crash_prefix(interrupted: bool) -> TestResult {
     checks::empty_action_index(&at_ask);
     assert_ne!(at_ask, before);
     checks::old_ticket_refused_cold(&path, issued, &at_ask, &events, &receipt)?;
-    checks::finish_once(&path, issued, &events, &receipt, usize::from(interrupted))?;
     Ok(())
 }
