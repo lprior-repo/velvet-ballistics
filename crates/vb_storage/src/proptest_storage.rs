@@ -23,19 +23,38 @@ mod storage_tests {
         RecordKind, StorageLimits, decode_record, encode_record,
     };
     use proptest::prelude::*;
+    use std::sync::LazyLock;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 
-    fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let journal = FjallJournal::open(temp.path(), None).expect("journal open");
-        (temp, journal)
+    struct SharedJournal {
+        _dir: tempfile::TempDir,
+        journal: FjallJournal,
+    }
+
+    static SHARED: LazyLock<SharedJournal> = LazyLock::new(|| {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(dir.path(), None).expect("journal open");
+        SharedJournal { _dir: dir, journal }
+    });
+
+    static NEXT_SCOPE: AtomicU64 = AtomicU64::new(1);
+
+    /// One journal per test process; nextest runs each test in its own process.
+    fn shared_journal() -> &'static FjallJournal {
+        &SHARED.journal
+    }
+
+    /// Fresh run-id namespace per proptest case; OR run ids below 2^32 into it.
+    fn fresh_scope() -> u64 {
+        NEXT_SCOPE.fetch_add(1, Ordering::Relaxed) << 32
     }
 
     #[test]
     fn journal_append_read_roundtrip_with_arbitrary_run() {
         proptest!(|(run_val in 1u64..10000u64, event_count in 1u16..50u16)| {
-            let (_temp, journal) = temp_journal();
-            let run = RunId::new(run_val);
+            let journal = shared_journal();
+            let run = RunId::new(fresh_scope() | run_val);
             let mut events = Vec::new();
 
             for i in 0..event_count {
@@ -63,8 +82,8 @@ mod storage_tests {
     #[test]
     fn journal_append_read_roundtrip_mixed_kinds() {
         proptest!(|(run_val in 1u64..1000u64)| {
-            let (_temp, journal) = temp_journal();
-            let run = RunId::new(run_val);
+            let journal = shared_journal();
+            let run = RunId::new(fresh_scope() | run_val);
             let digest = WorkflowDigest::from_bytes([0x42; 32]);
 
             let events = vec![
@@ -235,9 +254,9 @@ mod storage_tests {
     #[test]
     fn queue_fifo_ordering_invariant() {
         proptest!(|(num_events in 1usize..8usize, run_val in 1u64..1000u64)| {
-            let (_temp, journal) = temp_journal();
+            let journal = shared_journal();
             let queue = JournalWriterQueue::new(16, 8, StorageLimits::DEFAULT).unwrap();
-            let run = RunId::new(run_val);
+            let run = RunId::new(fresh_scope() | run_val);
 
             for i in 0..num_events {
                 let ev = JournalEvent::StepStarted {
@@ -249,7 +268,7 @@ mod storage_tests {
                 queue.enqueue_journaled(ev).unwrap();
             }
 
-            queue.drain_all(&journal).unwrap();
+            queue.drain_all(journal).unwrap();
             let events = journal.events_for_run(run).unwrap();
             prop_assert_eq!(events.len(), num_events);
             for (i, ev) in events.iter().enumerate() {
@@ -262,9 +281,9 @@ mod storage_tests {
     #[test]
     fn queue_fifo_preserved_across_multiple_batches() {
         proptest!(|(num_events in 4usize..16usize, run_val in 1u64..1000u64)| {
-            let (_temp, journal) = temp_journal();
+            let journal = shared_journal();
             let queue = JournalWriterQueue::new(32, 3, StorageLimits::DEFAULT).unwrap();
-            let run = RunId::new(run_val);
+            let run = RunId::new(fresh_scope() | run_val);
 
             for i in 0..num_events {
                 let ev = JournalEvent::StepStarted {
@@ -276,7 +295,7 @@ mod storage_tests {
                 queue.enqueue_journaled(ev).unwrap();
             }
 
-            queue.drain_all(&journal).unwrap();
+            queue.drain_all(journal).unwrap();
             let events = journal.events_for_run(run).unwrap();
             prop_assert_eq!(events.len(), num_events);
             for (i, ev) in events.iter().enumerate() {
@@ -323,8 +342,8 @@ mod storage_tests {
             use crate::recovery::RunSnapshot;
             use crate::trimming::TrimPolicy;
 
-            let (_temp, journal) = temp_journal();
-            let run = RunId::new(run_val);
+            let journal = shared_journal();
+            let run = RunId::new(fresh_scope() | run_val);
             let digest = WorkflowDigest::from_bytes([0xBB; 32]);
             let snapshot_seq = EventSeq::new(snapshot_seq_val);
 
@@ -500,8 +519,8 @@ mod storage_tests {
     #[test]
     fn prop_replay_contiguity_mixed_kinds() {
         proptest!(|(run_val in 1u64..10000u64, event_count in 2usize..8usize)| {
-            let (_temp, journal) = temp_journal();
-            let run = RunId::new(run_val);
+            let journal = shared_journal();
+            let run = RunId::new(fresh_scope() | run_val);
             let mut seq: u64 = 0;
 
             let kill_position = event_count / 2;
@@ -538,8 +557,8 @@ mod storage_tests {
     #[test]
     fn prop_replay_gap_detection() {
         proptest!(|(run_val in 1u64..10000u64)| {
-            let (_temp, journal) = temp_journal();
-            let run = RunId::new(run_val);
+            let journal = shared_journal();
+            let run = RunId::new(fresh_scope() | run_val);
 
             let events = vec![
                 JournalEvent::StepStarted {
@@ -582,8 +601,8 @@ mod storage_tests {
     #[test]
     fn prop_duplicate_seq_rejected_at_append() {
         proptest!(|(run_val in 1u64..10000u64)| {
-            let (_temp, journal) = temp_journal();
-            let run = RunId::new(run_val);
+            let journal = shared_journal();
+            let run = RunId::new(fresh_scope() | run_val);
 
             let first = JournalEvent::StepStarted {
                 run,

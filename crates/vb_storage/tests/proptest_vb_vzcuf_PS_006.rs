@@ -3,13 +3,10 @@ use vb_core::{RunId, WorkflowDigest};
 use vb_storage::EventSeq;
 use vb_storage::batch::JournalWriteBatch;
 use vb_storage::events::JournalEvent;
-use vb_storage::journal::FjallJournal;
 
-fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let journal = FjallJournal::open(temp.path(), None).expect("journal open");
-    (temp, journal)
-}
+mod common;
+use common::{fresh_scope, shared_journal};
+
 fn make_event(run: u64, seq: u64) -> JournalEvent {
     JournalEvent::RunAccepted {
         run: RunId::new(run),
@@ -21,8 +18,7 @@ fn make_event(run: u64, seq: u64) -> JournalEvent {
 proptest! {
     #[test]
     fn ps006_new_empty(_dummy in proptest::bool::ANY) {
-        let (_temp, journal) = temp_journal();
-        let batch = JournalWriteBatch::new(&journal);
+        let batch = JournalWriteBatch::new(shared_journal());
         prop_assert_eq!(batch.len(), 0);
         prop_assert!(batch.is_empty());
     }
@@ -40,8 +36,8 @@ proptest! {
     }
     #[test]
     fn ps006_len_mono(run in 1u64..100u64) {
-        let (_temp, journal) = temp_journal();
-        let mut batch = JournalWriteBatch::new(&journal);
+        let run = fresh_scope() | run;
+        let mut batch = JournalWriteBatch::new(shared_journal());
         for i in 0u64..5u64 {
             let event = make_event(run, i);
             match batch.append_event(&event) {
@@ -52,8 +48,9 @@ proptest! {
     }
     #[test]
     fn ps006_commit(run in 1u64..500u64) {
-        let (_temp, journal) = temp_journal();
-        let mut batch = JournalWriteBatch::new(&journal);
+        let run = fresh_scope() | run;
+        let journal = shared_journal();
+        let mut batch = JournalWriteBatch::new(journal);
         for i in 0u64..3u64 {
             batch.append_event(&make_event(run, i)).expect("append");
         }

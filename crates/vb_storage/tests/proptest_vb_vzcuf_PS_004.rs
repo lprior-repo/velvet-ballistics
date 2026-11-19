@@ -4,9 +4,11 @@ use vb_storage::batch::JournalWriteBatch;
 use vb_storage::codec::encode_record;
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
 use vb_storage::events::JournalEvent;
-use vb_storage::journal::FjallJournal;
 use vb_storage::records::RecordKind;
 use vb_storage::{EventSeq, JournalError};
+
+mod common;
+use common::{fresh_scope, shared_journal};
 
 fn make_event(run: u64, seq: u64) -> JournalEvent {
     JournalEvent::RunAccepted {
@@ -15,21 +17,17 @@ fn make_event(run: u64, seq: u64) -> JournalEvent {
         workflow: WorkflowDigest::from_bytes([0u8; 32]),
     }
 }
-fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let journal = FjallJournal::open(temp.path(), None).expect("journal open");
-    (temp, journal)
-}
 
 proptest! {
     #[test]
     fn ps004_rejection_preserves(run in 1u64..1000u64, seq in 0u64..100u64) {
-        let (_temp, journal) = temp_journal();
+        let run = fresh_scope() | run;
+        let journal = shared_journal();
         let event = make_event(run, seq);
-        let mut b1 = JournalWriteBatch::new(&journal);
+        let mut b1 = JournalWriteBatch::new(journal);
         b1.append_event(&event).expect("append");
         b1.commit().expect("commit");
-        let mut b2 = JournalWriteBatch::new(&journal);
+        let mut b2 = JournalWriteBatch::new(journal);
         prop_assert_eq!(b2.len(), 0);
         let result = b2.append_event(&event);
         prop_assert!(result.is_err());
@@ -37,12 +35,13 @@ proptest! {
     }
     #[test]
     fn ps004_no_persist(run in 1u64..1000u64) {
-        let (_temp, journal) = temp_journal();
+        let run = fresh_scope() | run;
+        let journal = shared_journal();
         let event = make_event(run, 0);
-        let mut batch = JournalWriteBatch::new(&journal);
+        let mut batch = JournalWriteBatch::new(journal);
         batch.append_event(&event).expect("append");
         batch.commit().expect("commit");
-        let mut b2 = JournalWriteBatch::new(&journal);
+        let mut b2 = JournalWriteBatch::new(journal);
         let append_result = b2.append_event(&event);
         let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
         prop_assert!(duplicate_event);
@@ -70,11 +69,11 @@ proptest! {
     }
     #[test]
     fn ps004_len_mono(events in proptest::collection::vec((1u64..100u64, 0u64..50u64), 0..10)) {
-        let (_temp, journal) = temp_journal();
-        let mut batch = JournalWriteBatch::new(&journal);
+        let scope = fresh_scope();
+        let mut batch = JournalWriteBatch::new(shared_journal());
         let mut prev = 0usize;
         for (run, seq) in events {
-            let event = make_event(run, seq);
+            let event = make_event(scope | run, seq);
             if batch.append_event(&event).is_ok() {
                 prop_assert!(batch.len() > prev);
                 prev = batch.len();
@@ -83,12 +82,13 @@ proptest! {
     }
     #[test]
     fn ps004_empty_commit_after_rej(run in 1u64..1000u64, seq in 0u64..100u64) {
-        let (_temp, journal) = temp_journal();
+        let run = fresh_scope() | run;
+        let journal = shared_journal();
         let event = make_event(run, seq);
-        let mut batch = JournalWriteBatch::new(&journal);
+        let mut batch = JournalWriteBatch::new(journal);
         batch.append_event(&event).expect("append");
         batch.commit().expect("commit");
-        let mut b2 = JournalWriteBatch::new(&journal);
+        let mut b2 = JournalWriteBatch::new(journal);
         let append_result = b2.append_event(&event);
         let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
         prop_assert!(duplicate_event);
