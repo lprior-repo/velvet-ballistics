@@ -43,9 +43,20 @@ impl Runtime {
         journal: &SharedRuntimeJournal,
         quota: &crate::quota::SharedQuotaLedger,
     ) -> RuntimeResult<Vec<Shard>> {
-        (0..shard_count.get())
-            .map(|_| Shard::new_with_journal_and_quota(config, journal.clone(), quota.clone()))
-            .collect()
+        let mut shards = Vec::new();
+        shards
+            .try_reserve_exact(shard_count.get())
+            .map_err(|_| RuntimeError::ShardAllocationFailed { requested: shard_count.get() })?;
+        let mut index = 0usize;
+        while index < shard_count.get() {
+            shards.push(Shard::new_with_journal_and_quota(
+                config,
+                journal.clone(),
+                quota.clone(),
+            )?);
+            index = index.saturating_add(1);
+        }
+        Ok(shards)
     }
 
     /// Creates a new runtime whose journal events survive only until process exit.

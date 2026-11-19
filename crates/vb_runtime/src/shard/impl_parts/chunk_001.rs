@@ -11,6 +11,7 @@ struct ShardServices {
     artifact_store: crate::admission::SharedAcceptedArtifactStore,
     journal: SharedRuntimeJournal,
     queue: ShardCommandQueue,
+    trace_ring: TraceRing,
 }
 
 impl Shard {
@@ -54,6 +55,7 @@ impl Shard {
 
     fn try_with_services(config: ShardConfig, services: ShardInputs) -> RuntimeResult<Self> {
         validate_command_queue_capacity(config.command_queue_capacity)?;
+        let trace_ring = TraceRing::try_new(config.trace_capacity)?;
         let aggregate = RunAggregate::try_with_timer_capacity(config.max_active_runs)?;
         let queue = ShardCommandQueue::from_config(config)?;
         let services = ShardServices {
@@ -61,6 +63,7 @@ impl Shard {
             artifact_store: services.artifact_store,
             journal: services.journal,
             queue,
+            trace_ring,
         };
         Ok(Self::with_services(config, services, aggregate))
     }
@@ -77,7 +80,7 @@ impl Shard {
             bound_open_gates: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
-            trace_ring: TraceRing::new(config.trace_capacity),
+            trace_ring: ports.trace_ring,
             counters: ShardCounters::new(),
             quota: ports.quota,
             pending_quota_reservation: None,
