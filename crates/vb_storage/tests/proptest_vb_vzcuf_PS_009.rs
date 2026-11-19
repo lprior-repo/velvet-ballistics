@@ -6,8 +6,10 @@ use vb_storage::codec::encode_record;
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
 use vb_storage::error::JournalError;
 use vb_storage::events::JournalEvent;
-use vb_storage::journal::FjallJournal;
 use vb_storage::records::RecordKind;
+
+mod common;
+use common::{fresh_scope, shared_journal};
 
 fn make_event(run: u64, seq: u64) -> JournalEvent {
     JournalEvent::RunAccepted {
@@ -16,21 +18,17 @@ fn make_event(run: u64, seq: u64) -> JournalEvent {
         workflow: WorkflowDigest::from_bytes([0u8; 32]),
     }
 }
-fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let journal = FjallJournal::open(temp.path(), None).expect("journal open");
-    (temp, journal)
-}
 
 proptest! {
     #[test]
     fn ps009_dup_rejected(run in 1u64..1000u64, seq in 0u64..100u64) {
-        let (_temp, journal) = temp_journal();
+        let run = fresh_scope() | run;
+        let journal = shared_journal();
         let event = make_event(run, seq);
-        let mut b1 = JournalWriteBatch::new(&journal);
+        let mut b1 = JournalWriteBatch::new(journal);
         b1.append_event(&event).expect("first");
         b1.commit().expect("commit");
-        let mut b2 = JournalWriteBatch::new(&journal);
+        let mut b2 = JournalWriteBatch::new(journal);
         let result = b2.append_event(&event);
         let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
         prop_assert!(is_dup);
