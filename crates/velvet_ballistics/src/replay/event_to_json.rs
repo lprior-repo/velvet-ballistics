@@ -32,6 +32,27 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
                 "policy_pin": format!("{policy_pin:?}")
             })
         }
+        vb_storage::JournalEvent::RunAdmissionBudget { seq, run, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunAdmissionBudget",
+                "run": run.get()
+            })
+        }
+        vb_storage::JournalEvent::CompatibilityDecisionEvent { seq, run, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "CompatibilityDecisionEvent",
+                "run": run.get()
+            })
+        }
+        vb_storage::JournalEvent::RunBudgetOriginEvent { seq, run, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunBudgetOriginEvent",
+                "run": run.get()
+            })
+        }
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
             serde_json::json!({
                 "seq": seq.get(),
