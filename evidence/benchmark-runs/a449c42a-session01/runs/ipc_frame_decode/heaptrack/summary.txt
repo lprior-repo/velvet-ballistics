@@ -1,0 +1,10 @@
+reading file "/home/lewis/src/isoloated/vb-fix-await-timer/evidence/benchmark-runs/a449c42a-session01/runs/ipc_frame_decode/heaptrack/ipc_frame_decode.data.zst" - please wait, this might take some time...
+Debuggee command was: /home/lewis/src/isoloated/vb-fix-target/release/deps/velvet_ballistics-a06673bbb7accbb9 ipc_frame_decode --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5
+finished reading file, now analyzing data:
+
+total runtime: 10.360000s.
+calls to allocation functions: 36826631 (3554694/s)
+temporary memory allocations: 226745 (21886/s)
+peak heap memory consumption: 9.15M
+peak RSS (including heaptrack overhead): 24.53M
+total memory leaked: 18.25K

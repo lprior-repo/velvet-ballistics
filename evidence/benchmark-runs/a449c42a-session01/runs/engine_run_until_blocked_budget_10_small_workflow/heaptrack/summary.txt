@@ -1,0 +1,10 @@
+reading file "/home/lewis/src/isoloated/vb-fix-await-timer/evidence/benchmark-runs/a449c42a-session01/runs/engine_run_until_blocked_budget_10_small_workflow/heaptrack/engine_run_until_blocked_budget_10_small_workflow.data.zst" - please wait, this might take some time...
+Debuggee command was: /home/lewis/src/isoloated/vb-fix-target/release/deps/velvet_ballistics-a06673bbb7accbb9 engine_run_until_blocked_budget_10_small_workflow --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5
+finished reading file, now analyzing data:
+
+total runtime: 10.561000s.
+calls to allocation functions: 35937977 (3402895/s)
+temporary memory allocations: 226751 (21470/s)
+peak heap memory consumption: 8.86M
+peak RSS (including heaptrack overhead): 21.69M
+total memory leaked: 18.25K
