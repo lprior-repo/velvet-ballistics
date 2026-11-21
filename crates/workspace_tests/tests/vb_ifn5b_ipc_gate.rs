@@ -125,10 +125,15 @@ fn unix_socket_command_18_records_local_claim_in_reopened_kind_55()
     runtime.submit_direct(run, workflow)?;
     runtime.tick_all()?;
     let bound_gate = gate(run, artifact_digest, policy_digest, input_digest)?;
+    let now_ms = u64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_millis(),
+    )?;
     runtime.open_bound_gate(
         run,
         bound_gate.clone(),
-        0,
+        now_ms,
         ApproverId::new("bob".to_string()).ok_or("invalid requester")?,
     )?;
     runtime.tick_all()?;
@@ -150,7 +155,7 @@ fn unix_socket_command_18_records_local_claim_in_reopened_kind_55()
             evidence_bundle_digest: GateDigest::from_bytes([1; 32]),
             delegated_to: None,
             break_glass_justification: None,
-            decided_at_ms: 500,
+            decided_at_ms: now_ms,
         },
     };
     client.send_command(IpcCommand::SubmitBoundGateDecision, 1818, &payload)?;

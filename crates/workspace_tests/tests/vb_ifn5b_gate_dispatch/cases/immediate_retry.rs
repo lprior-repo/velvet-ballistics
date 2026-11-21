@@ -94,7 +94,7 @@ fn cold_retry(attempt: u16, effect: bool) -> TestResult {
     let scoped = catalog.issue_scoped_grant_for_bound_gate(
         &artifact,
         &register,
-        super::gate_cold_recovery::scoped_params(ticket.action, approval.digest, false)?,
+        super::gate_cold_recovery::scoped_params(ticket.action, approval.digest)?,
         &approval,
     )?;
     let dispatch = super::gate_cold_recovery::dispatch_context(&artifact, ticket)?;
@@ -188,7 +188,7 @@ fn uncertain_effect(
     let scoped = catalog.issue_scoped_grant_for_bound_gate(
         artifact,
         &register,
-        super::gate_cold_recovery::scoped_params(ticket.action, approval.digest, false)?,
+        super::gate_cold_recovery::scoped_params(ticket.action, approval.digest)?,
         &approval,
     )?;
     let dispatch = super::gate_cold_recovery::dispatch_context(artifact, ticket)?;

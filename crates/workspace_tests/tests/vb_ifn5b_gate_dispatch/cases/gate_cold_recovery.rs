@@ -47,7 +47,7 @@ fn cold_resume_reissues_bound_authority_for_pending_registered_do() -> TestResul
     )?;
     let live_ticket = pending_ticket(&mut runtime, run)?;
     let live_register = catalog.issue_register_grant(&artifact, live_ticket, scope())?;
-    let live_params = scoped_params(action, approval.digest, false)?;
+    let live_params = scoped_params(action, approval.digest)?;
     let live_bound = catalog.issue_scoped_grant_for_bound_gate(
         &artifact,
         &live_register,
@@ -147,7 +147,7 @@ fn cold_resume_reissues_bound_authority_for_pending_registered_do() -> TestResul
     assert_eq!(ticket.action, action);
     let durable_approval = matching_approval(&journal, run, approval.digest)?;
     let register = catalog.issue_register_grant(&artifact, ticket, scope())?;
-    let params = scoped_params(action, durable_approval.digest, false)?;
+    let params = scoped_params(action, durable_approval.digest)?;
     let bound = catalog
         .issue_scoped_grant_for_bound_gate(&artifact, &register, params.clone(), &durable_approval)
         .map_err(|error| format!("cold bound issuance: {error:?}"))?;
@@ -274,7 +274,6 @@ fn altered_input_receipt(
 pub(super) fn scoped_params(
     action: ActionId,
     receipt: GateDigest,
-    break_glass: bool,
 ) -> Result<vb_core::ScopedGrantParams, Box<dyn std::error::Error>> {
     Ok(vb_core::ScopedGrantParams {
         mode: vb_core::GrantAdmissionMode::StrictExact,
@@ -288,7 +287,7 @@ pub(super) fn scoped_params(
         delegable: false,
         delegated_from: None,
         revocation_epoch: vb_core::RevocationEpoch::new(1),
-        break_glass,
+        break_glass: false,
         approval_receipt: receipt,
         signature: None,
     })

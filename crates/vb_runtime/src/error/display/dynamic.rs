@@ -157,6 +157,10 @@ fn write_dynamic_gate_state(error: &RuntimeError, f: &mut Formatter<'_>) -> Opti
             f,
             "run {run:?} cannot be suspended by a manual gate while {state:?}"
         )),
+        RuntimeError::GateJournalBudgetExceeded { gate } => Some(write!(
+            f,
+            "manual gate {gate:?} record exceeds the run journal budget"
+        )),
         _ => None,
     }
 }

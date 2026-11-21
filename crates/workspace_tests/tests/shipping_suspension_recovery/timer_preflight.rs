@@ -111,6 +111,15 @@ impl RuntimeJournal for RefuseAskConversion {
     ) -> RuntimeResult<()> {
         self.inner.append_gate_decision_bound_strict(record, seq)
     }
+    fn append_gate_decision_bound_failing_run_strict(
+        &self,
+        record: vb_core::manual_gate::BoundGateOutcomeRecord,
+        seq: EventSeq,
+        run_failed: vb_runtime::journal::RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        self.inner
+            .append_gate_decision_bound_failing_run_strict(record, seq, run_failed)
+    }
     fn append_gate_opened_bound_strict(
         &self,
         gate: vb_core::manual_gate::BoundManualGate,

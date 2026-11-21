@@ -114,6 +114,11 @@ pub enum RuntimeError {
         /// Current runtime state of the run.
         state: RuntimeState,
     },
+    /// A bound gate journal record would exceed the run's journal byte budget.
+    GateJournalBudgetExceeded {
+        /// Gate whose journal record exceeds the run budget.
+        gate: GateId,
+    },
     /// A delegated gate received a decision from an approver other than
     /// the delegate.
     GateWrongDelegate {

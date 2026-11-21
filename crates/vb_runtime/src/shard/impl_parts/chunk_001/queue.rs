@@ -49,6 +49,15 @@ impl Shard {
                 let inputs = self.prepare_secret_inputs(workflow, inputs)?;
                 crate::shard::helpers::prepare_input_slots(&inputs, workflow)?;
             }
+            ShardCommand::OpenBoundGate {
+                gate,
+                opened_at_ms,
+                requester,
+            } => {
+                crate::shard::lifecycle::validate_bound_open(gate, *opened_at_ms, requester)?;
+                Self::check_not_future(*opened_at_ms)?;
+            }
+            ShardCommand::EscalateBoundGate { now_ms, .. } => Self::check_not_future(*now_ms)?,
             _ => {}
         }
         Ok(())

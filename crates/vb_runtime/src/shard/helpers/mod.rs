@@ -132,7 +132,7 @@ pub use action::{
 pub use error_handler::find_error_handler_for_failure;
 pub use retry::{record_retry_attempt, retry_metadata_exists, retry_policy_after_action};
 pub use timer::{
-    advance_after_timer_fire, timer_registration_required, validate_timer_fire,
+    advance_after_timer_fire, submission_time, timer_registration_required, validate_timer_fire,
     wall_clock_millis_since_epoch,
 };
 

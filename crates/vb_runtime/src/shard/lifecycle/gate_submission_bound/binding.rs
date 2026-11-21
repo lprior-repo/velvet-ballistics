@@ -17,9 +17,6 @@ impl Shard {
         match admission.policy_pin() {
             vb_storage::RunPolicyPin::Pinned(policy_digest)
                 if policy_digest.as_bytes() == binding.policy_digest.as_bytes() => {}
-            vb_storage::RunPolicyPin::Unverified => {
-                return Err(binding_error(gate, "policy_digest"));
-            }
             _ => return Err(binding_error(gate, "policy_digest")),
         }
         if admission.input_digest()
@@ -50,7 +47,7 @@ impl Shard {
         let receipt = record
             .bound_receipt
             .as_ref()
-            .filter(|receipt| receipt.opening_seq == opening_seq)
+            .filter(|receipt| receipt.opening_seq.get() == opening_seq)
             .ok_or_else(mismatch)?;
         match crate::manual_gate::verify_bound_receipt(receipt, gate) {
             Ok(true) => Ok(()),

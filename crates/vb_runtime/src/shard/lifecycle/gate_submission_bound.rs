@@ -17,3 +17,19 @@ fn binding_error(gate: &BoundManualGate, field: &'static str) -> RuntimeError {
         },
     }
 }
+
+pub(crate) fn validate_bound_open(
+    gate: &BoundManualGate,
+    opened_at_ms: u64,
+    requester: &ApproverId,
+) -> RuntimeResult<()> {
+    crate::manual_gate::check_bound_open(gate, opened_at_ms, requester).map_err(|source| {
+        match source {
+            crate::manual_gate::GateError::InvalidGate
+            | crate::manual_gate::GateError::InvalidRequester => {
+                RuntimeError::InvalidGateOpenedRecord
+            }
+            source => RuntimeError::GateEvaluationFailed { source },
+        }
+    })
+}

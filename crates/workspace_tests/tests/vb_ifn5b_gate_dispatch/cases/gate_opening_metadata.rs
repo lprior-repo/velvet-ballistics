@@ -141,7 +141,7 @@ fn malformed_opening_metadata_case(mismatch: &str) -> TestResult {
             requester,
             ..
         } = &mut event
-            && seq.get() == approval.opening_seq
+            && seq.get() == approval.opening_seq.get()
         {
             if mismatch == "requester" {
                 *requester = person("different-requester")?;

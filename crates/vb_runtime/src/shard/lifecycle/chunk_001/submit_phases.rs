@@ -94,7 +94,7 @@ impl Submission<'_> {
         let digest = self.workflow.digest();
         let input_digest =
             vb_storage::inputs::compute_input_digest(inputs).map_err(RuntimeError::from)?;
-        let started_millis = submission_time()?;
+        let started_millis = crate::shard::helpers::submission_time()?;
         let admission = self.bind_inputs(shard, caps, input_digest)?;
         Ok(Header {
             run: self.run,
@@ -175,14 +175,6 @@ impl Submission<'_> {
             action_contracts: self.contracts.to_vec().into_boxed_slice(),
         }
     }
-}
-
-fn submission_time() -> RuntimeResult<u64> {
-    helpers::wall_clock_millis_since_epoch().ok_or_else(|| RuntimeError::Core {
-        source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
-            reason: "wall_clock_unavailable".into(),
-        }),
-    })
 }
 
 fn reserve_quota(

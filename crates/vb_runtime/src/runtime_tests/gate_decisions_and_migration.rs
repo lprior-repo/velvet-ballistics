@@ -190,6 +190,19 @@ impl RuntimeJournal for GateDecisionTestJournal {
         Ok(())
     }
 
+    fn append_gate_decision_bound_failing_run_strict(
+        &self,
+        record: BoundGateOutcomeRecord,
+        _seq: vb_storage::EventSeq,
+        run_failed: RuntimeJournalEvent,
+    ) -> crate::RuntimeResult<()> {
+        self.bound_decisions
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(record);
+        self.append(run_failed)
+    }
+
     fn probe(&self) -> crate::RuntimeResult<()> {
         Ok(())
     }
@@ -359,6 +372,7 @@ fn running_runtime_with_open_bound_gate(
 fn runtime_submit_bound_gate_decision_approves_open_bound_gate()
 -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(93101);
+    let _clock = crate::shard::helpers::timer::install_wall_clock_millis_guard(1_000);
     let (mut runtime, journal) = running_runtime_with_open_bound_gate(run, 7);
     assert_eq!(
         runtime.submit_bound_gate_decision(run, gate_input_fixture(7, GateDecision::Approve),),
@@ -399,6 +413,7 @@ fn runtime_submit_bound_gate_decision_rejects_unknown_gate() {
 #[test]
 fn runtime_submit_bound_gate_decision_rejects_run_mismatch() {
     let run = RunId::new(93103);
+    let _clock = crate::shard::helpers::timer::install_wall_clock_millis_guard(1_000);
     let other = RunId::new(93104);
     let (mut runtime, _journal) = running_runtime_with_open_bound_gate(run, 7);
     let workflow = gate_chain_workflow().expect("chain workflow must compile");

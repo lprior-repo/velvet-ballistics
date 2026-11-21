@@ -3,8 +3,8 @@
 use vb_core::ids::{ActionId, RunId};
 use vb_core::manual_gate::{
     ApproverId, ApproverRole, BoundGateOutcomeRecord, BoundManualGate, GateBinding, GateDecision,
-    GateDigest, GateId, GateOutcome, GateOutcomeRecord, ManualGate, OperatorTrust, RiskClass,
-    SeparationOfDuties,
+    GateDigest, GateId, GateOutcome, GateOutcomeRecord, ManualGate, OpeningSeq, OperatorTrust,
+    RiskClass, SeparationOfDuties,
 };
 use vb_storage::{EventSeq, FjallJournal, JournalEvent, RecordKind};
 
@@ -62,7 +62,7 @@ fn denial(gate: &BoundManualGate) -> Result<BoundGateOutcomeRecord, Box<dyn std:
             receipt: None,
         },
         binding: gate.binding,
-        opening_seq: 0,
+        opening_seq: OpeningSeq::new(0),
         operator_trust: Some(OperatorTrust::LocalSocketClaim),
         bound_receipt: None,
     })

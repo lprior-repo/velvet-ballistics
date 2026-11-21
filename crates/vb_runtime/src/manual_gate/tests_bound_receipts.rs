@@ -3,8 +3,8 @@ fn bound_approve_binds_binding_trust_and_v2_receipt() -> Result<(), Box<dyn std:
     let gate = bound_gate();
     let record = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::LocalSocketClaim,
         &input(GateDecision::Approve),
@@ -39,8 +39,8 @@ fn bound_break_glass_records_claimed_role_outside_required_role()
     break_glass.evidence_shown = true;
     let record = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &break_glass,
@@ -61,8 +61,8 @@ fn bound_receipt_digest_is_deterministic_and_field_sensitive()
     let gate = bound_gate();
     let record = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &input(GateDecision::Approve),
@@ -128,7 +128,7 @@ fn bound_receipt_digest_is_deterministic_and_field_sensitive()
     variant.receipt.prompt_digest = digest(94);
     changed.push(variant);
     let mut variant = base.clone();
-    variant.opening_seq = 2;
+    variant.opening_seq = vb_core::manual_gate::OpeningSeq::new(2);
     changed.push(variant);
     let mut variant = base.clone();
     variant.receipt.decided_at_ms = 501;
@@ -150,8 +150,8 @@ fn bound_receipt_rejects_wrong_role_even_with_recomputed_digest()
     let gate = bound_gate();
     let record = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &input(GateDecision::Approve),
@@ -172,8 +172,8 @@ fn bound_replay_rejects_corrupted_receipt_digest() -> Result<(), Box<dyn std::er
     let gate = bound_gate();
     let mut record = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &input(GateDecision::Approve),
@@ -201,8 +201,8 @@ fn bound_trust_direction_is_structurally_enforced() -> Result<(), Box<dyn std::e
     let gate = bound_gate();
     let mut denied = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &input(GateDecision::Deny),

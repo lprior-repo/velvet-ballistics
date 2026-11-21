@@ -24,7 +24,7 @@ mod record;
 
 pub use approver::{ApproverId, ApproverRole, MAX_APPROVER_TEXT_LEN};
 pub use binding::GateBinding;
-pub use bound::{BoundApprovalReceipt, BoundGateOutcomeRecord, BoundManualGate};
+pub use bound::{BoundApprovalReceipt, BoundGateOutcomeRecord, BoundManualGate, OpeningSeq};
 pub use decision::GateDecisionInput;
 pub use gate::ManualGate;
 pub use identifiers::{GateDigest, GateId};

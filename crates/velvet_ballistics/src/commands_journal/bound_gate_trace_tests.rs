@@ -65,7 +65,7 @@ fn approved(gate: &BoundManualGate) -> BoundGateOutcomeRecord {
     BoundGateOutcomeRecord {
         record,
         binding: gate.binding,
-        opening_seq: 0,
+        opening_seq: vb_core::manual_gate::OpeningSeq::new(0),
         operator_trust: Some(OperatorTrust::LocalSocketClaim),
         bound_receipt: None,
     }

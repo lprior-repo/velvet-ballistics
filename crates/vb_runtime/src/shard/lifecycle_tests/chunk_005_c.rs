@@ -1024,7 +1024,7 @@ fn tiny_journal_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
 
-fn journal_bytes_budget(total: u64) -> AggregateResourceBudget {
+pub(crate) fn journal_bytes_budget(total: u64) -> AggregateResourceBudget {
     AggregateResourceBudget {
         max_steps_executable: 100,
         max_action_tickets: 10,

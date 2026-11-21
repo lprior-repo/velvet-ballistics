@@ -50,6 +50,14 @@ pub enum GateError {
         /// Submitted decision time in milliseconds.
         decided_at_ms: u64,
     },
+    /// Decision submitted before the gate was opened.
+    #[error("decision at {decided_at_ms} is before the gate opened at {opened_at_ms}")]
+    DecisionBeforeOpen {
+        /// Gate opening time in milliseconds.
+        opened_at_ms: u64,
+        /// Submitted decision time in milliseconds.
+        decided_at_ms: u64,
+    },
     /// Timeout evaluation before the deadline.
     #[error("gate has not timed out yet")]
     NotTimedOut,
@@ -83,11 +91,25 @@ pub enum GateError {
     /// Replay found a receipt on a non-approval outcome.
     #[error("replay record carries a receipt without an approval outcome")]
     ReplayReceiptMismatch,
-    /// Replay stream contains the same approval receipt twice.
-    #[error("replay contains duplicate approval receipt for gate {gate}")]
-    ReplayDuplicateReceipt {
-        /// Gate whose receipt appears more than once.
+    /// Full-history replay found a decision whose gate has no durable opening.
+    #[error("replay found a decision for gate {gate} without a durable opening")]
+    ReplayDecisionWithoutOpenGate {
+        /// Gate identifier of the decision without an opening.
         gate: u64,
+    },
+    /// Full-history replay found a decision for a gate that an earlier terminal decision closed.
+    #[error("replay found a decision for gate {gate} after it was closed")]
+    ReplayDecisionAfterClose {
+        /// Gate identifier of the closed gate.
+        gate: u64,
+    },
+    /// Submitted timestamp is later than the runtime clock.
+    #[error("timestamp {timestamp_ms} is later than the runtime clock {clock_ms}")]
+    TimestampFromFuture {
+        /// Submitted timestamp in milliseconds.
+        timestamp_ms: u64,
+        /// Runtime clock reading in milliseconds.
+        clock_ms: u64,
     },
     /// Bound receipt does not verify against its bound gate.
     #[error("bound approval receipt does not verify")]
@@ -102,6 +124,12 @@ pub enum GateError {
     #[error("replay contains duplicate bound approval receipt for gate {gate}")]
     ReplayDuplicateBoundReceipt {
         /// Gate whose bound receipt appears more than once.
+        gate: u64,
+    },
+    /// Replayed decision on a delegated gate was not made by its delegate.
+    #[error("replay decision on gate {gate} is not by its delegate")]
+    ReplayWrongDelegate {
+        /// Gate whose delegation the replayed decision violates.
         gate: u64,
     },
     /// A bound gate was submitted through the legacy decision path.

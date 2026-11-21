@@ -115,7 +115,7 @@ fn gate_dispatch_requires_immutable_origin_and_durable_receipt() -> TestResult {
     );
 
     let mut wrong_opening = approval.clone();
-    wrong_opening.opening_seq = u64::MAX;
+    wrong_opening.opening_seq = vb_core::manual_gate::OpeningSeq::new(u64::MAX);
     wrong_opening.digest = vb_runtime::manual_gate::compute_bound_receipt_digest(&wrong_opening)?;
     let wrong_opening_params = vb_core::ScopedGrantParams {
         approval_receipt: wrong_opening.digest,

@@ -11,6 +11,10 @@ fn runtime_error_gate_state_eq(left: &RuntimeError, right: &RuntimeError) -> boo
         }
         (RuntimeError::GateNotOpen { gate: a }, RuntimeError::GateNotOpen { gate: b }) => a == b,
         (
+            RuntimeError::GateJournalBudgetExceeded { gate: a },
+            RuntimeError::GateJournalBudgetExceeded { gate: b },
+        ) => a == b,
+        (
             RuntimeError::GateEvaluationFailed { source: a },
             RuntimeError::GateEvaluationFailed { source: b },
         ) => a == b,

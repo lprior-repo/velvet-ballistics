@@ -132,7 +132,7 @@ fn refuse_nonapproval(run_number: u64, decision: GateDecision) -> TestResult {
             receipt: None,
         },
         binding: gate.binding,
-        opening_seq: seq,
+        opening_seq: vb_core::manual_gate::OpeningSeq::new(seq),
         operator_trust: Some(vb_core::manual_gate::OperatorTrust::InProcessCaller),
         bound_receipt: None,
     };
@@ -202,7 +202,7 @@ fn refuse_nonapproval(run_number: u64, decision: GateDecision) -> TestResult {
         risk: RiskClass::High,
         separation: SeparationOfDuties::DistinctFromRequester,
         binding: denial.binding,
-        opening_seq: opening.1.get(),
+        opening_seq: vb_core::manual_gate::OpeningSeq::new(opening.1.get()),
         operator_trust: denial
             .operator_trust
             .ok_or("non-approval record missing trust provenance")?,
@@ -214,7 +214,7 @@ fn refuse_nonapproval(run_number: u64, decision: GateDecision) -> TestResult {
     )?);
 
     let register = catalog.issue_register_grant(&artifact, ticket, scope())?;
-    let params = super::gate_cold_recovery::scoped_params(action, approval.digest, false)?;
+    let params = super::gate_cold_recovery::scoped_params(action, approval.digest)?;
     let bound =
         catalog.issue_scoped_grant_for_bound_gate(&artifact, &register, params, &approval)?;
     assert_eq!(

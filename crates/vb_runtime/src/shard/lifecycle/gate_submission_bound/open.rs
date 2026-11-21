@@ -7,14 +7,13 @@ impl Shard {
         requester: ApproverId,
     ) -> RuntimeResult<()> {
         let run = gate.gate.run;
-        if !gate.is_structurally_valid() || !requester.is_valid() {
-            return Err(RuntimeError::InvalidGateOpenedRecord);
-        }
         if !self.run_state_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         Self::check_bound_binding(state, &gate)?;
+        validate_bound_open(&gate, opened_at_ms, &requester)?;
+        Self::check_not_future(opened_at_ms)?;
         if self.open_gates.contains_key(&gate.gate.id)
             || self.bound_open_gates.contains_key(&gate.gate.id)
         {

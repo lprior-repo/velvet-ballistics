@@ -179,7 +179,7 @@ pub(super) fn warm_retry_grant(
     let scoped = catalog.issue_scoped_grant_for_bound_gate(
         artifact,
         &register,
-        super::super::gate_cold_recovery::scoped_params(ticket.action, approval.digest, false)?,
+        super::super::gate_cold_recovery::scoped_params(ticket.action, approval.digest)?,
         approval,
     )?;
     let dispatch = super::super::gate_cold_recovery::dispatch_context(artifact, ticket)?;

@@ -96,7 +96,7 @@ fn cold_pending_without_receipt_refuses_execute_and_reconcile_without_mutation()
     let bound = catalog.issue_scoped_grant_for_bound_gate(
         &artifact,
         &register,
-        super::gate_cold_recovery::scoped_params(action, durable.digest, false)?,
+        super::gate_cold_recovery::scoped_params(action, durable.digest)?,
         &durable,
     )?;
     let dispatch = super::gate_cold_recovery::dispatch_context(&artifact, ticket)?;

@@ -9,7 +9,7 @@ use vb_core::ids::{ActionId, RunId};
 use vb_core::manual_gate::{
     ApprovalReceipt, ApproverId, ApproverRole, BoundApprovalReceipt, BoundGateOutcomeRecord,
     BoundManualGate, GateBinding, GateDecision, GateDigest, GateId, GateOutcome, GateOutcomeRecord,
-    ManualGate, OperatorTrust, RiskClass, SeparationOfDuties,
+    ManualGate, OpeningSeq, OperatorTrust, RiskClass, SeparationOfDuties,
 };
 use vb_storage::codec::{decode_journal_event, encode_record};
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
@@ -103,14 +103,14 @@ fn bound_record(run: RunId) -> BoundGateOutcomeRecord {
         risk: RiskClass::High,
         separation: SeparationOfDuties::DistinctFromRequester,
         binding: binding(),
-        opening_seq: 0,
+        opening_seq: OpeningSeq::new(0),
         operator_trust: OperatorTrust::InProcessCaller,
         digest: digest(7),
     };
     BoundGateOutcomeRecord {
         record,
         binding: binding(),
-        opening_seq: 0,
+        opening_seq: OpeningSeq::new(0),
         operator_trust: Some(OperatorTrust::InProcessCaller),
         bound_receipt: Some(bound),
     }

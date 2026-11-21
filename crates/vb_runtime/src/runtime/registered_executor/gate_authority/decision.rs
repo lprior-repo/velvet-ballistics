@@ -11,7 +11,7 @@ pub(super) fn verify_policy(
     let expected = crate::manual_gate::evaluate_bound_decision(
         gate,
         opened_at_ms,
-        record.opening_seq,
+        record.opening_seq.get(),
         requester,
         trust,
         &input,

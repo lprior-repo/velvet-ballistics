@@ -17,6 +17,31 @@ fn person(value: &str) -> ApproverId {
     ApproverId::new(value.to_string()).unwrap()
 }
 
+const OPENED_AT_MS: u64 = 0;
+const OPENING_SEQ: u64 = 1;
+
+fn opened_journal(gate: &BoundManualGate) -> Vec<vb_storage::JournalEvent> {
+    vec![bound_gate_opened_event(
+        gate.clone(),
+        0,
+        person("bob"),
+        vb_storage::EventSeq::new(1),
+    )]
+}
+
+fn assert_opening_still_pending(
+    journal: &[vb_storage::JournalEvent],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let open = reconstruct_bound_open_gates(journal)?;
+    assert_eq!(open.len(), 1, "opened gate must stay pending");
+    let pending = open.first().ok_or("pending gate missing")?;
+    assert_eq!(pending.gate.gate.id.get(), 7);
+    assert_eq!(pending.opened_at_ms, 0);
+    assert_eq!(pending.opening_seq, 1);
+    assert_eq!(pending.delegated_to, None);
+    Ok(())
+}
+
 fn gate() -> ManualGate {
     ManualGate {
         id: GateId::new(7),
@@ -86,4 +111,25 @@ mod bound_receipts {
 mod bound_replay {
     use super::*;
     include!("tests_bound_replay.rs");
+}
+
+mod cold_recovery {
+    use super::*;
+    include!("tests_bound_recovery.rs");
+}
+
+mod negative_boundaries {
+    use super::*;
+    include!("tests_bound_boundaries.rs");
+}
+
+mod negative_limits {
+    use super::*;
+    include!("tests_bound_limits.rs");
+}
+
+mod negative_windows {
+    use super::*;
+    include!("tests_bound_windows.rs");
+    include!("tests_bound_windows_replay.rs");
 }

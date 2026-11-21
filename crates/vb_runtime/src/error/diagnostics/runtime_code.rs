@@ -49,6 +49,7 @@ impl RuntimeError {
             | Self::GateNotOpen { .. }
             | Self::GateEvaluationFailed { .. }
             | Self::GateRunNotSuspendable { .. }
+            | Self::GateJournalBudgetExceeded { .. }
             | Self::GateWrongDelegate { .. }
             | Self::GateRunMismatch { .. }
             | Self::GateOpenBlocksResume { .. }

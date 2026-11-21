@@ -21,6 +21,8 @@ use super::{require_workflow, small_config};
 struct BoundJournal {
     decisions: Mutex<Vec<BoundGateOutcomeRecord>>,
     opened: Mutex<Vec<(BoundManualGate, u64, ApproverId, u64)>>,
+    reject_failing_run: std::sync::atomic::AtomicBool,
+    events: Mutex<Vec<RuntimeJournalEvent>>,
 }
 
 impl BoundJournal {
@@ -41,6 +43,26 @@ impl BoundJournal {
             .map(|calls| calls.clone())
             .map_err(|_| RuntimeError::JournalPoisoned)
     }
+
+    fn events(&self) -> RuntimeResult<Vec<RuntimeJournalEvent>> {
+        self.events
+            .lock()
+            .map(|calls| calls.clone())
+            .map_err(|_| RuntimeError::JournalPoisoned)
+    }
+
+    fn run_failed_count(&self, run: RunId) -> RuntimeResult<usize> {
+        Ok(self
+            .events()?
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    RuntimeJournalEvent::RunFailed { run: r, .. } if *r == run
+                )
+            })
+            .count())
+    }
 }
 
 impl RuntimeJournal for BoundJournal {
@@ -48,7 +70,11 @@ impl RuntimeJournal for BoundJournal {
         Some(vb_storage::DurabilityProfile::Volatile)
     }
 
-    fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+    fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(event);
         Ok(())
     }
 
@@ -91,6 +117,24 @@ impl RuntimeJournal for BoundJournal {
             .map_err(|_| RuntimeError::JournalPoisoned)?
             .push(record);
         Ok(())
+    }
+
+    fn append_gate_decision_bound_failing_run_strict(
+        &self,
+        record: BoundGateOutcomeRecord,
+        _seq: vb_storage::EventSeq,
+        run_failed: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        if self.reject_failing_run.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "injected_failing_run_batch",
+            });
+        }
+        self.decisions
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(record);
+        self.append(run_failed)
     }
 
     fn append_gate_opened_bound_strict(
@@ -275,6 +319,7 @@ fn make_shard(run: RunId) -> Result<(Shard, Arc<BoundJournal>), Box<dyn std::err
 mod cases {
     use super::*;
     include!("gate_bound_submission_cases.rs");
+    include!("gate_bound_submission_cases_more.rs");
 }
 
 mod r5_authority {
