@@ -55,14 +55,16 @@ proptest! {
     }
 }
 
-// Property: Addition at boundary saturates or errors consistently.
+// Property: Addition at boundary returns the exact expected error.
 #[test]
 fn addition_at_boundary() {
     let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
-    // Either saturates to i64::MAX or returns an error; both are acceptable
-    let is_saturated = matches!(result, Ok(SlotValue::I64(i64::MAX)));
-    let is_error = result.is_err();
-    assert!(is_saturated || is_error, "boundary addition must saturate or error, got {:?}", result);
+    // Pin exact error type: IntegerOverflow (matches existing expr_eval_tests_core test)
+    assert!(
+        matches!(result, Err(crate::ExprError::IntegerOverflow)),
+        "boundary addition must return IntegerOverflow, got {:?}",
+        result
+    );
 }
 
 // Property: Multiplication identity: a * 1 == a.
