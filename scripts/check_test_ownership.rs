@@ -31,15 +31,29 @@ fn closing_brace(tokens: &[Token], open: usize) -> Option<usize> {
     None
 }
 
+fn leading_file_cfg_test(lexed: &[Token]) -> bool {
+    let mut index = 0;
+    while index < lexed.len() {
+        let text = &lexed[index].text;
+        if text.starts_with("//") || text.starts_with("/*") {
+            index = index.saturating_add(1);
+            continue;
+        }
+        break;
+    }
+    if index.saturating_add(8) > lexed.len() {
+        return false;
+    }
+    lexed[index..index + 8]
+        .iter()
+        .zip(["#", "!", "[", "cfg", "(", "test", ")", "]"].iter())
+        .all(|(actual, expected)| actual.text == **expected)
+}
+
 pub(crate) fn test_scopes(source: &str) -> Vec<Range<usize>> {
     let lexed = tokens(source);
     let mut ranges = Vec::new();
-    if lexed.get(..8).is_some_and(|part| {
-        ["#", "!", "[", "cfg", "(", "test", ")", "]"]
-            .iter()
-            .zip(part)
-            .all(|(expected, actual)| actual.text == *expected)
-    }) {
+    if leading_file_cfg_test(&lexed) {
         ranges.push(0..source.len());
     }
     for index in 0..lexed.len() {
