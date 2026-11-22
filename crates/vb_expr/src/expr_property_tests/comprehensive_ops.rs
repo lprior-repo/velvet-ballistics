@@ -136,7 +136,7 @@ proptest! {
     }
 }
 
-// Property: F64 addition is commutative.
+// Property: F64 addition is commutative and equals the expected sum.
 proptest! {
     #[test]
     fn f64_addition_is_commutative(a in -1000000f64..=1000000f64, b in -1000000f64..=1000000f64) {
@@ -144,11 +144,13 @@ proptest! {
         let vb = FiniteF64::new(b).unwrap_or(FiniteF64::new(0.0).unwrap());
         let result_ab = eval_binary_op(BinaryOp::Add, SlotValue::F64(va), SlotValue::F64(vb))?;
         let result_ba = eval_binary_op(BinaryOp::Add, SlotValue::F64(vb), SlotValue::F64(va))?;
-        prop_assert_eq!(result_ab, result_ba);
+        let expected = SlotValue::F64(FiniteF64::new(a + b).unwrap_or(FiniteF64::new(0.0).unwrap()));
+        prop_assert_eq!(result_ab, expected);
+        prop_assert_eq!(result_ba, expected);
     }
 }
 
-// Property: F64 multiplication is commutative.
+// Property: F64 multiplication is commutative and equals the expected product.
 proptest! {
     #[test]
     fn f64_multiplication_is_commutative(a in -1000000f64..=1000000f64, b in -1000000f64..=1000000f64) {
@@ -156,7 +158,9 @@ proptest! {
         let vb = FiniteF64::new(b).unwrap_or(FiniteF64::new(0.0).unwrap());
         let result_ab = eval_binary_op(BinaryOp::Mul, SlotValue::F64(va), SlotValue::F64(vb))?;
         let result_ba = eval_binary_op(BinaryOp::Mul, SlotValue::F64(vb), SlotValue::F64(va))?;
-        prop_assert_eq!(result_ab, result_ba);
+        let expected = SlotValue::F64(FiniteF64::new(a * b).unwrap_or(FiniteF64::new(0.0).unwrap()));
+        prop_assert_eq!(result_ab, expected);
+        prop_assert_eq!(result_ba, expected);
     }
 }
 
@@ -193,23 +197,27 @@ proptest! {
     }
 }
 
-// Property: Boolean AND is commutative.
+// Property: Boolean AND is commutative and equals the expected result.
 proptest! {
     #[test]
     fn bool_and_commutative(a in any::<bool>(), b in any::<bool>()) {
         let result_ab = eval_binary_op(BinaryOp::And, SlotValue::Bool(a), SlotValue::Bool(b))?;
         let result_ba = eval_binary_op(BinaryOp::And, SlotValue::Bool(b), SlotValue::Bool(a))?;
-        prop_assert_eq!(result_ab, result_ba);
+        let expected = SlotValue::Bool(a && b);
+        prop_assert_eq!(result_ab, expected);
+        prop_assert_eq!(result_ba, expected);
     }
 }
 
-// Property: Boolean OR is commutative.
+// Property: Boolean OR is commutative and equals the expected result.
 proptest! {
     #[test]
     fn bool_or_commutative(a in any::<bool>(), b in any::<bool>()) {
         let result_ab = eval_binary_op(BinaryOp::Or, SlotValue::Bool(a), SlotValue::Bool(b))?;
         let result_ba = eval_binary_op(BinaryOp::Or, SlotValue::Bool(b), SlotValue::Bool(a))?;
-        prop_assert_eq!(result_ab, result_ba);
+        let expected = SlotValue::Bool(a || b);
+        prop_assert_eq!(result_ab, expected);
+        prop_assert_eq!(result_ba, expected);
     }
 }
 
@@ -268,13 +276,15 @@ proptest! {
     }
 }
 
-// Property: Equality is symmetric.
+// Property: Equality is symmetric and returns the expected boolean.
 proptest! {
     #[test]
     fn eq_is_symmetric(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64) {
-        let result_ab = eval_binary_op(BinaryOp::Eq, SlotValue::I64(a), SlotValue::I64(b));
-        let result_ba = eval_binary_op(BinaryOp::Eq, SlotValue::I64(b), SlotValue::I64(a));
-        assert_eq!(result_ab, result_ba);
+        let result_ab = eval_binary_op(BinaryOp::Eq, SlotValue::I64(a), SlotValue::I64(b))?;
+        let result_ba = eval_binary_op(BinaryOp::Eq, SlotValue::I64(b), SlotValue::I64(a))?;
+        let expected = SlotValue::Bool(a == b);
+        prop_assert_eq!(result_ab, expected);
+        prop_assert_eq!(result_ba, expected);
     }
 }
 
