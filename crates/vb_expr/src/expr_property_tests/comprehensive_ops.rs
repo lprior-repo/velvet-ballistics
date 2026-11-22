@@ -92,14 +92,14 @@ proptest! {
 proptest! {
     #[test]
     fn multiplication_distributes_over_addition(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64, c in -1000000i64..=1000000i64) {
-        let left_sum = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(c)).unwrap_or(SlotValue::Null);
-        let result_left = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), left_sum);
+        let left_sum = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(c))?;
+        let result_left = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), left_sum)?;
 
-        let term1 = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), SlotValue::I64(b)).unwrap_or(SlotValue::Null);
-        let term2 = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), SlotValue::I64(c)).unwrap_or(SlotValue::Null);
-        let result_right = eval_binary_op(BinaryOp::Add, term1, term2);
+        let term1 = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), SlotValue::I64(b))?;
+        let term2 = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), SlotValue::I64(c))?;
+        let result_right = eval_binary_op(BinaryOp::Add, term1, term2)?;
 
-        assert_eq!(result_left, result_right);
+        prop_assert_eq!(result_left, result_right);
     }
 }
 
@@ -116,9 +116,9 @@ proptest! {
 proptest! {
     #[test]
     fn double_negation_is_identity(a in -1000000i64..=1000000i64) {
-        let neg = eval_unary_op(UnaryOp::Neg, SlotValue::I64(a)).unwrap_or(SlotValue::Null);
-        let result = eval_unary_op(UnaryOp::Neg, neg);
-        assert_eq!(result, Ok(SlotValue::I64(a)));
+        let neg = eval_unary_op(UnaryOp::Neg, SlotValue::I64(a))?;
+        let result = eval_unary_op(UnaryOp::Neg, neg)?;
+        prop_assert_eq!(result, SlotValue::I64(a));
     }
 }
 
@@ -126,9 +126,9 @@ proptest! {
 proptest! {
     #[test]
     fn negation_is_inverse(a in -1000000i64..=1000000i64) {
-        let neg = eval_unary_op(UnaryOp::Neg, SlotValue::I64(a)).unwrap_or(SlotValue::Null);
-        let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), neg);
-        assert_eq!(result, Ok(SlotValue::I64(0)));
+        let neg = eval_unary_op(UnaryOp::Neg, SlotValue::I64(a))?;
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), neg)?;
+        prop_assert_eq!(result, SlotValue::I64(0));
     }
 }
 
@@ -183,9 +183,9 @@ proptest! {
     #[test]
     fn f64_double_negation_is_identity(a in -1000000f64..=1000000f64) {
         let va = FiniteF64::new(a).unwrap_or(FiniteF64::new(0.0).unwrap());
-        let neg = eval_unary_op(UnaryOp::Neg, SlotValue::F64(va)).unwrap_or(SlotValue::Null);
-        let result = eval_unary_op(UnaryOp::Neg, neg);
-        assert_eq!(result, Ok(SlotValue::F64(va)));
+        let neg = eval_unary_op(UnaryOp::Neg, SlotValue::F64(va))?;
+        let result = eval_unary_op(UnaryOp::Neg, neg)?;
+        prop_assert_eq!(result, SlotValue::F64(va));
     }
 }
 
@@ -213,9 +213,9 @@ proptest! {
 proptest! {
     #[test]
     fn bool_not_double_is_identity(a in any::<bool>()) {
-        let neg = eval_unary_op(UnaryOp::Not, SlotValue::Bool(a)).unwrap_or(SlotValue::Null);
-        let result = eval_unary_op(UnaryOp::Not, neg);
-        assert_eq!(result, Ok(SlotValue::Bool(a)));
+        let neg = eval_unary_op(UnaryOp::Not, SlotValue::Bool(a))?;
+        let result = eval_unary_op(UnaryOp::Not, neg)?;
+        prop_assert_eq!(result, SlotValue::Bool(a));
     }
 }
 
