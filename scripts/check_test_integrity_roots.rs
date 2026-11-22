@@ -28,7 +28,7 @@ pub(crate) fn default_base(root: &Path, vcs: Vcs) -> String {
     if vcs == Vcs::Jj {
         return "@-".to_owned();
     }
-    let dirty = git_output(&["status", "--porcelain"], root)
+    let dirty = git_output(&["status", "--porcelain", "--untracked-files=no"], root)
         .map(|text| !text.trim().is_empty())
         .unwrap_or(true);
     if dirty {
