@@ -228,17 +228,22 @@ fn assert_policy_rejected(
     let expected = match mismatch {
         "evidence" => GateError::EvidenceNotShown,
         "reason" => GateError::ReasonRequired,
-        "timeout" => GateError::DecisionAfterTimeout {
-            deadline_ms: 150,
-            decided_at_ms: 200,
-        },
+        "timeout" => {
+            // approval_for opens at now-100 and decides at now, so decided is opened+100.
+            let decided_at_ms = opened_at.checked_add(100).ok_or("decided overflow")?;
+            assert_eq!(record.record.decided_at_ms, decided_at_ms);
+            GateError::DecisionAfterTimeout {
+                deadline_ms: opened_at.checked_add(50).ok_or("deadline overflow")?,
+                decided_at_ms,
+            }
+        }
         _ => return Err("unknown tamper".into()),
     };
     assert_eq!(
         vb_runtime::manual_gate::evaluate_bound_decision(
             gate,
             opened_at,
-            record.opening_seq,
+            record.opening_seq.get(),
             requester,
             approval.operator_trust,
             &input,

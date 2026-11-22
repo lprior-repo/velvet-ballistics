@@ -9,6 +9,19 @@ pub(super) struct PolicyTamperJournal {
     pub(super) mismatch: &'static str,
 }
 
+impl PolicyTamperJournal {
+    fn tampered(&self, mut record: BoundGateOutcomeRecord) -> BoundGateOutcomeRecord {
+        let approval = record.bound_receipt.clone();
+        match self.mismatch {
+            "evidence" => record.record.evidence_shown = false,
+            "reason" => record.record.reason = None,
+            _ => {}
+        }
+        assert_eq!(record.bound_receipt, approval);
+        record
+    }
+}
+
 impl RuntimeJournal for PolicyTamperJournal {
     fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
         self.inner.durability_profile()
@@ -48,17 +61,23 @@ impl RuntimeJournal for PolicyTamperJournal {
     }
     fn append_gate_decision_bound_strict(
         &self,
-        mut record: BoundGateOutcomeRecord,
+        record: BoundGateOutcomeRecord,
         seq: EventSeq,
     ) -> RuntimeResult<()> {
-        let approval = record.bound_receipt.clone();
-        match self.mismatch {
-            "evidence" => record.record.evidence_shown = false,
-            "reason" => record.record.reason = None,
-            _ => {}
-        }
-        assert_eq!(record.bound_receipt, approval);
-        self.inner.append_gate_decision_bound_strict(record, seq)
+        self.inner
+            .append_gate_decision_bound_strict(self.tampered(record), seq)
+    }
+    fn append_gate_decision_bound_failing_run_strict(
+        &self,
+        record: BoundGateOutcomeRecord,
+        seq: EventSeq,
+        run_failed: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        self.inner.append_gate_decision_bound_failing_run_strict(
+            self.tampered(record),
+            seq,
+            run_failed,
+        )
     }
     fn append_gate_opened_bound_strict(
         &self,

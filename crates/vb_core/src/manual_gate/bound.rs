@@ -5,6 +5,25 @@ use super::{
 use crate::ids::ActionId;
 use serde::{Deserialize, Serialize};
 
+/// Journal sequence that uniquely identifies one gate opening.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct OpeningSeq(u64);
+
+impl OpeningSeq {
+    /// Wraps a raw journal sequence.
+    #[must_use]
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    /// Returns the raw journal sequence.
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
 /// A `ManualGate` plus the run binding required for full accountability.
 ///
 /// The embedded `ManualGate` keeps its original layout and semantics. The
@@ -45,7 +64,7 @@ pub struct BoundApprovalReceipt {
     /// Artifact/policy/input/attempt binding of the approved run.
     pub binding: GateBinding,
     /// Journal sequence of the exact opening this receipt decides.
-    pub opening_seq: u64,
+    pub opening_seq: OpeningSeq,
     /// Provenance of the claimed approver identity.
     pub operator_trust: OperatorTrust,
     /// V2 digest over every field above except this digest.
@@ -69,7 +88,7 @@ pub struct BoundGateOutcomeRecord {
     /// Artifact/policy/input/attempt binding of the run.
     pub binding: GateBinding,
     /// Journal sequence of the exact opening this outcome decides.
-    pub opening_seq: u64,
+    pub opening_seq: OpeningSeq,
     /// Provenance of the claimed approver identity; `None` only for escalation.
     pub operator_trust: Option<OperatorTrust>,
     /// Bound receipt; present exactly for approve/break-glass.

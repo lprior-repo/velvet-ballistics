@@ -1,4 +1,5 @@
 use super::{ExecutorError, RegisteredExecutionError};
+use crate::manual_gate::check_admitted_decision;
 use vb_core::action::ActionTicket;
 use vb_core::manual_gate::{
     ApproverId, BoundApprovalReceipt, BoundGateOutcomeRecord, BoundManualGate, GateDigest,
@@ -25,7 +26,12 @@ pub(super) fn verify_durable_pair(
     verify_opening_matches(gate, approval)?;
     let mut pending: Option<PendingTicket> = None;
     for event in events {
-        advance_pending_ticket(&mut pending, event, approval.opening_seq, gate.gate.action)?;
+        advance_pending_ticket(
+            &mut pending,
+            event,
+            approval.opening_seq.get(),
+            gate.gate.action,
+        )?;
     }
     if pending.is_none_or(|(pending, _)| pending != ticket) {
         return Err(ExecutorError::Unauthorized.into());
@@ -44,7 +50,7 @@ fn unique_opening<'a>(
             gate,
             opened_at_ms,
             requester,
-        } if *run == approval.receipt.run && seq.get() == approval.opening_seq => {
+        } if *run == approval.receipt.run && seq.get() == approval.opening_seq.get() => {
             Some((gate, requester, *opened_at_ms))
         }
         _ => None,
@@ -79,7 +85,7 @@ fn unique_decision<'a>(
         JournalEvent::GateDecisionBoundEvent { run, seq, record }
             if *run == approval.receipt.run
                 && record.opening_seq == approval.opening_seq
-                && seq.get() > approval.opening_seq =>
+                && seq.get() > approval.opening_seq.get() =>
         {
             Some(record.as_ref())
         }
@@ -97,14 +103,10 @@ fn verify_unique_decision(
     approval: &BoundApprovalReceipt,
     opening: GateOpening<'_>,
 ) -> Result<(), RegisteredExecutionError> {
-    let (_, requester, opened_at_ms) = opening;
+    let (gate, requester, opened_at_ms) = opening;
     let record = unique_decision(events, approval)?;
     if !record.is_structurally_valid()
         || record.bound_receipt.as_ref() != Some(approval)
-        || record.record.requester != *requester
-        || record.record.opened_at_ms != opened_at_ms
-        || record.opening_seq != approval.opening_seq
-        || record.record.decided_at_ms < opened_at_ms
         || !matches!(
             record.record.outcome,
             GateOutcome::Approved | GateOutcome::BreakGlassApproved
@@ -112,6 +114,14 @@ fn verify_unique_decision(
     {
         return Err(ExecutorError::Unauthorized.into());
     }
+    check_admitted_decision(
+        record,
+        gate,
+        requester,
+        opened_at_ms,
+        approval.opening_seq.get(),
+    )
+    .map_err(|_| ExecutorError::Unauthorized)?;
     decision::verify_policy(record, opening)
 }
 

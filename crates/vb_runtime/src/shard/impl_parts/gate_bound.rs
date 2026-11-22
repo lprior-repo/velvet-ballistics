@@ -28,7 +28,10 @@ impl Shard {
         self.reserve_journal_sequence_slot(run)?;
         let event_bytes =
             Self::gate_opened_bound_event_bytes(&gate, opened_at_ms, &requester, seq)?;
-        let projected = self.projected_bound_gate_bytes(run, event_bytes)?;
+        let projected = self.projected_bound_gate_bytes(run, gate.gate.id, event_bytes)?;
+        if self.bound_gate_journal_exceeds_budget(run, projected)? {
+            return Err(crate::RuntimeError::GateJournalBudgetExceeded { gate: gate.gate.id });
+        }
         self.journal
             .append_gate_opened_bound_strict(gate, opened_at_ms, requester, seq)?;
         let _previous = self.journal_sequences.insert(run, next);
@@ -42,13 +45,23 @@ impl Shard {
     fn projected_bound_gate_bytes(
         &self,
         run: vb_core::ids::RunId,
+        gate: vb_core::manual_gate::GateId,
         event_bytes: u64,
     ) -> crate::RuntimeResult<u64> {
         self.run_state_get(run)
             .map(|state| state.journal_bytes_written)
             .ok_or(crate::RuntimeError::RunNotFound)?
             .checked_add(event_bytes)
-            .ok_or(crate::RuntimeError::EncodeFailed)
+            .ok_or(crate::RuntimeError::GateJournalBudgetExceeded { gate })
+    }
+
+    fn bound_gate_journal_exceeds_budget(
+        &self,
+        run: vb_core::ids::RunId,
+        projected: u64,
+    ) -> crate::RuntimeResult<bool> {
+        let state = self.run_state_get(run).ok_or(crate::RuntimeError::RunNotFound)?;
+        Ok(Self::journal_bytes_exceeds_budget(state, projected))
     }
 
     /// Strict durable bound gate-decision port.
@@ -64,7 +77,12 @@ impl Shard {
         let next = Self::checked_next_seq(seq)?;
         self.reserve_journal_sequence_slot(run)?;
         let event_bytes = Self::gate_decision_bound_event_bytes(&record, seq)?;
-        let projected = self.projected_bound_gate_bytes(run, event_bytes)?;
+        let projected = self.projected_bound_gate_bytes(run, record.record.gate, event_bytes)?;
+        if self.bound_gate_journal_exceeds_budget(run, projected)? {
+            return Err(crate::RuntimeError::GateJournalBudgetExceeded {
+                gate: record.record.gate,
+            });
+        }
         self.journal
             .append_gate_decision_bound_strict(record, seq)?;
         let _previous = self.journal_sequences.insert(run, next);
@@ -73,6 +91,51 @@ impl Shard {
             .ok_or(crate::RuntimeError::RunNotFound)?;
         state.journal_bytes_written = projected;
         Ok(())
+    }
+
+    /// Strict atomic port: journals a bound gate denial or timeout and the
+    /// `RunFailed` it causes as one batch, so the gate cannot close without the
+    /// run failure being durable. Returns the projected run journal bytes, or
+    /// `None` with nothing written when that batch exceeds the run's budget.
+    pub(crate) fn append_bound_gate_failure_strict(
+        &mut self,
+        record: vb_core::manual_gate::BoundGateOutcomeRecord,
+    ) -> crate::RuntimeResult<Option<u64>> {
+        let run = record.record.run;
+        if !record.is_structurally_valid() {
+            return Err(crate::RuntimeError::InvalidGateDecisionRecord);
+        }
+        let seq = self.journal_sequence_for(run);
+        let run_failed_seq = Self::checked_next_seq(seq)?;
+        let next = Self::checked_next_seq(run_failed_seq)?;
+        self.reserve_journal_sequence_slot(run)?;
+        let state = self
+            .run_state_get(run)
+            .ok_or(crate::RuntimeError::RunNotFound)?;
+        let run_failed = crate::journal::RuntimeJournalEvent::RunFailed {
+            run,
+            attempt: state.run_attempt.get(),
+        };
+        let decision_bytes = Self::gate_decision_bound_event_bytes(&record, seq)?;
+        let failed_bytes = crate::journal::charged_batch_bytes(
+            self.journal.as_ref(),
+            core::slice::from_ref(&run_failed),
+            run_failed_seq,
+        )?;
+        let projected = state
+            .journal_bytes_written
+            .checked_add(decision_bytes)
+            .and_then(|bytes| bytes.checked_add(failed_bytes))
+            .ok_or(crate::RuntimeError::GateJournalBudgetExceeded {
+                gate: record.record.gate,
+            })?;
+        if Self::journal_bytes_exceeds_budget(state, projected) {
+            return Ok(None);
+        }
+        self.journal
+            .append_gate_decision_bound_failing_run_strict(record, seq, run_failed)?;
+        let _previous = self.journal_sequences.insert(run, next);
+        Ok(Some(projected))
     }
 
     fn gate_opened_bound_event_bytes(

@@ -4,6 +4,7 @@
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
 use crate::runtime::Runtime;
 use crate::shard::ShardConfig;
+use crate::shard::types::RuntimeState;
 use std::sync::{Arc, Mutex};
 use vb_core::action::{
     ActionContract, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket, Idempotency,
@@ -42,6 +43,9 @@ pub(crate) mod tests {
     include!("runtime_tests/quota_recovery_tests.rs");
 
     include!("runtime_tests/gate_decisions_and_migration.rs");
+    include!("runtime_tests/gate_bound_decisions.rs");
+
+    include!("runtime_tests/gate_bound_deadline.rs");
 
     include!("runtime_tests/migrated_run_methods.rs");
 

@@ -3,37 +3,42 @@
 //! Recovery reconstructs only state carried by the journal. It never
 //! synthesizes a decision or a receipt, and a malformed or mismatched stream
 //! fails closed so a recovered run does not drive past an undecided gate.
+//! Full-history replay and recovery share `BoundLedger`, so they admit and
+//! reject the same records.
 
-use super::bound_receipt::{compute_bound_receipt_digest, verify_bound_receipt};
+use super::bound::BoundGateReplay;
+use super::bound_open::{check_admitted_decision, check_bound_open};
+use super::bound_receipt::verify_bound_receipt;
 use super::errors::GateError;
 use crate::shard::types::BoundOpenGate;
 use indexmap::IndexMap;
-use vb_core::manual_gate::GateOutcome;
+use std::collections::BTreeSet;
+use vb_core::ids::RunId;
+use vb_core::manual_gate::{
+    ApproverId, BoundGateOutcomeRecord, BoundManualGate, GateDigest, GateOutcome,
+};
 
 /// Reconstructs open bound gates from journal events in order.
 ///
-/// A decision whose opening is outside the recovered window is ignored:
-/// its gate definition is not in the evidence. A duplicate open while a
-/// gate is still open fails. A closing decision removes the gate so a
-/// later open with the same id is a legitimate reuse.
+/// A decision whose opening is absent from the recovered stream fails
+/// closed: its gate definition is not in the evidence. A duplicate open
+/// while a gate is still open fails. A closing decision removes the gate so
+/// a later open with the same id is a legitimate reuse.
 pub(crate) fn reconstruct_bound_open_gates(
     events: &[vb_storage::JournalEvent],
 ) -> Result<Vec<BoundOpenGate>, GateError> {
-    let mut state = BoundRecoveryState::default();
+    Ok(walk_bound_history(events, |_| {})?.into_open())
+}
+
+/// Admits every bound event in stream order through `BoundLedger`, calling
+/// `on_decision` for each admitted decision. Full-history replay and recovery
+/// both use this walk so they admit and reject the same records.
+pub(super) fn walk_bound_history(
+    events: &[vb_storage::JournalEvent],
+    mut on_decision: impl FnMut(&BoundGateOutcomeRecord),
+) -> Result<BoundLedger, GateError> {
+    let mut ledger = BoundLedger::default();
     for event in events {
-        state.apply(event)?;
-    }
-    Ok(state.open.into_values().collect())
-}
-
-#[derive(Default)]
-struct BoundRecoveryState {
-    open: IndexMap<u64, BoundOpenGate>,
-    seen_receipts: IndexMap<vb_core::manual_gate::GateDigest, u64>,
-}
-
-impl BoundRecoveryState {
-    fn apply(&mut self, event: &vb_storage::JournalEvent) -> Result<(), GateError> {
         match event {
             vb_storage::JournalEvent::GateOpenedBoundEvent {
                 gate,
@@ -41,28 +46,40 @@ impl BoundRecoveryState {
                 opened_at_ms,
                 requester,
                 ..
-            } => self.open_gate(gate, seq.get(), *opened_at_ms, requester),
+            } => ledger.open_gate(gate, seq.get(), *opened_at_ms, requester)?,
             vb_storage::JournalEvent::GateDecisionBoundEvent { record, .. } => {
-                self.apply_decision(record)
+                ledger.admit_decision(record)?;
+                on_decision(record);
             }
-            _ => Ok(()),
+            vb_storage::JournalEvent::RunFailedEvent { run, .. } => ledger.close_failed_run(*run),
+            _ => {}
         }
     }
+    Ok(ledger)
+}
 
-    fn open_gate(
+/// Open-gate and approval-receipt ledger shared by replay and recovery.
+#[derive(Default)]
+pub(super) struct BoundLedger {
+    open: IndexMap<u64, BoundOpenGate>,
+    closed: BTreeSet<u64>,
+    seen_receipts: IndexMap<GateDigest, u64>,
+}
+
+impl BoundLedger {
+    pub(super) fn open_gate(
         &mut self,
-        gate: &vb_core::manual_gate::BoundManualGate,
+        gate: &BoundManualGate,
         opening_seq: u64,
         opened_at_ms: u64,
-        requester: &vb_core::manual_gate::ApproverId,
+        requester: &ApproverId,
     ) -> Result<(), GateError> {
-        if !gate.is_structurally_valid() || !requester.is_valid() {
-            return Err(GateError::ReplayInvalidGate);
-        }
+        check_bound_open(gate, opened_at_ms, requester)?;
         let gate_id = gate.gate.id.get();
         if self.open.contains_key(&gate_id) {
             return Err(GateError::ReplayDuplicateOpen { gate: gate_id });
         }
+        self.closed.remove(&gate_id);
         self.open.insert(
             gate_id,
             BoundOpenGate {
@@ -76,98 +93,98 @@ impl BoundRecoveryState {
         Ok(())
     }
 
-    fn apply_decision(
+    pub(super) fn admit_decision(
         &mut self,
-        record: &vb_core::manual_gate::BoundGateOutcomeRecord,
+        record: &BoundGateOutcomeRecord,
     ) -> Result<(), GateError> {
         if !record.is_structurally_valid() {
             return Err(GateError::InvalidRecord);
         }
-        self.validate_receipt(record)?;
         let gate_id = record.record.gate.get();
         let Some(existing) = self.open.get(&gate_id) else {
-            return Ok(());
+            return Err(if self.closed.contains(&gate_id) {
+                GateError::ReplayDecisionAfterClose { gate: gate_id }
+            } else {
+                GateError::ReplayDecisionWithoutOpenGate { gate: gate_id }
+            });
         };
-        validate_recovered_decision(record, existing, gate_id)?;
-        apply_bound_outcome(&mut self.open, gate_id, record);
-        Ok(())
-    }
-
-    fn validate_receipt(
-        &mut self,
-        record: &vb_core::manual_gate::BoundGateOutcomeRecord,
-    ) -> Result<(), GateError> {
-        let Some(receipt) = &record.bound_receipt else {
-            return Ok(());
-        };
-        let gate_id = record.record.gate.get();
-        if compute_bound_receipt_digest(receipt)? != receipt.digest {
-            return Err(GateError::BoundReceiptMismatch);
+        validate_bound_replay(
+            record,
+            &existing.gate,
+            &existing.requester,
+            existing.opened_at_ms,
+            existing.opening_seq,
+        )?;
+        if let Some(delegate) = &existing.delegated_to
+            && record.record.outcome != GateOutcome::Escalated
+            && record.record.approver.as_ref() != Some(delegate)
+        {
+            return Err(GateError::ReplayWrongDelegate { gate: gate_id });
         }
-        if self.seen_receipts.insert(receipt.digest, gate_id).is_some() {
+        if let Some(receipt) = &record.bound_receipt
+            && self.seen_receipts.insert(receipt.digest, gate_id).is_some()
+        {
             return Err(GateError::ReplayDuplicateBoundReceipt { gate: gate_id });
         }
+        apply_bound_outcome(&mut self.open, gate_id, record);
+        if !self.open.contains_key(&gate_id) {
+            self.closed.insert(gate_id);
+        }
         Ok(())
     }
-}
 
-fn validate_recovered_decision(
-    record: &vb_core::manual_gate::BoundGateOutcomeRecord,
-    existing: &BoundOpenGate,
-    gate_id: u64,
-) -> Result<(), GateError> {
-    if !record.matches_bound_gate(&existing.gate)
-        || record.record.requester != existing.requester
-        || record.record.opened_at_ms != existing.opened_at_ms
-        || record.opening_seq != existing.opening_seq
-        || record.record.decided_at_ms < existing.opened_at_ms
-    {
-        return Err(GateError::ReplayBoundGateMismatch { gate: gate_id });
+    /// Closes every open bound gate of a failed run. The run's gates can no
+    /// longer be decided, so later decisions for them are rejected as closed.
+    pub(super) fn close_failed_run(&mut self, run: RunId) {
+        let gate_ids: Vec<u64> = self
+            .open
+            .iter()
+            .filter(|(_, open)| open.gate.gate.run == run)
+            .map(|(gate_id, _)| *gate_id)
+            .collect();
+        for gate_id in gate_ids {
+            self.open.shift_remove(&gate_id);
+            self.closed.insert(gate_id);
+        }
     }
-    if let Some(receipt) = &record.bound_receipt
-        && !verify_bound_receipt(receipt, &existing.gate)?
-    {
-        return Err(GateError::BoundReceiptMismatch);
+
+    pub(super) fn into_open(self) -> Vec<BoundOpenGate> {
+        self.open.into_values().collect()
     }
-    Ok(())
 }
 
 fn apply_bound_outcome(
     open: &mut IndexMap<u64, BoundOpenGate>,
     gate_id: u64,
-    record: &vb_core::manual_gate::BoundGateOutcomeRecord,
+    record: &BoundGateOutcomeRecord,
 ) {
-    match record.record.outcome {
-        GateOutcome::Approved
-        | GateOutcome::BreakGlassApproved
-        | GateOutcome::Denied
-        | GateOutcome::Escalated => {
-            open.shift_remove(&gate_id);
-        }
-        GateOutcome::Delegated => {
-            if let Some(gate) = open.get_mut(&gate_id) {
-                gate.delegated_to = record.record.delegated_to.clone();
-            }
-        }
-        GateOutcome::MoreEvidenceRequested => {}
+    if bound_outcome_is_terminal(record.record.outcome) {
+        open.shift_remove(&gate_id);
+    } else if record.record.outcome == GateOutcome::Delegated
+        && let Some(gate) = open.get_mut(&gate_id)
+    {
+        gate.delegated_to = record.record.delegated_to.clone();
     }
 }
-pub(super) fn validate_bound_replay(
-    record: &vb_core::manual_gate::BoundGateOutcomeRecord,
-    gate: &vb_core::manual_gate::BoundManualGate,
-    requester: &vb_core::manual_gate::ApproverId,
+
+fn bound_outcome_is_terminal(outcome: GateOutcome) -> bool {
+    matches!(
+        outcome,
+        GateOutcome::Approved
+            | GateOutcome::BreakGlassApproved
+            | GateOutcome::Denied
+            | GateOutcome::Escalated
+    )
+}
+
+fn validate_bound_replay(
+    record: &BoundGateOutcomeRecord,
+    gate: &BoundManualGate,
+    requester: &ApproverId,
     opened_at_ms: u64,
     opening_seq: u64,
-    gate_id: u64,
 ) -> Result<(), GateError> {
-    if !record.matches_bound_gate(gate)
-        || record.record.requester != *requester
-        || record.record.opened_at_ms != opened_at_ms
-        || record.opening_seq != opening_seq
-        || record.record.decided_at_ms < opened_at_ms
-    {
-        return Err(GateError::ReplayBoundGateMismatch { gate: gate_id });
-    }
+    check_admitted_decision(record, gate, requester, opened_at_ms, opening_seq)?;
     if let Some(receipt) = &record.bound_receipt
         && !verify_bound_receipt(receipt, gate)?
     {
@@ -176,26 +193,13 @@ pub(super) fn validate_bound_replay(
     Ok(())
 }
 
-pub(super) fn bound_replay(
-    record: &vb_core::manual_gate::BoundGateOutcomeRecord,
-    bound_receipt_digest: Option<vb_core::manual_gate::GateDigest>,
-) -> super::bound::BoundGateReplay {
-    super::bound::BoundGateReplay {
+pub(super) fn bound_replay(record: &BoundGateOutcomeRecord) -> BoundGateReplay {
+    BoundGateReplay {
         gate: record.record.gate.get(),
         run: record.record.run,
         outcome: record.record.outcome,
         decision: record.record.decision,
-        bound_receipt_digest,
+        bound_receipt_digest: record.bound_receipt.as_ref().map(|receipt| receipt.digest),
         escalated: record.record.outcome == GateOutcome::Escalated,
     }
-}
-
-pub(super) fn bound_outcome_is_terminal(outcome: GateOutcome) -> bool {
-    matches!(
-        outcome,
-        GateOutcome::Approved
-            | GateOutcome::BreakGlassApproved
-            | GateOutcome::Denied
-            | GateOutcome::Escalated
-    )
 }

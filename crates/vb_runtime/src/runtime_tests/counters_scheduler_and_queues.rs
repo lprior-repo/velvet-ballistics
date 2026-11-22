@@ -241,7 +241,7 @@
                     }
                 });
                 let found_finished = evts.iter().any(
-                    |e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run),
+                    |e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if r.get() == run.get()),
                 );
                 assert_eq!(found_submitted, true);
                 assert_eq!(found_finished, true);
@@ -496,7 +496,7 @@
         match journal_events {
             Ok(evts) => {
                 let found_submitted = evts.iter().any(
-                    |e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run),
+                    |e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if r.get() == run.get()),
                 );
                 assert_eq!(found_submitted, true);
             }
@@ -534,7 +534,7 @@
         match journal_events {
             Ok(evts) => {
                 let found_finished = evts.iter().any(
-                    |e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run),
+                    |e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if r.get() == run.get()),
                 );
                 assert_eq!(found_finished, true);
             }

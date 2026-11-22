@@ -223,6 +223,19 @@ pub trait RuntimeJournal: Send + Sync {
         })
     }
 
+    /// Appends a bound gate denial and its run-failure event in one strict batch.
+    /// Default fails closed for journals without the additive port.
+    fn append_gate_decision_bound_failing_run_strict(
+        &self,
+        _record: vb_core::manual_gate::BoundGateOutcomeRecord,
+        _seq: EventSeq,
+        _run_failed: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "append_gate_decision_bound_failing_run_strict",
+        })
+    }
+
     /// Appends a bound gate opening with strict durable acknowledgement.
     /// Default fails closed for journals without the additive port.
     fn append_gate_opened_bound_strict(

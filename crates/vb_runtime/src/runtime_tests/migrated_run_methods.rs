@@ -402,7 +402,7 @@
         let events = runtime.drain_trace();
         // Then events contain RunSubmitted
         let found = events.iter().any(|e| {
-            matches!(e, TraceEvent::RunSubmitted { run } if *run == vb_core::ids::RunId::new(1))
+            matches!(e, TraceEvent::RunSubmitted { run } if run.get() == vb_core::ids::RunId::new(1).get())
         });
         assert_eq!(found, true);
     }

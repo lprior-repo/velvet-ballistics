@@ -99,6 +99,15 @@ pub fn wall_clock_millis_since_epoch() -> Option<u64> {
         .and_then(|duration| u64::try_from(duration.as_millis()).ok())
 }
 
+/// Runtime clock reading as a result; an unavailable clock is an invariant violation.
+pub fn submission_time() -> RuntimeResult<u64> {
+    wall_clock_millis_since_epoch().ok_or_else(|| RuntimeError::Core {
+        source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+            reason: "wall_clock_unavailable".into(),
+        }),
+    })
+}
+
 #[cfg(test)]
 thread_local! {
     static TEST_WALL_CLOCK_MILLIS: core::cell::Cell<Option<Option<u64>>> =
@@ -125,4 +134,22 @@ pub(crate) fn install_wall_clock_unavailable_for_test() {
 #[cfg(test)]
 pub(crate) fn restore_wall_clock_for_test() {
     TEST_WALL_CLOCK_MILLIS.with(|cell| cell.set(None));
+}
+
+/// Restores the real wall clock when dropped, including on test panic.
+#[cfg(test)]
+pub(crate) struct WallClockGuard;
+
+#[cfg(test)]
+impl Drop for WallClockGuard {
+    fn drop(&mut self) {
+        restore_wall_clock_for_test();
+    }
+}
+
+/// Installs a deterministic wall clock and returns a guard that restores it on drop.
+#[cfg(test)]
+pub(crate) fn install_wall_clock_millis_guard(millis: u64) -> WallClockGuard {
+    install_wall_clock_millis_for_test(millis);
+    WallClockGuard
 }

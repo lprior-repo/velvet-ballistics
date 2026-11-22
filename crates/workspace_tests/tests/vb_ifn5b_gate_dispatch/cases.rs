@@ -192,7 +192,9 @@ fn approval_for(
         },
     };
     let requester = person("requester")?;
-    runtime.open_bound_gate(run, gate, 100, requester.clone())?;
+    let now_ms = wall_now_ms()?;
+    let opened_ms = now_ms.checked_sub(100).ok_or("clock before 100 ms")?;
+    runtime.open_bound_gate(run, gate, opened_ms, requester.clone())?;
     runtime.tick_all()?;
     runtime.submit_bound_gate_decision(
         run,
@@ -208,7 +210,7 @@ fn approval_for(
             delegated_to: None,
             break_glass_justification: (decision == GateDecision::BreakGlass)
                 .then(|| String::from("production incident")),
-            decided_at_ms: 200,
+            decided_at_ms: now_ms,
         },
     )?;
     runtime.tick_all()?;
@@ -264,6 +266,11 @@ fn assert_no_effect(
 #[path = "cases/assertions.rs"]
 mod assertions;
 pub(super) use assertions::assert_nonapproval_refusals;
+#[path = "cases/clock.rs"]
+mod clock;
+use clock::wall_now_ms;
+#[path = "cases/gate_blocked_recovery.rs"]
+mod gate_blocked_recovery;
 #[path = "cases/gate_bound.rs"]
 mod gate_bound;
 #[path = "cases/gate_break_glass.rs"]

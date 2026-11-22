@@ -1,5 +1,5 @@
 #[test]
-fn bound_replay_ignores_decision_without_opening() -> Result<(), Box<dyn std::error::Error>> {
+fn bound_replay_rejects_decision_without_opening() -> Result<(), Box<dyn std::error::Error>> {
     let gate = bound_gate();
     let record = evaluate_bound_decision(
         &gate,
@@ -10,7 +10,10 @@ fn bound_replay_ignores_decision_without_opening() -> Result<(), Box<dyn std::er
         &input(GateDecision::Approve),
     )?;
     let decision = bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(1), record);
-    assert!(replay_bound_gate_history(&[decision])?.is_empty());
+    assert_eq!(
+        replay_bound_gate_history(&[decision]),
+        Err(GateError::ReplayDecisionWithoutOpenGate { gate: 7 })
+    );
     Ok(())
 }
 
@@ -163,8 +166,8 @@ fn bound_replay_rejects_decision_that_does_not_match_opening()
     let gate = bound_gate();
     let record = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &input(GateDecision::Approve),
@@ -201,7 +204,7 @@ fn bound_receipt_rejects_stale_binding_and_duplicate_replay()
     let gate = bound_gate();
     let record = evaluate_bound_decision(
         &gate,
-        0,
+        OPENED_AT_MS,
         1,
         &person("bob"),
         OperatorTrust::InProcessCaller,
@@ -225,11 +228,11 @@ fn bound_receipt_rejects_stale_binding_and_duplicate_replay()
     let err = replay_bound_gate_history(&events)
         .err()
         .ok_or("duplicate receipt replay was accepted")?;
-    assert_eq!(err, GateError::ReplayDuplicateBoundReceipt { gate: 7 });
-    assert_eq!(
-        crate::manual_gate::reconstruct_bound_open_gates(&events),
-        Err(GateError::ReplayDuplicateBoundReceipt { gate: 7 })
-    );
+    assert_eq!(err, GateError::ReplayDecisionAfterClose { gate: 7 });
+    let recovered = crate::manual_gate::reconstruct_bound_open_gates(&events)
+        .err()
+        .ok_or("duplicate receipt recovery was accepted")?;
+    assert_eq!(recovered, GateError::ReplayDecisionAfterClose { gate: 7 });
     Ok(())
 }
 
@@ -239,8 +242,8 @@ fn bound_events_round_trip_and_legacy_replay_ignores_them() -> Result<(), Box<dy
     let gate = bound_gate();
     let record = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &input(GateDecision::Approve),
@@ -274,8 +277,8 @@ fn bound_break_glass_still_requires_evidence_display() -> Result<(), Box<dyn std
     break_glass.evidence_shown = false;
     let err = evaluate_bound_decision(
         &gate,
-        0,
-        1,
+        OPENED_AT_MS,
+        OPENING_SEQ,
         &person("bob"),
         OperatorTrust::InProcessCaller,
         &break_glass,

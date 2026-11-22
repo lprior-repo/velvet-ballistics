@@ -25,6 +25,7 @@
 //!   a receipt and never authorizes a live effect.
 
 mod bound;
+mod bound_open;
 mod bound_receipt;
 mod bound_recovery;
 mod errors;
@@ -37,7 +38,10 @@ mod tests;
 
 pub use bound::{
     BoundGateReplay, bound_gate_decision_event, bound_gate_opened_event, evaluate_bound_decision,
-    evaluate_bound_timeout, replay_bound_gate_history, replay_bound_gate_outcome,
+    evaluate_bound_timeout, replay_bound_gate_history,
+};
+pub(crate) use bound_open::{
+    check_admitted_decision, check_bound_open, check_live_processing_window,
 };
 pub use bound_receipt::{compute_bound_receipt_digest, verify_bound_receipt};
 pub(crate) use bound_recovery::reconstruct_bound_open_gates;

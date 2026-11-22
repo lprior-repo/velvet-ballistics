@@ -51,7 +51,7 @@ fn foreign_run_and_ticket_attempt_boundary_refuse_without_mutation() -> TestResu
     )?;
     let ticket = pending_ticket(&mut runtime, run)?;
     let register = catalog.issue_register_grant(&artifact, ticket, scope())?;
-    let params = super::gate_cold_recovery::scoped_params(action, approval.digest, false)?;
+    let params = super::gate_cold_recovery::scoped_params(action, approval.digest)?;
     let bound =
         catalog.issue_scoped_grant_for_bound_gate(&artifact, &register, params, &approval)?;
     let dispatch = super::gate_cold_recovery::dispatch_context(&artifact, ticket)?;

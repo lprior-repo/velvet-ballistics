@@ -17,100 +17,7 @@ use crate::shard::types::{RuntimeState, Shard, ShardCommand};
 
 use super::{require_workflow, small_config};
 
-#[derive(Debug, Default)]
-struct BoundJournal {
-    decisions: Mutex<Vec<BoundGateOutcomeRecord>>,
-    opened: Mutex<Vec<(BoundManualGate, u64, ApproverId, u64)>>,
-}
-
-impl BoundJournal {
-    fn shared() -> Arc<Self> {
-        Arc::new(Self::default())
-    }
-
-    fn decisions(&self) -> RuntimeResult<Vec<BoundGateOutcomeRecord>> {
-        self.decisions
-            .lock()
-            .map(|calls| calls.clone())
-            .map_err(|_| RuntimeError::JournalPoisoned)
-    }
-
-    fn opened(&self) -> RuntimeResult<Vec<(BoundManualGate, u64, ApproverId, u64)>> {
-        self.opened
-            .lock()
-            .map(|calls| calls.clone())
-            .map_err(|_| RuntimeError::JournalPoisoned)
-    }
-}
-
-impl RuntimeJournal for BoundJournal {
-    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
-        Some(vb_storage::DurabilityProfile::Volatile)
-    }
-
-    fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
-        Ok(())
-    }
-
-    fn append_sequenced_batch(
-        &self,
-        events: &[RuntimeJournalEvent],
-        _start_seq: vb_storage::EventSeq,
-    ) -> RuntimeResult<()> {
-        for event in events {
-            self.append(event.clone())?;
-        }
-        Ok(())
-    }
-
-    fn append_gate_decision_strict(
-        &self,
-        _record: vb_core::manual_gate::GateOutcomeRecord,
-        _seq: vb_storage::EventSeq,
-    ) -> RuntimeResult<()> {
-        Ok(())
-    }
-
-    fn append_gate_opened_strict(
-        &self,
-        _gate: ManualGate,
-        _opened_at_ms: u64,
-        _requester: ApproverId,
-        _seq: vb_storage::EventSeq,
-    ) -> RuntimeResult<()> {
-        Ok(())
-    }
-
-    fn append_gate_decision_bound_strict(
-        &self,
-        record: BoundGateOutcomeRecord,
-        _seq: vb_storage::EventSeq,
-    ) -> RuntimeResult<()> {
-        self.decisions
-            .lock()
-            .map_err(|_| RuntimeError::JournalPoisoned)?
-            .push(record);
-        Ok(())
-    }
-
-    fn append_gate_opened_bound_strict(
-        &self,
-        gate: BoundManualGate,
-        opened_at_ms: u64,
-        requester: ApproverId,
-        seq: vb_storage::EventSeq,
-    ) -> RuntimeResult<()> {
-        self.opened
-            .lock()
-            .map_err(|_| RuntimeError::JournalPoisoned)?
-            .push((gate, opened_at_ms, requester, seq.get()));
-        Ok(())
-    }
-
-    fn probe(&self) -> RuntimeResult<()> {
-        Ok(())
-    }
-}
+include!("gate_bound_submission_journal.rs");
 
 fn digest(byte: u8) -> GateDigest {
     GateDigest::from_bytes([byte; 32])
@@ -275,6 +182,8 @@ fn make_shard(run: RunId) -> Result<(Shard, Arc<BoundJournal>), Box<dyn std::err
 mod cases {
     use super::*;
     include!("gate_bound_submission_cases.rs");
+    include!("gate_bound_submission_cases_more.rs");
+    include!("gate_bound_submission_cases_deny.rs");
 }
 
 mod r5_authority {

@@ -1,3 +1,4 @@
+use super::bound_open::{check_decision_window, check_escalation_window};
 use super::errors::GateError;
 use super::receipt::compute_receipt_digest;
 use vb_core::manual_gate::{
@@ -70,15 +71,7 @@ fn validate_decision_window(
     opened_at_ms: u64,
     input: &GateDecisionInput,
 ) -> Result<(), GateError> {
-    let deadline = gate
-        .deadline_ms(opened_at_ms)
-        .ok_or(GateError::DeadlineOverflow)?;
-    if input.decided_at_ms > deadline {
-        return Err(GateError::DecisionAfterTimeout {
-            deadline_ms: deadline,
-            decided_at_ms: input.decided_at_ms,
-        });
-    }
+    check_decision_window(gate, opened_at_ms, input.decided_at_ms)?;
     if input.evidence_bundle_digest != gate.evidence_bundle_digest {
         return Err(GateError::EvidenceDigestMismatch);
     }
@@ -279,21 +272,11 @@ pub fn evaluate_timeout(
     opened_at_ms: u64,
     now_ms: u64,
 ) -> Result<GateOutcomeRecord, GateError> {
-    validate_timeout(gate, opened_at_ms, now_ms)?;
+    check_escalation_window(gate, opened_at_ms, now_ms)?;
     Ok(timeout_record(GateRecordContext {
         gate,
         requester,
         opened_at_ms,
         decided_at_ms: now_ms,
     }))
-}
-
-fn validate_timeout(gate: &ManualGate, opened_at_ms: u64, now_ms: u64) -> Result<(), GateError> {
-    let deadline = gate
-        .deadline_ms(opened_at_ms)
-        .ok_or(GateError::DeadlineOverflow)?;
-    if now_ms <= deadline {
-        return Err(GateError::NotTimedOut);
-    }
-    Ok(())
 }

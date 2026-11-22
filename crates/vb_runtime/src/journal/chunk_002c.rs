@@ -156,6 +156,24 @@ impl RuntimeJournal for StorageRuntimeJournal {
             .map_err(RuntimeError::from)
     }
 
+    fn append_gate_decision_bound_failing_run_strict(
+        &self,
+        record: vb_core::manual_gate::BoundGateOutcomeRecord,
+        seq: EventSeq,
+        run_failed: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        let run_failed_seq = Self::sequence_at_offset(seq, 1)?;
+        let run_failed_event = Self::storage_event(run_failed, run_failed_seq)?;
+        let decision = JournalEvent::GateDecisionBoundEvent {
+            run: record.record.run,
+            seq,
+            record: Box::new(record),
+        };
+        self.journal
+            .append_strict_batch(&[decision, run_failed_event])
+            .map_err(RuntimeError::from)
+    }
+
     fn append_gate_opened_bound_strict(
         &self,
         gate: vb_core::manual_gate::BoundManualGate,

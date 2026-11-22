@@ -658,7 +658,7 @@ fn do_action_completion_writes_output_and_journals_events() {
         trace,
         Ok(ref evts) if evts.iter().any(|e| matches!(e,
             TraceEvent::SlotWritten { run: r, slot, .. }
-            if *r == run && *slot == SlotIdx::new(1)
+            if r.get() == run.get() && slot.get() == SlotIdx::new(1).get()
         )) && evts.contains(&TraceEvent::ActionCompleted {
             run,
             step: StepIdx::ZERO,
@@ -732,7 +732,7 @@ fn runtime_action_completion_preserves_frame_when_completion_envelope_append_fai
         Ok(ref evts) if !evts.iter().any(|event| matches!(
             event,
             TraceEvent::SlotWritten { run: r, slot, .. }
-                if *r == run && *slot == SlotIdx::new(1)
+                if r.get() == run.get() && slot.get() == SlotIdx::new(1).get()
         )) && !evts.contains(&TraceEvent::ActionCompleted {
             run,
             step: StepIdx::ZERO,
