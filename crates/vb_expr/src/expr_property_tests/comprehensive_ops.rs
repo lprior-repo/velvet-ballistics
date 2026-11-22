@@ -55,6 +55,16 @@ proptest! {
     }
 }
 
+// Property: Addition at boundary saturates or errors consistently.
+#[test]
+fn addition_at_boundary() {
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
+    // Either saturates to i64::MAX or returns an error; both are acceptable
+    let is_saturated = matches!(result, Ok(SlotValue::I64(i64::MAX)));
+    let is_error = result.is_err();
+    assert!(is_saturated || is_error, "boundary addition must saturate or error, got {:?}", result);
+}
+
 // Property: Multiplication identity: a * 1 == a.
 proptest! {
     #[test]
