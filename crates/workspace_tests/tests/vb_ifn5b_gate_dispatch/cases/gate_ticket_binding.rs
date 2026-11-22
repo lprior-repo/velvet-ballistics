@@ -1,4 +1,6 @@
 use super::*;
+use vb_core::ids::SlotIdx;
+use vb_core::SlotValue;
 
 pub(super) fn repeated_workflow() -> Result<CompiledWorkflow, String> {
     repeated_workflow_with_retry(false)
@@ -209,6 +211,15 @@ fn old_approval_cannot_authorize_second_real_action_occurrence() -> TestResult {
         )
         .map_err(|error| format!("first approved effect: {error:?}"))?;
     runtime.tick_all()?;
+    super::assertions::assert_action_completed_envelope(
+        &journal.events_for_run_full(run)?,
+        run,
+        first,
+        SlotIdx::new(2),
+        SlotValue::I64(42),
+        &artifact,
+        action,
+    )?;
     let fresh_approval = approval_for(
         &mut runtime,
         &journal,

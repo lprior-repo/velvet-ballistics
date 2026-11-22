@@ -1,6 +1,6 @@
 use super::*;
 use std::path::Path;
-use vb_core::{ActionFailureCode, ActionTicket};
+use vb_core::{ActionFailureCode, ActionTicket, ids::SlotIdx, SlotValue};
 use vb_runtime::RuntimeError;
 use vb_storage::executor::RegisterReceipt;
 
@@ -23,6 +23,7 @@ fn registered_immediate_retry_missing_receipt_stays_missing_after_reopen() -> Te
 }
 
 fn cold_retry(attempt: u16, effect: bool) -> TestResult {
+    let action = ActionId::new(1);
     let dir = storage_dir()?;
     let register_path = dir.join("register");
     let run = RunId::new(94_240);
@@ -125,17 +126,29 @@ fn cold_retry(attempt: u16, effect: bool) -> TestResult {
     );
     match original_receipt {
         Some(receipt) => {
+            let recovered_receipt = receipt;
             let recovered = reconciled?;
-            assert_eq!(recovered, receipt);
+            assert_eq!(recovered, recovered_receipt);
             assert_eq!(recovered.effect_ordinal(), 1);
             assert_eq!(recovered.value(), 42);
             runtime.tick_all()?;
             fixture::finish_tail(&mut runtime, run)?;
             assert_eq!(adapter.effect_count()?, 1);
             assert_eq!(adapter.value(scope())?, Some(42));
-            assert_eq!(journal.events_for_run_full(run)?.iter().filter(|event|
+            let envelope_events = journal.events_for_run_full(run)?;
+            let envelope_count = envelope_events.iter().filter(|event|
                 matches!(event, JournalEvent::ActionCompletedEnvelope { ticket: completed, .. }
-                    if *completed == ticket)).count(), 1);
+                    if *completed == ticket)).count();
+            assert_eq!(envelope_count, 1);
+            super::assertions::assert_action_completed_envelope(
+                &envelope_events,
+                run,
+                ticket,
+                SlotIdx::new(0),
+                SlotValue::I64(recovered_receipt.value()),
+                &artifact,
+                action,
+            )?;
             assert_eq!(
                 journal
                     .events_for_run_full(run)?
