@@ -113,22 +113,19 @@ fn test_ambiguous_scalars() {
     }
 }
 
-const AMBIGUOUS_SCALARS: &[&str] = &["yes", "no", "on", "off", "y", "n"];
-
 proptest! {
     #[test]
     fn ambiguous_booleans_rejected(
         key in "[a-zA-Z][a-zA-Z0-9_]{0,5}",
-        val in 0usize..6usize,
+        val in prop_oneof!["yes", "no", "on", "off", "y", "n"],
     ) {
         // Always test a YAML 1.1 ambiguous scalar
-        let ambiguous = AMBIGUOUS_SCALARS[val];
-        let yaml = format!("{}: {}\n", key, ambiguous);
+        let yaml = format!("{}: {}\n", key, val);
         let result = validate_yaml_profile(&yaml);
         prop_assert!(
             result.is_err(),
             "YAML 1.1 ambiguous scalar '{}' should be rejected",
-            ambiguous
+            val
         );
     }
 }

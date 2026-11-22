@@ -12,9 +12,9 @@ use proptest::prelude::*;
 proptest! {
     #[test]
     fn addition_is_commutative(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64) {
-        let result_ab = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), SlotValue::I64(b));
-        let result_ba = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(a));
-        assert_eq!(result_ab, result_ba);
+        let result_ab = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), SlotValue::I64(b))?;
+        let result_ba = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(a))?;
+        prop_assert_eq!(result_ab, result_ba);
     }
 }
 
@@ -289,8 +289,8 @@ proptest! {
 // Property: Less-than is transitive: a < b and b < c implies a < c.
 proptest! {
     #[test]
-    fn lt_is_transitive(a in -500000i64..=0i64, b in 0i64..=500000i64, c in 500000i64..=1000000i64) {
-        // Always generate a < b < c, so the transitive property is always checked
+    fn lt_is_transitive(a in -500000i64..=0i64, b in 1i64..=500000i64, c in 500001i64..=1000000i64) {
+        // Always generate a < b < c with non-overlapping ranges, so the transitive property is always checked
         let result_ab = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(b));
         let result_bc = eval_binary_op(BinaryOp::Lt, SlotValue::I64(b), SlotValue::I64(c));
         let result_ac = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(c));
