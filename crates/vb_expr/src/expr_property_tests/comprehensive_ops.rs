@@ -8,23 +8,27 @@ use vb_core::{FiniteF64, SlotValue};
 
 use proptest::prelude::*;
 
-// Property: Addition is commutative for i64.
+// Property: Addition is commutative for i64 and equals the expected sum.
 proptest! {
     #[test]
     fn addition_is_commutative(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64) {
         let result_ab = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), SlotValue::I64(b))?;
         let result_ba = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(a))?;
-        prop_assert_eq!(result_ab, result_ba);
+        let expected = SlotValue::I64(a.checked_add(b).unwrap_or(i64::MAX));
+        prop_assert_eq!(result_ab, expected);
+        prop_assert_eq!(result_ba, expected);
     }
 }
 
-// Property: Multiplication is commutative for i64.
+// Property: Multiplication is commutative for i64 and equals the expected product.
 proptest! {
     #[test]
     fn multiplication_is_commutative(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64) {
-        let result_ab = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), SlotValue::I64(b));
-        let result_ba = eval_binary_op(BinaryOp::Mul, SlotValue::I64(b), SlotValue::I64(a));
-        assert_eq!(result_ab, result_ba);
+        let result_ab = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), SlotValue::I64(b))?;
+        let result_ba = eval_binary_op(BinaryOp::Mul, SlotValue::I64(b), SlotValue::I64(a))?;
+        let expected = SlotValue::I64(a.checked_mul(b).unwrap_or(i64::MAX));
+        prop_assert_eq!(result_ab, expected);
+        prop_assert_eq!(result_ba, expected);
     }
 }
 
@@ -138,9 +142,9 @@ proptest! {
     fn f64_addition_is_commutative(a in -1000000f64..=1000000f64, b in -1000000f64..=1000000f64) {
         let va = FiniteF64::new(a).unwrap_or(FiniteF64::new(0.0).unwrap());
         let vb = FiniteF64::new(b).unwrap_or(FiniteF64::new(0.0).unwrap());
-        let result_ab = eval_binary_op(BinaryOp::Add, SlotValue::F64(va), SlotValue::F64(vb));
-        let result_ba = eval_binary_op(BinaryOp::Add, SlotValue::F64(vb), SlotValue::F64(va));
-        assert_eq!(result_ab, result_ba);
+        let result_ab = eval_binary_op(BinaryOp::Add, SlotValue::F64(va), SlotValue::F64(vb))?;
+        let result_ba = eval_binary_op(BinaryOp::Add, SlotValue::F64(vb), SlotValue::F64(va))?;
+        prop_assert_eq!(result_ab, result_ba);
     }
 }
 
@@ -150,9 +154,9 @@ proptest! {
     fn f64_multiplication_is_commutative(a in -1000000f64..=1000000f64, b in -1000000f64..=1000000f64) {
         let va = FiniteF64::new(a).unwrap_or(FiniteF64::new(0.0).unwrap());
         let vb = FiniteF64::new(b).unwrap_or(FiniteF64::new(0.0).unwrap());
-        let result_ab = eval_binary_op(BinaryOp::Mul, SlotValue::F64(va), SlotValue::F64(vb));
-        let result_ba = eval_binary_op(BinaryOp::Mul, SlotValue::F64(vb), SlotValue::F64(va));
-        assert_eq!(result_ab, result_ba);
+        let result_ab = eval_binary_op(BinaryOp::Mul, SlotValue::F64(va), SlotValue::F64(vb))?;
+        let result_ba = eval_binary_op(BinaryOp::Mul, SlotValue::F64(vb), SlotValue::F64(va))?;
+        prop_assert_eq!(result_ab, result_ba);
     }
 }
 
@@ -193,9 +197,9 @@ proptest! {
 proptest! {
     #[test]
     fn bool_and_commutative(a in any::<bool>(), b in any::<bool>()) {
-        let result_ab = eval_binary_op(BinaryOp::And, SlotValue::Bool(a), SlotValue::Bool(b));
-        let result_ba = eval_binary_op(BinaryOp::And, SlotValue::Bool(b), SlotValue::Bool(a));
-        assert_eq!(result_ab, result_ba);
+        let result_ab = eval_binary_op(BinaryOp::And, SlotValue::Bool(a), SlotValue::Bool(b))?;
+        let result_ba = eval_binary_op(BinaryOp::And, SlotValue::Bool(b), SlotValue::Bool(a))?;
+        prop_assert_eq!(result_ab, result_ba);
     }
 }
 
@@ -203,9 +207,9 @@ proptest! {
 proptest! {
     #[test]
     fn bool_or_commutative(a in any::<bool>(), b in any::<bool>()) {
-        let result_ab = eval_binary_op(BinaryOp::Or, SlotValue::Bool(a), SlotValue::Bool(b));
-        let result_ba = eval_binary_op(BinaryOp::Or, SlotValue::Bool(b), SlotValue::Bool(a));
-        assert_eq!(result_ab, result_ba);
+        let result_ab = eval_binary_op(BinaryOp::Or, SlotValue::Bool(a), SlotValue::Bool(b))?;
+        let result_ba = eval_binary_op(BinaryOp::Or, SlotValue::Bool(b), SlotValue::Bool(a))?;
+        prop_assert_eq!(result_ab, result_ba);
     }
 }
 
