@@ -286,15 +286,16 @@ proptest! {
     }
 }
 
-// Property: Less-than is transitive.
+// Property: Less-than is transitive: a < b and b < c implies a < c.
 proptest! {
     #[test]
-    fn lt_is_transitive(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64, c in -1000000i64..=1000000i64) {
+    fn lt_is_transitive(a in -500000i64..=0i64, b in 0i64..=500000i64, c in 500000i64..=1000000i64) {
+        // Always generate a < b < c, so the transitive property is always checked
         let result_ab = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(b));
         let result_bc = eval_binary_op(BinaryOp::Lt, SlotValue::I64(b), SlotValue::I64(c));
         let result_ac = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(c));
-        if let (Ok(SlotValue::Bool(true)), Ok(SlotValue::Bool(true))) = (result_ab, result_bc) {
-            assert_eq!(result_ac, Ok(SlotValue::Bool(true)));
-        }
+        prop_assert_eq!(result_ab, Ok(SlotValue::Bool(true)));
+        prop_assert_eq!(result_bc, Ok(SlotValue::Bool(true)));
+        prop_assert_eq!(result_ac, Ok(SlotValue::Bool(true)));
     }
 }

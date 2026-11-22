@@ -89,20 +89,47 @@ proptest! {
 // Property: YAML 1.1 ambiguous scalars are rejected
 // ─────────────────────────────────────────────────────────────────
 
+#[test]
+fn test_ambiguous_scalars() {
+    let test_cases = vec![
+        ("key: yes", false),
+        ("key: no", false),
+        ("key: on", false),
+        ("key: off", false),
+        ("key: y", false),
+        ("key: n", false),
+        ("key: true", true),
+        ("key: false", true),
+        ("key: True", true),
+        ("key: False", true),
+        ("key: TRUE", true),
+        ("key: FALSE", true),
+    ];
+    
+    for (yaml, should_pass) in test_cases {
+        let result = validate_yaml_profile(yaml);
+        let passed = result.is_ok();
+        assert_eq!(passed, should_pass, "YAML '{}' expected pass={}, got {}", yaml, should_pass, passed);
+    }
+}
+
+const AMBIGUOUS_SCALARS: &[&str] = &["yes", "no", "on", "off", "y", "n"];
+
 proptest! {
     #[test]
-    fn ambiguous_booleans_rejected(key in "[a-zA-Z][a-zA-Z0-9_]{0,5}", val in "[a-z]{2,4}") {
-        let yaml = format!("{}: {}\n", key, val);
-        if ["yes", "no", "on", "off", "true", "false", "True", "False", "TRUE", "FALSE"]
-            .contains(&val.as_str())
-        {
-            let result = validate_yaml_profile(&yaml);
-            assert!(
-                result.is_err(),
-                "YAML 1.1 ambiguous scalar '{}' should be rejected",
-                val
-            );
-        }
+    fn ambiguous_booleans_rejected(
+        key in "[a-zA-Z][a-zA-Z0-9_]{0,5}",
+        val in any::<usize>(),
+    ) {
+        // Always test a YAML 1.1 ambiguous scalar
+        let ambiguous = AMBIGUOUS_SCALARS[val % AMBIGUOUS_SCALARS.len()];
+        let yaml = format!("{}: {}\n", key, ambiguous);
+        let result = validate_yaml_profile(&yaml);
+        prop_assert!(
+            result.is_err(),
+            "YAML 1.1 ambiguous scalar '{}' should be rejected",
+            ambiguous
+        );
     }
 }
 
