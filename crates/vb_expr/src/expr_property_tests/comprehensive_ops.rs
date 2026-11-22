@@ -14,7 +14,7 @@ proptest! {
     fn addition_is_commutative(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64) {
         let result_ab = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), SlotValue::I64(b))?;
         let result_ba = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(a))?;
-        let expected = SlotValue::I64(a.checked_add(b).unwrap_or(i64::MAX));
+        let expected = SlotValue::I64(a + b);
         prop_assert_eq!(result_ab, expected);
         prop_assert_eq!(result_ba, expected);
     }
@@ -26,7 +26,7 @@ proptest! {
     fn multiplication_is_commutative(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64) {
         let result_ab = eval_binary_op(BinaryOp::Mul, SlotValue::I64(a), SlotValue::I64(b))?;
         let result_ba = eval_binary_op(BinaryOp::Mul, SlotValue::I64(b), SlotValue::I64(a))?;
-        let expected = SlotValue::I64(a.checked_mul(b).unwrap_or(i64::MAX));
+        let expected = SlotValue::I64(a * b);
         prop_assert_eq!(result_ab, expected);
         prop_assert_eq!(result_ba, expected);
     }

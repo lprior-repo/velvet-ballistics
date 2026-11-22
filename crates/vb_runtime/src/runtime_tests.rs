@@ -43,6 +43,7 @@ pub(crate) mod tests {
     include!("runtime_tests/quota_recovery_tests.rs");
 
     include!("runtime_tests/gate_decisions_and_migration.rs");
+    include!("runtime_tests/migration_failure_test.rs");
     include!("runtime_tests/gate_bound_decisions.rs");
 
     include!("runtime_tests/gate_bound_deadline.rs");
