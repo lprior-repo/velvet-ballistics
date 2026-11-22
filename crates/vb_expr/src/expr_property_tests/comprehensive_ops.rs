@@ -32,13 +32,13 @@ proptest! {
 proptest! {
     #[test]
     fn addition_is_associative(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64, c in -1000000i64..=1000000i64) {
-        let left = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), SlotValue::I64(b)).unwrap_or(SlotValue::Null);
-        let result_left = eval_binary_op(BinaryOp::Add, left, SlotValue::I64(c));
+        let left = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), SlotValue::I64(b));
+        let result_left = eval_binary_op(BinaryOp::Add, left?, SlotValue::I64(c));
 
-        let right = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(c)).unwrap_or(SlotValue::Null);
-        let result_right = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), right);
+        let right = eval_binary_op(BinaryOp::Add, SlotValue::I64(b), SlotValue::I64(c));
+        let result_right = eval_binary_op(BinaryOp::Add, SlotValue::I64(a), right?);
 
-        assert_eq!(result_left, result_right);
+        prop_assert_eq!(result_left, result_right);
     }
 }
 

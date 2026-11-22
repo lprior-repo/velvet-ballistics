@@ -119,10 +119,10 @@ proptest! {
     #[test]
     fn ambiguous_booleans_rejected(
         key in "[a-zA-Z][a-zA-Z0-9_]{0,5}",
-        val in any::<usize>(),
+        val in 0usize..6usize,
     ) {
         // Always test a YAML 1.1 ambiguous scalar
-        let ambiguous = AMBIGUOUS_SCALARS[val % AMBIGUOUS_SCALARS.len()];
+        let ambiguous = AMBIGUOUS_SCALARS[val];
         let yaml = format!("{}: {}\n", key, ambiguous);
         let result = validate_yaml_profile(&yaml);
         prop_assert!(
