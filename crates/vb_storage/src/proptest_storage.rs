@@ -341,11 +341,22 @@ mod storage_tests {
         )| {
             use crate::recovery::RunSnapshot;
             use crate::trimming::TrimPolicy;
+            use crate::RunHeaderRecord;
+            use vb_core::ids::WorkflowId;
 
             let journal = shared_journal();
             let run = RunId::new(fresh_scope() | run_val);
             let digest = WorkflowDigest::from_bytes([0xBB; 32]);
             let snapshot_seq = EventSeq::new(snapshot_seq_val);
+
+            let header = RunHeaderRecord {
+                run,
+                workflow_id: WorkflowId::new(0),
+                compiled_digest: digest,
+                status: 0,
+                accepted_at_ms: 0,
+            };
+            journal.put_run_header(&header).unwrap();
 
             let mut events = Vec::new();
             events.push(JournalEvent::RunAccepted {
