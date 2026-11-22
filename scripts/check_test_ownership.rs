@@ -1,7 +1,10 @@
 use std::ops::Range;
 
+#[path = "check_test_ownership_scope.rs"]
+mod check_test_ownership_scope;
 #[path = "check_test_ownership_lexer.rs"]
 mod lexer;
+use check_test_ownership_scope::{closing_brace, leading_file_cfg_test};
 use lexer::{Token, tokens};
 
 pub(crate) fn lexer_tokens(source: &str) -> Vec<Token> {
@@ -12,42 +15,6 @@ pub(crate) fn lexer_tokens(source: &str) -> Vec<Token> {
 pub(crate) struct Edge {
     pub(crate) path: String,
     pub(crate) offset: usize,
-}
-
-fn closing_brace(tokens: &[Token], open: usize) -> Option<usize> {
-    let mut depth = 0usize;
-    for (index, token) in tokens.iter().enumerate().skip(open) {
-        match token.text.as_str() {
-            "{" => depth = depth.saturating_add(1),
-            "}" => {
-                depth = depth.saturating_sub(1);
-                if depth == 0 {
-                    return Some(index);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
-fn leading_file_cfg_test(lexed: &[Token]) -> bool {
-    let mut index = 0;
-    while index < lexed.len() {
-        let text = &lexed[index].text;
-        if text.starts_with("//") || text.starts_with("/*") {
-            index = index.saturating_add(1);
-            continue;
-        }
-        break;
-    }
-    if index.saturating_add(8) > lexed.len() {
-        return false;
-    }
-    lexed[index..index + 8]
-        .iter()
-        .zip(["#", "!", "[", "cfg", "(", "test", ")", "]"].iter())
-        .all(|(actual, expected)| actual.text == **expected)
 }
 
 pub(crate) fn test_scopes(source: &str) -> Vec<Range<usize>> {

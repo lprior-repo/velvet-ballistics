@@ -70,6 +70,7 @@ tasks:
       - 'scripts/check-panic-surface.sh'
       - 'scripts/check_panic_surface.rs'
       - 'scripts/check_test_ownership.rs'
+      - 'scripts/check_test_ownership_scope.rs'
       - 'scripts/check_test_ownership_lexer.rs'
       - '.moon/tasks/all.yml'
     options:
@@ -141,6 +142,7 @@ tasks:
       - 'scripts/check-source-length.sh'
       - 'scripts/source_length_hot_functions.rs'
       - 'scripts/check_test_ownership.rs'
+      - 'scripts/check_test_ownership_scope.rs'
       - 'scripts/check_test_ownership_lexer.rs'
     options:
       runInCI: true
