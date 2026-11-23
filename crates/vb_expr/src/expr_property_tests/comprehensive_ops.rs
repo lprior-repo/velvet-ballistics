@@ -303,9 +303,9 @@ proptest! {
 // Property: Less-than is antisymmetric.
 proptest! {
     #[test]
-    fn lt_is_antisymmetric(b in -1000000i64..=1000000i64, gap in 0i64..=1000000i64) {
+    fn lt_is_antisymmetric(b in -1000000i64..=1000000i64, gap in 1i64..=1000001i64) {
         // Ordered by construction (a < b), so no generated case is rejected.
-        let a = b - gap - 1;
+        let a = b.checked_sub(gap).ok_or_else(|| TestCaseError::fail("a overflowed i64"))?;
         let result_ab = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(b));
         let result_ba = eval_binary_op(BinaryOp::Lt, SlotValue::I64(b), SlotValue::I64(a));
         prop_assert_eq!(result_ab, Ok(SlotValue::Bool(true)));
