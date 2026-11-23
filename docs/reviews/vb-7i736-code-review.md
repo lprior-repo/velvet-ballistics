@@ -1,3 +1,5 @@
+> **Status: historical record.** Written against the pre-fix state of `comprehensive_ops.rs` and `yaml_proptest.rs`. Several findings were later fixed (dead `unwrap_or` removed) or have recommendations that must be re-evaluated against current code before acting. Not an authoritative defect list.
+
 # Code Review: vb-7i736 — Fix vacuous proptest oracles
 
 ## Target
