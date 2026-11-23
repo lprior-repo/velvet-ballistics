@@ -1,58 +1,47 @@
 #[test]
-fn migration_rolls_back_on_queue_full() {
-    let Some(shard_count) = NonZeroUsize::new(3) else {
-        return;
-    };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config())
-        .expect("valid test configuration");
+fn migration_failing_after_valid_prefix_restores_exact_source_and_target_fifos() -> Result<(), String> {
+    let (mut runtime, cost, source, target) = migration_quota_fixture_with_capacity(8)?;
+    // Source FIFO: charged submit(28_001), inspect(28_002), inspect(28_003).
+    // The third command is refused by the target's retained per-run cap, so the
+    // staged transfer has already validated a two-command prefix when it fails.
+    enqueue_migration_inspect(&runtime, source, 28_002)?;
+    enqueue_migration_inspect(&runtime, source, 28_003)?;
+    let blocker = migration_expected_inspect(28_003);
+    runtime
+        .shards
+        .get(target)
+        .ok_or("target shard")?
+        .command_queue
+        .enqueue_with_limit(blocker.clone(), Some(1))
+        .map_err(|error| error.to_string())?;
+    assert_eq!(migration_queue_depth(&runtime, source)?, 3);
+    assert_eq!(migration_queue_depth(&runtime, target)?, 1);
 
-    // Submit a run to shard 0 (RunId::new(0) hashes to shard 0)
-    let run = RunId::new(0);
-    let workflow = finished_workflow().expect("valid workflow");
-    let result = runtime.submit_direct(run, workflow.clone());
-    assert!(result.is_ok(), "should be able to submit to shard 0");
+    let result = runtime.tick_shard(
+        shard_error_index(source),
+        ShardDirective::Migrate {
+            target: shard_error_index(target),
+        },
+    );
 
-    // Fill shard 1's queue completely (16 capacity) using RunIds that hash to shard 1
-    // RunId::new(n) hashes to shard n % 3, so use n = 1, 4, 7, 10, 13, 16, 19, ...
-    for i in 0..16 {
-        let run_id = RunId::new(1 + i * 3);
-        let result = runtime.submit_direct(run_id, workflow.clone());
-        assert!(result.is_ok(), "should be able to fill shard 1 queue");
-    }
-
-    // Try to migrate shard 0 to shard 1 (which is full)
-    let result = runtime.tick_shard(0, ShardDirective::Migrate { target: 1 });
-    
-    // Migration should fail because shard 1 is full
-    assert!(result.is_err(), "migration to full shard should fail");
-    let error = result.unwrap_err();
-    assert!(matches!(error, RuntimeError::QueueFull), "should be QueueFull error, got: {:?}", error);
-    
-    // Verify the command is still on shard 0 (not lost)
-    // We can't directly check queue length, but we can tick and see if it completes
-    let tick_result = runtime.tick_all();
-    assert!(tick_result.is_ok(), "tick after failed migration should succeed");
-}
-
-#[test]
-fn migration_succeeds_when_target_has_capacity() {
-    let Some(shard_count) = NonZeroUsize::new(3) else {
-        return;
-    };
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config())
-        .expect("valid test configuration");
-
-    // Submit a run to shard 0
-    let run = RunId::new(0);
-    let workflow = finished_workflow().expect("valid workflow");
-    let result = runtime.submit_direct(run, workflow.clone());
-    assert!(result.is_ok(), "should be able to submit");
-
-    // Migrate to shard 1 (which has capacity)
-    let result = runtime.tick_shard(0, ShardDirective::Migrate { target: 1 });
-    assert!(result.is_ok(), "migration to empty shard should succeed");
-
-    // Tick and verify the run completes on shard 1
-    let tick_result = runtime.tick_all();
-    assert!(tick_result.is_ok(), "tick after successful migration should succeed");
+    assert!(
+        matches!(result, Err(RuntimeError::PerRunQueueDepthExceeded {
+            run, limit: 1, ..
+        }) if run == RunId::new(28_003)),
+        "unexpected migration result: {result:?}"
+    );
+    assert_eq!(runtime.global_cost_usage(), cost);
+    assert_eq!(migration_queue_depth(&runtime, source)?, 3);
+    assert_eq!(migration_queue_depth(&runtime, target)?, 1);
+    assert_eq!(migration_pending(&runtime, source, 28_001)?, 1);
+    assert_eq!(migration_pending(&runtime, source, 28_002)?, 1);
+    assert_eq!(migration_pending(&runtime, source, 28_003)?, 1);
+    assert_eq!(migration_pending(&runtime, target, 28_001)?, 0);
+    assert_eq!(migration_pending(&runtime, target, 28_002)?, 0);
+    assert_eq!(migration_pending(&runtime, target, 28_003)?, 1);
+    assert_migration_front(&runtime, source, migration_expected_submit()?, Some(cost))?;
+    assert_migration_front(&runtime, source, migration_expected_inspect(28_002), None)?;
+    assert_migration_front(&runtime, source, migration_expected_inspect(28_003), None)?;
+    assert_migration_front(&runtime, target, blocker, None)?;
+    Ok(())
 }
