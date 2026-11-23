@@ -80,8 +80,8 @@ pub(crate) fn known_flag_spec(command: &str, token: &str) -> Option<FlagSpec> {
         }),
         "doctor" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
         "answer" => output_flag_spec(token).or(match token {
-            "--step" => Some(FlagSpec::Value("--step")),
-            "--value-file" => Some(FlagSpec::Value("--value-file")),
+            "--slot" => Some(FlagSpec::Value("--slot")),
+            "--value" => Some(FlagSpec::Value("--value")),
             "--db" => Some(FlagSpec::Value("--db")),
             _ => None,
         }),

@@ -179,7 +179,7 @@ pub(crate) enum Command {
     },
     Answer {
         run_id: String,
-        step: u16,
+        selector: super::AnswerSelector,
         value_file: PathBuf,
         db: PathBuf,
         output: OutputFormat,

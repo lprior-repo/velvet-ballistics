@@ -59,11 +59,11 @@
             "postcard"
           ]
         },
-        "--step": {
+        "--slot": {
           "required": true,
           "type": "u16"
         },
-        "--value-file": {
+        "--value": {
           "required": true,
           "type": "path"
         }
@@ -71,7 +71,7 @@
       "positionals": [
         "run_id"
       ],
-      "summary": "Answer a suspended ask step."
+      "summary": "Answer a suspended ask by its pending slot using --slot with --value."
     },
     "bench-run": {
       "flags": {

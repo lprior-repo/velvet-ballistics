@@ -82,6 +82,18 @@ impl Runtime {
             .pending_ask_ticket(run, ask_step)
     }
 
+    /// Looks up the authority for the run's suspended Ask whose answer slot is `slot`.
+    #[must_use]
+    pub fn lookup_pending_ask_ticket_for_slot(
+        &self,
+        run: RunId,
+        slot: vb_core::ids::SlotIdx,
+    ) -> Option<crate::shard::AskTicket> {
+        self.shard_for_run(run)
+            .ok()?
+            .lookup_pending_ask_ticket_for_slot(run, slot)
+    }
+
     /// Lists trace events for a run without draining the shard trace ring.
     ///
     /// RA-030 wave-15 (vb-sxkz6): a run may have been migrated to a shard

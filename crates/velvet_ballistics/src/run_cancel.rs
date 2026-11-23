@@ -4,7 +4,7 @@ use crate::app_impl::prelude::*;
 
 pub(crate) fn cmd_answer(
     run_id: &str,
-    step: u16,
+    selector: crate::args::AnswerSelector,
     value_file: &std::path::Path,
     db: &std::path::Path,
     output: OutputFormat,
@@ -76,7 +76,7 @@ pub(crate) fn cmd_answer(
     // Construct the IPC payload
     let payload = IpcPayload::AnswerAsk {
         run_id: rid,
-        ticket: step.into(),
+        ticket: selector.wire_ticket(),
         answer: answer_bytes,
         taint: None,
     };

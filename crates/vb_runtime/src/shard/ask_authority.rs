@@ -1,4 +1,4 @@
-use vb_core::ids::{RunId, StepIdx};
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::{CompiledNodeKind, frame::StepState};
 
 use super::types::{AskAnswer, AskTicket, PendingAskAuthority, PendingTimerKind, RunState, Shard};
@@ -9,6 +9,18 @@ impl Shard {
     #[must_use]
     pub fn lookup_pending_ask_ticket(&self, run: RunId, ask_step: StepIdx) -> Option<AskTicket> {
         self.pending_ask_ticket(run, ask_step)
+    }
+
+    /// Looks up the ticket for the run's pending ask whose answer slot is `slot`.
+    #[must_use]
+    pub fn lookup_pending_ask_ticket_for_slot(
+        &self,
+        run: RunId,
+        slot: SlotIdx,
+    ) -> Option<AskTicket> {
+        let ask_step = self.pending_ask_authorities.get(&run)?.step;
+        let ticket = self.pending_ask_ticket(run, ask_step)?;
+        (ticket.answer_slot() == slot).then_some(ticket)
     }
 
     pub(crate) fn pending_ask_ticket(&self, run: RunId, ask_step: StepIdx) -> Option<AskTicket> {

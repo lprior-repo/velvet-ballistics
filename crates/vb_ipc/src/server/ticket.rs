@@ -1,7 +1,26 @@
 #![forbid(unsafe_code)]
 //! Ticket conversion helpers.
 
-use vb_core::ids::StepIdx;
+use vb_core::ids::{SlotIdx, StepIdx};
+
+/// Answer target carried by an `AnswerAsk` wire ticket.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AnswerTarget {
+    Step(StepIdx),
+    Slot(SlotIdx),
+}
+
+/// Tickets up to `u16::MAX` name an ask step; tickets in `65536..=131071`
+/// name an answer slot (`ticket - 65536`). Anything else is rejected.
+pub(crate) fn answer_target_from_ticket(ticket: u64) -> Option<AnswerTarget> {
+    if let Ok(step) = u16::try_from(ticket) {
+        return Some(AnswerTarget::Step(StepIdx::new(step)));
+    }
+    let slot = u16::try_from(ticket.checked_sub(SLOT_TICKET_BASE)?).ok()?;
+    Some(AnswerTarget::Slot(SlotIdx::new(slot)))
+}
+
+const SLOT_TICKET_BASE: u64 = 1 << 16;
 
 pub(crate) fn step_from_ticket(ticket: u64) -> Option<StepIdx> {
     match u16::try_from(ticket) {
@@ -109,5 +128,23 @@ mod tests {
     #[test]
     fn payload_len_large_value_saturates() {
         assert_eq!(payload_len(usize::MAX), u32::MAX);
+    }
+
+    #[test]
+    fn answer_target_splits_step_and_slot_ranges() {
+        assert_eq!(
+            answer_target_from_ticket(7),
+            Some(AnswerTarget::Step(StepIdx::new(7)))
+        );
+        assert_eq!(
+            answer_target_from_ticket(65_536),
+            Some(AnswerTarget::Slot(SlotIdx::new(0)))
+        );
+        assert_eq!(
+            answer_target_from_ticket(131_071),
+            Some(AnswerTarget::Slot(SlotIdx::new(u16::MAX)))
+        );
+        assert_eq!(answer_target_from_ticket(131_072), None);
+        assert_eq!(answer_target_from_ticket(u64::MAX), None);
     }
 }

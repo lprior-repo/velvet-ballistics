@@ -118,9 +118,9 @@ pub(super) fn commands() -> Value {
         command(
             "answer",
             serde_json::json!({
-                "summary": "Answer a suspended ask step.",
+                "summary": "Answer a suspended ask by its pending slot using --slot with --value.",
                 "positionals": ["run_id"],
-                "flags": {"--step": {"type": "u16", "required": true}, "--value-file": {"type": "path", "required": true}, "--db": {"type": "path", "required": true}, "--emit": output_emit_flag()}
+                "flags": {"--slot": {"type": "u16", "required": true}, "--value": {"type": "path", "required": true}, "--db": {"type": "path", "required": true}, "--emit": output_emit_flag()}
             }),
         ),
         command(

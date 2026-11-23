@@ -11,7 +11,7 @@ use super::{
     sanitize_runtime_error,
 };
 use crate::server::IpcResponse;
-use crate::server::ticket::{payload_len, step_from_ticket};
+use crate::server::ticket::{AnswerTarget, answer_target_from_ticket, payload_len};
 
 /// Handles answer-ask.
 pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
@@ -33,7 +33,7 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
         };
     }
 
-    let Some(ask_step) = step_from_ticket(ticket) else {
+    let Some(target) = answer_target_from_ticket(ticket) else {
         return IpcResponse::BadRequest;
     };
     let encoded_len = match u32::try_from(answer.len()) {
@@ -58,7 +58,11 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
             };
         }
     };
-    let Some(ticket) = runtime.lookup_pending_ask_ticket(run_id, ask_step) else {
+    let pending = match target {
+        AnswerTarget::Step(ask_step) => runtime.lookup_pending_ask_ticket(run_id, ask_step),
+        AnswerTarget::Slot(slot) => runtime.lookup_pending_ask_ticket_for_slot(run_id, slot),
+    };
+    let Some(ticket) = pending else {
         return IpcResponse::BadRequest;
     };
     let answer = AskAnswer {
