@@ -131,9 +131,9 @@ pub(super) fn assert_success_report(fixture: &Fixture, value: &serde_json::Value
             "kind": "replay_report", "run_id": "8921", "recovered": 4, "terminal": null,
             "events": [
                 {"run": 8921, "seq": 0, "type": "RunAccepted", "workflow": format!("{:?}", header.compiled_digest)},
-                {"type": "Unknown", "note": "future non-exhaustive variant — add explicit match arm"},
-                {"type": "Unknown", "note": "future non-exhaustive variant — add explicit match arm"},
-                {"type": "Unknown", "note": "future non-exhaustive variant — add explicit match arm"}
+                {"run": 8921, "seq": 1, "type": "RunAdmissionBudget"},
+                {"run": 8921, "seq": 2, "type": "CompatibilityDecisionEvent"},
+                {"run": 8921, "seq": 3, "type": "RunBudgetOriginEvent"}
             ]
         })
     );
