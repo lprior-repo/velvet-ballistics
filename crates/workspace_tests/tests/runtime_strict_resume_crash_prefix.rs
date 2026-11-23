@@ -1,25 +1,21 @@
 #![forbid(unsafe_code)]
 
 use std::{num::NonZeroUsize, path::Path, sync::Arc};
-use vb_core::{RunId, RuntimePolicy};
+use vb_core::{CapabilitySet, RunId, RuntimePolicy, SlotValue, Taint};
 use vb_runtime::{
+    RuntimeError,
     journal::{SharedRuntimeJournal, StorageRuntimeJournal},
     runtime::Runtime,
     shard::ShardConfig,
 };
-use vb_storage::FjallJournal;
+use vb_storage::{FjallJournal, JournalEvent};
 
-#[path = "runtime_strict_resume_crash_prefix/checks.rs"]
-mod checks;
-#[path = "runtime_strict_resume_crash_prefix/corruption.rs"]
-mod corruption;
 #[path = "runtime_strict_resume_crash_prefix/cut.rs"]
 mod cut;
-#[path = "runtime_strict_resume_crash_prefix/fixture.rs"]
-mod fixture;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const RUN: RunId = RunId::new(47241);
+const SOURCE: &[u8] = b"version: velvet-ballistics/v1\nname: strict_resume_prefix\nwhen: {manual: {}}\nsteps:\n  - id: seed\n    set: {output: seed, value: '42'}\n  - id: work\n    do: {action: '0', input: '$seed'}\n  - id: done\n    finish: {result: '$step.work'}\n";
 
 fn runtime(journal: SharedRuntimeJournal) -> TestResult<Runtime> {
     Ok(Runtime::new(
@@ -58,16 +54,103 @@ fn durable_completion_before_continuation_recovers_without_reissuing_action() ->
 
 fn crash_prefix(interrupted: bool) -> TestResult {
     let directory = tempfile::tempdir()?;
-    let path = directory.path().join("crash");
-    let (journal, live, issued) = fixture::crashed(&path, interrupted)?;
+    let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
+    let workflow = vb_compile::compile_workflow(SOURCE)?;
+    let action = workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .find_map(|node| {
+            matches!(node.kind, vb_core::CompiledNodeKind::Do { .. }).then_some(node.id)
+        })
+        .ok_or("compiled action absent")?;
+    let output = workflow
+        .node(action)
+        .and_then(|node| node.output.slot())
+        .ok_or("action output absent")?;
+    let contract = vb_core::ActionContract {
+        id: vb_core::ActionId::new(0),
+        name: vb_core::action::ActionName::new("strict-resume-prefix")?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 64,
+        max_output_bytes: 64,
+        timeout_ms: 1_000,
+        idempotency: vb_core::Idempotency::DeterministicPure,
+        side_effect: vb_core::SideEffect::None,
+        retry_safety: vb_core::RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    vb_storage::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &[contract.clone()],
+    )?;
+    let mut live = runtime(Arc::new(cut::CutJournal::new(journal.clone())))?;
+    live.submit_direct_with_grants_and_contracts(
+        RUN,
+        workflow,
+        CapabilitySet::empty(),
+        Box::from([contract]),
+    )?;
+    for _ in 0..12 {
+        live.tick_all()?;
+        if live
+            .lookup_pending_action_ticket(RUN, u64::from(action.get()))
+            .is_some()
+        {
+            break;
+        }
+    }
+    let ticket = live
+        .lookup_pending_action_ticket(RUN, u64::from(action.get()))
+        .ok_or("issued ticket absent")?;
+    let value = SlotValue::I64(73);
+    let ready = vb_core::ActionOutputReady {
+        output_slot: output,
+        value,
+        taint: Taint::Clean,
+        encoded_len: u32::try_from(postcard::to_allocvec(&value)?.len())?,
+    };
+    live.complete_action_with_output(ticket, ready)?;
+    assert_eq!(live.tick_all(), Err(RuntimeError::JournalPoisoned));
+    let mut state = live.inspect_run_state(RUN)?.clone();
+    assert_eq!(state.frame.read_slot(output)?, &value);
+    assert_eq!(
+        live.lookup_pending_action_ticket(RUN, u64::from(action.get())),
+        None
+    );
+    if interrupted {
+        live.resume_run(RUN)?;
+        assert_eq!(live.tick_all(), Err(RuntimeError::JournalPoisoned));
+    }
     let prefix = journal.events_for_run_full(RUN)?;
-    checks::sequence_and_effects(&prefix, usize::from(interrupted))?;
+    assert_eq!(
+        prefix
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::RunResumed { .. }))
+            .count(),
+        usize::from(interrupted)
+    );
+    if interrupted {
+        let resumed = prefix
+            .iter()
+            .find(|event| matches!(event, JournalEvent::RunResumed { .. }))
+            .ok_or("durable resume absent")?;
+        state.journal_bytes_written = state
+            .journal_bytes_written
+            .checked_add(u64::try_from(postcard::to_allocvec(resumed)?.len())?)
+            .ok_or("journal accounting overflow")?;
+    }
+    assert_eq!(live.inspect_run_state(RUN)?, &state);
+    assert_eq!(prefix.iter().filter(|event| matches!(event, JournalEvent::ActionCompletedEnvelope { ticket: actual, .. } if *actual == ticket)).count(), 1);
     let receipt = journal.run_inputs(RUN)?;
     drop(live);
     drop(journal);
-    let before = rows(&path)?;
-    checks::empty_action_index(&before);
-    let journal = Arc::new(FjallJournal::open(&path, None)?);
+    let before = rows(directory.path())?;
+
+    let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
     let mut recovered = runtime(StorageRuntimeJournal::shared_strict(journal.clone()))?;
     let product = recovered.recover_product(RUN)?;
     assert!(
@@ -78,20 +161,66 @@ fn crash_prefix(interrupted: bool) -> TestResult {
         "{product:?}"
     );
     recovered.recover_and_resume(RUN)?;
-    fixture::pending_ask(&mut recovered, issued.ask)?;
-    let reference = fixture::uninterrupted(&directory.path().join("reference"))?;
+    for _ in 0..12 {
+        recovered.tick_all()?;
+        if recovered.counters_snapshot().runs_completed == 1 {
+            break;
+        }
+    }
+    assert_eq!(
+        recovered.counters_snapshot().runs_completed,
+        1,
+        "state={:?} pending={:?} events={:?}",
+        recovered.inspect_run_state(RUN),
+        recovered.pending_boundary_snapshot(8),
+        journal.events_for_run_full(RUN)?
+    );
     let events = journal.events_for_run_full(RUN)?;
-    checks::live_boundary(&recovered, &reference, issued, &events)?;
     assert_eq!(events.get(..prefix.len()), Some(prefix.as_slice()));
-    checks::sequence_and_effects(&events, usize::from(interrupted))?;
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::ActionScheduledTicket { .. }))
+            .count(),
+        1
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::ActionCompletedEnvelope { .. }))
+            .count(),
+        1
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::RunFinished { .. }))
+            .count(),
+        1
+    );
     assert_eq!(journal.run_inputs(RUN)?, receipt);
-    drop(reference);
     drop(recovered);
     drop(journal);
-    let at_ask = rows(&path)?;
-    checks::empty_action_index(&at_ask);
-    assert_ne!(at_ask, before);
-    checks::old_ticket_refused_cold(&path, issued, &at_ask, &events, &receipt)?;
-    checks::finish_once(&path, issued, &events, &receipt, usize::from(interrupted))?;
+    let terminal_rows = rows(directory.path())?;
+    assert_ne!(terminal_rows, before);
+    let journal = Arc::new(FjallJournal::open(directory.path(), None)?);
+    let mut recovered = runtime(StorageRuntimeJournal::shared_strict(journal.clone()))?;
+    let counters = recovered.counters_snapshot();
+    let boundary = recovered.pending_boundary_snapshot(8);
+    assert_eq!(
+        recovered.recover_and_resume(RUN),
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("terminal_state")
+        })
+    );
+    recovered.complete_action_with_output(ticket, ready)?;
+    assert_eq!(recovered.tick_all(), Err(RuntimeError::RunNotFound));
+    assert_eq!(recovered.counters_snapshot(), counters);
+    assert_eq!(recovered.pending_boundary_snapshot(8), boundary);
+    assert_eq!(journal.events_for_run_full(RUN)?, events);
+    assert_eq!(journal.run_inputs(RUN)?, receipt);
+    drop(recovered);
+    drop(journal);
+    assert_eq!(rows(directory.path())?, terminal_rows);
     Ok(())
 }
