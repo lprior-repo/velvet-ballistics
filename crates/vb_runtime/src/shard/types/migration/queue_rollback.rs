@@ -19,8 +19,8 @@ impl ShardCommandQueue {
             let progress = rollback.step(
                 &mut source.migration.stage,
                 &mut self.migration.stage,
-                |entry| source.inner.push(entry).err(),
-                |entry| self.inner.push(entry).err(),
+                QueuePush(&source.inner),
+                QueuePush(&self.inner),
             );
             if progress == TransferProgress::Refused {
                 return Err(migration_invariant("migration_rollback_refused"));

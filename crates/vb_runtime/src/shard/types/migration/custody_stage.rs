@@ -1,6 +1,20 @@
 // Bounded queue-owned staging with retained refusal custody.
 use std::collections::VecDeque;
 
+/// Hands one staged entry to its destination; `Err` returns the unaccepted entry.
+///
+/// Concrete queue destinations implement this directly so the refusal value is
+/// not returned from a closure with a large `Err` type.
+pub(crate) trait Accept<T> {
+    fn accept(self, entry: T) -> Result<(), T>;
+}
+
+impl<T, F: FnOnce(T) -> Result<(), T>> Accept<T> for F {
+    fn accept(self, entry: T) -> Result<(), T> {
+        self(entry)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum StageCreateError {
     InvalidCapacity,
@@ -67,21 +81,18 @@ impl<T> MigrationCustody<T> {
         Ok(())
     }
 
-    // The callback returns the unaccepted value, e.g. ArrayQueue::push(...).err().
+    // The callback returns the unaccepted value as `Err`, e.g. ArrayQueue::push(...).
     // No other stage insertion can occur while this exclusive borrow is held.
-    pub(crate) fn transfer_front(
-        &mut self,
-        accept: impl FnOnce(T) -> Option<T>,
-    ) -> TransferProgress {
+    pub(crate) fn transfer_front(&mut self, accept: impl Accept<T>) -> TransferProgress {
         if self.in_flight.is_none() {
             self.in_flight = self.entries.pop_front();
         }
         let Some(entry) = self.in_flight.take() else {
             return TransferProgress::Empty;
         };
-        match accept(entry) {
-            None => TransferProgress::Accepted,
-            Some(entry) => {
+        match accept.accept(entry) {
+            Ok(()) => TransferProgress::Accepted,
+            Err(entry) => {
                 self.in_flight = Some(entry);
                 TransferProgress::Refused
             }
@@ -145,16 +156,10 @@ mod tests {
         let mut stage = MigrationCustody::try_new(2, 2)?;
         assert!(stage.push_back(Item(11)).is_ok());
         assert!(stage.push_back(Item(22)).is_ok());
-        assert_eq!(
-            stage.transfer_front(|entry| Some(entry)),
-            TransferProgress::Refused
-        );
+        assert_eq!(stage.transfer_front(Err), TransferProgress::Refused);
         assert_eq!(stage.in_flight().map(|item| item.0), Some(11));
         assert_eq!(stage.len(), 2);
-        assert_eq!(
-            stage.transfer_front(|entry| Some(entry)),
-            TransferProgress::Refused
-        );
+        assert_eq!(stage.transfer_front(Err), TransferProgress::Refused);
         assert_eq!(
             stage.entries().map(|item| item.0).collect::<Vec<_>>(),
             vec![11, 22]
@@ -163,7 +168,7 @@ mod tests {
         assert_eq!(
             stage.transfer_front(|item| {
                 accepted = Some(item);
-                None
+                Ok(())
             }),
             TransferProgress::Accepted
         );

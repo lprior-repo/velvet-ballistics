@@ -5,7 +5,7 @@ impl ShardCommandQueue {
             match source
                 .migration
                 .stage
-                .transfer_front(|entry| self.inner.push(entry).err())
+                .transfer_front(QueuePush(&self.inner))
             {
                 TransferProgress::Accepted => {}
                 _ => return Err(migration_invariant("migration_transfer_refused")),
