@@ -93,6 +93,52 @@ fn rollback_of_partial_transfer_restores_both_fifos_and_indices() -> TestResult 
 }
 
 #[test]
+fn full_destination_refuses_transfer_then_delivers_exactly_once_in_order() -> TestResult {
+    let mut source = ShardCommandQueue::new(3)?;
+    let target = ShardCommandQueue::new(1)?;
+    target.enqueue(inspect(92, 10))?;
+    source.enqueue(inspect(91, 11))?;
+    source.enqueue(inspect(91, 22))?;
+    source.stage_migration_source()?;
+    for _ in 0..2 {
+        assert_eq!(
+            source
+                .migration
+                .stage
+                .transfer_front(QueuePush(&target.inner)),
+            TransferProgress::Refused
+        );
+        assert_eq!(source.migration.stage.len(), 2);
+        assert_eq!(target.len(), 1);
+    }
+    assert_eq!(pop_correlation(&target), Some(10));
+    assert_eq!(
+        source
+            .migration
+            .stage
+            .transfer_front(QueuePush(&target.inner)),
+        TransferProgress::Accepted
+    );
+    assert_eq!(pop_correlation(&target), Some(11));
+    assert_eq!(
+        source
+            .migration
+            .stage
+            .transfer_front(QueuePush(&target.inner)),
+        TransferProgress::Accepted
+    );
+    assert_eq!(pop_correlation(&target), Some(22));
+    assert_eq!(
+        source
+            .migration
+            .stage
+            .transfer_front(QueuePush(&target.inner)),
+        TransferProgress::Empty
+    );
+    Ok(())
+}
+
+#[test]
 fn partially_staged_source_stays_fenced_instead_of_reordering() -> TestResult {
     let mut queue = ShardCommandQueue::new(3)?;
     queue.enqueue(inspect(91, 11))?;
