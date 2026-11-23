@@ -33,8 +33,8 @@ fn running_runtime_with_open_bound_gate(
 ) -> (Runtime, Arc<GateDecisionTestJournal>) {
     let shard_count = NonZeroUsize::new(1).expect("one shard");
     let journal = GateDecisionTestJournal::shared();
-    let mut runtime =
-        Runtime::new(shard_count, runtime_config(), journal.clone()).expect("valid test configuration");
+    let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone())
+        .expect("valid test configuration");
     let workflow = gate_chain_workflow().expect("chain workflow must compile");
     assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -133,15 +133,9 @@ fn runtime_submit_bound_gate_decision_request_more_evidence_keeps_gate_open() {
     let _clock = crate::shard::helpers::timer::install_wall_clock_millis_guard(1_000);
     let (runtime, _journal) = running_runtime_with_open_bound_gate(run, 7);
     let input = gate_input_fixture(7, GateDecision::RequestMoreEvidence);
-    assert_eq!(
-        runtime.submit_bound_gate_decision(run, input),
-        Ok(())
-    );
+    assert_eq!(runtime.submit_bound_gate_decision(run, input), Ok(()));
     let shard = runtime.shards.first().expect("single shard");
-    assert_eq!(
-        shard.open_gate_for(run),
-        Some(GateId::new(7))
-    );
+    assert_eq!(shard.open_gate_for(run), Some(GateId::new(7)));
 }
 
 #[test]
