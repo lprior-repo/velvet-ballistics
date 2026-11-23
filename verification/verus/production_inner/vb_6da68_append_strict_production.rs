@@ -149,38 +149,40 @@
 // SOURCE GROUNDING (fjall skill — this is source-citable, NOT an
 // ungrounded assumption):
 //
-//   Crate: `fjall 3.1.4`
-//     path: ~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/
+//   Crate: `fjall 3.1.9`
+//     path: ~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.9/
 //
 //   Function: `batch::WriteBatch::commit` — this IS
 //   `OwnedWriteBatch::commit`; `OwnedWriteBatch` is a re-export of
-//   `batch::WriteBatch` at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/lib.rs:146`.
+//   `batch::WriteBatch` at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.9/src/lib.rs:147`.
 //
-//   Source location: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100-182`.
+//   Source location: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.9/src/batch/mod.rs:100-184`.
 //
-//   The body has EXACTLY TWO `return Err(crate::Error::Poisoned)`
-//   sites, BOTH before the memtable application loop:
-//     (1) L111-113 — poisoned-flag pre-check (after journal mutex,
-//         before WAL write);
-//     (2) L119-129 — fsync failure (journal_writer.persist(mode)
-//         at L120 returns Err).
-//   The memtable application loop is at L147-160, reached ONLY on
-//   the success path. After L160 the function only returns Ok(())
-//   at L181. There is NO `return Err(...)` after the memtable apply
+//   The body has FOUR Err exits, ALL before the memtable application loop:
+//     (1) L106 — journal-writer acquisition (`get_writer()?`);
+//     (2) L109-111 — poisoned-flag pre-check (after journal mutex,
+//         before WAL write), the one explicit
+//         `return Err(crate::Error::Poisoned)`;
+//     (3) L115-122 — WAL write (`write_batch(...)?`, poisons + propagates);
+//     (4) L124-131 — fsync failure (journal_writer.persist(mode)
+//         at L125; poisons + propagates the io error).
+//   The memtable application loop is at L149-162, reached ONLY on
+//   the success path. After L162 the function only returns Ok(())
+//   at L183. There is NO Err exit after the memtable apply
 //   loop begins.
 //
-//   Therefore: `commit() Err` ⇒ return at L112 or L127 ⇒ both
-//   BEFORE the memtable apply loop L147-160 ⇒ no memtable mutation
+//   Therefore: `commit() Err` ⇒ exit at L106, L110, L122, or L130 ⇒ all
+//   BEFORE the memtable apply loop L149-162 ⇒ no memtable mutation
 //   ⇒ keyspace state unchanged from pre-call. QED.
 //
-//   Supporting: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:203-234` maps
+//   Supporting: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.9/src/journal/writer.rs:203-234` maps
 //   `PersistMode::SyncAll` to `sync_all()` (the fsync) at L220-225.
 //   Production `strict()` (crates/vb_storage/src/batch/commit.rs:7-10)
 //   sets `durability(Some(fjall::PersistMode::SyncAll))`, so
-//   production exercises exactly the L119-129 fsync path.
+//   production exercises exactly the L124-131 fsync path.
 //
 //   Fjall is 100% safe Rust (no `unsafe`), so no soundness escape
-//   hatch bypasses the two Err return sites.
+//   hatch bypasses the four Err exits.
 //
 // This fact is owned by trusted-base item TBP-008
 // (`.beads/vb-vzcuf/trusted-base-ledger.jsonl:8`) AND ledgered

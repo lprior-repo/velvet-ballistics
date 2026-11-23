@@ -68,14 +68,15 @@
 // and the `assume_specification` bridge for the exact statement.
 //
 // SOURCE GROUNDING (fjall skill — source-citable, NOT an assumption):
-//   fjall 3.1.4 `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100-182` (WriteBatch::commit, re-exported
-//   as OwnedWriteBatch at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/lib.rs:146`) has exactly two `return Err(_)`
-//   sites — L111-113 (poisoned pre-check) and L119-129 (fsync failure
-//   via journal_writer.persist(mode) at L120) — BOTH before the memtable
-//   application loop at L147-160. The function returns Ok(()) at L181
-//   only AFTER the memtable apply; there is no Err return after L160.
+//   fjall 3.1.9 `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.9/src/batch/mod.rs:100-184` (WriteBatch::commit, re-exported
+//   as OwnedWriteBatch at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.9/src/lib.rs:147`) has four Err exits —
+//   L106 (`get_writer()?`), L109-111 (poisoned pre-check, `return Err(crate::Error::Poisoned)`),
+//   L115-122 (WAL write, `write_batch(...).inspect_err(...)?`), and L124-131 (fsync failure via
+//   journal_writer.persist(mode) at L125) — ALL before the memtable
+//   application loop at L149-162. The function returns Ok(()) at L183
+//   only AFTER the memtable apply; there is no Err exit after L162.
 //   SyncAll (production strict()) maps to fsync via
-//   `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:220-225` (sync_all()). So commit() Err ⇒ no
+//   `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.9/src/journal/writer.rs:220-225` (sync_all()). So commit() Err ⇒ no
 //   memtable mutation ⇒ keyspace unchanged. QED.
 //
 // Compensating evidence:
