@@ -124,6 +124,58 @@ mod tests {
     }
 
     #[test]
+    fn refusal_in_source_prefix_and_tail_retains_custody_and_retries_in_order()
+    -> Result<(), StageCreateError> {
+        let mut source = MigrationCustody::try_new(2, 2)?;
+        let mut target = MigrationCustody::try_new(2, 2)?;
+        assert_eq!(source.push_back(22), Ok(()));
+        assert_eq!(target.push_back(10), Ok(()));
+        assert_eq!(target.push_back(11), Ok(()));
+        let mut rollback =
+            MigrationRollback::prepare(&target, 1).ok_or(StageCreateError::InvalidCapacity)?;
+        let mut restored_source = Vec::new();
+        let mut restored_target = Vec::new();
+        macro_rules! step_ok {
+            () => {
+                rollback.step(
+                    &mut source,
+                    &mut target,
+                    |item| {
+                        restored_source.push(item);
+                        Ok(())
+                    },
+                    |item| {
+                        restored_target.push(item);
+                        Ok(())
+                    },
+                )
+            };
+        }
+        assert_eq!(step_ok!(), TransferProgress::Accepted);
+        assert_eq!(step_ok!(), TransferProgress::Empty);
+        assert_eq!(
+            rollback.step(&mut source, &mut target, Err, Err),
+            TransferProgress::Refused
+        );
+        assert_eq!(target.len(), 1);
+        assert!(restored_source.is_empty());
+        assert_eq!(step_ok!(), TransferProgress::Accepted);
+        assert_eq!(step_ok!(), TransferProgress::Empty);
+        assert_eq!(
+            rollback.step(&mut source, &mut target, Err, Err),
+            TransferProgress::Refused
+        );
+        assert_eq!(source.len(), 1);
+        assert!(!rollback.is_complete());
+        assert_eq!(step_ok!(), TransferProgress::Accepted);
+        assert_eq!(step_ok!(), TransferProgress::Empty);
+        assert!(rollback.is_complete());
+        assert_eq!(restored_target, vec![10]);
+        assert_eq!(restored_source, vec![11, 22]);
+        Ok(())
+    }
+
+    #[test]
     fn invalid_prefix_length_leaves_custody_unchanged() -> Result<(), StageCreateError> {
         let mut target = MigrationCustody::try_new(1, 1)?;
         assert_eq!(target.push_back(10), Ok(()));
