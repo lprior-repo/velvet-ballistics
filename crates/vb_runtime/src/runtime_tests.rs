@@ -4,7 +4,6 @@
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
 use crate::runtime::Runtime;
 use crate::shard::ShardConfig;
-use crate::shard::types::RuntimeState;
 use std::sync::{Arc, Mutex};
 use vb_core::action::{
     ActionContract, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket, Idempotency,

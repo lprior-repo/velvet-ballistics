@@ -1,6 +1,6 @@
 use super::*;
 use std::path::Path;
-use vb_core::{ActionFailureCode, ActionTicket, ids::SlotIdx, SlotValue};
+use vb_core::{ActionFailureCode, ActionTicket, SlotValue, ids::SlotIdx};
 use vb_runtime::RuntimeError;
 use vb_storage::executor::RegisterReceipt;
 
@@ -136,9 +136,13 @@ fn cold_retry(attempt: u16, effect: bool) -> TestResult {
             assert_eq!(adapter.effect_count()?, 1);
             assert_eq!(adapter.value(scope())?, Some(42));
             let envelope_events = journal.events_for_run_full(run)?;
-            let envelope_count = envelope_events.iter().filter(|event|
-                matches!(event, JournalEvent::ActionCompletedEnvelope { ticket: completed, .. }
-                    if *completed == ticket)).count();
+            let envelope_count = envelope_events
+                .iter()
+                .filter(|event| {
+                    matches!(event, JournalEvent::ActionCompletedEnvelope { ticket: completed, .. }
+                    if *completed == ticket)
+                })
+                .count();
             assert_eq!(envelope_count, 1);
             super::assertions::assert_action_completed_envelope(
                 &envelope_events,

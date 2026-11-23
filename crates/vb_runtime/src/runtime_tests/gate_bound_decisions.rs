@@ -131,7 +131,7 @@ fn runtime_submit_bound_gate_decision_rejects_legacy_gate() {
 fn runtime_submit_bound_gate_decision_request_more_evidence_keeps_gate_open() {
     let run = RunId::new(93106);
     let _clock = crate::shard::helpers::timer::install_wall_clock_millis_guard(1_000);
-    let (mut runtime, _journal) = running_runtime_with_open_bound_gate(run, 7);
+    let (runtime, _journal) = running_runtime_with_open_bound_gate(run, 7);
     let input = gate_input_fixture(7, GateDecision::RequestMoreEvidence);
     assert_eq!(
         runtime.submit_bound_gate_decision(run, input),

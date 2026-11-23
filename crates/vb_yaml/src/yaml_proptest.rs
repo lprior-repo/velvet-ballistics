@@ -105,11 +105,15 @@ fn test_ambiguous_scalars() {
         ("key: TRUE", true),
         ("key: FALSE", true),
     ];
-    
+
     for (yaml, should_pass) in test_cases {
         let result = validate_yaml_profile(yaml);
         let passed = result.is_ok();
-        assert_eq!(passed, should_pass, "YAML '{}' expected pass={}, got {}", yaml, should_pass, passed);
+        assert_eq!(
+            passed, should_pass,
+            "YAML '{}' expected pass={}, got {}",
+            yaml, should_pass, passed
+        );
     }
 }
 

@@ -1,6 +1,6 @@
 use super::*;
-use vb_core::ids::SlotIdx;
 use vb_core::SlotValue;
+use vb_core::ids::SlotIdx;
 
 pub(super) fn repeated_workflow() -> Result<CompiledWorkflow, String> {
     repeated_workflow_with_retry(false)
