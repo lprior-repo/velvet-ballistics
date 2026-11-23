@@ -102,8 +102,7 @@ fn recover_from_snapshot_and_tail(run: RunId, data: &[u8]) {
         };
 
         let mut tracker = ActionReplayTracker::new();
-        let result =
-            recover_snapshot_plus_tail(&snapshot, &replayed_events, &mut tracker, &[]);
+        let result = recover_snapshot_plus_tail(&snapshot, &replayed_events, &mut tracker, &[]);
         assert_recovery_result(result);
         assert!(
             journal.close().is_ok(),
@@ -163,8 +162,7 @@ fn recover_with_corrupt_snapshot(run: RunId, _data: &[u8]) {
         let stored_snapshot = stored_snapshot.expect("stored snapshot must exist");
 
         let mut tracker = ActionReplayTracker::new();
-        let result =
-            recover_snapshot_plus_tail(&stored_snapshot, &[], &mut tracker, &[]);
+        let result = recover_snapshot_plus_tail(&stored_snapshot, &[], &mut tracker, &[]);
         match result {
             Ok(_) => {}
             Err(error) => {
@@ -254,16 +252,14 @@ fn recover_with_mismatched_run(run: RunId, _data: &[u8]) {
         let stored_snapshot = stored_snapshot.expect("stored snapshot must exist");
 
         let mut tracker = ActionReplayTracker::new();
-        let result =
-            recover_snapshot_plus_tail(&stored_snapshot, &[], &mut tracker, &[]);
+        let result = recover_snapshot_plus_tail(&stored_snapshot, &[], &mut tracker, &[]);
         match result {
             Ok(_) => {}
             Err(error) => {
                 assert!(
                     matches!(
                         error,
-                        RecoveryError::Journal(_)
-                            | RecoveryError::CorruptSnapshot { .. }
+                        RecoveryError::Journal(_) | RecoveryError::CorruptSnapshot { .. }
                     ),
                     "unexpected recovery error: {:?}",
                     error
@@ -325,10 +321,7 @@ fn recover_no_snapshot(run: RunId, data: &[u8]) {
         let stored_snapshot = journal
             .snapshot(run, EventSeq::new(0))
             .expect("get snapshot");
-        assert!(
-            stored_snapshot.is_none(),
-            "no snapshot should be stored"
-        );
+        assert!(stored_snapshot.is_none(), "no snapshot should be stored");
 
         let tail_events = journal.events_for_run(run);
         let tail_events = match tail_events {
@@ -353,8 +346,7 @@ fn recover_no_snapshot(run: RunId, data: &[u8]) {
         };
 
         let mut tracker = ActionReplayTracker::new();
-        let result =
-            recover_snapshot_plus_tail(&empty_snapshot, &tail_events, &mut tracker, &[]);
+        let result = recover_snapshot_plus_tail(&empty_snapshot, &tail_events, &mut tracker, &[]);
         assert_recovery_result(result);
         assert!(
             journal.close().is_ok(),

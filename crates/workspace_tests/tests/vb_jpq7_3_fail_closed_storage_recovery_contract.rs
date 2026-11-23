@@ -453,9 +453,12 @@ fn given_corrupt_snapshot_taint_bytes_when_hydrating_then_exact_corrupt_snapshot
     // Given: a snapshot whose taint bytes are corrupt while slots are valid.
     let run = RunId::new(73_012);
     let value = postcard::to_allocvec(&SlotValue::I64(42)).map_err(|err| err.to_string())?;
-    let encoded_slots =
-        postcard::to_allocvec(&vec![(SlotIdx::ZERO, SlotValue::I64(42), vb_core::Taint::Clean)])
-            .map_err(|err| err.to_string())?;
+    let encoded_slots = postcard::to_allocvec(&vec![(
+        SlotIdx::ZERO,
+        SlotValue::I64(42),
+        vb_core::Taint::Clean,
+    )])
+    .map_err(|err| err.to_string())?;
     let corrupt_snapshot = RunSnapshot {
         run,
         seq: EventSeq::new(1),
@@ -540,14 +543,8 @@ fn given_missing_snapshot_and_corrupt_snapshot_are_distinct_error_variants() {
     // Missing snapshot means no record exists; corrupt means a record exists but is unreadable.
     let run = RunId::new(1);
     let seq = EventSeq::new(0);
-    let missing = RecoveryError::MissingSnapshot {
-        run,
-        seq,
-    };
-    let corrupt = RecoveryError::CorruptSnapshot {
-        run,
-        seq,
-    };
+    let missing = RecoveryError::MissingSnapshot { run, seq };
+    let corrupt = RecoveryError::CorruptSnapshot { run, seq };
 
     // Then: the variants are not equal (distinct fail-closed semantics).
     assert_ne!(missing, corrupt);
@@ -580,29 +577,25 @@ fn given_corrupt_snapshot_payload_digest_mismatch_when_replaying_then_payload_di
         .map_err(|err| err.to_string())?;
 
     // Replay succeeds with valid snapshot.
-    let replayed = journal
-        .events_for_run(run)
-        .map_err(|err| err.to_string())?;
+    let replayed = journal.events_for_run(run).map_err(|err| err.to_string())?;
     assert_eq!(replayed, Vec::<JournalEvent>::new());
 
     // Then: verify the journal's source-verification path validates payload digests.
     // A PayloadDigestMismatch error is the exact fail-closed variant the
     // storage layer returns when the record's content digest disagrees
     // with its envelope (e.g., during workflow_source or compiled_ir reads).
-    let has_payload_digest_check = JOURNAL_SOURCE
-        .contains("verify_content_digest")
+    let has_payload_digest_check = JOURNAL_SOURCE.contains("verify_content_digest")
         || JOURNAL_SOURCE.contains("PayloadDigestMismatch");
     assert_eq!(
-        has_payload_digest_check,
-        true,
+        has_payload_digest_check, true,
         "journal must validate payload digests before returning records"
     );
     Ok(())
 }
 
 #[test]
-fn given_corrupt_snapshot_when_constructing_frame_seed_then_seed_not_produced()
--> Result<(), String> {
+fn given_corrupt_snapshot_when_constructing_frame_seed_then_seed_not_produced() -> Result<(), String>
+{
     // Given: a corrupt snapshot that would produce a frame seed on hydration.
     let run = RunId::new(73_015);
     let snapshot = RunSnapshot {
@@ -626,9 +619,7 @@ fn given_corrupt_snapshot_when_constructing_frame_seed_then_seed_not_produced()
             return Err("corrupt snapshot must not produce a frame seed".to_owned());
         }
         other => {
-            return Err(format!(
-                "expected CorruptSnapshot, not {other:?}"
-            ));
+            return Err(format!("expected CorruptSnapshot, not {other:?}"));
         }
     }
     Ok(())

@@ -203,10 +203,7 @@ fn durability_multiple_closes(run: RunId, data: &[u8]) {
             let Ok(mut journal) = journal else {
                 return;
             };
-            assert!(
-                journal.close().is_ok(),
-                "repeated close must succeed"
-            );
+            assert!(journal.close().is_ok(), "repeated close must succeed");
         }
     }
 
@@ -293,11 +290,7 @@ fn durability_concurrent_style(run: RunId, data: &[u8]) {
         let replayed1 = journal.events_for_run_full(run);
         match replayed1 {
             Ok(replayed) => {
-                assert_eq!(
-                    replayed.len(),
-                    count1,
-                    "run1 must see only its own events"
-                );
+                assert_eq!(replayed.len(), count1, "run1 must see only its own events");
             }
             Err(error) => {
                 assert!(
@@ -310,11 +303,7 @@ fn durability_concurrent_style(run: RunId, data: &[u8]) {
         let replayed2 = journal.events_for_run_full(run2);
         match replayed2 {
             Ok(replayed) => {
-                assert_eq!(
-                    replayed.len(),
-                    count2,
-                    "run2 must see only its own events"
-                );
+                assert_eq!(replayed.len(), count2, "run2 must see only its own events");
             }
             Err(error) => {
                 assert!(

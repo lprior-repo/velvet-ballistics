@@ -7,7 +7,6 @@ use vb_storage::recovery::replay::core::recover_full_journal;
 use vb_storage::recovery::types::{ActionReplayTracker, RecoveryError};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
-
 fuzz_target!(|data: &[u8]| {
     let run = RunId::new(1);
     let Some(count) = event_count_from_seed(data) else {

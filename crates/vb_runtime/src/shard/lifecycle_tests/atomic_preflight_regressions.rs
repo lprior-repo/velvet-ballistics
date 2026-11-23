@@ -3,7 +3,8 @@ fn single_append_preflights_overflow_and_capacity_before_adapter() -> Result<(),
     let journal = std::sync::Arc::new(SubmissionSingletonJournal::default());
     let mut config = small_config();
     config.max_active_runs = 1;
-    let mut shard = Shard::new_with_journal(config, journal.clone()).expect("valid test configuration");
+    let mut shard =
+        Shard::new_with_journal(config, journal.clone()).expect("valid test configuration");
     let run = RunId::new(91_001);
     shard
         .seed_journal_sequence(run, vb_storage::EventSeq::new(u64::MAX))
@@ -80,7 +81,8 @@ fn pre_persisted_refused_current_admission_releases_capacity_one_frame()
         config,
         adapter.clone(),
         crate::admission::StorageArtifactStore::shared(journal.clone()),
-    ).expect("valid test configuration");
+    )
+    .expect("valid test configuration");
     shard.seed_journal_sequence(run, vb_storage::EventSeq::new(1))?;
     let frame = shard.take_frame_for(run, &workflow)?;
     shard.release_frame(frame);
@@ -147,7 +149,8 @@ fn single_append_adapter_refusal_preserves_sequence_and_retry_advances_once() ->
         calls: 0.into(),
         refuse: true.into(),
     });
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
+    let mut shard =
+        Shard::new_with_journal(small_config(), journal.clone()).expect("valid test configuration");
     let run = RunId::new(91_004);
     shard
         .seed_journal_sequence(run, vb_storage::EventSeq::new(7))
@@ -179,7 +182,8 @@ fn single_append_new_run_capacity_refuses_before_adapter() -> Result<(), String>
     let journal = std::sync::Arc::new(SubmissionSingletonJournal::default());
     let mut config = small_config();
     config.max_active_runs = 1;
-    let mut shard = Shard::new_with_journal(config, journal.clone()).expect("valid test configuration");
+    let mut shard =
+        Shard::new_with_journal(config, journal.clone()).expect("valid test configuration");
     shard
         .seed_journal_sequence(RunId::new(91_006), vb_storage::EventSeq::new(7))
         .map_err(|e| e.to_string())?;

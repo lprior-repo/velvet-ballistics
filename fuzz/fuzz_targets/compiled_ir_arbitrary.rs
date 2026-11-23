@@ -4,12 +4,12 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use vb_core::workflow::{
+    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, SecretResultPolicy,
+};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
     SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-};
-use vb_core::workflow::{
-    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, SecretResultPolicy,
 };
 
 /// Arbitrary structured test cases for compiled IR validation.
@@ -58,6 +58,7 @@ fuzz_target!(|case: CompiledIrTestCase| {
                     output,
                     routing,
                     kind: CompiledNodeKind::SetConst { value: const_idx },
+                    retry: None,
                 }
             }
             _ if i < node_count - 1 => {
@@ -72,6 +73,7 @@ fuzz_target!(|case: CompiledIrTestCase| {
                     output,
                     routing,
                     kind: CompiledNodeKind::Copy { source },
+                    retry: None,
                 }
             }
             _ => {
@@ -86,6 +88,7 @@ fuzz_target!(|case: CompiledIrTestCase| {
                     output,
                     routing,
                     kind: CompiledNodeKind::Finish { result },
+                    retry: None,
                 }
             }
         };
@@ -98,6 +101,7 @@ fuzz_target!(|case: CompiledIrTestCase| {
         name: "fuzz_arbitrary".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: nodes.clone().into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -139,7 +143,11 @@ fuzz_target!(|case: CompiledIrTestCase| {
     match result {
         Ok(workflow) => {
             assert!(workflow.node_count() >= 1, "node count must be >= 1");
-            assert_eq!(workflow.slot_count(), slot_count, "slot count must be preserved");
+            assert_eq!(
+                workflow.slot_count(),
+                slot_count,
+                "slot count must be preserved"
+            );
 
             for i in 0..workflow.node_count() {
                 let step = StepIdx::new(i);

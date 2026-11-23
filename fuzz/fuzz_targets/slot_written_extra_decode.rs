@@ -11,8 +11,8 @@
 
 use libfuzzer_sys::fuzz_target;
 use vb_storage::slot_extra::{
-    SLOT_WRITTEN_EXTRA_PREFIX, decode_slot_written_extra,
-    encode_slot_written_extra, DecodedSlotWrittenExtra, SlotWrittenExtraError,
+    DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraError,
+    decode_slot_written_extra, encode_slot_written_extra,
 };
 
 fuzz_target!(|data: &[u8]| {
@@ -83,7 +83,10 @@ fuzz_target!(|data: &[u8]| {
         Ok(DecodedSlotWrittenExtra::Envelope(env)) => {
             // Envelope decoded - verify round-trip
             let encoded = encode_slot_written_extra(env.taint, env.frame_extra.clone());
-            assert!(encoded.is_ok(), "Re-encode of decoded envelope must succeed");
+            assert!(
+                encoded.is_ok(),
+                "Re-encode of decoded envelope must succeed"
+            );
         }
         Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(_)) => {
             // Legacy - just accept it
