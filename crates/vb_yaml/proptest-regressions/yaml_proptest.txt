@@ -16,3 +16,4 @@ cc 3ffdd8c81226753e4a6c53216c76521f34de95baef98aad5c1c7861602b148cd # shrinks to
 cc efa6eb45d6724ef8fc0c52f6d9ec986671d48e36bb4bb3f36fa395233cfac746 # shrinks to key = "y", value = "A"
 cc 4c4e5b2bf9d7111c5489281a101d467ab125d60e6f842cade8062fd201ca1845 # shrinks to key = "Y"
 cc 3030dbf6a3342e2b4400d79ff6356f98973e6504dae72d133a30debb4867fd37 # shrinks to key = "aa", value = "Y"
+cc ef1f0e3bf48f17e0e89e049397ca0be522b5adb2be1eeab326e453fb3a543212 # shrinks to key = "on", value = "aAA"
