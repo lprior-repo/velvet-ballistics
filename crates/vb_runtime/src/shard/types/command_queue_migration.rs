@@ -1,4 +1,13 @@
-use crate::shard::types::custody_stage::{MigrationCustody, TransferProgress};
+use crate::shard::types::custody_stage::{Accept, MigrationCustody, TransferProgress};
+
+/// Queue destination for custody transfer; `Err` returns the refused command.
+struct QueuePush<'a>(&'a ArrayQueue<QueuedShardCommand>);
+
+impl Accept<QueuedShardCommand> for QueuePush<'_> {
+    fn accept(self, entry: QueuedShardCommand) -> Result<(), QueuedShardCommand> {
+        self.0.push(entry)
+    }
+}
 
 struct QueueMigrationState {
     fenced: bool,
@@ -90,7 +99,7 @@ impl ShardCommandQueue {
             match self
                 .migration
                 .stage
-                .transfer_front(|entry| self.inner.push(entry).err())
+                .transfer_front(QueuePush(&self.inner))
             {
                 TransferProgress::Accepted => {}
                 TransferProgress::Empty => break,

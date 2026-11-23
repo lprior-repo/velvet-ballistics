@@ -1,6 +1,6 @@
 // Bounded rollback state machine. Requires target FIFO staged first.
 // The owner retains both custody buffers and this state across refusal.
-use super::custody_stage::{MigrationCustody, TransferProgress};
+use super::custody_stage::{Accept, MigrationCustody, TransferProgress};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum RollbackPhase {
@@ -36,8 +36,8 @@ impl MigrationRollback {
         &mut self,
         source: &mut MigrationCustody<T>,
         target: &mut MigrationCustody<T>,
-        push_source: impl FnOnce(T) -> Option<T>,
-        push_target: impl FnOnce(T) -> Option<T>,
+        push_source: impl Accept<T>,
+        push_target: impl Accept<T>,
     ) -> TransferProgress {
         match self.phase {
             RollbackPhase::TargetPrefix => self.restore_target_prefix(target, push_target),
@@ -62,7 +62,7 @@ impl MigrationRollback {
     fn restore_target_prefix<T>(
         &mut self,
         target: &mut MigrationCustody<T>,
-        push_target: impl FnOnce(T) -> Option<T>,
+        push_target: impl Accept<T>,
     ) -> TransferProgress {
         let Some(remaining) = self.target_original_remaining.checked_sub(1) else {
             self.phase = RollbackPhase::SourcePrefix;
@@ -97,12 +97,7 @@ mod tests {
         let mut restored_source = Vec::new();
         let mut restored_target = Vec::new();
         assert_eq!(
-            rollback.step(
-                &mut source,
-                &mut target,
-                |entry| Some(entry),
-                |entry| Some(entry),
-            ),
+            rollback.step(&mut source, &mut target, Err, Err,),
             TransferProgress::Refused
         );
         assert_eq!(target.len(), 2);
@@ -112,11 +107,11 @@ mod tests {
                 &mut target,
                 |item| {
                     restored_source.push(item);
-                    None
+                    Ok(())
                 },
                 |item| {
                     restored_target.push(item);
-                    None
+                    Ok(())
                 },
             );
         }

@@ -86,7 +86,7 @@ mod custody_supplemental_tests {
         assert!(stage.push_back(first).is_ok());
         assert!(stage.push_back(second).is_ok());
         for _ in 0..3 {
-            assert_eq!(stage.transfer_front(|entry| Some(entry)), TransferProgress::Refused);
+            assert_eq!(stage.transfer_front(Err), TransferProgress::Refused);
             assert_eq!(
                 stage.in_flight().map(DropCounter::identity),
                 Some(first_identity)
@@ -122,7 +122,7 @@ mod custody_supplemental_tests {
         assert_eq!(
             stage.transfer_front(|item| {
                 accepted = Some(item);
-                None
+                Ok(())
             }),
             TransferProgress::Accepted
         );
@@ -153,7 +153,7 @@ mod custody_supplemental_tests {
         assert_eq!(
             stage.transfer_front(|item| {
                 called.set(true);
-                Some(item)
+                Err(item)
             }),
             TransferProgress::Empty
         );
