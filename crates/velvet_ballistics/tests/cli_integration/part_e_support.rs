@@ -29,7 +29,8 @@ fn answer_cli_fixture() -> Result<AnswerCliFixture, Box<dyn std::error::Error>> 
     let server = IpcServer::bind(&db.with_extension("sock"))?;
     let journal = std::sync::Arc::new(FjallJournal::open(&db, None)?);
     vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)?;
-    let runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default(), vb_runtime::journal::StorageRuntimeJournal::shared_strict(journal.clone())).expect("valid test configuration");
+    let journal_port = vb_runtime::journal::StorageRuntimeJournal::shared_strict(journal.clone());
+    let runtime = Runtime::new(NonZeroUsize::MIN, ShardConfig::default(), journal_port)?;
     let run = RunId::new(48_001);
     runtime.submit_compiled(run, workflow)?;
     Ok(AnswerCliFixture {

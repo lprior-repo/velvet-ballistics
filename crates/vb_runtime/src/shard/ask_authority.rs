@@ -13,7 +13,7 @@ impl Shard {
 
     /// Looks up the ticket for the run's pending ask whose answer slot is `slot`.
     #[must_use]
-    pub fn lookup_pending_ask_ticket_for_slot(
+    pub(crate) fn lookup_pending_ask_ticket_for_slot(
         &self,
         run: RunId,
         slot: SlotIdx,
