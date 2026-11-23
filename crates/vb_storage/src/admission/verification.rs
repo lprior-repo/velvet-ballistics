@@ -18,6 +18,12 @@ pub(crate) use executor_profile::ExecutorProfile;
 mod ledger;
 use ledger::{effect_closure, obligation_ledger};
 
+#[path = "verification/historical_schema3.rs"]
+mod historical_schema3;
+#[cfg(test)]
+#[path = "verification/historical_schema3_tests.rs"]
+mod historical_schema3_tests;
+
 /// Prepare a checked envelope without writing a journal or claiming a durable ack.
 /// External assumptions in the ledger remain assumptions, not executed evidence.
 pub fn prepare_compiled_artifact(
@@ -164,12 +170,11 @@ pub(crate) fn verify_expected_bindings(
     actual: &AcceptedArtifact,
     expected: &AcceptedArtifact,
 ) -> Result<(), JournalError> {
-    let mut proof = actual.verification.clone();
-    proof.digest = expected.verification.digest;
+    let proof = historical_schema3::expected_proof(actual, expected)?;
     if actual.source_digest != expected.source_digest
         || actual.policy_digest != expected.policy_digest
         || actual.ir != expected.ir
-        || proof != expected.verification
+        || actual.verification != proof
         || actual.required_capabilities != expected.required_capabilities
     {
         return Err(JournalError::ArtifactMalformed);
