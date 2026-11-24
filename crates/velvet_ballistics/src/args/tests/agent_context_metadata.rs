@@ -180,3 +180,72 @@ fn query_command_metadata_lists_every_parser_accepted_flag() -> TestResult {
     );
     Ok(())
 }
+
+const STATUS_VALUES: [&str; 6] = [
+    "pending",
+    "active",
+    "waiting_answer",
+    "cancelled",
+    "completed",
+    "failed",
+];
+
+#[test]
+fn query_command_metadata_types_and_status_enum_match_parser() -> TestResult {
+    let context = build("test");
+    let expected_types = [
+        ("events", "--limit", "i64"),
+        ("trace", "--step", "u16"),
+        ("trace", "--action", "u16"),
+        ("trace", "--since-seq", "u64"),
+        ("trace", "--until-seq", "u64"),
+        ("trace", "--limit", "usize"),
+        ("retry", "--step", "u16"),
+    ];
+    for (command, flag, kind) in expected_types {
+        assert_eq!(
+            context.pointer(&format!("/commands/{command}/flags/{flag}/type")),
+            Some(&json!(kind)),
+            "{command} {flag}"
+        );
+    }
+    for command in ["events", "trace"] {
+        assert_eq!(
+            context.pointer(&format!("/commands/{command}/flags/--status/values")),
+            Some(&json!(STATUS_VALUES)),
+            "{command} --status"
+        );
+        for status in STATUS_VALUES {
+            assert!(
+                parsed(&[command, "7", "--db", "s", "--status", status]).is_ok(),
+                "{command} must accept advertised status {status}"
+            );
+        }
+        assert_eq!(
+            parsed(&[command, "7", "--db", "s", "--status", "bogus"]),
+            Err(ParseError::UnknownEventStatus("bogus".into()))
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn events_and_trace_numeric_domains_match_metadata_types() -> TestResult {
+    assert_eq!(
+        parsed(&[
+            "events", "7", "--db", "s", "--status", "failed", "--limit", "-1"
+        ]),
+        Ok(Command::Events {
+            run_id: "7".into(),
+            db: PathBuf::from("s"),
+            output: OutputFormat::Text,
+            status: Some(crate::args::EventStatus::Failed),
+            limit: Some(-1),
+        })
+    );
+    assert!(parsed(&["events", "7", "--db", "s", "--limit", "9223372036854775808"]).is_err());
+    assert!(parsed(&["trace", "7", "--db", "s", "--since-seq", "-1"]).is_err());
+    assert!(parsed(&["trace", "7", "--db", "s", "--step", "65536"]).is_err());
+    assert!(parsed(&["trace", "7", "--db", "s", "--limit", "-1"]).is_err());
+    Ok(())
+}
