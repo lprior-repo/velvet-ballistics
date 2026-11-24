@@ -85,10 +85,10 @@ fn overflowing_deadline_opening_is_rejected_at_admission_recovery_and_replay()
         person("bob"),
         vb_storage::EventSeq::new(1),
     )];
-    assert_eq!(
-        reconstruct_bound_open_gates(&journal).err(),
-        Some(GateError::DeadlineOverflow)
-    );
+    assert!(matches!(
+        reconstruct_bound_open_gates(&journal),
+        Err(GateError::DeadlineOverflow)
+    ));
     assert_eq!(
         replay_bound_gate_history(&journal).err(),
         Some(GateError::DeadlineOverflow)
@@ -158,10 +158,10 @@ fn deadline_exact_fit_recovers_and_one_past_fails_closed() -> Result<(), Box<dyn
         person("bob"),
         vb_storage::EventSeq::new(1),
     )];
-    assert_eq!(
-        reconstruct_bound_open_gates(&overflowing).err(),
-        Some(GateError::DeadlineOverflow)
-    );
+    assert!(matches!(
+        reconstruct_bound_open_gates(&overflowing),
+        Err(GateError::DeadlineOverflow)
+    ));
     assert_eq!(
         replay_bound_gate_history(&overflowing).err(),
         Some(GateError::DeadlineOverflow)

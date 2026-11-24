@@ -16,7 +16,7 @@ pub use receipt::RegisterReceipt;
 pub use register::FjallRegister;
 
 #[cfg(test)]
-mod issuance_test_support;
+pub(crate) mod issuance_test_support;
 
 #[cfg(test)]
 mod issuance_tests;

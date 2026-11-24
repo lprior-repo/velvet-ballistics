@@ -24,7 +24,7 @@ pub(super) fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), B
 }
 
 /// Build a minimal compiled workflow with no actions.
-pub(super) fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
+pub(crate) fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
     let mut parts = parts_from("test_minimal");
     parts.constants = Box::new([ConstValue::I64(42)]);
     parts.slot_count = 1;
@@ -33,7 +33,7 @@ pub(super) fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
 }
 
 /// Build a compiled workflow containing one action invocation.
-pub(super) fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
+pub(crate) fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
     let mut parts = parts_from("test_action");
     parts.nodes = Box::new([set_node(), action_node(), finish_node(2, 1)]);
     parts.constants = Box::new([ConstValue::I64(42)]);
@@ -104,7 +104,7 @@ fn canonicalize_parts(parts: &mut WorkflowParts) -> Result<(), BoxError> {
 }
 
 /// Build an action contract for a register action with REQUIRED capability.
-pub(super) fn action_contract() -> Result<ActionContract, BoxError> {
+pub(crate) fn action_contract() -> Result<ActionContract, BoxError> {
     let contract = ActionContract {
         id: vb_core::ActionId::new(0),
         name: ActionName::new("test_register")?,
@@ -175,16 +175,16 @@ pub(super) fn verify_artifact_readback(
 }
 
 /// Complete packed-verification fixture for test modules.
-pub(super) struct PackedFixture {
-    pub(super) catalog: super::ExecutorCatalog,
-    pub(super) workflow: CompiledWorkflow,
+pub(crate) struct PackedFixture {
+    pub(crate) catalog: super::ExecutorCatalog,
+    pub(crate) workflow: CompiledWorkflow,
     pub(super) contract: ActionContract,
     pub(super) pack: ActionPack,
 }
 
 impl PackedFixture {
     /// Construct a fixture with actual conformance results.
-    pub(super) fn new() -> Result<Self, BoxError> {
+    pub(crate) fn new() -> Result<Self, BoxError> {
         let catalog = super::ExecutorCatalog::run_registered_conformance()?;
         let contract = action_contract()?;
         let pack =
@@ -199,7 +199,7 @@ impl PackedFixture {
     }
 
     /// Prepare an artifact from this fixture's workflow and pack.
-    pub(super) fn prepare(
+    pub(crate) fn prepare(
         &self,
         policy: RuntimePolicy,
     ) -> Result<AcceptedArtifact, super::ExecutorError> {

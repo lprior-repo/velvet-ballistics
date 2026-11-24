@@ -223,10 +223,10 @@ fn zero_binding_is_rejected_at_decision_and_recovery() {
             vb_storage::EventSeq::new(1),
         );
         let slice = std::slice::from_ref(&opened);
-        assert_eq!(
-            reconstruct_bound_open_gates(slice).err(),
-            Some(GateError::InvalidGate)
-        );
+        assert!(matches!(
+            reconstruct_bound_open_gates(slice),
+            Err(GateError::InvalidGate)
+        ));
         assert_eq!(
             replay_bound_gate_history(slice).err(),
             Some(GateError::InvalidGate)
