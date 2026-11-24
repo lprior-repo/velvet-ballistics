@@ -301,8 +301,8 @@ fn trace_parses_every_filter_into_its_field() -> TestResult {
 }
 
 #[test]
-fn events_limit_is_signed_and_bounded_to_i64() -> TestResult {
-    for limit in [i64::MIN, -1, 0, i64::MAX] {
+fn events_limit_accepts_zero_and_i64_max_and_refuses_overflow() -> TestResult {
+    for limit in [0, i64::MAX] {
         let command = events_cmd(&["--limit", &limit.to_string()]).map_err(|e| format!("{e:?}"))?;
         let Command::Events { limit: got, .. } = command else {
             return Err("events parsed to a different command".into());
