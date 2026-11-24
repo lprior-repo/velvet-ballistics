@@ -181,20 +181,42 @@ fn query_command_metadata_lists_every_parser_accepted_flag() -> TestResult {
     Ok(())
 }
 
-const STATUS_VALUES: [&str; 6] = [
-    "pending",
-    "active",
-    "waiting_answer",
-    "cancelled",
-    "completed",
-    "failed",
+use crate::args::EventStatus;
+use crate::commands_journal::{TraceFilters, TraceStatus};
+
+const EVENT_STATUSES: [EventStatus; 6] = [
+    EventStatus::Pending,
+    EventStatus::Active,
+    EventStatus::WaitingAnswer,
+    EventStatus::Cancelled,
+    EventStatus::Completed,
+    EventStatus::Failed,
 ];
+
+const TRACE_STATUSES: [TraceStatus; 6] = [
+    TraceStatus::Pending,
+    TraceStatus::Active,
+    TraceStatus::WaitingAnswer,
+    TraceStatus::Cancelled,
+    TraceStatus::Completed,
+    TraceStatus::Failed,
+];
+
+fn events_cmd(extra: &[&str]) -> Result<Command, ParseError> {
+    parsed(&[&["events", "7", "--db", "s"], extra].concat())
+}
+
+fn trace_cmd(extra: &[&str]) -> Result<Command, ParseError> {
+    parsed(&[&["trace", "7", "--db", "s"], extra].concat())
+}
 
 #[test]
 fn query_command_metadata_types_and_status_enum_match_parser() -> TestResult {
     let context = build("test");
     let expected_types = [
+        ("events", "--status", "enum"),
         ("events", "--limit", "i64"),
+        ("trace", "--status", "enum"),
         ("trace", "--step", "u16"),
         ("trace", "--action", "u16"),
         ("trace", "--since-seq", "u64"),
@@ -209,43 +231,107 @@ fn query_command_metadata_types_and_status_enum_match_parser() -> TestResult {
             "{command} {flag}"
         );
     }
+    let advertised: Vec<&str> = EVENT_STATUSES.iter().map(EventStatus::as_str).collect();
+    let advertised_trace: Vec<&str> = TRACE_STATUSES.iter().map(|s| s.as_str()).collect();
+    assert_eq!(advertised, advertised_trace);
     for command in ["events", "trace"] {
         assert_eq!(
             context.pointer(&format!("/commands/{command}/flags/--status/values")),
-            Some(&json!(STATUS_VALUES)),
+            Some(&json!(advertised)),
             "{command} --status"
-        );
-        for status in STATUS_VALUES {
-            assert!(
-                parsed(&[command, "7", "--db", "s", "--status", status]).is_ok(),
-                "{command} must accept advertised status {status}"
-            );
-        }
-        assert_eq!(
-            parsed(&[command, "7", "--db", "s", "--status", "bogus"]),
-            Err(ParseError::UnknownEventStatus("bogus".into()))
         );
     }
     Ok(())
 }
 
 #[test]
-fn events_and_trace_numeric_domains_match_metadata_types() -> TestResult {
-    assert_eq!(
-        parsed(&[
-            "events", "7", "--db", "s", "--status", "failed", "--limit", "-1"
-        ]),
-        Ok(Command::Events {
-            run_id: "7".into(),
-            db: PathBuf::from("s"),
-            output: OutputFormat::Text,
-            status: Some(crate::args::EventStatus::Failed),
-            limit: Some(-1),
-        })
-    );
-    assert!(parsed(&["events", "7", "--db", "s", "--limit", "9223372036854775808"]).is_err());
-    assert!(parsed(&["trace", "7", "--db", "s", "--since-seq", "-1"]).is_err());
-    assert!(parsed(&["trace", "7", "--db", "s", "--step", "65536"]).is_err());
-    assert!(parsed(&["trace", "7", "--db", "s", "--limit", "-1"]).is_err());
+fn status_flag_returns_the_matching_variant_and_refuses_unknown() -> TestResult {
+    for status in EVENT_STATUSES {
+        let command = events_cmd(&["--status", status.as_str()]).map_err(|e| format!("{e:?}"))?;
+        let Command::Events { status: got, .. } = command else {
+            return Err("events parsed to a different command".into());
+        };
+        assert_eq!(got, Some(status));
+    }
+    for status in TRACE_STATUSES {
+        let command = trace_cmd(&["--status", status.as_str()]).map_err(|e| format!("{e:?}"))?;
+        let Command::Trace { filters, .. } = command else {
+            return Err("trace parsed to a different command".into());
+        };
+        assert_eq!(filters.status, Some(status));
+    }
+    let unknown = Err(ParseError::UnknownEventStatus("bogus".into()));
+    assert_eq!(events_cmd(&["--status", "bogus"]), unknown);
+    assert_eq!(trace_cmd(&["--status", "bogus"]), unknown);
     Ok(())
+}
+
+#[test]
+fn trace_parses_every_filter_into_its_field() -> TestResult {
+    let command = trace_cmd(&[
+        "--step",
+        "1",
+        "--action",
+        "2",
+        "--status",
+        "active",
+        "--since-seq",
+        "3",
+        "--until-seq",
+        "9",
+        "--limit",
+        "4",
+    ])
+    .map_err(|e| format!("{e:?}"))?;
+    let Command::Trace { filters, .. } = command else {
+        return Err("trace parsed to a different command".into());
+    };
+    assert_eq!(
+        filters,
+        TraceFilters {
+            step: Some(1),
+            action: Some(2),
+            status: Some(TraceStatus::Active),
+            since_seq: Some(3),
+            until_seq: Some(9),
+            limit: Some(4),
+        }
+    );
+    Ok(())
+}
+
+#[test]
+fn events_limit_is_signed_and_bounded_to_i64() -> TestResult {
+    for limit in [i64::MIN, -1, 0, i64::MAX] {
+        let command = events_cmd(&["--limit", &limit.to_string()]).map_err(|e| format!("{e:?}"))?;
+        let Command::Events { limit: got, .. } = command else {
+            return Err("events parsed to a different command".into());
+        };
+        assert_eq!(got, Some(limit));
+    }
+    assert!(events_cmd(&["--limit", &format!("{}0", i64::MAX)]).is_err());
+    Ok(())
+}
+
+#[test]
+fn trace_and_retry_numeric_flags_accept_their_max_and_refuse_overflow() {
+    let u16_max = u16::MAX.to_string();
+    let u16_over = format!("{u16_max}0");
+    for flag in ["--step", "--action"] {
+        assert!(trace_cmd(&[flag, &u16_max]).is_ok(), "trace {flag} max");
+        assert!(trace_cmd(&[flag, &u16_over]).is_err(), "trace {flag} over");
+    }
+    assert!(parsed(&["retry", "7", "--db", "s", "--step", &u16_max]).is_ok());
+    assert!(parsed(&["retry", "7", "--db", "s", "--step", &u16_over]).is_err());
+    let u64_max = u64::MAX.to_string();
+    let u64_over = format!("{u64_max}0");
+    for flag in ["--since-seq", "--until-seq"] {
+        assert!(trace_cmd(&[flag, &u64_max]).is_ok(), "trace {flag} max");
+        assert!(trace_cmd(&[flag, &u64_over]).is_err(), "trace {flag} over");
+        assert!(trace_cmd(&[flag, "-1"]).is_err(), "trace {flag} negative");
+    }
+    let usize_max = usize::MAX.to_string();
+    assert!(trace_cmd(&["--limit", &usize_max]).is_ok());
+    assert!(trace_cmd(&["--limit", &format!("{usize_max}0")]).is_err());
+    assert!(trace_cmd(&["--limit", "-1"]).is_err());
 }
