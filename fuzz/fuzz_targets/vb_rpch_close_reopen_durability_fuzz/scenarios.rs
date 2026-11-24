@@ -1,13 +1,13 @@
-use super::*;
-pub(super) fn durability_close_reopen(run: RunId, data: &[u8]) {
-    let event_count = bounded_count(data, 1, MAX_BATCH_SIZE);
-    let Some(events) = build_events(run, event_count) else {
-        return;
-    };
+use std::path::Path;
 
-    let dir = tempfile::tempdir().expect("setup: tempdir");
+use super::*;
+
+pub(super) fn durability_close_reopen(run: RunId, data: &[u8], dir: &Path) {
+    let event_count = bounded_count(data, 1, MAX_BATCH_SIZE);
+    let events = build_events(run, event_count);
+
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "initial journal open must succeed: {:?}",
@@ -26,7 +26,7 @@ pub(super) fn durability_close_reopen(run: RunId, data: &[u8]) {
         );
     }
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "reopened journal must open: {:?}",
@@ -59,19 +59,14 @@ pub(super) fn durability_close_reopen(run: RunId, data: &[u8]) {
     }
 }
 
-pub(super) fn durability_partial_write(run: RunId, data: &[u8]) {
+pub(super) fn durability_partial_write(run: RunId, data: &[u8], dir: &Path) {
     let batch1_count = bounded_count(data, 1, 4);
     let batch2_count = bounded_count(data, 1, 4);
-    let Some(batch1) = build_events(run, batch1_count) else {
-        return;
-    };
-    let Some(batch2) = build_events_from(run, batch1_count as u64, batch2_count) else {
-        return;
-    };
+    let batch1 = build_events(run, batch1_count);
+    let batch2 = build_events_from(run, u64::from(batch1_count), batch2_count);
 
-    let dir = tempfile::tempdir().expect("setup: tempdir");
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "initial journal open must succeed: {:?}",
@@ -91,7 +86,7 @@ pub(super) fn durability_partial_write(run: RunId, data: &[u8]) {
     }
 
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "reopened journal must open: {:?}",
@@ -111,7 +106,7 @@ pub(super) fn durability_partial_write(run: RunId, data: &[u8]) {
     }
 
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "verify: journal open must succeed: {:?}",
@@ -125,7 +120,7 @@ pub(super) fn durability_partial_write(run: RunId, data: &[u8]) {
             Ok(replayed_events) => {
                 assert_eq!(
                     replayed_events.len(),
-                    batch1_count + batch2_count,
+                    batch1.len().saturating_add(batch2.len()),
                     "all batches must survive close/reopen/append"
                 );
             }
@@ -144,15 +139,12 @@ pub(super) fn durability_partial_write(run: RunId, data: &[u8]) {
     }
 }
 
-pub(super) fn durability_multiple_closes(run: RunId, data: &[u8]) {
+pub(super) fn durability_multiple_closes(run: RunId, data: &[u8], dir: &Path) {
     let event_count = bounded_count(data, 1, 4);
-    let Some(events) = build_events(run, event_count) else {
-        return;
-    };
+    let events = build_events(run, event_count);
 
-    let dir = tempfile::tempdir().expect("setup: tempdir");
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "initial journal open must succeed: {:?}",
@@ -173,7 +165,7 @@ pub(super) fn durability_multiple_closes(run: RunId, data: &[u8]) {
 
     for _i in 0..3 {
         {
-            let journal = FjallJournal::open(dir.path(), None);
+            let journal = FjallJournal::open(dir, None);
             assert!(
                 journal.is_ok(),
                 "reopened journal must open: {:?}",
@@ -187,7 +179,7 @@ pub(super) fn durability_multiple_closes(run: RunId, data: &[u8]) {
     }
 
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "final verify: journal open must succeed: {:?}",
@@ -220,20 +212,15 @@ pub(super) fn durability_multiple_closes(run: RunId, data: &[u8]) {
     }
 }
 
-pub(super) fn durability_concurrent_style(run: RunId, data: &[u8]) {
+pub(super) fn durability_concurrent_style(run: RunId, data: &[u8], dir: &Path) {
     let run2 = RunId::new(2);
     let count1 = bounded_count(data, 1, 4);
     let count2 = bounded_count(data, 1, 4);
-    let Some(events1) = build_events(run, count1) else {
-        return;
-    };
-    let Some(events2) = build_events(run2, count2) else {
-        return;
-    };
+    let events1 = build_events(run, count1);
+    let events2 = build_events(run2, count2);
 
-    let dir = tempfile::tempdir().expect("setup: tempdir");
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "initial journal open must succeed: {:?}",
@@ -257,7 +244,7 @@ pub(super) fn durability_concurrent_style(run: RunId, data: &[u8]) {
     }
 
     {
-        let journal = FjallJournal::open(dir.path(), None);
+        let journal = FjallJournal::open(dir, None);
         assert!(
             journal.is_ok(),
             "verify: journal open must succeed: {:?}",
@@ -269,7 +256,11 @@ pub(super) fn durability_concurrent_style(run: RunId, data: &[u8]) {
         let replayed1 = journal.events_for_run_full(run);
         match replayed1 {
             Ok(replayed) => {
-                assert_eq!(replayed.len(), count1, "run1 must see only its own events");
+                assert_eq!(
+                    replayed.len(),
+                    events1.len(),
+                    "run1 must see only its own events"
+                );
             }
             Err(error) => {
                 assert!(
@@ -282,7 +273,11 @@ pub(super) fn durability_concurrent_style(run: RunId, data: &[u8]) {
         let replayed2 = journal.events_for_run_full(run2);
         match replayed2 {
             Ok(replayed) => {
-                assert_eq!(replayed.len(), count2, "run2 must see only its own events");
+                assert_eq!(
+                    replayed.len(),
+                    events2.len(),
+                    "run2 must see only its own events"
+                );
             }
             Err(error) => {
                 assert!(

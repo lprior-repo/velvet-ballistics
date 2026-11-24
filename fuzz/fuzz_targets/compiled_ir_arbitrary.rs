@@ -31,24 +31,23 @@ impl<'a> arbitrary::Arbitrary<'a> for CompiledIrTestCase {
 }
 
 fuzz_target!(|case: CompiledIrTestCase| {
-    let slot_count = (case.slot_count % 16) + 1;
-    let node_count = (case.node_count % 8) + 1;
+    let slot_count = (case.slot_count % 16).saturating_add(1);
+    let node_count = u16::from((case.node_count % 8).saturating_add(1));
 
-    let slot_refs: Vec<SlotIdx> = case
+    let slots = case
         .slot_refs
         .iter()
+        .copied()
         .take(8)
-        .map(|&b| SlotIdx::new(u16::from(b)))
-        .collect();
+        .map(|byte| SlotIdx::new(u16::from(byte)));
 
-    let mut nodes = Vec::with_capacity(node_count as usize);
-
-    for i in 0..node_count {
-        let step = StepIdx::new(i as u16);
+    let mut nodes = Vec::with_capacity(usize::from(node_count));
+    for (i, (slot, next_slot)) in (0..node_count).zip(slots.clone().zip(slots.cycle().skip(1))) {
+        let step = StepIdx::new(i);
         let node = match i {
             0 => {
                 let const_idx = ConstIdx::new(0);
-                let output = NodeOutput::Slot(slot_refs[0]);
+                let output = NodeOutput::Slot(slot);
                 let routing = NodeRouting {
                     next: NodeContinuation::Step(StepIdx::new(1)),
                     error: ErrorRouting::None,
@@ -61,24 +60,22 @@ fuzz_target!(|case: CompiledIrTestCase| {
                     retry: None,
                 }
             }
-            _ if i < node_count - 1 => {
-                let source = slot_refs[i as usize % slot_refs.len()];
-                let output = NodeOutput::Slot(slot_refs[(i + 1) as usize % slot_refs.len()]);
+            _ if i < node_count.saturating_sub(1) => {
+                let output = NodeOutput::Slot(next_slot);
                 let routing = NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(i as u16 + 1)),
+                    next: NodeContinuation::Step(StepIdx::new(i.saturating_add(1))),
                     error: ErrorRouting::None,
                 };
                 CompiledNode {
                     id: step,
                     output,
                     routing,
-                    kind: CompiledNodeKind::Copy { source },
+                    kind: CompiledNodeKind::Copy { source: slot },
                     retry: None,
                 }
             }
             _ => {
-                let result = slot_refs[i as usize % slot_refs.len()];
-                let output = NodeOutput::Slot(result);
+                let output = NodeOutput::Slot(slot);
                 let routing = NodeRouting {
                     next: NodeContinuation::End,
                     error: ErrorRouting::None,
@@ -87,7 +84,7 @@ fuzz_target!(|case: CompiledIrTestCase| {
                     id: step,
                     output,
                     routing,
-                    kind: CompiledNodeKind::Finish { result },
+                    kind: CompiledNodeKind::Finish { result: slot },
                     retry: None,
                 }
             }
@@ -95,18 +92,20 @@ fuzz_target!(|case: CompiledIrTestCase| {
         nodes.push(node);
     }
 
-    let constants = vec![ConstValue::I64(0)];
+    let step_names = (0..node_count)
+        .map(|i| format!("step_{i}").into())
+        .collect();
 
     let parts = WorkflowParts {
         name: "fuzz_arbitrary".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
         source_metadata: None,
-        nodes: nodes.clone().into_boxed_slice(),
+        nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: constants.into_boxed_slice(),
-        slot_count: slot_count as u16,
+        constants: Box::new([ConstValue::I64(0)]),
+        slot_count,
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract {
@@ -129,100 +128,58 @@ fuzz_target!(|case: CompiledIrTestCase| {
             max_journal_batch_bytes: u32::MAX,
             allows_secret_results: SecretResultPolicy::Allow,
         },
-        step_names: nodes
-            .iter()
-            .enumerate()
-            .map(|(i, _)| format!("step_{i}").into())
-            .collect::<Vec<_>>()
-            .into_boxed_slice(),
+        step_names,
         input_slots: Box::new([]),
     };
 
-    let result = CompiledWorkflow::try_from_parts(parts);
+    // Rejection is expected for generated invalid parts.
+    let Ok(workflow) = CompiledWorkflow::try_from_parts(parts) else {
+        return;
+    };
+    assert!(workflow.node_count() >= 1, "node count must be >= 1");
+    assert_eq!(
+        workflow.slot_count(),
+        slot_count,
+        "slot count must be preserved"
+    );
 
-    match result {
-        Ok(workflow) => {
-            assert!(workflow.node_count() >= 1, "node count must be >= 1");
-            assert_eq!(
-                workflow.slot_count(),
-                slot_count,
-                "slot count must be preserved"
+    for i in 0..workflow.node_count() {
+        let node = workflow.node(StepIdx::new(i));
+        assert!(node.is_some(), "node {i} must exist");
+        let Some(node) = node else {
+            continue;
+        };
+
+        if let Some(output) = node.output.slot() {
+            assert!(
+                output.get() < slot_count,
+                "node {} output slot {} out of bounds (slot_count={})",
+                i,
+                output.get(),
+                slot_count
             );
-
-            for i in 0..workflow.node_count() {
-                let step = StepIdx::new(i);
-                let node = match workflow.node(step) {
-                    Some(n) => n,
-                    None => panic!("node {} must exist", i),
-                };
-
-                if let Some(output) = node.output.slot() {
-                    assert!(
-                        output.get() < slot_count,
-                        "node {} output slot {} out of bounds (slot_count={})",
-                        i,
-                        output.get(),
-                        slot_count
-                    );
-                }
-
-                match &node.kind {
-                    CompiledNodeKind::Copy { source } => {
-                        assert!(
-                            source.get() < slot_count,
-                            "node {} Copy source slot {} out of bounds (slot_count={})",
-                            i,
-                            source.get(),
-                            slot_count
-                        );
-                    }
-                    CompiledNodeKind::Finish { result } => {
-                        assert!(
-                            result.get() < slot_count,
-                            "node {} Finish result slot {} out of bounds (slot_count={})",
-                            i,
-                            result.get(),
-                            slot_count
-                        );
-                    }
-                    CompiledNodeKind::SetConst { .. }
-                    | CompiledNodeKind::Nop
-                    | CompiledNodeKind::EvalExpr { .. }
-                    | CompiledNodeKind::BuildObject { .. }
-                    | CompiledNodeKind::BuildList { .. }
-                    | CompiledNodeKind::Do { .. }
-                    | CompiledNodeKind::Choose { .. }
-                    | CompiledNodeKind::ChooseSlot { .. }
-                    | CompiledNodeKind::ForEachStart { .. }
-                    | CompiledNodeKind::ForEachNext { .. }
-                    | CompiledNodeKind::ForEachJoin { .. }
-                    | CompiledNodeKind::TogetherStart { .. }
-                    | CompiledNodeKind::TogetherBranch { .. }
-                    | CompiledNodeKind::TogetherJoin { .. }
-                    | CompiledNodeKind::CollectStart { .. }
-                    | CompiledNodeKind::CollectPage { .. }
-                    | CompiledNodeKind::CollectNext { .. }
-                    | CompiledNodeKind::CollectFinish { .. }
-                    | CompiledNodeKind::ReduceStart { .. }
-                    | CompiledNodeKind::ReduceNext { .. }
-                    | CompiledNodeKind::ReduceFinish { .. }
-                    | CompiledNodeKind::RepeatStart { .. }
-                    | CompiledNodeKind::RepeatAttempt { .. }
-                    | CompiledNodeKind::RepeatCheck { .. }
-                    | CompiledNodeKind::RepeatFinish { .. }
-                    | CompiledNodeKind::WaitUntil { .. }
-                    | CompiledNodeKind::WaitEvent { .. }
-                    | CompiledNodeKind::Ask { .. }
-                    | CompiledNodeKind::AskResume { .. }
-                    | CompiledNodeKind::RetryCheck { .. }
-                    | CompiledNodeKind::ErrorHandler { .. }
-                    | CompiledNodeKind::Jump { .. }
-                    | _ => {}
-                }
-            }
         }
-        Err(e) => {
-            let _ = format!("{:?}", e);
+
+        match &node.kind {
+            CompiledNodeKind::Copy { source } => {
+                assert!(
+                    source.get() < slot_count,
+                    "node {} Copy source slot {} out of bounds (slot_count={})",
+                    i,
+                    source.get(),
+                    slot_count
+                );
+            }
+            CompiledNodeKind::Finish { result } => {
+                assert!(
+                    result.get() < slot_count,
+                    "node {} Finish result slot {} out of bounds (slot_count={})",
+                    i,
+                    result.get(),
+                    slot_count
+                );
+            }
+            _ => {}
         }
     }
 });
