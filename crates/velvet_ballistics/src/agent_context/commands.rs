@@ -85,7 +85,13 @@ pub(super) fn commands() -> Value {
         command("inspect", run_id_db_command("Inspect a durable run.")),
         command(
             "events",
-            run_id_db_command("List durable events for a run."),
+            run_query_command(
+                "List durable events for a run.",
+                serde_json::json!({
+                    "--status": event_status_flag(),
+                    "--limit": {"type": "i64"}
+                }),
+            ),
         ),
         command(
             "replay",
@@ -93,11 +99,24 @@ pub(super) fn commands() -> Value {
         ),
         command(
             "trace",
-            run_id_db_command("Show step-by-step execution trace."),
+            run_query_command(
+                "Show step-by-step execution trace.",
+                serde_json::json!({
+                    "--step": {"type": "u16"},
+                    "--action": {"type": "u16"},
+                    "--status": event_status_flag(),
+                    "--since-seq": {"type": "u64"},
+                    "--until-seq": {"type": "u64"},
+                    "--limit": {"type": "usize"}
+                }),
+            ),
         ),
         command(
             "retry",
-            run_id_db_command("Retry a failed run from its last successful step."),
+            run_query_command(
+                "Retry a failed run from its last successful step.",
+                serde_json::json!({"--step": {"type": "u16", "required": true}}),
+            ),
         ),
         command("resume", run_id_db_command("Resume a suspended run.")),
         command(
@@ -188,5 +207,22 @@ fn run_id_db_command(summary: &str) -> Value {
         "summary": summary,
         "positionals": ["run_id"],
         "flags": db_output_flags()
+    })
+}
+
+fn run_query_command(summary: &str, extra_flags: Value) -> Value {
+    let mut command = run_id_db_command(summary);
+    if let (Some(flags), Value::Object(extra)) = (command.get_mut("flags"), extra_flags)
+        && let Some(flags) = flags.as_object_mut()
+    {
+        flags.extend(extra);
+    }
+    command
+}
+
+fn event_status_flag() -> Value {
+    serde_json::json!({
+        "type": "enum",
+        "values": ["pending", "active", "waiting_answer", "cancelled", "completed", "failed"]
     })
 }

@@ -111,3 +111,72 @@ fn assert_slot_parser_route() -> TestResult {
     );
     Ok(())
 }
+
+fn flag_names(context: &Value, command: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let flags = context
+        .pointer(&format!("/commands/{command}/flags"))
+        .and_then(Value::as_object)
+        .ok_or("command flags")?;
+    let mut names: Vec<String> = flags.keys().cloned().collect();
+    names.sort();
+    Ok(names)
+}
+
+#[test]
+fn query_command_metadata_lists_every_parser_accepted_flag() -> TestResult {
+    let context = build("test");
+    assert_eq!(
+        flag_names(&context, "events")?,
+        ["--db", "--emit", "--limit", "--status"]
+    );
+    assert_eq!(
+        flag_names(&context, "trace")?,
+        [
+            "--action",
+            "--db",
+            "--emit",
+            "--limit",
+            "--since-seq",
+            "--status",
+            "--step",
+            "--until-seq"
+        ]
+    );
+    assert_eq!(flag_names(&context, "retry")?, ["--db", "--emit", "--step"]);
+    assert_eq!(
+        context.pointer("/commands/retry/flags/--step/required"),
+        Some(&json!(true))
+    );
+    assert!(
+        parsed(&[
+            "events", "7", "--db", "s", "--status", "failed", "--limit", "5"
+        ])
+        .is_ok()
+    );
+    assert!(
+        parsed(&[
+            "trace",
+            "7",
+            "--db",
+            "s",
+            "--step",
+            "1",
+            "--action",
+            "2",
+            "--status",
+            "active",
+            "--since-seq",
+            "3",
+            "--until-seq",
+            "9",
+            "--limit",
+            "4",
+        ])
+        .is_ok()
+    );
+    assert_eq!(
+        parsed(&["retry", "7", "--db", "s"]),
+        Err(ParseError::MissingArgument("--step"))
+    );
+    Ok(())
+}

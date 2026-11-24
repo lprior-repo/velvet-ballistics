@@ -10,6 +10,7 @@ fn args(parts: &[&str]) -> Vec<OsString> {
     parts.iter().map(|part| OsString::from(*part)).collect()
 }
 
+mod agent_context_metadata;
 mod parse_answer;
 mod parse_misc;
 mod parse_misc2;
