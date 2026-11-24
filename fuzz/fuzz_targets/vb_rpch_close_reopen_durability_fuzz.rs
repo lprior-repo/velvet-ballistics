@@ -5,18 +5,24 @@ use libfuzzer_sys::fuzz_target;
 use vb_core::{RunId, StepIdx};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
-const MAX_BATCH_SIZE: usize = 12;
+const MAX_BATCH_SIZE: u16 = 12;
 
 fuzz_target!(|data: &[u8]| {
     let run = RunId::new(1);
-    let mode = data.first().copied().unwrap_or(0);
+    let mode = data.first().map_or(0, |&byte| byte);
     let scenario = mode % 4;
 
+    let dir = tempfile::tempdir();
+    assert!(dir.is_ok(), "durability scenario {scenario}: {dir:?}");
+    let Ok(dir) = dir else {
+        return;
+    };
+
     match scenario {
-        0 => durability_close_reopen(run, data),
-        1 => durability_partial_write(run, data),
-        2 => durability_multiple_closes(run, data),
-        _ => durability_concurrent_style(run, data),
+        0 => durability_close_reopen(run, data, dir.path()),
+        1 => durability_partial_write(run, data, dir.path()),
+        2 => durability_multiple_closes(run, data, dir.path()),
+        _ => durability_concurrent_style(run, data, dir.path()),
     }
 });
 
@@ -24,44 +30,26 @@ fuzz_target!(|data: &[u8]| {
 mod scenarios;
 use scenarios::*;
 
-fn bounded_count(data: &[u8], min: usize, max: usize) -> usize {
-    if data.is_empty() {
+fn bounded_count(data: &[u8], min: u16, max: u16) -> u16 {
+    let Some(&byte) = data.first() else {
         return min;
-    }
-    let byte = data[0];
-    if max <= min {
-        return min;
-    }
-    let span = max - min;
-    min + (byte as usize) % span
+    };
+    u16::from(byte)
+        .checked_rem(max.saturating_sub(min))
+        .map_or(min, |offset| min.saturating_add(offset))
 }
 
-fn build_events(run: RunId, count: usize) -> Option<Vec<JournalEvent>> {
-    let mut events = Vec::with_capacity(count);
-    for i in 0..count {
-        let seq = EventSeq::new(i as u64);
-        let step = StepIdx::new(i as u16);
-        events.push(JournalEvent::StepStarted {
-            run,
-            seq,
-            step,
-            attempt: 1,
-        });
-    }
-    Some(events)
+fn build_events(run: RunId, count: u16) -> Vec<JournalEvent> {
+    build_events_from(run, 0, count)
 }
 
-fn build_events_from(run: RunId, start_seq: u64, count: usize) -> Option<Vec<JournalEvent>> {
-    let mut events = Vec::with_capacity(count);
-    for i in 0..count {
-        let seq = EventSeq::new(start_seq + i as u64);
-        let step = StepIdx::new(i as u16);
-        events.push(JournalEvent::StepStarted {
+fn build_events_from(run: RunId, start_seq: u64, count: u16) -> Vec<JournalEvent> {
+    (0..count)
+        .map(|step| JournalEvent::StepStarted {
             run,
-            seq,
-            step,
+            seq: EventSeq::new(start_seq.saturating_add(u64::from(step))),
+            step: StepIdx::new(step),
             attempt: 1,
-        });
-    }
-    Some(events)
+        })
+        .collect()
 }

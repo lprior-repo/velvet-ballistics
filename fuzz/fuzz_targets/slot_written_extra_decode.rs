@@ -16,30 +16,25 @@ use vb_storage::slot_extra::{
 };
 
 fuzz_target!(|data: &[u8]| {
-    let mode = data.first().copied().unwrap_or(0) % 6;
+    let (mode, payload) = match data.split_first() {
+        Some((&mode, payload)) => (mode % 6, Some(payload)),
+        None => (0, None),
+    };
     let input = match mode {
         0 => {
-            // Valid envelope: try to create a proper envelope from the data
-            // Use bytes 1.. as the frame_extra payload
-            let frame_extra = data.get(1..).map(|b| b.to_vec());
-            match encode_slot_written_extra(vb_core::Taint::Clean, frame_extra) {
+            // Valid envelope: use the remaining bytes as the frame-extra payload.
+            match encode_slot_written_extra(vb_core::Taint::Clean, payload.map(<[u8]>::to_vec)) {
                 Ok(envelope) => envelope,
                 Err(_) => return,
             }
         }
         1 => {
-            // Corrupt prefix: flip first byte of prefix
-            let mut envelope = vec![0; SLOT_WRITTEN_EXTRA_PREFIX.len() + data.len().min(32)];
-            for (i, b) in SLOT_WRITTEN_EXTRA_PREFIX.iter().enumerate() {
-                if i == 0 {
-                    envelope[i] = *b ^ 0x01;
-                } else {
-                    envelope[i] = *b;
-                }
+            // Corrupt prefix: flip its first byte.
+            let mut envelope = SLOT_WRITTEN_EXTRA_PREFIX.to_vec();
+            if let Some(first) = envelope.first_mut() {
+                *first ^= 0x01;
             }
-            let payload_start = SLOT_WRITTEN_EXTRA_PREFIX.len();
-            let copy_len = data.len().min(envelope.len() - payload_start);
-            envelope[payload_start..payload_start + copy_len].copy_from_slice(&data[..copy_len]);
+            envelope.extend(data.iter().take(32).copied());
             envelope
         }
         2 => {
@@ -48,32 +43,29 @@ fuzz_target!(|data: &[u8]| {
         }
         3 => {
             // Legacy bytes: no prefix
-            data[1..].to_vec()
+            payload.map_or_else(Vec::new, <[u8]>::to_vec)
         }
         4 => {
             // Valid prefix + truncated postcard payload
             let mut envelope = SLOT_WRITTEN_EXTRA_PREFIX.to_vec();
-            let copy_len = data.len().min(16);
-            envelope.extend_from_slice(&data[..copy_len]);
+            envelope.extend(data.iter().take(16).copied());
             envelope
         }
-        5 => {
-            // Valid envelope with corrupt payload
-            let frame_extra = data.get(1..).map(|b| b.to_vec());
-            match encode_slot_written_extra(vb_core::Taint::Clean, frame_extra) {
-                Ok(mut env) => {
-                    // Corrupt a payload byte
-                    if env.len() > SLOT_WRITTEN_EXTRA_PREFIX.len() {
-                        let corrupt_at = SLOT_WRITTEN_EXTRA_PREFIX.len()
-                            + (env.len() - SLOT_WRITTEN_EXTRA_PREFIX.len()) / 2;
-                        env[corrupt_at] ^= 0xFF;
+        _ => {
+            // Valid envelope with a corrupted payload byte.
+            match encode_slot_written_extra(vb_core::Taint::Clean, payload.map(<[u8]>::to_vec)) {
+                Ok(mut envelope) => {
+                    if let Some(bytes) = envelope.get_mut(SLOT_WRITTEN_EXTRA_PREFIX.len()..) {
+                        let middle = bytes.len() / 2;
+                        if let Some(byte) = bytes.get_mut(middle) {
+                            *byte ^= 0xFF;
+                        }
                     }
-                    env
+                    envelope
                 }
                 Err(_) => return,
             }
         }
-        _ => unreachable!(),
     };
 
     let result = decode_slot_written_extra(&input);
@@ -82,7 +74,7 @@ fuzz_target!(|data: &[u8]| {
     match result {
         Ok(DecodedSlotWrittenExtra::Envelope(env)) => {
             // Envelope decoded - verify round-trip
-            let encoded = encode_slot_written_extra(env.taint, env.frame_extra.clone());
+            let encoded = encode_slot_written_extra(env.taint, env.frame_extra);
             assert!(
                 encoded.is_ok(),
                 "Re-encode of decoded envelope must succeed"
@@ -91,12 +83,6 @@ fuzz_target!(|data: &[u8]| {
         Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(_)) => {
             // Legacy - just accept it
         }
-        Err(SlotWrittenExtraError::DecodeFailed) => {
-            // Expected for corrupt payloads
-        }
-        Err(e) => {
-            // Shouldn't happen - envelope is fixed format
-            panic!("Unexpected error: {:?}", e);
-        }
+        Err(err) => assert_eq!(err, SlotWrittenExtraError::DecodeFailed, "Unexpected error"),
     }
 });

@@ -25,7 +25,6 @@ const MODE_NON_COLLECT: u8 = 3;
 const MODE_RUN_MISMATCH: u8 = 4;
 const MODE_SLOT_MISMATCH: u8 = 5;
 const MODE_EMPTY_EXTRA: u8 = 6;
-const MODE_TRUNCATED_EXTRA: u8 = 7;
 
 fuzz_target!(|data: &[u8]| {
     let events = build_event_sequence(data);
@@ -33,44 +32,34 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
 
-    let result = hydrate_collect_states_from_recovered_journal(&events);
-    let _states = observe_collect_hydration(result, &events);
+    observe_collect_hydration(
+        hydrate_collect_states_from_recovered_journal(&events),
+        &events,
+    );
 });
 
 fn build_event_sequence(data: &[u8]) -> Vec<JournalEvent> {
-    let mut events = Vec::new();
-    let num_events = (data.first().copied().unwrap_or(1) % 8) as usize + 1;
-
-    for i in 0..num_events {
-        let byte_offset = i * 4;
-        if byte_offset >= data.len() {
-            break;
-        }
-
-        let mode_byte = data[byte_offset];
-        let run_id = RunId::new(u64::from(byte_at(data, byte_offset + 1)).saturating_add(1));
-        let slot_idx = SlotIdx::new(u16::from(byte_at(data, byte_offset + 2)));
-        let seq_num = EventSeq::new(u64::from(byte_at(data, byte_offset + 3)));
-
-        let mode = mode_byte % 8;
-        let event = match mode {
-            MODE_COLLECT_ENVELOPE => collect_envelope_event(run_id, slot_idx, seq_num, data, i),
-            MODE_COLLECT_LEGACY => collect_legacy_event(run_id, slot_idx, seq_num),
-            MODE_COLLECT_CORRUPT => collect_corrupt_event(run_id, slot_idx, seq_num),
-            MODE_NON_COLLECT => non_collect_event(run_id, slot_idx, seq_num),
-            MODE_RUN_MISMATCH => mismatched_run_event(run_id, slot_idx, seq_num),
-            MODE_SLOT_MISMATCH => mismatched_slot_event(run_id, slot_idx, seq_num),
-            MODE_EMPTY_EXTRA => empty_extra_event(run_id, slot_idx, seq_num),
-            MODE_TRUNCATED_EXTRA => truncated_extra_event(run_id, slot_idx, seq_num),
-            _ => unreachable!(),
-        };
-
-        if let Some(ev) = event {
-            events.push(ev);
-        }
-    }
-
-    events
+    let count = usize::from(data.first().copied().map_or(1, |byte| byte) % 8).saturating_add(1);
+    data.chunks(4)
+        .take(count)
+        .enumerate()
+        .filter_map(|(i, record)| {
+            let (&mode, fields) = record.split_first()?;
+            let run = RunId::new(u64::from(byte_at(fields, 0)).saturating_add(1));
+            let slot = SlotIdx::new(u16::from(byte_at(fields, 1)));
+            let seq = EventSeq::new(u64::from(byte_at(fields, 2)));
+            match mode % 8 {
+                MODE_COLLECT_ENVELOPE => collect_envelope_event(run, slot, seq, data, i),
+                MODE_COLLECT_LEGACY => collect_legacy_event(run, slot, seq),
+                MODE_COLLECT_CORRUPT => collect_corrupt_event(run, slot, seq),
+                MODE_NON_COLLECT => non_collect_event(run, slot, seq),
+                MODE_RUN_MISMATCH => mismatched_run_event(run, slot, seq),
+                MODE_SLOT_MISMATCH => mismatched_slot_event(run, slot, seq),
+                MODE_EMPTY_EXTRA => empty_extra_event(run, slot, seq),
+                _ => truncated_extra_event(run, slot, seq),
+            }
+        })
+        .collect()
 }
 
 #[path = "collect_hydrate_events/event_builders.rs"]
@@ -79,60 +68,37 @@ mod event_builders;
 use event_builders::*;
 
 fn byte_at(data: &[u8], index: usize) -> u8 {
-    data.get(index).copied().unwrap_or(0)
+    data.get(index).map_or(0, |&byte| byte)
 }
 
 fn observe_collect_hydration(
     result: Result<vb_runtime::primitives::collect::CollectStates, EngineError>,
     events: &[JournalEvent],
-) -> vb_runtime::primitives::collect::CollectStates {
+) {
     match result {
-        Ok(states) => {
-            // If hydration succeeded, verify at least one state can be found
-            // for events that had valid SlotWritten events.
-            for event in events {
-                if let JournalEvent::SlotWrittenEvent {
-                    run, slot, extra, ..
-                } = event
-                {
-                    if extra.is_some() {
-                        // Check if this event could be found
-                        // (only if hydration didn't fail)
-                        let _ = states.find(*run, *slot, ListId::new(1));
-                    }
-                }
+        Ok(states) => events.iter().for_each(|event| {
+            if let JournalEvent::SlotWrittenEvent {
+                run, slot, extra, ..
+            } = event
+                && extra.is_some()
+            {
+                let _state = states.find(*run, *slot, ListId::new(1));
             }
-            states
-        }
-        Err(e) => {
-            match e {
+        }),
+        Err(err) => assert!(
+            matches!(
+                err,
                 EngineError::CollectExtraHydrationFailed {
-                    kind: CollectExtraHydrationFailureKind::EmptyExtra,
+                    kind: CollectExtraHydrationFailureKind::EmptyExtra
+                        | CollectExtraHydrationFailureKind::DecodeFailed
+                        | CollectExtraHydrationFailureKind::RunMismatch { .. }
+                        | CollectExtraHydrationFailureKind::SlotMismatch { .. }
+                        | CollectExtraHydrationFailureKind::CurrentPageMismatch { .. },
                     ..
-                } => {}
-                EngineError::CollectExtraHydrationFailed {
-                    kind: CollectExtraHydrationFailureKind::DecodeFailed,
-                    ..
-                } => {}
-                EngineError::CollectExtraHydrationFailed {
-                    kind: CollectExtraHydrationFailureKind::RunMismatch { .. },
-                    ..
-                } => {}
-                EngineError::CollectExtraHydrationFailed {
-                    kind: CollectExtraHydrationFailureKind::SlotMismatch { .. },
-                    ..
-                } => {}
-                EngineError::CollectExtraHydrationFailed {
-                    kind: CollectExtraHydrationFailureKind::CurrentPageMismatch { .. },
-                    ..
-                } => {}
-                EngineError::InvalidCompiledWorkflow { .. } => {}
-                EngineError::CollectPageOrderViolation { .. } => {}
-                _ => {
-                    panic!("Unexpected error from collect hydration: {:?}", e);
-                }
-            }
-            Default::default()
-        }
+                } | EngineError::InvalidCompiledWorkflow { .. }
+                    | EngineError::CollectPageOrderViolation { .. }
+            ),
+            "Unexpected error from collect hydration: {err:?}"
+        ),
     }
 }
