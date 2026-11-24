@@ -2,10 +2,7 @@
 //! Authentic two-version journal/recovery qualification remains a separate gate.
 
 use super::*;
-use crate::executor::{ExecutorCatalog, ExecutorError};
-
-#[path = "../../executor/issuance_test_support.rs"]
-mod fixture;
+use crate::executor::{ExecutorError, issuance_test_support as fixture};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 

@@ -229,10 +229,10 @@ fn bound_receipt_rejects_stale_binding_and_duplicate_replay()
         .err()
         .ok_or("duplicate receipt replay was accepted")?;
     assert_eq!(err, GateError::ReplayDecisionAfterClose { gate: 7 });
-    let recovered = crate::manual_gate::reconstruct_bound_open_gates(&events)
-        .err()
-        .ok_or("duplicate receipt recovery was accepted")?;
-    assert_eq!(recovered, GateError::ReplayDecisionAfterClose { gate: 7 });
+    assert!(matches!(
+        crate::manual_gate::reconstruct_bound_open_gates(&events),
+        Err(GateError::ReplayDecisionAfterClose { gate: 7 })
+    ));
     Ok(())
 }
 
