@@ -335,3 +335,52 @@ fn stored_action_contract_is_compared_against_the_current_one() -> TestResult {
     assert!(before.contains("stored-action (id 0)"), "{change}");
     Ok(())
 }
+
+fn with_capabilities(names: &[&str]) -> Result<ActionContract, Box<dyn std::error::Error>> {
+    let mut action = contract(1_000)?;
+    action.required_capabilities = names
+        .iter()
+        .map(|name| vb_core::Capability::new(Box::from(*name), ActionId::new(0)))
+        .collect();
+    Ok(action)
+}
+
+#[test]
+fn capability_only_contract_difference_is_one_action_contract_change() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let db = dir.path().join("journal");
+    let workflow = action_workflow()?;
+    let journal = vb_storage::FjallJournal::open(&db, None)?;
+    vb_storage::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        vb_core::RuntimePolicy::Journaled,
+        &[with_capabilities(&["net.read"])?],
+    )?;
+    drop(journal);
+    let old = baseline::resolve(None, Some(&db), &workflow, &[])?;
+    let current = |names: &[&str]| -> Result<super::Loaded, Box<dyn std::error::Error>> {
+        Ok(super::Loaded {
+            compiled: workflow.clone(),
+            source: None,
+            contracts: vec![with_capabilities(names)?],
+        })
+    };
+    let same = super::diff_loaded("new", &old, &current(&["net.read"])?)?;
+    assert!(!same.has_semantic_changes(), "{:?}", same.changes);
+    let widened = super::diff_loaded("new", &old, &current(&["net.read", "fs.write"])?)?;
+    let changes = messages(&widened, "action_contract");
+    assert_eq!(changes.len(), 1, "{:?}", widened.changes);
+    let change = changes.first().copied().ok_or("action contract change")?;
+    assert!(
+        change.contains(r#"required_capabilities={("net.read", 0)}"#),
+        "{change}"
+    );
+    assert!(
+        change.contains(r#"required_capabilities={("fs.write", 0), ("net.read", 0)}"#),
+        "{change}"
+    );
+    let reordered = super::diff_loaded("new", &old, &current(&["fs.write", "net.read"])?)?;
+    assert_eq!(messages(&reordered, "action_contract"), changes);
+    Ok(())
+}

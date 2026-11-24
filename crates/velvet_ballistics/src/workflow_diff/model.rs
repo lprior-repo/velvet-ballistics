@@ -6,7 +6,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vb_core::action::ActionContract;
 use vb_core::workflow::ErrorRouting;
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, StepIdx};
+use vb_core::workflow::source_metadata::WorkflowSourceMetadata;
+use vb_core::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, PathSegment, StepIdx,
+    WorkflowParts,
+};
 
 use crate::action_specs::{
     action_idempotency_name, action_retry_safety_name, action_side_effect_name,
@@ -17,7 +21,7 @@ use crate::commands_workflow::{collect_kind_edges, node_kind_label};
 pub(super) struct WorkflowModel {
     pub(super) name: String,
     pub(super) digest: String,
-    /// Hash of the compiled content without digest, source identity or source symbols.
+    /// Fingerprint of compiled instructions and their referenced symbol payloads.
     pub(super) content: String,
     pub(super) step_count: u16,
     pub(super) steps: BTreeSet<String>,
@@ -58,18 +62,51 @@ pub(super) fn build(
     })
 }
 
-/// Hash of everything that executes, excluding the digest, the source-semantic
-/// identity and source symbols, which change with source spelling alone.
+/// Ignore source spelling while retaining the strings resolved by executable IR.
 fn content_fingerprint(workflow: &CompiledWorkflow) -> Result<String, String> {
     let mut parts = workflow.to_parts();
+    let payloads = executable_symbol_payloads(&parts, workflow.source_metadata());
     parts.digest = vb_core::WorkflowDigest::from_bytes([0; 32]);
     parts.semantic_source_identity = None;
     parts.source_metadata = None;
-    let bytes = postcard::to_allocvec(&parts)
+    let bytes = postcard::to_allocvec(&(&parts, &payloads))
         .map_err(|error| format!("compiled content not serializable: {error}"))?;
     Ok(digest_hex(vb_core::WorkflowDigest::from_bytes(
         *blake3::hash(&bytes).as_bytes(),
     )))
+}
+
+/// Strings of every symbol the executable parts reference, in program order.
+fn executable_symbol_payloads<'a>(
+    parts: &WorkflowParts,
+    metadata: Option<&'a WorkflowSourceMetadata>,
+) -> Vec<Option<&'a str>> {
+    let constants = parts
+        .constants
+        .iter()
+        .filter_map(|constant| match constant {
+            ConstValue::Symbol(id) => Some(*id),
+            _ => None,
+        });
+    let accessors = parts.accessors.iter().flat_map(|accessor| {
+        accessor.path.iter().filter_map(|segment| match segment {
+            PathSegment::Field(id) => Some(*id),
+            _ => None,
+        })
+    });
+    let fields = parts
+        .nodes
+        .iter()
+        .flat_map(|node| match &node.kind {
+            CompiledNodeKind::BuildObject { fields } => fields.as_ref(),
+            _ => &[],
+        })
+        .map(|(id, _)| *id);
+    constants
+        .chain(accessors)
+        .chain(fields)
+        .map(|id| metadata.and_then(|metadata| metadata.symbol(id)))
+        .collect()
 }
 
 /// One label per node: `<step id>:<node kind>`, numbered when still ambiguous.
@@ -153,23 +190,35 @@ fn secrets(workflow: &CompiledWorkflow) -> BTreeMap<String, String> {
 fn action_summaries(contracts: &[ActionContract]) -> BTreeMap<u16, String> {
     contracts
         .iter()
-        .map(|contract| {
-            let id = contract.id.get();
-            let summary = format!(
-                "{} (id {id}): idempotency={}, retry_safety={}, side_effect={}, timeout_ms={}, input_slots={}, output_slots={}, max_input_bytes={}, max_output_bytes={}",
-                contract.name.as_str(),
-                action_idempotency_name(contract.idempotency),
-                action_retry_safety_name(contract.retry_safety),
-                action_side_effect_name(contract.side_effect),
-                contract.timeout_ms,
-                contract.input_slot_count,
-                contract.output_slot_count,
-                contract.max_input_bytes,
-                contract.max_output_bytes,
-            );
-            (id, summary)
-        })
+        .map(|contract| (contract.id.get(), contract_summary(contract)))
         .collect()
+}
+
+/// Capabilities are sorted and de-duplicated so declaration order is not a change.
+fn capability_names(contract: &ActionContract) -> String {
+    let required: BTreeSet<_> = contract
+        .required_capabilities
+        .iter()
+        .map(|capability| (capability.name(), capability.action_id().get()))
+        .collect();
+    format!("{required:?}")
+}
+
+fn contract_summary(contract: &ActionContract) -> String {
+    format!(
+        "{} (id {}): idempotency={}, retry_safety={}, side_effect={}, timeout_ms={}, input_slots={}, output_slots={}, max_input_bytes={}, max_output_bytes={}, required_capabilities={}",
+        contract.name.as_str(),
+        contract.id.get(),
+        action_idempotency_name(contract.idempotency),
+        action_retry_safety_name(contract.retry_safety),
+        action_side_effect_name(contract.side_effect),
+        contract.timeout_ms,
+        contract.input_slot_count,
+        contract.output_slot_count,
+        contract.max_input_bytes,
+        contract.max_output_bytes,
+        capability_names(contract),
+    )
 }
 
 fn actions(
