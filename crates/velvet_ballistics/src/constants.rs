@@ -26,6 +26,7 @@ commands:
   answer     <run_id> --slot <N> --value <file> --db <path> [--emit text|yaml|postcard]
   graph      <workflow.yaml> [--emit text|yaml|postcard]
   diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]
+  diff       <workflow.yaml> (--against <old.yaml> | --db <path>) [--emit text|yaml|postcard]  (exit 0 no semantic change, 1 changed, 2 error)
   incident   <run_id> --db <path> [--emit text|yaml|postcard]
   submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]
   simulate   <workflow.yaml> [--emit text|yaml|postcard]

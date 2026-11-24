@@ -197,3 +197,111 @@ fn parse_doctor_accepts_optional_db_and_yaml_output() {
         assert_eq!(output, OutputFormat::Yaml);
     }
 }
+
+fn workflow_diff(extra: &[&str]) -> Result<Command, ParseError> {
+    let mut argv = vec!["velvet-ballistics", "diff", "new.yaml"];
+    argv.extend_from_slice(extra);
+    parse_args(&args(&argv))
+}
+
+#[test]
+fn parse_workflow_diff_against_file_defaults_to_text() {
+    assert_eq!(
+        workflow_diff(&["--against", "old.yaml"]),
+        Ok(Command::WorkflowDiff {
+            workflow: PathBuf::from("new.yaml"),
+            against: Some(PathBuf::from("old.yaml")),
+            db: None,
+            output: OutputFormat::Text,
+        })
+    );
+}
+
+#[test]
+fn parse_workflow_diff_db_baseline_with_flags_before_and_after_the_path() {
+    let expected = Ok(Command::WorkflowDiff {
+        workflow: PathBuf::from("new.yaml"),
+        against: None,
+        db: Some(PathBuf::from("journal")),
+        output: OutputFormat::Yaml,
+    });
+    assert_eq!(
+        workflow_diff(&["--db", "journal", "--emit", "yaml"]),
+        expected
+    );
+    assert_eq!(
+        parse_args(&args(&[
+            "velvet-ballistics",
+            "diff",
+            "--emit",
+            "yaml",
+            "--db",
+            "journal",
+            "new.yaml"
+        ])),
+        expected
+    );
+}
+
+#[test]
+fn parse_workflow_diff_accepts_postcard_emit() {
+    assert!(matches!(
+        workflow_diff(&["--against", "old.yaml", "--emit", "postcard"]),
+        Ok(Command::WorkflowDiff {
+            output: OutputFormat::Postcard,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn parse_workflow_diff_requires_exactly_one_baseline() {
+    assert!(matches!(
+        workflow_diff(&[]),
+        Err(ParseError::MissingArgument(message)) if message.contains("--against") && message.contains("--db")
+    ));
+    assert!(matches!(
+        workflow_diff(&["--against", "old.yaml", "--db", "journal"]),
+        Err(ParseError::InvalidArgument(message)) if message.contains("mutually exclusive")
+    ));
+}
+
+#[test]
+fn parse_workflow_diff_rejects_json_flags_and_run_pair_with_against() {
+    for flag in ["--json", "--jsonl"] {
+        assert!(
+            matches!(
+                workflow_diff(&["--against", "old.yaml", flag]),
+                Err(ParseError::InvalidArgument(message)) if message.contains("--emit")
+            ),
+            "{flag} must be refused"
+        );
+    }
+    let mixed = parse_args(&args(&[
+        "velvet-ballistics",
+        "diff",
+        "1",
+        "2",
+        "--against",
+        "old.yaml",
+        "--db",
+        "journal",
+    ]));
+    assert!(
+        matches!(mixed, Err(ParseError::InvalidArgument(ref message)) if message.contains("run pair")),
+        "unexpected: {mixed:?}"
+    );
+}
+
+#[test]
+fn parse_run_diff_is_unchanged_by_the_workflow_variant() {
+    assert_eq!(
+        parse_args(&args(&["velvet-ballistics", "diff", "1", "2", "--db", "j"])),
+        Ok(Command::Diff {
+            run_a: "1".into(),
+            run_b: "2".into(),
+            db: PathBuf::from("j"),
+            output: OutputFormat::Text,
+        })
+    );
+}

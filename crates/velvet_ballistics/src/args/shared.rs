@@ -23,17 +23,6 @@ pub(super) fn parse_compile_output_format(_args: &[OsString]) -> OutputFormat {
     OutputFormat::Text
 }
 
-pub(super) fn positional_str(
-    args: &[OsString],
-    index: usize,
-    name: &'static str,
-) -> Result<String, ParseError> {
-    args.get(index)
-        .and_then(|s| s.to_str())
-        .map(String::from)
-        .ok_or(ParseError::MissingArgument(name))
-}
-
 pub(super) fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
     for (i, arg) in args.iter().enumerate() {
         let Some(token) = arg.to_str() else {
@@ -102,6 +91,7 @@ fn max_positionals(command: &str) -> Option<usize> {
 /// Value flags whose value is a filesystem path and must not be empty.
 const PATH_VALUE_FLAGS: &[&str] = &[
     "--db",
+    "--against",
     "--out",
     "--input-bin",
     "--socket",
