@@ -37,6 +37,7 @@ pub(crate) mod kind {
     pub(crate) const CLI_STATUS: &str = "CliStatus";
     pub(crate) const SYSTEM_STATUS: &str = "SystemStatus";
     pub(crate) const AGENT_CONTEXT: &str = "AgentContext";
+    pub(crate) const WORKFLOW_DIFF: &str = "WorkflowDiff";
 }
 
 /// Kind enum representing all registered payload types.
@@ -60,6 +61,7 @@ pub(crate) enum Kind {
     CliStatus,
     SystemStatus,
     AgentContext,
+    WorkflowDiff,
 }
 
 impl Kind {
@@ -84,6 +86,7 @@ impl Kind {
             Kind::CliStatus => kind::CLI_STATUS,
             Kind::SystemStatus => kind::SYSTEM_STATUS,
             Kind::AgentContext => kind::AGENT_CONTEXT,
+            Kind::WorkflowDiff => kind::WORKFLOW_DIFF,
         }
     }
 
@@ -108,6 +111,7 @@ impl Kind {
             kind::CLI_STATUS => Some(Kind::CliStatus),
             kind::SYSTEM_STATUS => Some(Kind::SystemStatus),
             kind::AGENT_CONTEXT => Some(Kind::AgentContext),
+            kind::WORKFLOW_DIFF => Some(Kind::WorkflowDiff),
             _ => None,
         }
     }

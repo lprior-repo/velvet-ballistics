@@ -335,3 +335,60 @@ fn trace_and_retry_numeric_flags_accept_their_max_and_refuse_overflow() {
     assert!(trace_cmd(&["--limit", &format!("{usize_max}0")]).is_err());
     assert!(trace_cmd(&["--limit", "-1"]).is_err());
 }
+
+#[test]
+fn diff_metadata_keeps_run_diff_and_describes_the_workflow_variant() -> TestResult {
+    let context = build("test");
+    assert_eq!(flag_names(&context, "diff")?, ["--db", "--emit"]);
+    assert_eq!(
+        context.pointer("/commands/diff/positionals"),
+        Some(&json!(["run_a", "run_b"]))
+    );
+    let variant = context
+        .pointer("/commands/diff/variants/workflow")
+        .ok_or("workflow diff variant")?;
+    assert_eq!(
+        variant.pointer("/positionals"),
+        Some(&json!(["workflow.yaml"]))
+    );
+    let mut flags: Vec<&str> = variant
+        .pointer("/flags")
+        .and_then(Value::as_object)
+        .ok_or("variant flags")?
+        .keys()
+        .map(String::as_str)
+        .collect();
+    flags.sort_unstable();
+    assert_eq!(flags, ["--against", "--db", "--emit"]);
+    assert_eq!(
+        variant.pointer("/mutually_exclusive"),
+        Some(&json!([["--against", "--db"]]))
+    );
+    assert_eq!(
+        variant.pointer("/exit_codes"),
+        Some(&json!({"0": "no semantic changes", "1": "semantic changes detected", "2": "error"}))
+    );
+    assert!(matches!(
+        parsed(&["diff", "w.yaml", "--against", "o.yaml"]),
+        Ok(Command::WorkflowDiff {
+            against: Some(_),
+            db: None,
+            ..
+        })
+    ));
+    assert!(matches!(
+        parsed(&["diff", "w.yaml", "--db", "j"]),
+        Ok(Command::WorkflowDiff {
+            against: None,
+            db: Some(_),
+            ..
+        })
+    ));
+    assert_eq!(
+        parsed(&["diff", "w.yaml", "--against", "o.yaml", "--db", "j"])
+            .err()
+            .map(|e| e.to_string().contains("mutually exclusive")),
+        Some(true)
+    );
+    Ok(())
+}

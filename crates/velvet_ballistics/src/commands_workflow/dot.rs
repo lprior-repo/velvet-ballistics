@@ -73,7 +73,10 @@ pub(crate) fn generate_dot(workflow: &CompiledWorkflow) -> DotGraph {
     }
 }
 
-fn collect_kind_edges(node_idx: u16, kind: &CompiledNodeKind) -> Vec<(u16, u16, String)> {
+pub(crate) fn collect_kind_edges(
+    node_idx: u16,
+    kind: &CompiledNodeKind,
+) -> Vec<(u16, u16, String)> {
     let mut edges: Vec<(u16, u16, String)> = Vec::new();
     match kind {
         CompiledNodeKind::Choose {

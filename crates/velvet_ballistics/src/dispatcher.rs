@@ -119,6 +119,17 @@ pub(crate) fn run_from_env() -> ExitCode {
             output,
         }) => crate::run_cancel::cmd_answer(&run_id, selector, &value_file, &db, output),
         Ok(Command::Graph { workflow, output }) => crate::graph::cmd_graph(&workflow, output),
+        Ok(Command::WorkflowDiff {
+            workflow,
+            against,
+            db,
+            output,
+        }) => crate::workflow_diff::cmd_workflow_diff(
+            &workflow,
+            against.as_deref(),
+            db.as_deref(),
+            output,
+        ),
         Ok(Command::Diff {
             run_a,
             run_b,

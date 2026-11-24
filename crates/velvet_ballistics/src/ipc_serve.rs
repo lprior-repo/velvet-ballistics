@@ -189,7 +189,7 @@ impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
     }
 }
 
-fn compiled_record_for_digest(
+pub(crate) fn compiled_record_for_digest(
     journal: &vb_storage::FjallJournal,
     digest: vb_core::WorkflowDigest,
 ) -> Result<vb_storage::CompiledIrRecord, vb_ipc::server::WorkflowResolutionError> {

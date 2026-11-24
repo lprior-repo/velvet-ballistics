@@ -155,7 +155,8 @@ pub(super) fn commands() -> Value {
             serde_json::json!({
                 "summary": "Compare two durable runs.",
                 "positionals": ["run_a", "run_b"],
-                "flags": db_output_flags()
+                "flags": db_output_flags(),
+                "variants": {"workflow": workflow_diff_variant()}
             }),
         ),
         command(
@@ -192,6 +193,21 @@ fn command(name: &str, value: Value) -> (String, Value) {
 
 fn output_flags() -> Value {
     serde_json::json!({"--emit": output_emit_flag()})
+}
+
+fn workflow_diff_variant() -> Value {
+    serde_json::json!({
+        "summary": "Compare a workflow definition against a baseline: textual, semantic and digest diff.",
+        "positionals": ["workflow.yaml"],
+        "flags": {
+            "--against": {"type": "path", "baseline": true},
+            "--db": {"type": "path", "baseline": true},
+            "--emit": output_emit_flag()
+        },
+        "mutually_exclusive": [["--against", "--db"]],
+        "requires_one_of": ["--against", "--db"],
+        "exit_codes": {"0": "no semantic changes", "1": "semantic changes detected", "2": "error"}
+    })
 }
 
 fn db_output_flags() -> Value {

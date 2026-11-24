@@ -188,6 +188,12 @@ pub(crate) enum Command {
         workflow: PathBuf,
         output: OutputFormat,
     },
+    WorkflowDiff {
+        workflow: PathBuf,
+        against: Option<PathBuf>,
+        db: Option<PathBuf>,
+        output: OutputFormat,
+    },
     Diff {
         run_a: String,
         run_b: String,

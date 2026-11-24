@@ -79,6 +79,7 @@ pub(crate) fn command_mode(command: &Command) -> CommandMode {
         | Command::Doctor { .. }
         | Command::Answer { .. }
         | Command::Diff { .. }
+        | Command::WorkflowDiff { .. }
         | Command::Incident { .. }
         | Command::Cancel { .. }
         | Command::AiContext { .. } => CommandMode::Storage,

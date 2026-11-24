@@ -131,7 +131,49 @@
         "run_a",
         "run_b"
       ],
-      "summary": "Compare two durable runs."
+      "summary": "Compare two durable runs.",
+      "variants": {
+        "workflow": {
+          "exit_codes": {
+            "0": "no semantic changes",
+            "1": "semantic changes detected",
+            "2": "error"
+          },
+          "flags": {
+            "--against": {
+              "baseline": true,
+              "type": "path"
+            },
+            "--db": {
+              "baseline": true,
+              "type": "path"
+            },
+            "--emit": {
+              "default": "text",
+              "type": "enum",
+              "values": [
+                "text",
+                "yaml",
+                "postcard"
+              ]
+            }
+          },
+          "mutually_exclusive": [
+            [
+              "--against",
+              "--db"
+            ]
+          ],
+          "positionals": [
+            "workflow.yaml"
+          ],
+          "requires_one_of": [
+            "--against",
+            "--db"
+          ],
+          "summary": "Compare a workflow definition against a baseline: textual, semantic and digest diff."
+        }
+      }
     },
     "doctor": {
       "flags": {
@@ -164,6 +206,20 @@
             "text",
             "yaml",
             "postcard"
+          ]
+        },
+        "--limit": {
+          "type": "i64"
+        },
+        "--status": {
+          "type": "enum",
+          "values": [
+            "pending",
+            "active",
+            "waiting_answer",
+            "cancelled",
+            "completed",
+            "failed"
           ]
         }
       },
@@ -317,6 +373,10 @@
             "yaml",
             "postcard"
           ]
+        },
+        "--step": {
+          "required": true,
+          "type": "u16"
         }
       },
       "positionals": [
@@ -441,6 +501,9 @@
     },
     "trace": {
       "flags": {
+        "--action": {
+          "type": "u16"
+        },
         "--db": {
           "required": true,
           "type": "path"
@@ -453,6 +516,29 @@
             "yaml",
             "postcard"
           ]
+        },
+        "--limit": {
+          "type": "usize"
+        },
+        "--since-seq": {
+          "type": "u64"
+        },
+        "--status": {
+          "type": "enum",
+          "values": [
+            "pending",
+            "active",
+            "waiting_answer",
+            "cancelled",
+            "completed",
+            "failed"
+          ]
+        },
+        "--step": {
+          "type": "u16"
+        },
+        "--until-seq": {
+          "type": "u64"
         }
       },
       "positionals": [
