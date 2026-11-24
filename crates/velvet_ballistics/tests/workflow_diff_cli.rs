@@ -121,6 +121,30 @@ fn comment_only_edit_is_textual_but_exits_zero() -> TestResult {
 }
 
 #[test]
+fn changed_runtime_string_exits_one_but_respelled_duration_exits_zero() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let yaml = OLD
+        .replace("steps:", "vars: {message: alpha}\nsteps:")
+        .replace("'$base'", "'$vars.message'");
+    let old = write(dir.path(), "old.yaml", &yaml)?;
+    let changed = write(dir.path(), "changed.yaml", &yaml.replace("alpha", "bravo"))?;
+    let respelled = write(dir.path(), "respelled.yaml", &yaml.replace("1s", "1000ms"))?;
+
+    let output = against(&changed, &old, &[])?;
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(output.stderr.is_empty(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(stdout.contains("  [digest] "), "{stdout}");
+
+    let output = against(&respelled, &old, &[])?;
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert!(output.stderr.is_empty(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(stdout.contains("no semantic changes"), "{stdout}");
+    Ok(())
+}
+
+#[test]
 fn retry_policy_change_exits_one_and_names_the_step() -> TestResult {
     let dir = tempfile::tempdir()?;
     let old = write(dir.path(), "old.yaml", OLD)?;

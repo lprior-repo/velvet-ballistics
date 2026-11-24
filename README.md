@@ -84,6 +84,8 @@ moon ci
 moon run :bench-build
 ```
 
+Compare workflow revisions with `velvet-ballistics diff new.yaml --against old.yaml` (or `--db <path>` for a stored baseline). Changes to executable strings or required action capabilities count as semantic changes (exit 1); equivalent source spelling, such as `1s` and `1000ms`, does not (exit 0).
+
 ## Documentation
 
 - `/velvet-ballistics-MASTER.md` — authoritative architecture contract, phase tracker, and implementation acceptance criteria
