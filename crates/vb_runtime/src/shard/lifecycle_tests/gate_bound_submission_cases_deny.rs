@@ -195,3 +195,37 @@ fn bound_open_budget_exceeds_refuses_before_journal_or_gate()
     assert_eq!(journal.run_failed_count(run)?, 0);
     Ok(())
 }
+
+#[test]
+fn bound_failure_strict_budget_exceeded_writes_nothing_and_keeps_sequence()
+-> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(94080);
+    let (mut shard, journal) = make_shard(run)?;
+    let (written, attempt) = {
+        let state = shard.run_state_get(run).ok_or("run state")?;
+        (state.journal_bytes_written, state.run_attempt.get())
+    };
+    let failed_len = shard.journal_event_bytes(&RuntimeJournalEvent::RunFailed { run, attempt })?;
+    let state = shard.run_state_get_mut(run).ok_or("run state")?;
+    let admission = state.admission.take().ok_or("run admission")?;
+    let budget = written.checked_add(failed_len).ok_or("budget overflow")?;
+    state.admission = Some(admission.with_attached_budget(journal_bytes_budget(budget)));
+    let open = shard
+        .bound_open_gates
+        .get(&GateId::new(7))
+        .ok_or("gate open")?;
+    let record = crate::manual_gate::evaluate_bound_decision(
+        &open.gate,
+        open.opened_at_ms,
+        open.opening_seq,
+        &open.requester,
+        OperatorTrust::InProcessCaller,
+        &input(GateDecision::Deny),
+    )?;
+    let sequence_before = shard.journal_sequence_for(run);
+    assert_eq!(shard.append_bound_gate_failure_strict(record)?, None);
+    assert_eq!(shard.journal_sequence_for(run), sequence_before);
+    assert!(journal.decisions()?.is_empty());
+    assert_eq!(journal.run_failed_count(run)?, 0);
+    Ok(())
+}
