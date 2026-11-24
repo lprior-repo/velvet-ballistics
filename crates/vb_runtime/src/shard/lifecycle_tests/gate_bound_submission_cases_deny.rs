@@ -227,5 +227,10 @@ fn bound_failure_strict_budget_exceeded_writes_nothing_and_keeps_sequence()
     assert_eq!(shard.journal_sequence_for(run), sequence_before);
     assert!(journal.decisions()?.is_empty());
     assert_eq!(journal.run_failed_count(run)?, 0);
+    let state = shard.run_state_get(run).ok_or("run state removed")?;
+    assert_eq!(state.journal_bytes_written, written);
+    assert_eq!(state.run_attempt.get(), attempt);
+    assert!(!shard.terminal_runs_contains(run));
+    assert!(shard.bound_open_gates.contains_key(&GateId::new(7)));
     Ok(())
 }
