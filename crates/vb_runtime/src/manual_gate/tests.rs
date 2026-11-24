@@ -115,7 +115,7 @@ mod bound_replay {
 
 mod cold_recovery {
     use super::*;
-    include!("tests_bound_recovery.rs");
+    include!("bound_recovery_tests.rs");
 }
 
 mod negative_boundaries {

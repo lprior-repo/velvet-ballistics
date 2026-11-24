@@ -53,14 +53,20 @@ impl Shard {
                 gate,
                 opened_at_ms,
                 requester,
-            } => {
-                crate::shard::lifecycle::validate_bound_open(gate, *opened_at_ms, requester)?;
-                Self::check_not_future(*opened_at_ms)?;
-            }
+            } => Self::validate_open_bound_gate_submission(gate, *opened_at_ms, requester)?,
             ShardCommand::EscalateBoundGate { now_ms, .. } => Self::check_not_future(*now_ms)?,
             _ => {}
         }
         Ok(())
+    }
+
+    fn validate_open_bound_gate_submission(
+        gate: &vb_core::manual_gate::BoundManualGate,
+        opened_at_ms: u64,
+        requester: &vb_core::manual_gate::ApproverId,
+    ) -> RuntimeResult<()> {
+        crate::shard::lifecycle::validate_bound_open(gate, opened_at_ms, requester)?;
+        Self::check_not_future(opened_at_ms)
     }
 
     fn probe_submission_journal(&self, cmd: &ShardCommand) -> RuntimeResult<()> {

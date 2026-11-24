@@ -1,14 +1,7 @@
-fn assert_recovers_closed(
+fn recover_from_durable_bytes(
     gate: &BoundManualGate,
     decided: vb_core::manual_gate::BoundGateOutcomeRecord,
-    expected_outcome: GateOutcome,
-    expected_decision: GateDecision,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let expected_digest = decided
-        .bound_receipt
-        .as_ref()
-        .map(|receipt| receipt.digest)
-        .ok_or("decision receipt missing")?;
+) -> Result<Vec<vb_storage::JournalEvent>, Box<dyn std::error::Error>> {
     let live_journal = vec![
         bound_gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1)),
         bound_gate_decision_event(gate.gate.run, vb_storage::EventSeq::new(2), decided),
@@ -20,16 +13,23 @@ fn assert_recovers_closed(
         .map(postcard::to_allocvec)
         .collect::<Result<Vec<Vec<u8>>, _>>()?;
     drop(live_journal);
-    let recovered = durable
+    Ok(durable
         .iter()
         .map(|bytes| postcard::from_bytes::<vb_storage::JournalEvent>(bytes))
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?)
+}
 
+fn assert_closed_after_replay(
+    recovered: &[vb_storage::JournalEvent],
+    expected_outcome: GateOutcome,
+    expected_decision: GateDecision,
+    expected_digest: GateDigest,
+) -> Result<(), Box<dyn std::error::Error>> {
     assert!(
-        reconstruct_bound_open_gates(&recovered)?.is_empty(),
+        reconstruct_bound_open_gates(recovered)?.is_empty(),
         "decided gate must be closed after cold recovery"
     );
-    let replay = replay_bound_gate_history(&recovered)?;
+    let replay = replay_bound_gate_history(recovered)?;
     assert_eq!(replay.len(), 1);
     let outcome = replay.first().ok_or("decision replay missing")?;
     assert_eq!(outcome.outcome, expected_outcome);
@@ -38,9 +38,24 @@ fn assert_recovers_closed(
 
     // Recovery is a pure fold over the journal: repeating it over the same
     // bytes yields identical state and produces no additional outcome.
-    assert!(reconstruct_bound_open_gates(&recovered)?.is_empty());
-    assert_eq!(replay_bound_gate_history(&recovered)?, replay);
+    assert!(reconstruct_bound_open_gates(recovered)?.is_empty());
+    assert_eq!(replay_bound_gate_history(recovered)?, replay);
     Ok(())
+}
+
+fn assert_recovers_closed(
+    gate: &BoundManualGate,
+    decided: vb_core::manual_gate::BoundGateOutcomeRecord,
+    expected_outcome: GateOutcome,
+    expected_decision: GateDecision,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let expected_digest = decided
+        .bound_receipt
+        .as_ref()
+        .map(|receipt| receipt.digest)
+        .ok_or("decision receipt missing")?;
+    let recovered = recover_from_durable_bytes(gate, decided)?;
+    assert_closed_after_replay(&recovered, expected_outcome, expected_decision, expected_digest)
 }
 
 #[test]

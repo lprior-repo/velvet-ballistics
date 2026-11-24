@@ -102,11 +102,7 @@ impl BoundLedger {
         }
         let gate_id = record.record.gate.get();
         let Some(existing) = self.open.get(&gate_id) else {
-            return Err(if self.closed.contains(&gate_id) {
-                GateError::ReplayDecisionAfterClose { gate: gate_id }
-            } else {
-                GateError::ReplayDecisionWithoutOpenGate { gate: gate_id }
-            });
+            return Err(self.missing_open_error(gate_id));
         };
         validate_bound_replay(
             record,
@@ -115,12 +111,7 @@ impl BoundLedger {
             existing.opened_at_ms,
             existing.opening_seq,
         )?;
-        if let Some(delegate) = &existing.delegated_to
-            && record.record.outcome != GateOutcome::Escalated
-            && record.record.approver.as_ref() != Some(delegate)
-        {
-            return Err(GateError::ReplayWrongDelegate { gate: gate_id });
-        }
+        Self::check_delegate(existing, record, gate_id)?;
         if let Some(receipt) = &record.bound_receipt
             && self.seen_receipts.insert(receipt.digest, gate_id).is_some()
         {
@@ -131,6 +122,30 @@ impl BoundLedger {
             self.closed.insert(gate_id);
         }
         Ok(())
+    }
+
+    fn missing_open_error(&self, gate_id: u64) -> GateError {
+        if self.closed.contains(&gate_id) {
+            GateError::ReplayDecisionAfterClose { gate: gate_id }
+        } else {
+            GateError::ReplayDecisionWithoutOpenGate { gate: gate_id }
+        }
+    }
+
+    fn check_delegate(
+        existing: &BoundOpenGate,
+        record: &BoundGateOutcomeRecord,
+        gate_id: u64,
+    ) -> Result<(), GateError> {
+        match &existing.delegated_to {
+            Some(delegate)
+                if record.record.outcome != GateOutcome::Escalated
+                    && record.record.approver.as_ref() != Some(delegate) =>
+            {
+                Err(GateError::ReplayWrongDelegate { gate: gate_id })
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Closes every open bound gate of a failed run. The run's gates can no
